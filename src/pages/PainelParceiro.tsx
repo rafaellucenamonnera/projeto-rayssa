@@ -53,7 +53,7 @@ const PainelParceiro = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-display font-bold">Painel do Parceiro</h1>
+            <h1 className="text-2xl font-display font-bold">Painel do Consultor</h1>
             <p className="text-muted-foreground">Olá, {parceiro.nome}!</p>
           </div>
           <Button variant="outline" size="sm" onClick={logout}>
@@ -69,7 +69,7 @@ const PainelParceiro = () => {
                 <Link2 className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Código do Parceiro</p>
+                <p className="text-sm text-muted-foreground">Código do Consultor</p>
                 <p className="text-lg font-display font-semibold glow-text">{parceiro.codigo_parceiro}</p>
               </div>
             </div>
@@ -100,7 +100,7 @@ const PainelParceiro = () => {
               </Button>
             </div>
             <p className="text-sm text-muted-foreground">
-              Compartilhe este link com empresas interessadas no Monnera. Os leads cadastrados serão vinculados ao seu perfil.
+              Compartilhe este link com empresas interessadas no Monnera. Os leads cadastrados serão vinculados ao seu perfil de consultor.
             </p>
           </CardContent>
         </Card>

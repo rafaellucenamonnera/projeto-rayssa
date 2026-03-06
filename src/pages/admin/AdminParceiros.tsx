@@ -27,7 +27,7 @@ const AdminParceiros = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-display font-bold">Parceiros Comerciais</h1>
+      <h1 className="text-2xl font-display font-bold">Consultores Comerciais</h1>
       <Card className="border-border">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -60,7 +60,7 @@ const AdminParceiros = () => {
               </tbody>
             </table>
             {parceiros.length === 0 && (
-              <p className="text-center py-8 text-muted-foreground">Nenhum parceiro cadastrado.</p>
+              <p className="text-center py-8 text-muted-foreground">Nenhum consultor cadastrado.</p>
             )}
           </div>
         </CardContent>
