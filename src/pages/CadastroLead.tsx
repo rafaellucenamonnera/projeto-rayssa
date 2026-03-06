@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { validateEmail, validateCNPJ, formatCNPJ } from "@/lib/validators";
 import { toast } from "sonner";
 import { Loader2, Building2, CheckCircle } from "lucide-react";
+import logoMonnera from "@/assets/logo-monnera.jpg";
 
 const CadastroLead = () => {
   const { codigoParceiro } = useParams();
