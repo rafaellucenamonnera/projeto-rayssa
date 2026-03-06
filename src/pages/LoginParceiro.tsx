@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, LogIn } from "lucide-react";
 import { Link } from "react-router-dom";
+import logoMonnera from "@/assets/logo-monnera.jpg";
 
 const LoginParceiro = () => {
   const navigate = useNavigate();
@@ -49,9 +50,7 @@ const LoginParceiro = () => {
     <div className="min-h-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-sm border-border">
         <CardHeader className="text-center space-y-2">
-          <div className="mx-auto w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-2">
-            <LogIn className="w-6 h-6 text-primary" />
-          </div>
+          <img src={logoMonnera} alt="Monnera" className="w-12 h-12 rounded-xl mx-auto mb-2" />
           <CardTitle className="text-2xl font-display">Acesso do Parceiro</CardTitle>
           <CardDescription>Informe seu CPF para acessar o painel</CardDescription>
         </CardHeader>

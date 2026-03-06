@@ -1,6 +1,7 @@
 import { LayoutDashboard, Users, FileText } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
+import logoMonnera from "@/assets/logo-monnera.jpg";
 import {
   Sidebar,
   SidebarContent,
@@ -25,12 +26,10 @@ export function AdminSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
-        <div className="p-4">
+        <div className="p-4 flex items-center gap-2">
+          <img src={logoMonnera} alt="Monnera" className="w-8 h-8 rounded-md" />
           {!collapsed && (
             <h2 className="text-lg font-display font-bold glow-text">Monnera</h2>
-          )}
-          {collapsed && (
-            <span className="text-lg font-display font-bold glow-text">M</span>
           )}
         </div>
         <SidebarGroup>

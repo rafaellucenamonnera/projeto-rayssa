@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { validateEmail, validateCNPJ, formatCNPJ } from "@/lib/validators";
 import { toast } from "sonner";
 import { Loader2, Building2, CheckCircle } from "lucide-react";
+import logoMonnera from "@/assets/logo-monnera.jpg";
 
 const CadastroLead = () => {
   const { codigoParceiro } = useParams();
@@ -140,9 +141,7 @@ const CadastroLead = () => {
     <div className="min-h-screen flex items-center justify-center px-3 py-6 sm:p-4 sm:py-8">
       <Card className="w-full max-w-2xl border-border">
         <CardHeader className="text-center space-y-2 px-4 sm:px-6">
-          <div className="mx-auto w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-2">
-            <Building2 className="w-6 h-6 text-primary" />
-          </div>
+          <img src={logoMonnera} alt="Monnera" className="w-12 h-12 rounded-xl mx-auto mb-2" />
           <CardTitle className="text-xl sm:text-2xl font-display">Cadastro de Empresa Interessada no Monnera</CardTitle>
           <CardDescription className="text-sm">Preencha os dados da sua empresa</CardDescription>
         </CardHeader>
