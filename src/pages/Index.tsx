@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Users, Building2, Shield } from "lucide-react";
+import logoMonnera from "@/assets/logo-monnera.jpg";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -10,6 +11,7 @@ const Index = () => {
       {/* Hero */}
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="max-w-2xl text-center space-y-8">
+          <img src={logoMonnera} alt="Monnera" className="w-20 h-20 rounded-xl mx-auto" />
           <h1 className="text-4xl md:text-5xl font-display font-bold leading-tight">
             <span className="glow-text">Monnera</span> Comercial
           </h1>
