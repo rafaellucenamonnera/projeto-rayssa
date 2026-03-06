@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { validateCPF, validateEmail, formatCPF } from "@/lib/validators";
 import { toast } from "sonner";
 import { Loader2, UserPlus } from "lucide-react";
+import logoMonnera from "@/assets/logo-monnera.jpg";
 
 const CadastroParceiro = () => {
   const navigate = useNavigate();
@@ -93,9 +94,7 @@ const CadastroParceiro = () => {
     <div className="min-h-screen flex items-center justify-center px-3 py-6 sm:p-4">
       <Card className="w-full max-w-lg border-border">
         <CardHeader className="text-center space-y-2 px-4 sm:px-6">
-          <div className="mx-auto w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-2">
-            <UserPlus className="w-6 h-6 text-primary" />
-          </div>
+          <img src={logoMonnera} alt="Monnera" className="w-12 h-12 rounded-xl mx-auto mb-2" />
           <CardTitle className="text-xl sm:text-2xl font-display">Cadastro de Parceiro Comercial</CardTitle>
           <CardDescription className="text-sm">Preencha seus dados para se tornar um parceiro Monnera</CardDescription>
         </CardHeader>
