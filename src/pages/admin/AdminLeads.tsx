@@ -37,7 +37,7 @@ const AdminLeads = () => {
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Email</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">ERP</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Lojas</th>
-                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Parceiro</th>
+                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Consultor</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Data</th>
                 </tr>
               </thead>

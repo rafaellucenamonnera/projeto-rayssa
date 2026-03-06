@@ -95,8 +95,8 @@ const CadastroParceiro = () => {
       <Card className="w-full max-w-lg border-border">
         <CardHeader className="text-center space-y-2 px-4 sm:px-6">
           <img src={logoMonnera} alt="Monnera" className="w-12 h-12 rounded-xl mx-auto mb-2" />
-          <CardTitle className="text-xl sm:text-2xl font-display">Cadastro de Parceiro Comercial</CardTitle>
-          <CardDescription className="text-sm">Preencha seus dados para se tornar um parceiro Monnera</CardDescription>
+          <CardTitle className="text-xl sm:text-2xl font-display">Cadastro de Consultor Comercial</CardTitle>
+          <CardDescription className="text-sm">Preencha seus dados para se tornar um consultor Monnera</CardDescription>
         </CardHeader>
         <CardContent className="px-4 sm:px-6">
           <form onSubmit={handleSubmit} className="space-y-4">

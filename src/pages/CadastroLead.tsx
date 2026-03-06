@@ -104,7 +104,7 @@ const CadastroLead = () => {
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="w-full max-w-md border-border text-center">
           <CardContent className="py-12">
-            <p className="text-destructive text-lg">Link inválido ou parceiro inativo.</p>
+            <p className="text-destructive text-lg">Link inválido ou consultor inativo.</p>
           </CardContent>
         </Card>
       </div>

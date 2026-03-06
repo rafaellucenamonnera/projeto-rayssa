@@ -34,7 +34,7 @@ const ConfirmacaoCadastro = () => {
           <div className="space-y-3 text-muted-foreground">
             <p>Seu link exclusivo de captação de leads foi criado.</p>
             <p>Utilize este link para indicar empresas interessadas no Monnera.</p>
-            <p>Todos os leads cadastrados através dele serão vinculados ao seu perfil.</p>
+            <p>Todos os leads cadastrados através dele serão vinculados ao seu perfil de consultor.</p>
           </div>
 
           <div className="bg-secondary rounded-lg p-4 space-y-3">

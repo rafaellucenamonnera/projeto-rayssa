@@ -29,7 +29,7 @@ const AdminDashboard = () => {
               <Users className="w-7 h-7 text-primary" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Parceiros Comerciais</p>
+              <p className="text-sm text-muted-foreground">Consultores Comerciais</p>
               <p className="text-3xl font-display font-bold">{totalParceiros}</p>
             </div>
           </div>

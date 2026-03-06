@@ -51,7 +51,7 @@ const LoginParceiro = () => {
       <Card className="w-full max-w-sm border-border">
         <CardHeader className="text-center space-y-2">
           <img src={logoMonnera} alt="Monnera" className="w-12 h-12 rounded-xl mx-auto mb-2" />
-          <CardTitle className="text-2xl font-display">Acesso do Parceiro</CardTitle>
+          <CardTitle className="text-2xl font-display">Acesso do Consultor</CardTitle>
           <CardDescription>Informe seu CPF para acessar o painel</CardDescription>
         </CardHeader>
         <CardContent>
@@ -65,7 +65,7 @@ const LoginParceiro = () => {
               Acessar
             </Button>
             <p className="text-center text-sm text-muted-foreground">
-              Não tem cadastro?{" "}
+              Não é consultor ainda?{" "}
               <Link to="/cadastro" className="text-primary hover:underline">Cadastre-se</Link>
             </p>
           </form>
