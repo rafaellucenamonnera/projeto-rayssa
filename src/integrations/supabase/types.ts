@@ -14,13 +14,148 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      leads: {
+        Row: {
+          cidade: string
+          cnpj: string
+          data_cadastro: string
+          descricao_necessidade: string | null
+          email_responsavel: string
+          erp_utilizado: string
+          id: string
+          nome_fantasia: string
+          nome_responsavel: string
+          parceiro_id: string
+          quantidade_funcionarios: number | null
+          quantidade_lojas: number
+          razao_social: string
+          status: string
+          telefone_responsavel: string
+          valor_campanhas: number | null
+        }
+        Insert: {
+          cidade: string
+          cnpj: string
+          data_cadastro?: string
+          descricao_necessidade?: string | null
+          email_responsavel: string
+          erp_utilizado: string
+          id?: string
+          nome_fantasia: string
+          nome_responsavel: string
+          parceiro_id: string
+          quantidade_funcionarios?: number | null
+          quantidade_lojas: number
+          razao_social: string
+          status?: string
+          telefone_responsavel: string
+          valor_campanhas?: number | null
+        }
+        Update: {
+          cidade?: string
+          cnpj?: string
+          data_cadastro?: string
+          descricao_necessidade?: string | null
+          email_responsavel?: string
+          erp_utilizado?: string
+          id?: string
+          nome_fantasia?: string
+          nome_responsavel?: string
+          parceiro_id?: string
+          quantidade_funcionarios?: number | null
+          quantidade_lojas?: number
+          razao_social?: string
+          status?: string
+          telefone_responsavel?: string
+          valor_campanhas?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_parceiro_id_fkey"
+            columns: ["parceiro_id"]
+            isOneToOne: false
+            referencedRelation: "parceiros_comerciais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      links_parceiros: {
+        Row: {
+          ativo: boolean
+          codigo_link: string
+          data_criacao: string
+          id: string
+          parceiro_id: string
+          url_link: string
+        }
+        Insert: {
+          ativo?: boolean
+          codigo_link: string
+          data_criacao?: string
+          id?: string
+          parceiro_id: string
+          url_link: string
+        }
+        Update: {
+          ativo?: boolean
+          codigo_link?: string
+          data_criacao?: string
+          id?: string
+          parceiro_id?: string
+          url_link?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "links_parceiros_parceiro_id_fkey"
+            columns: ["parceiro_id"]
+            isOneToOne: false
+            referencedRelation: "parceiros_comerciais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parceiros_comerciais: {
+        Row: {
+          ativo: boolean
+          codigo_parceiro: string
+          cpf: string
+          data_cadastro: string
+          email: string
+          id: string
+          nome: string
+          telefone_ddd: string
+          telefone_numero: string
+        }
+        Insert: {
+          ativo?: boolean
+          codigo_parceiro: string
+          cpf: string
+          data_cadastro?: string
+          email: string
+          id?: string
+          nome: string
+          telefone_ddd: string
+          telefone_numero: string
+        }
+        Update: {
+          ativo?: boolean
+          codigo_parceiro?: string
+          cpf?: string
+          data_cadastro?: string
+          email?: string
+          id?: string
+          nome?: string
+          telefone_ddd?: string
+          telefone_numero?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_partner_code: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never
