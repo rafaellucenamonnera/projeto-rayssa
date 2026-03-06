@@ -90,16 +90,16 @@ const CadastroParceiro = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center px-3 py-6 sm:p-4">
       <Card className="w-full max-w-lg border-border">
-        <CardHeader className="text-center space-y-2">
+        <CardHeader className="text-center space-y-2 px-4 sm:px-6">
           <div className="mx-auto w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-2">
             <UserPlus className="w-6 h-6 text-primary" />
           </div>
-          <CardTitle className="text-2xl font-display">Cadastro de Parceiro Comercial</CardTitle>
-          <CardDescription>Preencha seus dados para se tornar um parceiro Monnera</CardDescription>
+          <CardTitle className="text-xl sm:text-2xl font-display">Cadastro de Parceiro Comercial</CardTitle>
+          <CardDescription className="text-sm">Preencha seus dados para se tornar um parceiro Monnera</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 sm:px-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label htmlFor="nome">Nome</Label>
