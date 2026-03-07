@@ -10,6 +10,18 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import logoMonnera from "@/assets/logo-monnera.jpg";
 
+function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 const CadastroParceiro = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -43,7 +55,6 @@ const CadastroParceiro = () => {
 
     setLoading(true);
     try {
-      // 1. Create auth account
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: form.email.trim().toLowerCase(),
         password: form.senha,
@@ -60,14 +71,13 @@ const CadastroParceiro = () => {
 
       if (!authData.user) throw new Error("Erro ao criar conta");
 
-      // 2. Generate partner code
       const { data: codeData, error: codeError } = await supabase.rpc("generate_partner_code");
       if (codeError) throw codeError;
 
       const codigo_parceiro = codeData as string;
       const cpfClean = form.cpf.replace(/\D/g, "");
+      const slug = generateSlug(form.nome.trim());
 
-      // 3. Insert partner record linked to auth user
       const { data: parceiro, error: insertError } = await supabase
         .from("parceiros_comerciais")
         .insert({
@@ -78,6 +88,7 @@ const CadastroParceiro = () => {
           telefone_ddd: form.telefone_ddd,
           telefone_numero: form.telefone_numero,
           user_id: authData.user.id,
+          slug_consultor: slug,
         } as any)
         .select()
         .single();
@@ -93,15 +104,13 @@ const CadastroParceiro = () => {
         return;
       }
 
-      // 4. Create default referral link
       const baseUrl = window.location.origin;
       await supabase.from("links_parceiros").insert({
         parceiro_id: parceiro.id,
         codigo_link: codigo_parceiro,
-        url_link: `${baseUrl}/lead/${codigo_parceiro}`,
+        url_link: `${baseUrl}/indicacao/${slug}`,
       });
 
-      // 5. Store for session
       localStorage.setItem("monnera_parceiro", JSON.stringify(parceiro));
       navigate("/confirmacao", { state: { parceiro } });
     } catch (error: any) {
@@ -126,13 +135,11 @@ const CadastroParceiro = () => {
               <Input id="nome" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="Seu nome completo" />
               {errors.nome && <p className="text-destructive text-sm mt-1">{errors.nome}</p>}
             </div>
-
             <div>
               <Label htmlFor="cpf">CPF</Label>
               <Input id="cpf" value={form.cpf} onChange={(e) => setForm({ ...form, cpf: formatCPF(e.target.value) })} placeholder="000.000.000-00" maxLength={14} />
               {errors.cpf && <p className="text-destructive text-sm mt-1">{errors.cpf}</p>}
             </div>
-
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <Label htmlFor="ddd">DDD</Label>
@@ -145,25 +152,21 @@ const CadastroParceiro = () => {
                 {errors.telefone_numero && <p className="text-destructive text-sm mt-1">{errors.telefone_numero}</p>}
               </div>
             </div>
-
             <div>
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="seu@email.com" />
               {errors.email && <p className="text-destructive text-sm mt-1">{errors.email}</p>}
             </div>
-
             <div>
               <Label htmlFor="senha">Senha</Label>
               <Input id="senha" type="password" value={form.senha} onChange={(e) => setForm({ ...form, senha: e.target.value })} placeholder="Mínimo 6 caracteres" />
               {errors.senha && <p className="text-destructive text-sm mt-1">{errors.senha}</p>}
             </div>
-
             <div>
               <Label htmlFor="confirmar_senha">Confirmar Senha</Label>
               <Input id="confirmar_senha" type="password" value={form.confirmar_senha} onChange={(e) => setForm({ ...form, confirmar_senha: e.target.value })} placeholder="Repita a senha" />
               {errors.confirmar_senha && <p className="text-destructive text-sm mt-1">{errors.confirmar_senha}</p>}
             </div>
-
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Cadastrando...</> : "Cadastrar"}
             </Button>

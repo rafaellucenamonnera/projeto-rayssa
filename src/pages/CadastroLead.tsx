@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,14 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { supabase } from "@/integrations/supabase/client";
 import { validateEmail, validateCNPJ, formatCNPJ } from "@/lib/validators";
 import { toast } from "sonner";
-import { Loader2, Building2, CheckCircle } from "lucide-react";
+import { Loader2, CheckCircle, Shield } from "lucide-react";
 import logoMonnera from "@/assets/logo-monnera.jpg";
 
 const CadastroLead = () => {
-  const { codigoParceiro } = useParams();
-  const navigate = useNavigate();
+  const { codigoParceiro, slugConsultor } = useParams();
   const [loading, setLoading] = useState(false);
   const [parceiroId, setParceiroId] = useState<string | null>(null);
+  const [parceiroNome, setParceiroNome] = useState<string>("");
   const [parceiroValid, setParceiroValid] = useState<boolean | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -36,22 +36,31 @@ const CadastroLead = () => {
 
   useEffect(() => {
     const checkParceiro = async () => {
-      if (!codigoParceiro) return;
-      const { data } = await supabase
+      let query: any = supabase
         .from("parceiros_comerciais")
-        .select("id")
-        .eq("codigo_parceiro", codigoParceiro)
-        .eq("ativo", true)
-        .single();
+        .select("id, nome")
+        .eq("ativo", true);
+
+      if (slugConsultor) {
+        query = query.eq("slug_consultor", slugConsultor);
+      } else if (codigoParceiro) {
+        query = query.eq("codigo_parceiro", codigoParceiro);
+      } else {
+        setParceiroValid(false);
+        return;
+      }
+
+      const { data } = await query.single();
       if (data) {
         setParceiroId(data.id);
+        setParceiroNome(data.nome);
         setParceiroValid(true);
       } else {
         setParceiroValid(false);
       }
     };
     checkParceiro();
-  }, [codigoParceiro]);
+  }, [codigoParceiro, slugConsultor]);
 
   const validate = () => {
     const errs: Record<string, string> = {};
@@ -142,8 +151,14 @@ const CadastroLead = () => {
       <Card className="w-full max-w-2xl border-border">
         <CardHeader className="text-center space-y-2 px-4 sm:px-6">
           <img src={logoMonnera} alt="Monnera" className="w-12 h-12 rounded-xl mx-auto mb-2" />
-          <CardTitle className="text-xl sm:text-2xl font-display">Cadastro de Empresa Interessada no Monnera</CardTitle>
-          <CardDescription className="text-sm">Preencha os dados da sua empresa</CardDescription>
+          <CardTitle className="text-xl sm:text-2xl font-display">
+            Conheça o Monnera
+          </CardTitle>
+          <CardDescription className="text-sm">
+            {parceiroNome
+              ? `Indicação do consultor ${parceiroNome}. Preencha os dados da sua empresa para receber uma apresentação.`
+              : "Preencha os dados da sua empresa para receber uma apresentação."}
+          </CardDescription>
         </CardHeader>
         <CardContent className="px-4 sm:px-6">
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -209,9 +224,14 @@ const CadastroLead = () => {
               <p className="text-xs text-muted-foreground text-right">{form.descricao_necessidade.length}/150</p>
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando...</> : "Enviar Cadastro"}
+            <Button type="submit" className="w-full text-base py-6" disabled={loading}>
+              {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando...</> : "Quero receber uma apresentação do Monnera"}
             </Button>
+
+            <div className="flex items-center gap-2 justify-center text-xs text-muted-foreground">
+              <Shield className="h-3.5 w-3.5" />
+              <p>Seus dados serão utilizados apenas para contato comercial e apresentação da plataforma Monnera.</p>
+            </div>
           </form>
         </CardContent>
       </Card>
