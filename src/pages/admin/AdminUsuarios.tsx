@@ -197,9 +197,9 @@ const AdminUsuarios = () => {
                       </td>
                       <td className="py-3 px-4">
                         {u.primeiro_acesso ? (
-                          <span className="px-2 py-1 rounded-full text-xs bg-yellow-500/10 text-yellow-500">Pendente</span>
+                          <span className="px-2 py-1 rounded-full text-xs bg-destructive/10 text-destructive">Pendente</span>
                         ) : (
-                          <span className="px-2 py-1 rounded-full text-xs bg-emerald-500/10 text-emerald-500">Ativo</span>
+                          <span className="px-2 py-1 rounded-full text-xs bg-primary/10 text-primary">Ativo</span>
                         )}
                       </td>
                       <td className="py-3 px-4 text-muted-foreground">
