@@ -1,10 +1,28 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+const STATUS_OPTIONS = [
+  { value: "novo_lead", label: "Novo Lead" },
+  { value: "reuniao_agendada", label: "Reunião Agendada" },
+  { value: "proposta_comercial", label: "Proposta Comercial" },
+  { value: "lead_convertido", label: "Lead Convertido" },
+];
 
 const AdminLeads = () => {
   const [leads, setLeads] = useState<any[]>([]);
   const [parceiros, setParceiros] = useState<Record<string, string>>({});
+  const [parceirosAll, setParceirosAll] = useState<{ id: string; nome: string }[]>([]);
+
+  // Filters
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterConsultor, setFilterConsultor] = useState<string>("all");
+  const [filterEmpresa, setFilterEmpresa] = useState("");
+  const [filterDataInicio, setFilterDataInicio] = useState("");
+  const [filterDataFim, setFilterDataFim] = useState("");
 
   useEffect(() => {
     const load = async () => {
@@ -14,54 +32,155 @@ const AdminLeads = () => {
       ]);
       setLeads(leadsRes.data || []);
       const map: Record<string, string> = {};
-      (parceirosRes.data || []).forEach((p) => { map[p.id] = p.nome; });
+      const list = parceirosRes.data || [];
+      list.forEach((p) => { map[p.id] = p.nome; });
       setParceiros(map);
+      setParceirosAll(list);
     };
     load();
   }, []);
 
+  const updateStatus = async (leadId: string, newStatus: string) => {
+    const { error } = await supabase
+      .from("leads")
+      .update({ status_lead: newStatus } as any)
+      .eq("id", leadId);
+    if (error) {
+      toast.error("Erro ao atualizar status");
+      return;
+    }
+    setLeads((prev) =>
+      prev.map((l) => (l.id === leadId ? { ...l, status_lead: newStatus } : l))
+    );
+    toast.success("Status atualizado");
+  };
+
+  // Apply filters
+  const filtered = leads.filter((l) => {
+    if (filterStatus !== "all" && ((l as any).status_lead || l.status) !== filterStatus) return false;
+    if (filterConsultor !== "all" && l.parceiro_id !== filterConsultor) return false;
+    if (filterEmpresa && !l.nome_fantasia.toLowerCase().includes(filterEmpresa.toLowerCase())) return false;
+    if (filterDataInicio) {
+      const d = new Date(l.data_cadastro);
+      if (d < new Date(filterDataInicio)) return false;
+    }
+    if (filterDataFim) {
+      const d = new Date(l.data_cadastro);
+      const fim = new Date(filterDataFim);
+      fim.setHours(23, 59, 59);
+      if (d > fim) return false;
+    }
+    return true;
+  });
+
+  // Status counts
+  const statusCounts: Record<string, number> = {};
+  STATUS_OPTIONS.forEach((s) => { statusCounts[s.value] = 0; });
+  leads.forEach((l) => {
+    const s = (l as any).status_lead || l.status || "novo_lead";
+    if (statusCounts[s] !== undefined) statusCounts[s]++;
+  });
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-display font-bold">Leads Recebidos</h1>
+
+      {/* Status cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {STATUS_OPTIONS.map((s) => (
+          <div
+            key={s.value}
+            className={`stat-card cursor-pointer transition-all ${filterStatus === s.value ? "ring-2 ring-primary" : ""}`}
+            onClick={() => setFilterStatus(filterStatus === s.value ? "all" : s.value)}
+          >
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">{s.label}</p>
+              <p className="text-2xl font-display font-bold">{statusCounts[s.value]}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+        <Input
+          placeholder="Filtrar por empresa..."
+          value={filterEmpresa}
+          onChange={(e) => setFilterEmpresa(e.target.value)}
+        />
+        <Select value={filterConsultor} onValueChange={setFilterConsultor}>
+          <SelectTrigger>
+            <SelectValue placeholder="Consultor" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos Consultores</SelectItem>
+            {parceirosAll.map((p) => (
+              <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Input
+          type="date"
+          value={filterDataInicio}
+          onChange={(e) => setFilterDataInicio(e.target.value)}
+          placeholder="Data início"
+        />
+        <Input
+          type="date"
+          value={filterDataFim}
+          onChange={(e) => setFilterDataFim(e.target.value)}
+          placeholder="Data fim"
+        />
+      </div>
+
+      {/* Table */}
       <Card className="border-border">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
+                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Data</th>
+                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Consultor</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Empresa</th>
-                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">CNPJ</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Cidade</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Responsável</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Telefone</th>
-                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Email</th>
-                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">ERP</th>
-                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Lojas</th>
-                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Consultor</th>
-                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Data</th>
+                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Status</th>
                 </tr>
               </thead>
               <tbody>
-                {leads.map((l) => (
+                {filtered.map((l) => (
                   <tr key={l.id} className="border-b border-border/50 hover:bg-secondary/50">
-                    <td className="py-3 px-4">{l.nome_fantasia}</td>
-                    <td className="py-3 px-4 font-mono text-xs">{l.cnpj}</td>
-                    <td className="py-3 px-4">{l.cidade}</td>
-                    <td className="py-3 px-4">{l.nome_responsavel}</td>
-                    <td className="py-3 px-4">{l.telefone_responsavel}</td>
-                    <td className="py-3 px-4">{l.email_responsavel}</td>
-                    <td className="py-3 px-4">{l.erp_utilizado}</td>
-                    <td className="py-3 px-4">{l.quantidade_lojas}</td>
+                    <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">{new Date(l.data_cadastro).toLocaleDateString("pt-BR")}</td>
                     <td className="py-3 px-4">
                       <span className="px-2 py-1 rounded bg-primary/10 text-primary text-xs">{parceiros[l.parceiro_id] || '-'}</span>
                     </td>
-                    <td className="py-3 px-4 text-muted-foreground">{new Date(l.data_cadastro).toLocaleDateString("pt-BR")}</td>
+                    <td className="py-3 px-4">{l.nome_fantasia}</td>
+                    <td className="py-3 px-4">{l.cidade}</td>
+                    <td className="py-3 px-4">{l.nome_responsavel}</td>
+                    <td className="py-3 px-4">{l.telefone_responsavel}</td>
+                    <td className="py-3 px-4">
+                      <Select
+                        value={(l as any).status_lead || l.status || "novo_lead"}
+                        onValueChange={(val) => updateStatus(l.id, val)}
+                      >
+                        <SelectTrigger className="h-8 w-[160px] text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STATUS_OPTIONS.map((s) => (
+                            <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            {leads.length === 0 && (
-              <p className="text-center py-8 text-muted-foreground">Nenhum lead cadastrado.</p>
+            {filtered.length === 0 && (
+              <p className="text-center py-8 text-muted-foreground">Nenhum lead encontrado.</p>
             )}
           </div>
         </CardContent>
