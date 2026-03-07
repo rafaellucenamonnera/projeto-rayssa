@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { LeadExportButton } from "@/components/admin/LeadExportButton";
+import { LeadImportDialog } from "@/components/admin/LeadImportDialog";
 
 const STATUS_OPTIONS = [
   { value: "novo_lead", label: "Novo Lead" },
@@ -24,20 +26,21 @@ const AdminLeads = () => {
   const [filterDataInicio, setFilterDataInicio] = useState("");
   const [filterDataFim, setFilterDataFim] = useState("");
 
+  const loadData = async () => {
+    const [leadsRes, parceirosRes] = await Promise.all([
+      supabase.from("leads").select("*").order("data_cadastro", { ascending: false }),
+      supabase.from("parceiros_comerciais").select("id, nome"),
+    ]);
+    setLeads(leadsRes.data || []);
+    const map: Record<string, string> = {};
+    const list = parceirosRes.data || [];
+    list.forEach((p) => { map[p.id] = p.nome; });
+    setParceiros(map);
+    setParceirosAll(list);
+  };
+
   useEffect(() => {
-    const load = async () => {
-      const [leadsRes, parceirosRes] = await Promise.all([
-        supabase.from("leads").select("*").order("data_cadastro", { ascending: false }),
-        supabase.from("parceiros_comerciais").select("id, nome"),
-      ]);
-      setLeads(leadsRes.data || []);
-      const map: Record<string, string> = {};
-      const list = parceirosRes.data || [];
-      list.forEach((p) => { map[p.id] = p.nome; });
-      setParceiros(map);
-      setParceirosAll(list);
-    };
-    load();
+    loadData();
   }, []);
 
   const updateStatus = async (leadId: string, newStatus: string) => {
@@ -83,7 +86,13 @@ const AdminLeads = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <h1 className="text-xl sm:text-2xl font-display font-bold">Leads Recebidos</h1>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-xl sm:text-2xl font-display font-bold">Leads Recebidos</h1>
+        <div className="flex items-center gap-2">
+          <LeadExportButton leads={filtered} parceiros={parceiros} />
+          <LeadImportDialog parceiros={parceirosAll} onImported={loadData} />
+        </div>
+      </div>
 
       {/* Status cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
