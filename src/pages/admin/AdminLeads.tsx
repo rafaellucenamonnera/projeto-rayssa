@@ -82,27 +82,27 @@ const AdminLeads = () => {
   });
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-display font-bold">Leads Recebidos</h1>
+    <div className="space-y-4 sm:space-y-6">
+      <h1 className="text-xl sm:text-2xl font-display font-bold">Leads Recebidos</h1>
 
       {/* Status cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
         {STATUS_OPTIONS.map((s) => (
           <div
             key={s.value}
-            className={`stat-card cursor-pointer transition-all ${filterStatus === s.value ? "ring-2 ring-primary" : ""}`}
+            className={`stat-card !p-3 sm:!p-6 cursor-pointer transition-all ${filterStatus === s.value ? "ring-2 ring-primary" : ""}`}
             onClick={() => setFilterStatus(filterStatus === s.value ? "all" : s.value)}
           >
             <div className="text-center">
-              <p className="text-xs text-muted-foreground">{s.label}</p>
-              <p className="text-2xl font-display font-bold">{statusCounts[s.value]}</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">{s.label}</p>
+              <p className="text-xl sm:text-2xl font-display font-bold">{statusCounts[s.value]}</p>
             </div>
           </div>
         ))}
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
         <Input
           placeholder="Filtrar por empresa..."
           value={filterEmpresa}
@@ -133,8 +133,60 @@ const AdminLeads = () => {
         />
       </div>
 
-      {/* Table */}
-      <Card className="border-border">
+      {/* Mobile card view */}
+      <div className="space-y-3 lg:hidden">
+        {filtered.map((l) => (
+          <Card key={l.id} className="border-border">
+            <CardContent className="p-3 sm:p-4 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-medium text-sm truncate">{l.nome_fantasia}</p>
+                  <p className="text-xs text-muted-foreground">{l.cidade}</p>
+                </div>
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  {new Date(l.data_cadastro).toLocaleDateString("pt-BR")}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] shrink-0">
+                  {parceiros[l.parceiro_id] || '-'}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-1 text-xs">
+                <div>
+                  <span className="text-muted-foreground">Responsável: </span>
+                  <span>{l.nome_responsavel}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Tel: </span>
+                  <span>{l.telefone_responsavel}</span>
+                </div>
+              </div>
+              <div>
+                <Select
+                  value={(l as any).status_lead || l.status || "novo_lead"}
+                  onValueChange={(val) => updateStatus(l.id, val)}
+                >
+                  <SelectTrigger className="h-8 w-full text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATUS_OPTIONS.map((s) => (
+                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+        {filtered.length === 0 && (
+          <p className="text-center py-8 text-muted-foreground text-sm">Nenhum lead encontrado.</p>
+        )}
+      </div>
+
+      {/* Desktop table */}
+      <Card className="border-border hidden lg:block">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
