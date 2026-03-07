@@ -36,13 +36,13 @@ const CadastroLead = () => {
 
   useEffect(() => {
     const checkParceiro = async () => {
-      let query = supabase
+      let query: any = supabase
         .from("parceiros_comerciais")
         .select("id, nome")
         .eq("ativo", true);
 
       if (slugConsultor) {
-        query = query.eq("slug_consultor" as any, slugConsultor);
+        query = query.eq("slug_consultor", slugConsultor);
       } else if (codigoParceiro) {
         query = query.eq("codigo_parceiro", codigoParceiro);
       } else {
