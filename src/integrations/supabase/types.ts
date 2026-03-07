@@ -30,6 +30,7 @@ export type Database = {
           quantidade_lojas: number
           razao_social: string
           status: string
+          status_lead: Database["public"]["Enums"]["lead_status"]
           telefone_responsavel: string
           valor_campanhas: number | null
         }
@@ -48,6 +49,7 @@ export type Database = {
           quantidade_lojas: number
           razao_social: string
           status?: string
+          status_lead?: Database["public"]["Enums"]["lead_status"]
           telefone_responsavel: string
           valor_campanhas?: number | null
         }
@@ -66,6 +68,7 @@ export type Database = {
           quantidade_lojas?: number
           razao_social?: string
           status?: string
+          status_lead?: Database["public"]["Enums"]["lead_status"]
           telefone_responsavel?: string
           valor_campanhas?: number | null
         }
@@ -123,6 +126,7 @@ export type Database = {
           email: string
           id: string
           nome: string
+          slug_consultor: string | null
           telefone_ddd: string
           telefone_numero: string
           user_id: string | null
@@ -135,6 +139,7 @@ export type Database = {
           email: string
           id?: string
           nome: string
+          slug_consultor?: string | null
           telefone_ddd: string
           telefone_numero: string
           user_id?: string | null
@@ -147,6 +152,7 @@ export type Database = {
           email?: string
           id?: string
           nome?: string
+          slug_consultor?: string | null
           telefone_ddd?: string
           telefone_numero?: string
           user_id?: string | null
@@ -207,6 +213,7 @@ export type Database = {
     }
     Functions: {
       generate_partner_code: { Args: never; Returns: string }
+      generate_slug: { Args: { name_input: string }; Returns: string }
       has_any_admin: { Args: never; Returns: boolean }
       has_role: {
         Args: {
@@ -218,6 +225,11 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "gestor_conta"
+      lead_status:
+        | "novo_lead"
+        | "reuniao_agendada"
+        | "proposta_comercial"
+        | "lead_convertido"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -346,6 +358,12 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "gestor_conta"],
+      lead_status: [
+        "novo_lead",
+        "reuniao_agendada",
+        "proposta_comercial",
+        "lead_convertido",
+      ],
     },
   },
 } as const
