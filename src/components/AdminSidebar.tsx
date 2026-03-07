@@ -1,6 +1,7 @@
-import { LayoutDashboard, Users, FileText } from "lucide-react";
+import { LayoutDashboard, Users, FileText, UserCog } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
+import { useAuth } from "@/hooks/useAuth";
 import logoMonnera from "@/assets/logo-monnera.jpg";
 import {
   Sidebar,
@@ -13,15 +14,17 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
-const items = [
-  { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
-  { title: "Consultores", url: "/admin/parceiros", icon: Users },
-  { title: "Leads", url: "/admin/leads", icon: FileText },
-];
-
 export function AdminSidebar() {
   const { state } = useSidebar();
+  const { isAdmin } = useAuth();
   const collapsed = state === "collapsed";
+
+  const items = [
+    { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
+    { title: "Consultores", url: "/admin/parceiros", icon: Users },
+    { title: "Leads", url: "/admin/leads", icon: FileText },
+    ...(isAdmin ? [{ title: "Usuários Monnera", url: "/admin/usuarios", icon: UserCog }] : []),
+  ];
 
   return (
     <Sidebar collapsible="icon">

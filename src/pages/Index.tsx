@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Users, Building2, Shield } from "lucide-react";
+import { ArrowRight, Users, Shield } from "lucide-react";
 import logoMonnera from "@/assets/logo-monnera.jpg";
 
 const Index = () => {
@@ -8,7 +8,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Hero */}
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="max-w-2xl text-center space-y-8">
           <img src={logoMonnera} alt="Monnera" className="w-20 h-20 rounded-xl mx-auto" />
@@ -31,7 +30,7 @@ const Index = () => {
           </div>
 
           <div className="pt-8">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/admin")} className="text-muted-foreground">
+            <Button variant="ghost" size="sm" onClick={() => navigate("/admin/login")} className="text-muted-foreground">
               <Shield className="mr-2 h-4 w-4" />
               Retaguarda Monnera
             </Button>
