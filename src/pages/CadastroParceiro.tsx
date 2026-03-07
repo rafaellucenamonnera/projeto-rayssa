@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { supabase } from "@/integrations/supabase/client";
 import { validateCPF, validateEmail, formatCPF } from "@/lib/validators";
 import { toast } from "sonner";
-import { Loader2, UserPlus } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import logoMonnera from "@/assets/logo-monnera.jpg";
 
 const CadastroParceiro = () => {
@@ -19,6 +19,8 @@ const CadastroParceiro = () => {
     telefone_ddd: "",
     telefone_numero: "",
     email: "",
+    senha: "",
+    confirmar_senha: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -29,6 +31,8 @@ const CadastroParceiro = () => {
     if (!/^\d{2}$/.test(form.telefone_ddd)) errs.telefone_ddd = "DDD inválido (2 dígitos)";
     if (!/^\d{9}$/.test(form.telefone_numero)) errs.telefone_numero = "Número inválido (9 dígitos)";
     if (!validateEmail(form.email)) errs.email = "Email inválido";
+    if (!form.senha || form.senha.length < 6) errs.senha = "Mínimo 6 caracteres";
+    if (form.senha !== form.confirmar_senha) errs.confirmar_senha = "Senhas não coincidem";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -39,14 +43,31 @@ const CadastroParceiro = () => {
 
     setLoading(true);
     try {
-      // Generate partner code
+      // 1. Create auth account
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: form.email.trim().toLowerCase(),
+        password: form.senha,
+      });
+
+      if (authError) {
+        if (authError.message.includes("already registered")) {
+          setErrors({ email: "Email já cadastrado" });
+        } else {
+          throw authError;
+        }
+        return;
+      }
+
+      if (!authData.user) throw new Error("Erro ao criar conta");
+
+      // 2. Generate partner code
       const { data: codeData, error: codeError } = await supabase.rpc("generate_partner_code");
       if (codeError) throw codeError;
 
       const codigo_parceiro = codeData as string;
-      const cpfClean = form.cpf.replace(/\D/g, '');
+      const cpfClean = form.cpf.replace(/\D/g, "");
 
-      // Insert partner
+      // 3. Insert partner record linked to auth user
       const { data: parceiro, error: insertError } = await supabase
         .from("parceiros_comerciais")
         .insert({
@@ -56,7 +77,8 @@ const CadastroParceiro = () => {
           email: form.email.trim().toLowerCase(),
           telefone_ddd: form.telefone_ddd,
           telefone_numero: form.telefone_numero,
-        })
+          user_id: authData.user.id,
+        } as any)
         .select()
         .single();
 
@@ -71,7 +93,7 @@ const CadastroParceiro = () => {
         return;
       }
 
-      // Create default link
+      // 4. Create default referral link
       const baseUrl = window.location.origin;
       await supabase.from("links_parceiros").insert({
         parceiro_id: parceiro.id,
@@ -79,9 +101,8 @@ const CadastroParceiro = () => {
         url_link: `${baseUrl}/lead/${codigo_parceiro}`,
       });
 
-      // Store partner in localStorage for session
+      // 5. Store for session
       localStorage.setItem("monnera_parceiro", JSON.stringify(parceiro));
-
       navigate("/confirmacao", { state: { parceiro } });
     } catch (error: any) {
       toast.error("Erro ao cadastrar: " + error.message);
@@ -115,12 +136,12 @@ const CadastroParceiro = () => {
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <Label htmlFor="ddd">DDD</Label>
-                <Input id="ddd" value={form.telefone_ddd} onChange={(e) => setForm({ ...form, telefone_ddd: e.target.value.replace(/\D/g, '').slice(0, 2) })} placeholder="11" maxLength={2} />
+                <Input id="ddd" value={form.telefone_ddd} onChange={(e) => setForm({ ...form, telefone_ddd: e.target.value.replace(/\D/g, "").slice(0, 2) })} placeholder="11" maxLength={2} />
                 {errors.telefone_ddd && <p className="text-destructive text-sm mt-1">{errors.telefone_ddd}</p>}
               </div>
               <div className="col-span-2">
                 <Label htmlFor="telefone">Telefone</Label>
-                <Input id="telefone" value={form.telefone_numero} onChange={(e) => setForm({ ...form, telefone_numero: e.target.value.replace(/\D/g, '').slice(0, 9) })} placeholder="999999999" maxLength={9} />
+                <Input id="telefone" value={form.telefone_numero} onChange={(e) => setForm({ ...form, telefone_numero: e.target.value.replace(/\D/g, "").slice(0, 9) })} placeholder="999999999" maxLength={9} />
                 {errors.telefone_numero && <p className="text-destructive text-sm mt-1">{errors.telefone_numero}</p>}
               </div>
             </div>
@@ -129,6 +150,18 @@ const CadastroParceiro = () => {
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="seu@email.com" />
               {errors.email && <p className="text-destructive text-sm mt-1">{errors.email}</p>}
+            </div>
+
+            <div>
+              <Label htmlFor="senha">Senha</Label>
+              <Input id="senha" type="password" value={form.senha} onChange={(e) => setForm({ ...form, senha: e.target.value })} placeholder="Mínimo 6 caracteres" />
+              {errors.senha && <p className="text-destructive text-sm mt-1">{errors.senha}</p>}
+            </div>
+
+            <div>
+              <Label htmlFor="confirmar_senha">Confirmar Senha</Label>
+              <Input id="confirmar_senha" type="password" value={form.confirmar_senha} onChange={(e) => setForm({ ...form, confirmar_senha: e.target.value })} placeholder="Repita a senha" />
+              {errors.confirmar_senha && <p className="text-destructive text-sm mt-1">{errors.confirmar_senha}</p>}
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>

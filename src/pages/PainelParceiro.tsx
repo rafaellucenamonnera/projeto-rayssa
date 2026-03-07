@@ -3,37 +3,75 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { Copy, Link2, Users, LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { Copy, Link2, Users, LogOut, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 const PainelParceiro = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading, signOut } = useAuth();
   const [parceiro, setParceiro] = useState<any>(null);
   const [leads, setLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem("monnera_parceiro");
-    if (!stored) {
-      navigate("/cadastro");
-      return;
+    if (authLoading) return;
+
+    if (!user) {
+      // Fallback: check localStorage for backward compatibility
+      const stored = localStorage.getItem("monnera_parceiro");
+      if (!stored) {
+        navigate("/login");
+        return;
+      }
     }
-    const p = JSON.parse(stored);
-    setParceiro(p);
-    loadLeads(p.id);
-  }, [navigate]);
 
-  const loadLeads = async (parceiroId: string) => {
-    const { data } = await supabase
-      .from("leads")
-      .select("*")
-      .eq("parceiro_id", parceiroId)
-      .order("data_cadastro", { ascending: false });
-    setLeads(data || []);
-    setLoading(false);
-  };
+    const loadData = async () => {
+      let p: any = null;
 
-  if (!parceiro) return null;
+      if (user) {
+        const { data } = await supabase
+          .from("parceiros_comerciais")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("ativo", true)
+          .maybeSingle();
+        p = data;
+      }
+
+      // Fallback to localStorage
+      if (!p) {
+        const stored = localStorage.getItem("monnera_parceiro");
+        if (stored) p = JSON.parse(stored);
+      }
+
+      if (!p) {
+        navigate("/login");
+        return;
+      }
+
+      setParceiro(p);
+      localStorage.setItem("monnera_parceiro", JSON.stringify(p));
+
+      const { data: leadsData } = await supabase
+        .from("leads")
+        .select("*")
+        .eq("parceiro_id", p.id)
+        .order("data_cadastro", { ascending: false });
+      setLeads(leadsData || []);
+      setLoading(false);
+    };
+
+    loadData();
+  }, [user, authLoading, navigate]);
+
+  if (authLoading || loading || !parceiro) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   const linkIndicacao = `${window.location.origin}/lead/${parceiro.codigo_parceiro}`;
 
@@ -42,26 +80,24 @@ const PainelParceiro = () => {
     toast.success("Link copiado!");
   };
 
-  const logout = () => {
-    localStorage.removeItem("monnera_parceiro");
+  const handleLogout = async () => {
+    await signOut();
     navigate("/");
   };
 
   return (
     <div className="min-h-screen p-4 md:p-8">
       <div className="max-w-5xl mx-auto space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-display font-bold">Painel do Consultor</h1>
             <p className="text-muted-foreground">Olá, {parceiro.nome}!</p>
           </div>
-          <Button variant="outline" size="sm" onClick={logout}>
+          <Button variant="outline" size="sm" onClick={handleLogout}>
             <LogOut className="mr-2 h-4 w-4" /> Sair
           </Button>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="stat-card">
             <div className="flex items-center gap-3">
@@ -87,7 +123,6 @@ const PainelParceiro = () => {
           </div>
         </div>
 
-        {/* Link section */}
         <Card className="border-border">
           <CardHeader>
             <CardTitle className="text-lg font-display">Seu Link de Indicação</CardTitle>
@@ -105,15 +140,12 @@ const PainelParceiro = () => {
           </CardContent>
         </Card>
 
-        {/* Leads table */}
         <Card className="border-border">
           <CardHeader>
             <CardTitle className="text-lg font-display">Seus Leads</CardTitle>
           </CardHeader>
           <CardContent>
-            {loading ? (
-              <p className="text-muted-foreground text-center py-8">Carregando...</p>
-            ) : leads.length === 0 ? (
+            {leads.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">Nenhum lead cadastrado ainda. Compartilhe seu link para começar!</p>
             ) : (
               <div className="overflow-x-auto">

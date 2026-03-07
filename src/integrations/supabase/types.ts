@@ -125,6 +125,7 @@ export type Database = {
           nome: string
           telefone_ddd: string
           telefone_numero: string
+          user_id: string | null
         }
         Insert: {
           ativo?: boolean
@@ -136,6 +137,7 @@ export type Database = {
           nome: string
           telefone_ddd: string
           telefone_numero: string
+          user_id?: string | null
         }
         Update: {
           ativo?: boolean
@@ -147,6 +149,55 @@ export type Database = {
           nome?: string
           telefone_ddd?: string
           telefone_numero?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          ativo: boolean
+          data_criacao: string
+          id: string
+          nome: string
+          primeiro_acesso: boolean
+          telefone: string | null
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          data_criacao?: string
+          id?: string
+          nome: string
+          primeiro_acesso?: boolean
+          telefone?: string | null
+          user_id: string
+        }
+        Update: {
+          ativo?: boolean
+          data_criacao?: string
+          id?: string
+          nome?: string
+          primeiro_acesso?: boolean
+          telefone?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
         }
         Relationships: []
       }
@@ -156,9 +207,17 @@ export type Database = {
     }
     Functions: {
       generate_partner_code: { Args: never; Returns: string }
+      has_any_admin: { Args: never; Returns: boolean }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "gestor_conta"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -285,6 +344,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "gestor_conta"],
+    },
   },
 } as const
