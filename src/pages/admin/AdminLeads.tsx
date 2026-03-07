@@ -86,7 +86,13 @@ const AdminLeads = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <h1 className="text-xl sm:text-2xl font-display font-bold">Leads Recebidos</h1>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-xl sm:text-2xl font-display font-bold">Leads Recebidos</h1>
+        <div className="flex items-center gap-2">
+          <LeadExportButton leads={filtered} parceiros={parceiros} />
+          <LeadImportDialog parceiros={parceirosAll} onImported={loadData} />
+        </div>
+      </div>
 
       {/* Status cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
