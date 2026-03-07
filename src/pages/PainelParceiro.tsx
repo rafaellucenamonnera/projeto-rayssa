@@ -126,31 +126,31 @@ const PainelParceiro = () => {
   ];
 
   return (
-    <div className="min-h-screen p-4 md:p-8">
-      <div className="max-w-5xl mx-auto space-y-6">
+    <div className="min-h-screen p-3 sm:p-4 md:p-8">
+      <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-display font-bold">Painel do Consultor</h1>
-            <p className="text-muted-foreground">Olá, {parceiro.nome}!</p>
+        <div className="flex items-start sm:items-center justify-between gap-2">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-display font-bold truncate">Painel do Consultor</h1>
+            <p className="text-sm text-muted-foreground truncate">Olá, {parceiro.nome}!</p>
           </div>
-          <Button variant="outline" size="sm" onClick={handleLogout}>
-            <LogOut className="mr-2 h-4 w-4" /> Sair
+          <Button variant="outline" size="sm" onClick={handleLogout} className="shrink-0">
+            <LogOut className="mr-2 h-4 w-4" /> <span className="hidden sm:inline">Sair</span>
           </Button>
         </div>
 
         {/* Stat Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
           {statCards.map((card) => (
             <div
               key={card.label}
-              className={`stat-card cursor-pointer transition-all ${statusFilter === card.status && card.status ? "ring-2 ring-primary" : ""}`}
+              className={`stat-card !p-3 sm:!p-6 cursor-pointer transition-all ${statusFilter === card.status && card.status ? "ring-2 ring-primary" : ""}`}
               onClick={() => card.status && handleStatusClick(card.status)}
             >
               <div className="flex flex-col items-center text-center gap-1">
-                <card.icon className="w-5 h-5 text-primary" />
-                <p className="text-xs text-muted-foreground">{card.label}</p>
-                <p className="text-2xl font-display font-bold">{card.value}</p>
+                <card.icon className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">{card.label}</p>
+                <p className="text-xl sm:text-2xl font-display font-bold">{card.value}</p>
               </div>
             </div>
           ))}
@@ -158,28 +158,28 @@ const PainelParceiro = () => {
 
         {/* Share Link */}
         <Card className="border-border">
-          <CardHeader>
-            <CardTitle className="text-lg font-display flex items-center gap-2">
-              <Link2 className="w-5 h-5 text-primary" />
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-base sm:text-lg font-display flex items-center gap-2">
+              <Link2 className="w-5 h-5 text-primary shrink-0" />
               Meu Link de Indicação
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="bg-secondary rounded-lg p-4 flex items-center justify-between gap-3">
-              <p className="text-sm font-mono text-primary break-all flex-1">{linkIndicacao}</p>
+          <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0 space-y-3 sm:space-y-4">
+            <div className="bg-secondary rounded-lg p-3 sm:p-4">
+              <p className="text-xs sm:text-sm font-mono text-primary break-all">{linkIndicacao}</p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={copyLink}>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button variant="outline" size="sm" onClick={copyLink} className="w-full sm:w-auto">
                 <Copy className="mr-2 h-4 w-4" /> Copiar Link
               </Button>
-              <Button variant="outline" size="sm" asChild>
+              <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
                 <a href={`https://wa.me/?text=${whatsappMsg}`} target="_blank" rel="noopener noreferrer">
-                  <MessageCircle className="mr-2 h-4 w-4" /> Enviar via WhatsApp
+                  <MessageCircle className="mr-2 h-4 w-4" /> WhatsApp
                 </a>
               </Button>
-              <Button variant="outline" size="sm" asChild>
+              <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
                 <a href={`mailto:?subject=${emailSubject}&body=${emailBody}`}>
-                  <Mail className="mr-2 h-4 w-4" /> Enviar por Email
+                  <Mail className="mr-2 h-4 w-4" /> Email
                 </a>
               </Button>
             </div>
@@ -188,8 +188,8 @@ const PainelParceiro = () => {
 
         {/* Leads */}
         <Card className="border-border">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg font-display">
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-base sm:text-lg font-display">
               {statusFilter ? (
                 <span className="flex items-center gap-2">
                   <button onClick={() => { setStatusFilter(null); setSearchParams({}); }} className="text-muted-foreground hover:text-foreground">
@@ -200,42 +200,76 @@ const PainelParceiro = () => {
               ) : "Meus Leads"}
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
             {filteredLeads.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">
+              <p className="text-muted-foreground text-center py-8 text-sm">
                 {statusFilter ? "Nenhum lead neste estágio." : "Nenhum lead cadastrado ainda. Compartilhe seu link para começar!"}
               </p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-left py-3 px-2 text-muted-foreground font-medium">Empresa</th>
-                      <th className="text-left py-3 px-2 text-muted-foreground font-medium">Cidade</th>
-                      <th className="text-left py-3 px-2 text-muted-foreground font-medium">Responsável</th>
-                      <th className="text-left py-3 px-2 text-muted-foreground font-medium">Telefone</th>
-                      <th className="text-left py-3 px-2 text-muted-foreground font-medium">Status</th>
-                      <th className="text-left py-3 px-2 text-muted-foreground font-medium">Data</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredLeads.map((lead) => (
-                      <tr key={lead.id} className="border-b border-border/50 hover:bg-secondary/50">
-                        <td className="py-3 px-2">{lead.nome_fantasia}</td>
-                        <td className="py-3 px-2">{lead.cidade}</td>
-                        <td className="py-3 px-2">{lead.nome_responsavel}</td>
-                        <td className="py-3 px-2">{lead.telefone_responsavel}</td>
-                        <td className="py-3 px-2">
-                          <span className="px-2 py-1 rounded-full text-xs bg-primary/10 text-primary">
-                            {STATUS_LABELS[(lead as any).status_lead || lead.status] || "Novo"}
-                          </span>
-                        </td>
-                        <td className="py-3 px-2 text-muted-foreground">{new Date(lead.data_cadastro).toLocaleDateString("pt-BR")}</td>
+              <>
+                {/* Mobile card view */}
+                <div className="space-y-3 md:hidden">
+                  {filteredLeads.map((lead) => (
+                    <div key={lead.id} className="bg-secondary/50 rounded-lg p-3 space-y-2 border border-border/50">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm truncate">{lead.nome_fantasia}</p>
+                          <p className="text-xs text-muted-foreground">{lead.cidade}</p>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] bg-primary/10 text-primary whitespace-nowrap shrink-0">
+                          {STATUS_LABELS[(lead as any).status_lead || lead.status] || "Novo"}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1 text-xs">
+                        <div>
+                          <span className="text-muted-foreground">Responsável: </span>
+                          <span>{lead.nome_responsavel}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Tel: </span>
+                          <span>{lead.telefone_responsavel}</span>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="text-muted-foreground">Data: </span>
+                          <span>{new Date(lead.data_cadastro).toLocaleDateString("pt-BR")}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop table */}
+                <div className="overflow-x-auto hidden md:block">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left py-3 px-2 text-muted-foreground font-medium">Empresa</th>
+                        <th className="text-left py-3 px-2 text-muted-foreground font-medium">Cidade</th>
+                        <th className="text-left py-3 px-2 text-muted-foreground font-medium">Responsável</th>
+                        <th className="text-left py-3 px-2 text-muted-foreground font-medium">Telefone</th>
+                        <th className="text-left py-3 px-2 text-muted-foreground font-medium">Status</th>
+                        <th className="text-left py-3 px-2 text-muted-foreground font-medium">Data</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {filteredLeads.map((lead) => (
+                        <tr key={lead.id} className="border-b border-border/50 hover:bg-secondary/50">
+                          <td className="py-3 px-2">{lead.nome_fantasia}</td>
+                          <td className="py-3 px-2">{lead.cidade}</td>
+                          <td className="py-3 px-2">{lead.nome_responsavel}</td>
+                          <td className="py-3 px-2">{lead.telefone_responsavel}</td>
+                          <td className="py-3 px-2">
+                            <span className="px-2 py-1 rounded-full text-xs bg-primary/10 text-primary">
+                              {STATUS_LABELS[(lead as any).status_lead || lead.status] || "Novo"}
+                            </span>
+                          </td>
+                          <td className="py-3 px-2 text-muted-foreground">{new Date(lead.data_cadastro).toLocaleDateString("pt-BR")}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
