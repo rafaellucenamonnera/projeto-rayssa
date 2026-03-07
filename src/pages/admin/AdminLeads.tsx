@@ -26,20 +26,21 @@ const AdminLeads = () => {
   const [filterDataInicio, setFilterDataInicio] = useState("");
   const [filterDataFim, setFilterDataFim] = useState("");
 
+  const loadData = async () => {
+    const [leadsRes, parceirosRes] = await Promise.all([
+      supabase.from("leads").select("*").order("data_cadastro", { ascending: false }),
+      supabase.from("parceiros_comerciais").select("id, nome"),
+    ]);
+    setLeads(leadsRes.data || []);
+    const map: Record<string, string> = {};
+    const list = parceirosRes.data || [];
+    list.forEach((p) => { map[p.id] = p.nome; });
+    setParceiros(map);
+    setParceirosAll(list);
+  };
+
   useEffect(() => {
-    const load = async () => {
-      const [leadsRes, parceirosRes] = await Promise.all([
-        supabase.from("leads").select("*").order("data_cadastro", { ascending: false }),
-        supabase.from("parceiros_comerciais").select("id, nome"),
-      ]);
-      setLeads(leadsRes.data || []);
-      const map: Record<string, string> = {};
-      const list = parceirosRes.data || [];
-      list.forEach((p) => { map[p.id] = p.nome; });
-      setParceiros(map);
-      setParceirosAll(list);
-    };
-    load();
+    loadData();
   }, []);
 
   const updateStatus = async (leadId: string, newStatus: string) => {
