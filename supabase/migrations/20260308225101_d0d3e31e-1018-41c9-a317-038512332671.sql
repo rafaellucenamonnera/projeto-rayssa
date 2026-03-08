@@ -1,0 +1,1 @@
+UPDATE public.parceiros_comerciais SET user_id = 'c1239543-2329-47f1-a10e-5b9fec8ff1cf' WHERE email = 'rafael.lucena@monnera.com.br' AND user_id IS NULL;
