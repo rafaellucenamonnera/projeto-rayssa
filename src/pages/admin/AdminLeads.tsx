@@ -18,6 +18,7 @@ const STATUS_OPTIONS = [
 ];
 
 const AdminLeads = () => {
+  const { isAdmin } = useAuth();
   const [leads, setLeads] = useState<any[]>([]);
   const [parceiros, setParceiros] = useState<Record<string, string>>({});
   const [parceirosAll, setParceirosAll] = useState<{ id: string; nome: string }[]>([]);
