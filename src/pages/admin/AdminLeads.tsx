@@ -167,9 +167,16 @@ const AdminLeads = () => {
                   <p className="font-medium text-sm truncate">{l.nome_fantasia}</p>
                   <p className="text-xs text-muted-foreground">{l.cidade}</p>
                 </div>
-                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                  {new Date(l.data_cadastro).toLocaleDateString("pt-BR")}
-                </span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {new Date(l.data_cadastro).toLocaleDateString("pt-BR")}
+                  </span>
+                  {isAdmin && (
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id, l.nome_fantasia)} className="text-destructive hover:text-destructive h-8 w-8">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <span className="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] shrink-0">
