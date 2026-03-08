@@ -106,7 +106,12 @@ const CadastroParceiro = () => {
 
       // Link is constructed dynamically in PainelParceiro from slug/codigo_parceiro
 
-      localStorage.setItem("monnera_parceiro", JSON.stringify(parceiro));
+      localStorage.setItem("monnera_parceiro", JSON.stringify({
+        id: parceiro.id,
+        nome: parceiro.nome,
+        codigo_parceiro: parceiro.codigo_parceiro,
+        slug_consultor: parceiro.slug_consultor,
+      }));
       navigate("/confirmacao", { state: { parceiro } });
     } catch (error: any) {
       toast.error("Erro ao cadastrar. Tente novamente.");
