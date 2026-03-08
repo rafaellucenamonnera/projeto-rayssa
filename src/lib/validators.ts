@@ -23,8 +23,16 @@ export function validateEmail(email: string): boolean {
 }
 
 export function validateCNPJ(cnpj: string): boolean {
-  const cleaned = cnpj.replace(/\D/g, '');
-  return cleaned.length === 14;
+  const c = cnpj.replace(/\D/g, '');
+  if (c.length !== 14 || /^(\d)\1{13}$/.test(c)) return false;
+  const calc = (weights: number[]) =>
+    weights.reduce((sum, w, i) => sum + parseInt(c[i]) * w, 0);
+  const r1 = calc([5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const d1 = r1 % 11 < 2 ? 0 : 11 - (r1 % 11);
+  if (d1 !== parseInt(c[12])) return false;
+  const r2 = calc([6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const d2 = r2 % 11 < 2 ? 0 : 11 - (r2 % 11);
+  return d2 === parseInt(c[13]);
 }
 
 export function formatCPF(value: string): string {

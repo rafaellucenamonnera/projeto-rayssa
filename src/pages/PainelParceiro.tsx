@@ -26,25 +26,19 @@ const PainelParceiro = () => {
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
-      const stored = localStorage.getItem("monnera_parceiro");
-      if (!stored) { navigate("/login"); return; }
+      localStorage.removeItem("monnera_parceiro");
+      navigate("/login");
+      return;
     }
 
     const loadData = async () => {
-      let p: any = null;
-      if (user) {
-        const { data } = await supabase
-          .from("parceiros_comerciais")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("ativo", true)
-          .maybeSingle();
-        p = data;
-      }
-      if (!p) {
-        const stored = localStorage.getItem("monnera_parceiro");
-        if (stored) p = JSON.parse(stored);
-      }
+      const { data: p } = await supabase
+        .from("parceiros_comerciais")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("ativo", true)
+        .maybeSingle();
+
       if (!p) { navigate("/login"); return; }
 
       setParceiro(p);
