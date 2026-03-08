@@ -1,28 +1,45 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
 
 const AdminParceiros = () => {
+  const { isAdmin } = useAuth();
   const [parceiros, setParceiros] = useState<any[]>([]);
   const [leadsCount, setLeadsCount] = useState<Record<string, number>>({});
 
-  useEffect(() => {
-    const load = async () => {
-      const { data: p } = await supabase
-        .from("parceiros_comerciais")
-        .select("*")
-        .order("data_cadastro", { ascending: false });
-      setParceiros(p || []);
+  const load = async () => {
+    const { data: p } = await supabase
+      .from("parceiros_comerciais")
+      .select("*")
+      .order("data_cadastro", { ascending: false });
+    setParceiros(p || []);
 
-      const { data: leads } = await supabase.from("leads").select("parceiro_id");
-      const counts: Record<string, number> = {};
-      (leads || []).forEach((l) => {
-        counts[l.parceiro_id] = (counts[l.parceiro_id] || 0) + 1;
-      });
-      setLeadsCount(counts);
-    };
+    const { data: leads } = await supabase.from("leads").select("parceiro_id");
+    const counts: Record<string, number> = {};
+    (leads || []).forEach((l) => {
+      counts[l.parceiro_id] = (counts[l.parceiro_id] || 0) + 1;
+    });
+    setLeadsCount(counts);
+  };
+
+  useEffect(() => {
     load();
   }, []);
+
+  const handleDelete = async (id: string, nome: string) => {
+    if (!confirm(`Excluir o consultor ${nome}? Todos os leads vinculados também serão afetados.`)) return;
+    const { error } = await supabase.from("parceiros_comerciais").delete().eq("id", id);
+    if (error) {
+      toast.error("Erro ao excluir consultor: " + error.message);
+      return;
+    }
+    toast.success("Consultor excluído");
+    load();
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -38,9 +55,16 @@ const AdminParceiros = () => {
                   <p className="font-medium text-sm truncate">{p.nome}</p>
                   <p className="text-xs text-muted-foreground">{p.email}</p>
                 </div>
-                <span className="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-mono shrink-0">
-                  {p.codigo_parceiro}
-                </span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-mono">
+                    {p.codigo_parceiro}
+                  </span>
+                  {isAdmin && (
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id, p.nome)} className="text-destructive hover:text-destructive h-8 w-8">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-1 text-xs">
                 <div>
@@ -82,6 +106,7 @@ const AdminParceiros = () => {
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Código</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Data</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Leads</th>
+                  {isAdmin && <th className="text-left py-3 px-4 text-muted-foreground font-medium"></th>}
                 </tr>
               </thead>
               <tbody>
@@ -96,6 +121,13 @@ const AdminParceiros = () => {
                     </td>
                     <td className="py-3 px-4 text-muted-foreground">{new Date(p.data_cadastro).toLocaleDateString("pt-BR")}</td>
                     <td className="py-3 px-4 font-semibold">{leadsCount[p.id] || 0}</td>
+                    {isAdmin && (
+                      <td className="py-3 px-4">
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id, p.nome)} className="text-destructive hover:text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

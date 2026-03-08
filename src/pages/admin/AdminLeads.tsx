@@ -1,9 +1,12 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
 import { LeadExportButton } from "@/components/admin/LeadExportButton";
 import { LeadImportDialog } from "@/components/admin/LeadImportDialog";
 
@@ -15,6 +18,7 @@ const STATUS_OPTIONS = [
 ];
 
 const AdminLeads = () => {
+  const { isAdmin } = useAuth();
   const [leads, setLeads] = useState<any[]>([]);
   const [parceiros, setParceiros] = useState<Record<string, string>>({});
   const [parceirosAll, setParceirosAll] = useState<{ id: string; nome: string }[]>([]);
@@ -56,6 +60,17 @@ const AdminLeads = () => {
       prev.map((l) => (l.id === leadId ? { ...l, status_lead: newStatus } : l))
     );
     toast.success("Status atualizado");
+  };
+
+  const handleDelete = async (id: string, nome: string) => {
+    if (!confirm(`Excluir o lead ${nome}?`)) return;
+    const { error } = await supabase.from("leads").delete().eq("id", id);
+    if (error) {
+      toast.error("Erro ao excluir lead: " + error.message);
+      return;
+    }
+    toast.success("Lead excluído");
+    loadData();
   };
 
   // Apply filters
@@ -152,9 +167,16 @@ const AdminLeads = () => {
                   <p className="font-medium text-sm truncate">{l.nome_fantasia}</p>
                   <p className="text-xs text-muted-foreground">{l.cidade}</p>
                 </div>
-                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                  {new Date(l.data_cadastro).toLocaleDateString("pt-BR")}
-                </span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {new Date(l.data_cadastro).toLocaleDateString("pt-BR")}
+                  </span>
+                  {isAdmin && (
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id, l.nome_fantasia)} className="text-destructive hover:text-destructive h-8 w-8">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <span className="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] shrink-0">
@@ -208,6 +230,7 @@ const AdminLeads = () => {
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Responsável</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Telefone</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Status</th>
+                  {isAdmin && <th className="text-left py-3 px-4 text-muted-foreground font-medium"></th>}
                 </tr>
               </thead>
               <tbody>
@@ -236,6 +259,13 @@ const AdminLeads = () => {
                         </SelectContent>
                       </Select>
                     </td>
+                    {isAdmin && (
+                      <td className="py-3 px-4">
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id, l.nome_fantasia)} className="text-destructive hover:text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
