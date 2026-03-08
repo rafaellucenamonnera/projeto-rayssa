@@ -83,48 +83,8 @@ Deno.serve(async (req) => {
       }
 
       if (setup) {
-        // Bootstrap: create first admin without auth
-        const { data: hasAdmin } = await supabaseAdmin.rpc('has_any_admin')
-        if (hasAdmin) {
-          return new Response(JSON.stringify({ error: 'Administrador já existe. Faça login.' }), {
-            status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          })
-        }
-
-        if (!password || password.length < 6) {
-          return new Response(JSON.stringify({ error: 'Senha obrigatória (mínimo 6 caracteres)' }), {
-            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          })
-        }
-
-        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-          email,
-          password,
-          email_confirm: true
-        })
-
-        if (createError) {
-          return new Response(JSON.stringify({ error: createError.message }), {
-            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          })
-        }
-
-        const userId = newUser.user.id
-
-        await supabaseAdmin.from('profiles').insert({
-          user_id: userId,
-          nome,
-          telefone: telefone || null,
-          primeiro_acesso: false
-        })
-
-        await supabaseAdmin.from('user_roles').insert({
-          user_id: userId,
-          role: 'admin'
-        })
-
-        return new Response(JSON.stringify({ success: true, user_id: userId }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        return new Response(JSON.stringify({ error: 'Configuração inicial desabilitada.' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
       }
 
