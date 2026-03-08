@@ -129,6 +129,7 @@ Deno.serve(async (req) => {
 
       // Normal flow: admin creates user via invite
       await verifyAdmin()
+      console.log('Creating user via invite:', email, nome, nivel_acesso)
 
       const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
         redirectTo: redirect_url || undefined
