@@ -78,7 +78,7 @@ const AdminDashboard = () => {
             const count = statusCounts[s.value] || 0;
             const pct = totalLeads > 0 ? Math.round((count / totalLeads) * 100) : 0;
             return (
-              <Card key={s.value} className="border-border">
+              <Card key={s.value} className="border-border cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all" onClick={() => navigate(`/admin/leads?status=${s.value}`)}>
                 <CardContent className="p-4 sm:p-5">
                   <div className="flex items-center gap-3 mb-3">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${s.colorClass}`}>
