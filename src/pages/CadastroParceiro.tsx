@@ -104,12 +104,7 @@ const CadastroParceiro = () => {
         return;
       }
 
-      const baseUrl = window.location.origin;
-      await supabase.from("links_parceiros").insert({
-        parceiro_id: parceiro.id,
-        codigo_link: codigo_parceiro,
-        url_link: `${baseUrl}/indicacao/${slug}`,
-      });
+      // Link is constructed dynamically in PainelParceiro from slug/codigo_parceiro
 
       localStorage.setItem("monnera_parceiro", JSON.stringify(parceiro));
       navigate("/confirmacao", { state: { parceiro } });
