@@ -63,6 +63,32 @@ const ResetarSenha = () => {
     };
   }, []);
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password.length < 6) {
+      toast.error("A senha deve ter pelo menos 6 caracteres");
+      return;
+    }
+    if (password !== confirmPassword) {
+      toast.error("As senhas não coincidem");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
+
+      toast.success("Senha redefinida com sucesso!");
+      await supabase.auth.signOut();
+      navigate("/login");
+    } catch (error: any) {
+      toast.error("Erro: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (expired) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
