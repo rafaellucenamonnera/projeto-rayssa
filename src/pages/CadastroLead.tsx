@@ -102,7 +102,7 @@ const CadastroLead = () => {
       if (error) throw error;
       setSubmitted(true);
     } catch (error: any) {
-      toast.error("Erro ao enviar: " + error.message);
+      toast.error("Erro ao enviar. Tente novamente.");
     } finally {
       setLoading(false);
     }

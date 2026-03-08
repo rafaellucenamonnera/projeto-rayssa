@@ -66,7 +66,7 @@ const AdminLogin = () => {
         navigate("/admin");
       }
     } catch (error: any) {
-      toast.error(error.message || "Email ou senha incorretos");
+      toast.error("Email ou senha incorretos");
     } finally {
       setLoading(false);
     }

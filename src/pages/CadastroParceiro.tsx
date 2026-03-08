@@ -114,7 +114,7 @@ const CadastroParceiro = () => {
       localStorage.setItem("monnera_parceiro", JSON.stringify(parceiro));
       navigate("/confirmacao", { state: { parceiro } });
     } catch (error: any) {
-      toast.error("Erro ao cadastrar: " + error.message);
+      toast.error("Erro ao cadastrar. Tente novamente.");
     } finally {
       setLoading(false);
     }

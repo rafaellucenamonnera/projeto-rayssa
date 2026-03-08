@@ -83,7 +83,7 @@ const AdminUsuarios = () => {
       setForm({ nome: "", email: "", telefone: "", nivel_acesso: "gestor_conta" });
       loadUsers();
     } catch (error: any) {
-      toast.error("Erro: " + error.message);
+      toast.error("Erro ao criar usuário. Tente novamente.");
     } finally {
       setCreating(false);
     }
