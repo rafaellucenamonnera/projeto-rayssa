@@ -36,21 +36,19 @@ const CadastroLead = () => {
 
   useEffect(() => {
     const checkParceiro = async () => {
-      let query: any = supabase
-        .from("parceiros_comerciais")
-        .select("id, nome")
-        .eq("ativo", true);
+      let data: any = null;
 
       if (slugConsultor) {
-        query = query.eq("slug_consultor", slugConsultor);
+        const res = await supabase.rpc("lookup_parceiro_by_slug", { slug: slugConsultor });
+        data = res.data?.[0] || null;
       } else if (codigoParceiro) {
-        query = query.eq("codigo_parceiro", codigoParceiro);
+        const res = await supabase.rpc("lookup_parceiro_by_code", { code: codigoParceiro });
+        data = res.data?.[0] || null;
       } else {
         setParceiroValid(false);
         return;
       }
 
-      const { data } = await query.single();
       if (data) {
         setParceiroId(data.id);
         setParceiroNome(data.nome);
