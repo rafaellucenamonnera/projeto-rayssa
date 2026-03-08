@@ -64,7 +64,12 @@ const LoginParceiro = () => {
         return;
       }
 
-      localStorage.setItem("monnera_parceiro", JSON.stringify(parceiro));
+      localStorage.setItem("monnera_parceiro", JSON.stringify({
+        id: parceiro.id,
+        nome: parceiro.nome,
+        codigo_parceiro: parceiro.codigo_parceiro,
+        slug_consultor: parceiro.slug_consultor,
+      }));
       navigate("/parceiro");
     } catch (error: any) {
       toast.error("Erro ao acessar. Verifique seus dados e tente novamente.");
