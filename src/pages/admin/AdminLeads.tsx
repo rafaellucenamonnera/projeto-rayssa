@@ -259,6 +259,13 @@ const AdminLeads = () => {
                         </SelectContent>
                       </Select>
                     </td>
+                    {isAdmin && (
+                      <td className="py-3 px-4">
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id, l.nome_fantasia)} className="text-destructive hover:text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
