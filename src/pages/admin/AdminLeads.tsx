@@ -62,6 +62,17 @@ const AdminLeads = () => {
     toast.success("Status atualizado");
   };
 
+  const handleDelete = async (id: string, nome: string) => {
+    if (!confirm(`Excluir o lead ${nome}?`)) return;
+    const { error } = await supabase.from("leads").delete().eq("id", id);
+    if (error) {
+      toast.error("Erro ao excluir lead: " + error.message);
+      return;
+    }
+    toast.success("Lead excluído");
+    loadData();
+  };
+
   // Apply filters
   const filtered = leads.filter((l) => {
     if (filterStatus !== "all" && ((l as any).status_lead || l.status) !== filterStatus) return false;
