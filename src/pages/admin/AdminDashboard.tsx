@@ -12,6 +12,7 @@ const STATUS_CONFIG = [
 ];
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
   const [totalParceiros, setTotalParceiros] = useState(0);
   const [totalLeads, setTotalLeads] = useState(0);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
