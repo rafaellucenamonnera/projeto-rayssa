@@ -222,6 +222,20 @@ export type Database = {
         }
         Returns: boolean
       }
+      lookup_parceiro_by_code: {
+        Args: { code: string }
+        Returns: {
+          id: string
+          nome: string
+        }[]
+      }
+      lookup_parceiro_by_slug: {
+        Args: { slug: string }
+        Returns: {
+          id: string
+          nome: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "gestor_conta"
