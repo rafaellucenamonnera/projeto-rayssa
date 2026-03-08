@@ -2,12 +2,13 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 }
 
 Deno.serve(async (req) => {
+  console.log('Request method:', req.method)
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders })
   }
 
   try {
@@ -128,6 +129,7 @@ Deno.serve(async (req) => {
 
       // Normal flow: admin creates user via invite
       await verifyAdmin()
+      console.log('Creating user via invite:', email, nome, nivel_acesso)
 
       const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
         redirectTo: redirect_url || undefined
