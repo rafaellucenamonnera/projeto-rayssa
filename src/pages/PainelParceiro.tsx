@@ -42,7 +42,12 @@ const PainelParceiro = () => {
       if (!p) { navigate("/login"); return; }
 
       setParceiro(p);
-      localStorage.setItem("monnera_parceiro", JSON.stringify(p));
+      localStorage.setItem("monnera_parceiro", JSON.stringify({
+        id: p.id,
+        nome: p.nome,
+        codigo_parceiro: p.codigo_parceiro,
+        slug_consultor: p.slug_consultor,
+      }));
 
       const { data: leadsData } = await supabase
         .from("leads")
