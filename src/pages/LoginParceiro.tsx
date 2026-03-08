@@ -67,7 +67,7 @@ const LoginParceiro = () => {
       localStorage.setItem("monnera_parceiro", JSON.stringify(parceiro));
       navigate("/parceiro");
     } catch (error: any) {
-      toast.error("Erro ao acessar: " + error.message);
+      toast.error("Erro ao acessar. Verifique seus dados e tente novamente.");
     } finally {
       setLoading(false);
     }
