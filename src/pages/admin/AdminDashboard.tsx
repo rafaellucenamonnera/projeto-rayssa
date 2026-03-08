@@ -56,7 +56,7 @@ const AdminDashboard = () => {
             </div>
           </div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all" onClick={() => navigate("/admin/leads")}>
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-xl bg-info/10 flex items-center justify-center">
               <TrendingUp className="w-7 h-7 text-info" />
