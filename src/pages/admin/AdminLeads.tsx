@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,13 +19,14 @@ const STATUS_OPTIONS = [
 ];
 
 const AdminLeads = () => {
+  const [searchParams] = useSearchParams();
   const { isAdmin } = useAuth();
   const [leads, setLeads] = useState<any[]>([]);
   const [parceiros, setParceiros] = useState<Record<string, string>>({});
   const [parceirosAll, setParceirosAll] = useState<{ id: string; nome: string }[]>([]);
 
-  // Filters
-  const [filterStatus, setFilterStatus] = useState<string>("all");
+  // Filters - initialize status from URL param
+  const [filterStatus, setFilterStatus] = useState<string>(searchParams.get("status") || "all");
   const [filterConsultor, setFilterConsultor] = useState<string>("all");
   const [filterEmpresa, setFilterEmpresa] = useState("");
   const [filterDataInicio, setFilterDataInicio] = useState("");

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { Users, FileText, TrendingUp, CalendarCheck, FileSpreadsheet, CheckCircle } from "lucide-react";
@@ -11,6 +12,7 @@ const STATUS_CONFIG = [
 ];
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
   const [totalParceiros, setTotalParceiros] = useState(0);
   const [totalLeads, setTotalLeads] = useState(0);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
@@ -43,7 +45,7 @@ const AdminDashboard = () => {
 
       {/* Totais gerais */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-        <div className="stat-card">
+        <div className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all" onClick={() => navigate("/admin/parceiros")}>
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center">
               <Users className="w-7 h-7 text-primary" />
@@ -54,7 +56,7 @@ const AdminDashboard = () => {
             </div>
           </div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all" onClick={() => navigate("/admin/leads")}>
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-xl bg-info/10 flex items-center justify-center">
               <TrendingUp className="w-7 h-7 text-info" />
@@ -76,7 +78,7 @@ const AdminDashboard = () => {
             const count = statusCounts[s.value] || 0;
             const pct = totalLeads > 0 ? Math.round((count / totalLeads) * 100) : 0;
             return (
-              <Card key={s.value} className="border-border">
+              <Card key={s.value} className="border-border cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all" onClick={() => navigate(`/admin/leads?status=${s.value}`)}>
                 <CardContent className="p-4 sm:p-5">
                   <div className="flex items-center gap-3 mb-3">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${s.colorClass}`}>
