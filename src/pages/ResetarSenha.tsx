@@ -15,19 +15,52 @@ const ResetarSenha = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
+  const [expired, setExpired] = useState(false);
 
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
         setReady(true);
       }
     });
 
+    // Check if we already have a session (recovery may have completed before mount)
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setReady(true);
+      if (session) {
+        setReady(true);
+      } else {
+        // Check URL hash for recovery token indicator
+        const hash = window.location.hash;
+        if (hash && hash.includes("type=recovery")) {
+          // Token is in URL but session not yet established — wait a bit more
+          timeoutId = setTimeout(() => {
+            supabase.auth.getSession().then(({ data: { session: s } }) => {
+              if (s) setReady(true);
+              else setExpired(true);
+            });
+          }, 5000);
+        } else if (!hash || !hash.includes("access_token")) {
+          // No token in URL at all — link is invalid or already used
+          setExpired(true);
+        }
+      }
     });
 
-    return () => subscription.unsubscribe();
+    // Global timeout fallback
+    const globalTimeout = setTimeout(() => {
+      setReady((prev) => {
+        if (!prev) setExpired(true);
+        return prev;
+      });
+    }, 8000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeoutId);
+      clearTimeout(globalTimeout);
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -55,6 +88,24 @@ const ResetarSenha = () => {
       setLoading(false);
     }
   };
+
+  if (expired) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="w-full max-w-sm border-border text-center">
+          <CardContent className="py-12 space-y-4">
+            <p className="text-destructive font-semibold">Link expirado ou inválido</p>
+            <p className="text-muted-foreground text-sm">
+              O link de redefinição já foi utilizado ou expirou. Solicite um novo.
+            </p>
+            <Button variant="outline" onClick={() => navigate("/esqueci-senha")}>
+              Solicitar novo link
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (!ready) {
     return (
