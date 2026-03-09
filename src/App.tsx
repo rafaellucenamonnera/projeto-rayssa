@@ -17,6 +17,7 @@ const CadastroLead = lazy(() => import("./pages/CadastroLead"));
 const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
 const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminFinanceiro = lazy(() => import("./pages/admin/AdminFinanceiro"));
 const AdminParceiros = lazy(() => import("./pages/admin/AdminParceiros"));
 const AdminLeads = lazy(() => import("./pages/admin/AdminLeads"));
 const AdminUsuarios = lazy(() => import("./pages/admin/AdminUsuarios"));
@@ -54,6 +55,7 @@ const App = () => (
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
+                <Route path="financeiro" element={<AdminFinanceiro />} />
                 <Route path="parceiros" element={<AdminParceiros />} />
                 <Route path="leads" element={<AdminLeads />} />
                 <Route path="usuarios" element={<AdminUsuarios />} />

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, FileText, UserCog } from "lucide-react";
+import { LayoutDashboard, Users, FileText, UserCog, DollarSign } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
@@ -21,6 +21,7 @@ export function AdminSidebar() {
 
   const items = [
     { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
+    { title: "Financeiro", url: "/admin/financeiro", icon: DollarSign },
     { title: "Consultores", url: "/admin/parceiros", icon: Users },
     { title: "Leads", url: "/admin/leads", icon: FileText },
     ...(isAdmin ? [{ title: "Usuários Monnera", url: "/admin/usuarios", icon: UserCog }] : []),
