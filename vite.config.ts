@@ -64,13 +64,5 @@ export default defineConfig(({ mode }) => ({
     },
     // Optimize chunk splitting
     chunkSizeWarningLimit: 1000,
-    // Minification options
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,
-        drop_debugger: true,
-      },
-    },
   },
 }));
