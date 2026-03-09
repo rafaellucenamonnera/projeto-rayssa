@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Trash2, FileText, ExternalLink } from "lucide-react";
+import { Trash2, FileText, RefreshCw } from "lucide-react";
 import { LeadExportButton } from "@/components/admin/LeadExportButton";
 import { LeadImportDialog } from "@/components/admin/LeadImportDialog";
 import { PropostaUploadDialog } from "@/components/admin/PropostaUploadDialog";
@@ -35,7 +35,7 @@ const AdminLeads = () => {
 
   // Proposta upload dialog state
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-  const [pendingStatusChange, setPendingStatusChange] = useState<{ leadId: string; leadName: string } | null>(null);
+  const [pendingStatusChange, setPendingStatusChange] = useState<{ leadId: string; leadName: string; replaceOnly?: boolean } | null>(null);
 
   const loadData = async () => {
     const [leadsRes, parceirosRes] = await Promise.all([
@@ -89,9 +89,34 @@ const AdminLeads = () => {
 
   const handlePropostaUploadSuccess = (propostaUrl: string) => {
     if (pendingStatusChange) {
-      updateStatus(pendingStatusChange.leadId, "proposta_comercial", propostaUrl);
+      if (pendingStatusChange.replaceOnly) {
+        // Just replacing the PDF, no status change
+        updatePropostaUrl(pendingStatusChange.leadId, propostaUrl);
+      } else {
+        updateStatus(pendingStatusChange.leadId, "proposta_comercial", propostaUrl);
+      }
       setPendingStatusChange(null);
     }
+  };
+
+  const updatePropostaUrl = async (leadId: string, propostaUrl: string) => {
+    const { error } = await supabase
+      .from("leads")
+      .update({ proposta_url: propostaUrl } as any)
+      .eq("id", leadId);
+    if (error) {
+      toast.error("Erro ao atualizar proposta");
+      return;
+    }
+    setLeads((prev) =>
+      prev.map((l) => (l.id === leadId ? { ...l, proposta_url: propostaUrl } : l))
+    );
+    toast.success("Proposta substituída com sucesso");
+  };
+
+  const handleReplaceProposta = (leadId: string, leadName: string) => {
+    setPendingStatusChange({ leadId, leadName, replaceOnly: true });
+    setUploadDialogOpen(true);
   };
 
   const handlePropostaUploadCancel = () => {
@@ -155,15 +180,24 @@ const AdminLeads = () => {
           </SelectContent>
         </Select>
         {hasProposta && (
-          <a
-            href={lead.proposta_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-1 hover:bg-primary/10 rounded"
-            title="Ver proposta"
-          >
-            <FileText className="h-4 w-4 text-primary" />
-          </a>
+          <>
+            <a
+              href={lead.proposta_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1 hover:bg-primary/10 rounded"
+              title="Ver proposta"
+            >
+              <FileText className="h-4 w-4 text-primary" />
+            </a>
+            <button
+              onClick={() => handleReplaceProposta(lead.id, lead.nome_fantasia)}
+              className="p-1 hover:bg-amber-500/10 rounded"
+              title="Substituir proposta"
+            >
+              <RefreshCw className="h-4 w-4 text-amber-500" />
+            </button>
+          </>
         )}
       </div>
     );
@@ -352,6 +386,7 @@ const AdminLeads = () => {
         onOpenChange={setUploadDialogOpen}
         leadId={pendingStatusChange?.leadId || ""}
         leadName={pendingStatusChange?.leadName || ""}
+        replaceMode={pendingStatusChange?.replaceOnly || false}
         onSuccess={handlePropostaUploadSuccess}
         onCancel={handlePropostaUploadCancel}
       />
