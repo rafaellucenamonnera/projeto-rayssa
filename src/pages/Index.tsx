@@ -10,7 +10,7 @@ const Index = () => {
     <main className="min-h-screen flex flex-col">
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="max-w-2xl text-center space-y-8">
-          <img src={logoMonnera} alt="Monnera" className="w-20 h-20 rounded-xl mx-auto" />
+          <img src={logoMonnera} alt="Monnera" className="w-20 h-20 rounded-xl mx-auto" fetchPriority="high" loading="eager" decoding="async" />
           <h1 className="text-4xl md:text-5xl font-display font-bold leading-tight">
             <span className="glow-text">Monnera</span> Comercial
           </h1>
