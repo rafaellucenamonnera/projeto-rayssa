@@ -32,26 +32,28 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/cadastro" element={<CadastroParceiro />} />
-            <Route path="/confirmacao" element={<ConfirmacaoCadastro />} />
-            <Route path="/login" element={<LoginParceiro />} />
-            <Route path="/parceiro" element={<PainelParceiro />} />
-            <Route path="/lead/:codigoParceiro" element={<CadastroLead />} />
-            <Route path="/indicacao/:slugConsultor" element={<CadastroLead />} />
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<AdminDashboard />} />
-              <Route path="parceiros" element={<AdminParceiros />} />
-              <Route path="leads" element={<AdminLeads />} />
-              <Route path="usuarios" element={<AdminUsuarios />} />
-            </Route>
-            <Route path="/primeiro-acesso" element={<PrimeiroAcesso />} />
-            <Route path="/resetar-senha" element={<ResetarSenha />} />
-            <Route path="/esqueci-senha" element={<EsqueciSenha />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Carregando...</div>}>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/cadastro" element={<CadastroParceiro />} />
+              <Route path="/confirmacao" element={<ConfirmacaoCadastro />} />
+              <Route path="/login" element={<LoginParceiro />} />
+              <Route path="/parceiro" element={<PainelParceiro />} />
+              <Route path="/lead/:codigoParceiro" element={<CadastroLead />} />
+              <Route path="/indicacao/:slugConsultor" element={<CadastroLead />} />
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="parceiros" element={<AdminParceiros />} />
+                <Route path="leads" element={<AdminLeads />} />
+                <Route path="usuarios" element={<AdminUsuarios />} />
+              </Route>
+              <Route path="/primeiro-acesso" element={<PrimeiroAcesso />} />
+              <Route path="/resetar-senha" element={<ResetarSenha />} />
+              <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
