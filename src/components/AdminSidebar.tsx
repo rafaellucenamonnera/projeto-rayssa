@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, FileText, UserCog } from "lucide-react";
+import { LayoutDashboard, Users, FileText, UserCog, DollarSign } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
