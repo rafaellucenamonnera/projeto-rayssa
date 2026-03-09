@@ -180,15 +180,24 @@ const AdminLeads = () => {
           </SelectContent>
         </Select>
         {hasProposta && (
-          <a
-            href={lead.proposta_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-1 hover:bg-primary/10 rounded"
-            title="Ver proposta"
-          >
-            <FileText className="h-4 w-4 text-primary" />
-          </a>
+          <>
+            <a
+              href={lead.proposta_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1 hover:bg-primary/10 rounded"
+              title="Ver proposta"
+            >
+              <FileText className="h-4 w-4 text-primary" />
+            </a>
+            <button
+              onClick={() => handleReplaceProposta(lead.id, lead.nome_fantasia)}
+              className="p-1 hover:bg-amber-500/10 rounded"
+              title="Substituir proposta"
+            >
+              <RefreshCw className="h-4 w-4 text-amber-500" />
+            </button>
+          </>
         )}
       </div>
     );
