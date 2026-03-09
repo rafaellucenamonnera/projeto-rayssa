@@ -89,9 +89,34 @@ const AdminLeads = () => {
 
   const handlePropostaUploadSuccess = (propostaUrl: string) => {
     if (pendingStatusChange) {
-      updateStatus(pendingStatusChange.leadId, "proposta_comercial", propostaUrl);
+      if (pendingStatusChange.replaceOnly) {
+        // Just replacing the PDF, no status change
+        updatePropostaUrl(pendingStatusChange.leadId, propostaUrl);
+      } else {
+        updateStatus(pendingStatusChange.leadId, "proposta_comercial", propostaUrl);
+      }
       setPendingStatusChange(null);
     }
+  };
+
+  const updatePropostaUrl = async (leadId: string, propostaUrl: string) => {
+    const { error } = await supabase
+      .from("leads")
+      .update({ proposta_url: propostaUrl } as any)
+      .eq("id", leadId);
+    if (error) {
+      toast.error("Erro ao atualizar proposta");
+      return;
+    }
+    setLeads((prev) =>
+      prev.map((l) => (l.id === leadId ? { ...l, proposta_url: propostaUrl } : l))
+    );
+    toast.success("Proposta substituída com sucesso");
+  };
+
+  const handleReplaceProposta = (leadId: string, leadName: string) => {
+    setPendingStatusChange({ leadId, leadName, replaceOnly: true });
+    setUploadDialogOpen(true);
   };
 
   const handlePropostaUploadCancel = () => {
