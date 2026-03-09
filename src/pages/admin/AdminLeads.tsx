@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Trash2, FileText, ExternalLink } from "lucide-react";
+import { Trash2, FileText, RefreshCw } from "lucide-react";
 import { LeadExportButton } from "@/components/admin/LeadExportButton";
 import { LeadImportDialog } from "@/components/admin/LeadImportDialog";
 import { PropostaUploadDialog } from "@/components/admin/PropostaUploadDialog";
