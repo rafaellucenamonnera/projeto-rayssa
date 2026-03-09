@@ -1,8 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, Copy, ArrowRight } from "lucide-react";
-import { toast } from "sonner";
+import { CheckCircle, ArrowRight } from "lucide-react";
 
 const ConfirmacaoCadastro = () => {
   const location = useLocation();
