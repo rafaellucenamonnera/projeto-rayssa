@@ -160,6 +160,22 @@ const AdminLeads = () => {
     if (statusCounts[s] !== undefined) statusCounts[s]++;
   });
 
+  const openSignedUrl = async (storagePath: string) => {
+    // Handle legacy full URLs (pre-migration)
+    if (storagePath.startsWith("http")) {
+      window.open(storagePath, "_blank");
+      return;
+    }
+    const { data, error } = await supabase.storage
+      .from("propostas")
+      .createSignedUrl(storagePath, 3600);
+    if (error || !data?.signedUrl) {
+      toast.error("Erro ao gerar link da proposta");
+      return;
+    }
+    window.open(data.signedUrl, "_blank");
+  };
+
   const StatusSelect = ({ lead }: { lead: any }) => {
     const currentStatus = (lead as any).status_lead || lead.status || "novo_lead";
     const hasProposta = !!lead.proposta_url;
@@ -181,15 +197,13 @@ const AdminLeads = () => {
         </Select>
         {hasProposta && (
           <>
-            <a
-              href={lead.proposta_url}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              onClick={() => openSignedUrl(lead.proposta_url)}
               className="p-1 hover:bg-primary/10 rounded"
               title="Ver proposta"
             >
               <FileText className="h-4 w-4 text-primary" />
-            </a>
+            </button>
             <button
               onClick={() => handleReplaceProposta(lead.id, lead.nome_fantasia)}
               className="p-1 hover:bg-amber-500/10 rounded"
@@ -276,15 +290,13 @@ const AdminLeads = () => {
                     {new Date(l.data_cadastro).toLocaleDateString("pt-BR")}
                   </span>
                   {l.proposta_url && (
-                    <a
-                      href={l.proposta_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      onClick={() => openSignedUrl(l.proposta_url)}
                       className="p-1 hover:bg-primary/10 rounded"
                       title="Ver proposta"
                     >
                       <FileText className="h-4 w-4 text-primary" />
-                    </a>
+                    </button>
                   )}
                   {isAdmin && (
                     <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id, l.nome_fantasia)} className="text-destructive hover:text-destructive h-8 w-8">

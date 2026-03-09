@@ -63,11 +63,8 @@ export function PropostaUploadDialog({
 
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage
-        .from("propostas")
-        .getPublicUrl(filePath);
-
-      onSuccess(urlData.publicUrl);
+      // Store only the path, not the public URL (bucket is private)
+      onSuccess(filePath);
       setFile(null);
       onOpenChange(false);
     } catch (error: any) {
