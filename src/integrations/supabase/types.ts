@@ -185,6 +185,7 @@ export type Database = {
       }
       parceiros_comerciais: {
         Row: {
+          aprovado: boolean
           ativo: boolean
           codigo_parceiro: string
           cpf: string
@@ -198,6 +199,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          aprovado?: boolean
           ativo?: boolean
           codigo_parceiro: string
           cpf: string
@@ -211,6 +213,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          aprovado?: boolean
           ativo?: boolean
           codigo_parceiro?: string
           cpf?: string
