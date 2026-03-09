@@ -24,24 +24,16 @@ const PrimeiroAcesso = lazy(() => import("./pages/PrimeiroAcesso"));
 const ResetarSenha = lazy(() => import("./pages/ResetarSenha"));
 const EsqueciSenha = lazy(() => import("./pages/EsqueciSenha"));
 
-const Index = lazy(() => import("./pages/Index"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-const CadastroParceiro = lazy(() => import("./pages/CadastroParceiro"));
-const ConfirmacaoCadastro = lazy(() => import("./pages/ConfirmacaoCadastro"));
-const LoginParceiro = lazy(() => import("./pages/LoginParceiro"));
-const PainelParceiro = lazy(() => import("./pages/PainelParceiro"));
-const CadastroLead = lazy(() => import("./pages/CadastroLead"));
-const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
-const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
-const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
-const AdminParceiros = lazy(() => import("./pages/admin/AdminParceiros"));
-const AdminLeads = lazy(() => import("./pages/admin/AdminLeads"));
-const AdminUsuarios = lazy(() => import("./pages/admin/AdminUsuarios"));
-const PrimeiroAcesso = lazy(() => import("./pages/PrimeiroAcesso"));
-const ResetarSenha = lazy(() => import("./pages/ResetarSenha"));
-const EsqueciSenha = lazy(() => import("./pages/EsqueciSenha"));
-
-const queryClient = new QueryClient();
+// Configure QueryClient with optimized defaults
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
