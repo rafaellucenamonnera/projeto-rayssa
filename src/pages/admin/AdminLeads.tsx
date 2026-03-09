@@ -35,7 +35,7 @@ const AdminLeads = () => {
 
   // Proposta upload dialog state
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-  const [pendingStatusChange, setPendingStatusChange] = useState<{ leadId: string; leadName: string } | null>(null);
+  const [pendingStatusChange, setPendingStatusChange] = useState<{ leadId: string; leadName: string; replaceOnly?: boolean } | null>(null);
 
   const loadData = async () => {
     const [leadsRes, parceirosRes] = await Promise.all([
