@@ -251,8 +251,30 @@ export default function AdminFinanceiro() {
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg font-display">Previsão por Consultor</CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={filteredConsultores.length === 0}
+            onClick={() => {
+              const header = "Consultor;Clientes Ativos;Valor Pago;Valor Pendente;Previsão Futura\n";
+              const rows = filteredConsultores.map((c) =>
+                `${c.consultor};${c.clientes_ativos};${(c.valor_pago || 0).toFixed(2).replace(".", ",")};${(c.valor_pendente || 0).toFixed(2).replace(".", ",")};${(c.previsao_futura || 0).toFixed(2).replace(".", ",")}`
+              ).join("\n");
+              const bom = "\uFEFF";
+              const blob = new Blob([bom + header + rows], { type: "text/csv;charset=utf-8;" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `previsao-consultores-${new Date().toISOString().slice(0, 10)}.csv`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Exportar CSV
+          </Button>
         </CardHeader>
         <CardContent>
           <Table>
