@@ -7,7 +7,7 @@ const Index = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <main className="min-h-screen flex flex-col">
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="max-w-2xl text-center space-y-8">
           <img src={logoMonnera} alt="Monnera" className="w-20 h-20 rounded-xl mx-auto" />
@@ -37,7 +37,7 @@ const Index = () => {
           </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 };
 
