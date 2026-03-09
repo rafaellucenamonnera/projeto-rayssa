@@ -12,6 +12,7 @@ interface PropostaUploadDialogProps {
   onOpenChange: (open: boolean) => void;
   leadId: string;
   leadName: string;
+  replaceMode?: boolean;
   onSuccess: (propostaUrl: string) => void;
   onCancel: () => void;
 }
@@ -21,6 +22,7 @@ export function PropostaUploadDialog({
   onOpenChange,
   leadId,
   leadName,
+  replaceMode = false,
   onSuccess,
   onCancel,
 }: PropostaUploadDialogProps) {
