@@ -66,6 +66,12 @@ const LoginParceiro = () => {
         return;
       }
 
+      if (!parceiro.aprovado) {
+        await supabase.auth.signOut();
+        toast.error("Seu cadastro ainda está pendente de aprovação. Aguarde a liberação pelo administrador.");
+        return;
+      }
+
       localStorage.setItem("monnera_parceiro", JSON.stringify({
         id: parceiro.id,
         nome: parceiro.nome,

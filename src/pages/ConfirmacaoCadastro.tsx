@@ -32,21 +32,18 @@ const ConfirmacaoCadastro = () => {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-3 text-muted-foreground">
-            <p>Seu link exclusivo de captação de leads foi criado.</p>
-            <p>Utilize este link para indicar empresas interessadas no Monnera.</p>
-            <p>Todos os leads cadastrados através dele serão vinculados ao seu perfil de consultor.</p>
+            <p>Seu cadastro foi recebido com sucesso!</p>
+            <p>Um administrador irá analisar e aprovar seu cadastro em breve.</p>
+            <p>Após a aprovação, você poderá acessar o painel e utilizar seu link exclusivo de indicação.</p>
           </div>
 
-          <div className="bg-secondary rounded-lg p-4 space-y-3">
-            <p className="text-sm text-muted-foreground">Seu link exclusivo:</p>
-            <p className="text-sm font-mono text-primary break-all">{linkIndicacao}</p>
-            <Button onClick={copyLink} variant="outline" className="w-full">
-              <Copy className="mr-2 h-4 w-4" /> Copiar Link
-            </Button>
+          <div className="bg-secondary rounded-lg p-4 space-y-2">
+            <p className="text-sm font-medium">Código do consultor:</p>
+            <p className="text-sm font-mono text-primary">{parceiro.codigo_parceiro}</p>
           </div>
 
-          <Button onClick={() => navigate("/parceiro")} className="w-full">
-            Acessar Painel <ArrowRight className="ml-2 h-4 w-4" />
+          <Button onClick={() => navigate("/login")} className="w-full">
+            Ir para Login <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </CardContent>
       </Card>

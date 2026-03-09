@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Trash2, CheckCircle, XCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 const AdminParceiros = () => {
   const { isAdmin } = useAuth();
@@ -41,6 +42,19 @@ const AdminParceiros = () => {
     load();
   };
 
+  const handleToggleAprovado = async (id: string, currentValue: boolean) => {
+    const { error } = await supabase
+      .from("parceiros_comerciais")
+      .update({ aprovado: !currentValue } as any)
+      .eq("id", id);
+    if (error) {
+      toast.error("Erro ao atualizar status: " + error.message);
+      return;
+    }
+    toast.success(currentValue ? "Consultor desaprovado" : "Consultor aprovado!");
+    load();
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <h1 className="text-xl sm:text-2xl font-display font-bold">Consultores Comerciais</h1>
@@ -60,9 +74,20 @@ const AdminParceiros = () => {
                     {p.codigo_parceiro}
                   </span>
                   {isAdmin && (
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id, p.nome)} className="text-destructive hover:text-destructive h-8 w-8">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleToggleAprovado(p.id, p.aprovado)}
+                        className={p.aprovado ? "text-green-600 hover:text-green-700 h-8 w-8" : "text-muted-foreground hover:text-foreground h-8 w-8"}
+                        title={p.aprovado ? "Desaprovar" : "Aprovar"}
+                      >
+                        {p.aprovado ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id, p.nome)} className="text-destructive hover:text-destructive h-8 w-8">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
                   )}
                 </div>
               </div>
@@ -82,6 +107,11 @@ const AdminParceiros = () => {
                 <div>
                   <span className="text-muted-foreground">Leads: </span>
                   <span className="font-semibold">{leadsCount[p.id] || 0}</span>
+                </div>
+                <div className="col-span-2">
+                  <Badge variant={p.aprovado ? "default" : "secondary"}>
+                    {p.aprovado ? "Aprovado" : "Pendente"}
+                  </Badge>
                 </div>
               </div>
             </CardContent>
@@ -106,7 +136,8 @@ const AdminParceiros = () => {
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Código</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Data</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Leads</th>
-                  {isAdmin && <th className="text-left py-3 px-4 text-muted-foreground font-medium"></th>}
+                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Status</th>
+                  {isAdmin && <th className="text-left py-3 px-4 text-muted-foreground font-medium">Ações</th>}
                 </tr>
               </thead>
               <tbody>
@@ -121,11 +152,27 @@ const AdminParceiros = () => {
                     </td>
                     <td className="py-3 px-4 text-muted-foreground">{new Date(p.data_cadastro).toLocaleDateString("pt-BR")}</td>
                     <td className="py-3 px-4 font-semibold">{leadsCount[p.id] || 0}</td>
+                    <td className="py-3 px-4">
+                      <Badge variant={p.aprovado ? "default" : "secondary"}>
+                        {p.aprovado ? "Aprovado" : "Pendente"}
+                      </Badge>
+                    </td>
                     {isAdmin && (
                       <td className="py-3 px-4">
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id, p.nome)} className="text-destructive hover:text-destructive">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleToggleAprovado(p.id, p.aprovado)}
+                            className={p.aprovado ? "text-green-600 hover:text-green-700" : "text-muted-foreground hover:text-foreground"}
+                            title={p.aprovado ? "Desaprovar" : "Aprovar"}
+                          >
+                            {p.aprovado ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id, p.nome)} className="text-destructive hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -134,7 +181,7 @@ const AdminParceiros = () => {
             </table>
             {parceiros.length === 0 && (
               <p className="text-center py-8 text-muted-foreground">Nenhum consultor cadastrado.</p>
-            )}
+              )}
           </div>
         </CardContent>
       </Card>

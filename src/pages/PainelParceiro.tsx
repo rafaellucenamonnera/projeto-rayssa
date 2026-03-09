@@ -40,6 +40,12 @@ const PainelParceiro = () => {
         .maybeSingle();
 
       if (!p) { navigate("/login"); return; }
+      if (!p.aprovado) {
+        toast.error("Seu cadastro está pendente de aprovação.");
+        await supabase.auth.signOut();
+        navigate("/login");
+        return;
+      }
 
       setParceiro(p);
       localStorage.setItem("monnera_parceiro", JSON.stringify({
