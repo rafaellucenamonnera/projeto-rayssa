@@ -290,15 +290,13 @@ const AdminLeads = () => {
                     {new Date(l.data_cadastro).toLocaleDateString("pt-BR")}
                   </span>
                   {l.proposta_url && (
-                    <a
-                      href={l.proposta_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      onClick={() => openSignedUrl(l.proposta_url)}
                       className="p-1 hover:bg-primary/10 rounded"
                       title="Ver proposta"
                     >
                       <FileText className="h-4 w-4 text-primary" />
-                    </a>
+                    </button>
                   )}
                   {isAdmin && (
                     <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id, l.nome_fantasia)} className="text-destructive hover:text-destructive h-8 w-8">
