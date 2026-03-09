@@ -1,0 +1,1 @@
+ALTER TABLE public.pagamentos_consultores ENABLE ROW LEVEL SECURITY;
