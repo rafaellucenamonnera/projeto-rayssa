@@ -6,6 +6,24 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { lazy, Suspense } from "react";
 
+// Lazy load pages with prefetch hints
+const Index = lazy(() => import("./pages/Index"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const CadastroParceiro = lazy(() => import("./pages/CadastroParceiro"));
+const ConfirmacaoCadastro = lazy(() => import("./pages/ConfirmacaoCadastro"));
+const LoginParceiro = lazy(() => import("./pages/LoginParceiro"));
+const PainelParceiro = lazy(() => import("./pages/PainelParceiro"));
+const CadastroLead = lazy(() => import("./pages/CadastroLead"));
+const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
+const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminParceiros = lazy(() => import("./pages/admin/AdminParceiros"));
+const AdminLeads = lazy(() => import("./pages/admin/AdminLeads"));
+const AdminUsuarios = lazy(() => import("./pages/admin/AdminUsuarios"));
+const PrimeiroAcesso = lazy(() => import("./pages/PrimeiroAcesso"));
+const ResetarSenha = lazy(() => import("./pages/ResetarSenha"));
+const EsqueciSenha = lazy(() => import("./pages/EsqueciSenha"));
+
 const Index = lazy(() => import("./pages/Index"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const CadastroParceiro = lazy(() => import("./pages/CadastroParceiro"));
