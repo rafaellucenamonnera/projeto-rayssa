@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { lazy, Suspense } from "react";
 
+// Lazy load pages with prefetch hints
 const Index = lazy(() => import("./pages/Index"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const CadastroParceiro = lazy(() => import("./pages/CadastroParceiro"));
@@ -23,7 +24,16 @@ const PrimeiroAcesso = lazy(() => import("./pages/PrimeiroAcesso"));
 const ResetarSenha = lazy(() => import("./pages/ResetarSenha"));
 const EsqueciSenha = lazy(() => import("./pages/EsqueciSenha"));
 
-const queryClient = new QueryClient();
+// Configure QueryClient with optimized defaults
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
