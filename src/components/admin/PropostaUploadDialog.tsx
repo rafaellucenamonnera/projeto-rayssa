@@ -93,10 +93,13 @@ export function PropostaUploadDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" />
-            Anexar Proposta Comercial
+            {replaceMode ? "Substituir Proposta Comercial" : "Anexar Proposta Comercial"}
           </DialogTitle>
           <DialogDescription>
-            Para alterar o status para "Proposta Comercial", é obrigatório anexar o PDF da proposta para o lead <strong>{leadName}</strong>.
+            {replaceMode
+              ? <>Selecione o novo PDF para substituir a proposta atual do lead <strong>{leadName}</strong>.</>
+              : <>Para alterar o status para "Proposta Comercial", é obrigatório anexar o PDF da proposta para o lead <strong>{leadName}</strong>.</>
+            }
           </DialogDescription>
         </DialogHeader>
 
