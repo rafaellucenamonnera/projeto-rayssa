@@ -13,12 +13,6 @@ const ConfirmacaoCadastro = () => {
     return null;
   }
 
-  const linkIndicacao = `${window.location.origin}/lead/${parceiro.codigo_parceiro}`;
-
-  const copyLink = () => {
-    navigator.clipboard.writeText(linkIndicacao);
-    toast.success("Link copiado!");
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
