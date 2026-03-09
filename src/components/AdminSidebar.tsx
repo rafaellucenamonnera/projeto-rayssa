@@ -21,6 +21,7 @@ export function AdminSidebar() {
 
   const items = [
     { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
+    { title: "Financeiro", url: "/admin/financeiro", icon: DollarSign },
     { title: "Consultores", url: "/admin/parceiros", icon: Users },
     { title: "Leads", url: "/admin/leads", icon: FileText },
     ...(isAdmin ? [{ title: "Usuários Monnera", url: "/admin/usuarios", icon: UserCog }] : []),
