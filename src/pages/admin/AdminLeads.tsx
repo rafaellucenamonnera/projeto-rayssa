@@ -7,9 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Trash2, FileText, ExternalLink } from "lucide-react";
 import { LeadExportButton } from "@/components/admin/LeadExportButton";
 import { LeadImportDialog } from "@/components/admin/LeadImportDialog";
+import { PropostaUploadDialog } from "@/components/admin/PropostaUploadDialog";
 
 const STATUS_OPTIONS = [
   { value: "novo_lead", label: "Novo Lead" },
@@ -25,12 +26,16 @@ const AdminLeads = () => {
   const [parceiros, setParceiros] = useState<Record<string, string>>({});
   const [parceirosAll, setParceirosAll] = useState<{ id: string; nome: string }[]>([]);
 
-  // Filters - initialize status from URL param
+  // Filters
   const [filterStatus, setFilterStatus] = useState<string>(searchParams.get("status") || "all");
   const [filterConsultor, setFilterConsultor] = useState<string>("all");
   const [filterEmpresa, setFilterEmpresa] = useState("");
   const [filterDataInicio, setFilterDataInicio] = useState("");
   const [filterDataFim, setFilterDataFim] = useState("");
+
+  // Proposta upload dialog state
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [pendingStatusChange, setPendingStatusChange] = useState<{ leadId: string; leadName: string } | null>(null);
 
   const loadData = async () => {
     const [leadsRes, parceirosRes] = await Promise.all([
@@ -49,19 +54,48 @@ const AdminLeads = () => {
     loadData();
   }, []);
 
-  const updateStatus = async (leadId: string, newStatus: string) => {
+  const handleStatusChange = (leadId: string, leadName: string, newStatus: string) => {
+    // If changing to proposta_comercial, require PDF upload first
+    if (newStatus === "proposta_comercial") {
+      setPendingStatusChange({ leadId, leadName });
+      setUploadDialogOpen(true);
+      return;
+    }
+    // Otherwise update directly
+    updateStatus(leadId, newStatus);
+  };
+
+  const updateStatus = async (leadId: string, newStatus: string, propostaUrl?: string) => {
+    const updateData: any = { status_lead: newStatus };
+    if (propostaUrl) {
+      updateData.proposta_url = propostaUrl;
+    }
+
     const { error } = await supabase
       .from("leads")
-      .update({ status_lead: newStatus } as any)
+      .update(updateData)
       .eq("id", leadId);
+
     if (error) {
       toast.error("Erro ao atualizar status");
       return;
     }
+
     setLeads((prev) =>
-      prev.map((l) => (l.id === leadId ? { ...l, status_lead: newStatus } : l))
+      prev.map((l) => (l.id === leadId ? { ...l, status_lead: newStatus, ...(propostaUrl && { proposta_url: propostaUrl }) } : l))
     );
     toast.success("Status atualizado");
+  };
+
+  const handlePropostaUploadSuccess = (propostaUrl: string) => {
+    if (pendingStatusChange) {
+      updateStatus(pendingStatusChange.leadId, "proposta_comercial", propostaUrl);
+      setPendingStatusChange(null);
+    }
+  };
+
+  const handlePropostaUploadCancel = () => {
+    setPendingStatusChange(null);
   };
 
   const handleDelete = async (id: string, nome: string) => {
@@ -100,6 +134,40 @@ const AdminLeads = () => {
     const s = (l as any).status_lead || l.status || "novo_lead";
     if (statusCounts[s] !== undefined) statusCounts[s]++;
   });
+
+  const StatusSelect = ({ lead }: { lead: any }) => {
+    const currentStatus = (lead as any).status_lead || lead.status || "novo_lead";
+    const hasProposta = !!lead.proposta_url;
+
+    return (
+      <div className="flex items-center gap-1">
+        <Select
+          value={currentStatus}
+          onValueChange={(val) => handleStatusChange(lead.id, lead.nome_fantasia, val)}
+        >
+          <SelectTrigger className="h-8 w-[160px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_OPTIONS.map((s) => (
+              <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {hasProposta && (
+          <a
+            href={lead.proposta_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-1 hover:bg-primary/10 rounded"
+            title="Ver proposta"
+          >
+            <FileText className="h-4 w-4 text-primary" />
+          </a>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -173,6 +241,17 @@ const AdminLeads = () => {
                   <span className="text-xs text-muted-foreground whitespace-nowrap">
                     {new Date(l.data_cadastro).toLocaleDateString("pt-BR")}
                   </span>
+                  {l.proposta_url && (
+                    <a
+                      href={l.proposta_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1 hover:bg-primary/10 rounded"
+                      title="Ver proposta"
+                    >
+                      <FileText className="h-4 w-4 text-primary" />
+                    </a>
+                  )}
                   {isAdmin && (
                     <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id, l.nome_fantasia)} className="text-destructive hover:text-destructive h-8 w-8">
                       <Trash2 className="h-4 w-4" />
@@ -198,7 +277,7 @@ const AdminLeads = () => {
               <div>
                 <Select
                   value={(l as any).status_lead || l.status || "novo_lead"}
-                  onValueChange={(val) => updateStatus(l.id, val)}
+                  onValueChange={(val) => handleStatusChange(l.id, l.nome_fantasia, val)}
                 >
                   <SelectTrigger className="h-8 w-full text-xs">
                     <SelectValue />
@@ -247,19 +326,7 @@ const AdminLeads = () => {
                     <td className="py-3 px-4">{l.nome_responsavel}</td>
                     <td className="py-3 px-4">{l.telefone_responsavel}</td>
                     <td className="py-3 px-4">
-                      <Select
-                        value={(l as any).status_lead || l.status || "novo_lead"}
-                        onValueChange={(val) => updateStatus(l.id, val)}
-                      >
-                        <SelectTrigger className="h-8 w-[160px] text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {STATUS_OPTIONS.map((s) => (
-                            <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <StatusSelect lead={l} />
                     </td>
                     {isAdmin && (
                       <td className="py-3 px-4">
@@ -278,6 +345,16 @@ const AdminLeads = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Proposta Upload Dialog */}
+      <PropostaUploadDialog
+        open={uploadDialogOpen}
+        onOpenChange={setUploadDialogOpen}
+        leadId={pendingStatusChange?.leadId || ""}
+        leadName={pendingStatusChange?.leadName || ""}
+        onSuccess={handlePropostaUploadSuccess}
+        onCancel={handlePropostaUploadCancel}
+      />
     </div>
   );
 };
