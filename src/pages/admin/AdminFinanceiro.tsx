@@ -57,8 +57,8 @@ export default function AdminFinanceiro() {
   const [selectedAno, setSelectedAno] = useState<string>("all");
 
   const rpcParams = {
-    ...(selectedMes !== "all" && { p_mes: Number(selectedMes) }),
-    ...(selectedAno !== "all" && { p_ano: Number(selectedAno) }),
+    p_mes: selectedMes !== "all" ? Number(selectedMes) : null,
+    p_ano: selectedAno !== "all" ? Number(selectedAno) : null,
   };
 
   const { data: dashboardData, isLoading: isLoadingDashboard } = useQuery({
