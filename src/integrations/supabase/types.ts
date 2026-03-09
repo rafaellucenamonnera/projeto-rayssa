@@ -28,6 +28,7 @@ export type Database = {
           parceiro_id: string
           parcelas_pagas: number | null
           percentual_consultor: number | null
+          proposta_url: string | null
           qtd_parcelas: number | null
           quantidade_funcionarios: number | null
           quantidade_lojas: number
@@ -51,6 +52,7 @@ export type Database = {
           parceiro_id: string
           parcelas_pagas?: number | null
           percentual_consultor?: number | null
+          proposta_url?: string | null
           qtd_parcelas?: number | null
           quantidade_funcionarios?: number | null
           quantidade_lojas: number
@@ -74,6 +76,7 @@ export type Database = {
           parceiro_id?: string
           parcelas_pagas?: number | null
           percentual_consultor?: number | null
+          proposta_url?: string | null
           qtd_parcelas?: number | null
           quantidade_funcionarios?: number | null
           quantidade_lojas?: number
