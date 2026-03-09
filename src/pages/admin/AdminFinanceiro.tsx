@@ -30,22 +30,50 @@ const formatCurrency = (value: number) => {
   }).format(value || 0);
 };
 
+const MESES = [
+  { value: "1", label: "Janeiro" },
+  { value: "2", label: "Fevereiro" },
+  { value: "3", label: "Março" },
+  { value: "4", label: "Abril" },
+  { value: "5", label: "Maio" },
+  { value: "6", label: "Junho" },
+  { value: "7", label: "Julho" },
+  { value: "8", label: "Agosto" },
+  { value: "9", label: "Setembro" },
+  { value: "10", label: "Outubro" },
+  { value: "11", label: "Novembro" },
+  { value: "12", label: "Dezembro" },
+];
+
+const currentYear = new Date().getFullYear();
+const ANOS = Array.from({ length: 5 }, (_, i) => {
+  const year = currentYear - 2 + i;
+  return { value: String(year), label: String(year) };
+});
+
 export default function AdminFinanceiro() {
   const [selectedConsultor, setSelectedConsultor] = useState<string>("all");
+  const [selectedMes, setSelectedMes] = useState<string>("all");
+  const [selectedAno, setSelectedAno] = useState<string>("all");
+
+  const rpcParams = {
+    ...(selectedMes !== "all" && { p_mes: Number(selectedMes) }),
+    ...(selectedAno !== "all" && { p_ano: Number(selectedAno) }),
+  };
 
   const { data: dashboardData, isLoading: isLoadingDashboard } = useQuery({
-    queryKey: ["financeiro_dashboard"],
+    queryKey: ["financeiro_dashboard", selectedMes, selectedAno],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_financeiro_dashboard");
+      const { data, error } = await supabase.rpc("get_financeiro_dashboard", rpcParams);
       if (error) throw error;
       return data as unknown as DashboardData;
     },
   });
 
   const { data: consultoresData, isLoading: isLoadingConsultores } = useQuery({
-    queryKey: ["financeiro_consultores"],
+    queryKey: ["financeiro_consultores", selectedMes, selectedAno],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_financeiro_consultores");
+      const { data, error } = await supabase.rpc("get_financeiro_consultores", rpcParams);
       if (error) throw error;
       return data as unknown as ConsultorData[];
     },
@@ -63,12 +91,10 @@ export default function AdminFinanceiro() {
     (c) => selectedConsultor === "all" || c.parceiro_id === selectedConsultor
   ) || [];
 
-  // Sort chart data by valor_pago descending and take top 10
   const chartData = [...filteredConsultores]
     .sort((a, b) => b.valor_pago - a.valor_pago)
     .slice(0, 10);
 
-  // When a specific consultor is selected, recalculate dashboard metrics just for them based on the consultoresData
   const displayDashboardData = selectedConsultor !== "all" 
     ? {
         valor_pago: filteredConsultores[0]?.valor_pago || 0,
@@ -80,23 +106,53 @@ export default function AdminFinanceiro() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col gap-4">
         <h1 className="text-2xl font-display font-bold">Dashboard Financeiro</h1>
         
-        <div className="w-full sm:w-[300px]">
-          <Select value={selectedConsultor} onValueChange={setSelectedConsultor}>
-            <SelectTrigger>
-              <SelectValue placeholder="Filtrar por Consultor" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os Consultores</SelectItem>
-              {consultoresData?.map((c) => (
-                <SelectItem key={c.parceiro_id} value={c.parceiro_id}>
-                  {c.consultor}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="w-full sm:w-[180px]">
+            <Select value={selectedMes} onValueChange={setSelectedMes}>
+              <SelectTrigger>
+                <SelectValue placeholder="Mês" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Meses</SelectItem>
+                {MESES.map((m) => (
+                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="w-full sm:w-[140px]">
+            <Select value={selectedAno} onValueChange={setSelectedAno}>
+              <SelectTrigger>
+                <SelectValue placeholder="Ano" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Anos</SelectItem>
+                {ANOS.map((a) => (
+                  <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="w-full sm:w-[250px]">
+            <Select value={selectedConsultor} onValueChange={setSelectedConsultor}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filtrar por Consultor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Consultores</SelectItem>
+                {consultoresData?.map((c) => (
+                  <SelectItem key={c.parceiro_id} value={c.parceiro_id}>
+                    {c.consultor}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -150,50 +206,48 @@ export default function AdminFinanceiro() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-6">
-        <Card className="col-span-1">
-          <CardHeader>
-            <CardTitle className="text-lg font-display">Comissões por Consultor (Top 10)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {chartData.length === 0 ? (
-              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                Nenhum dado disponível para o gráfico.
-              </div>
-            ) : (
-              <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                    <XAxis 
-                      dataKey="consultor" 
-                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis 
-                      tickFormatter={(value) => `R$ ${value.toLocaleString('pt-BR')}`}
-                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <Tooltip 
-                      formatter={(value: number) => [formatCurrency(value), "Valor Pago"]}
-                      contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
-                      cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }}
-                    />
-                    <Bar dataKey="valor_pago" radius={[4, 4, 0, 0]}>
-                      {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={`hsl(var(--primary))`}/>
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg font-display">Comissões por Consultor (Top 10)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {chartData.length === 0 ? (
+            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              Nenhum dado disponível para o gráfico.
+            </div>
+          ) : (
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                  <XAxis 
+                    dataKey="consultor" 
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis 
+                    tickFormatter={(value) => `R$ ${value.toLocaleString('pt-BR')}`}
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip 
+                    formatter={(value: number) => [formatCurrency(value), "Valor Pago"]}
+                    contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
+                    cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }}
+                  />
+                  <Bar dataKey="valor_pago" radius={[4, 4, 0, 0]}>
+                    {chartData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={`hsl(var(--primary))`}/>
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

@@ -277,8 +277,12 @@ export type Database = {
     Functions: {
       generate_partner_code: { Args: never; Returns: string }
       generate_slug: { Args: { name_input: string }; Returns: string }
-      get_financeiro_consultores: { Args: never; Returns: Json }
-      get_financeiro_dashboard: { Args: never; Returns: Json }
+      get_financeiro_consultores:
+        | { Args: never; Returns: Json }
+        | { Args: { p_ano?: number; p_mes?: number }; Returns: Json }
+      get_financeiro_dashboard:
+        | { Args: never; Returns: Json }
+        | { Args: { p_ano?: number; p_mes?: number }; Returns: Json }
       has_any_admin: { Args: never; Returns: boolean }
       has_role: {
         Args: {
