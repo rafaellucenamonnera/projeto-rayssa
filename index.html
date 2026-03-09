@@ -4,9 +4,34 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
+    <!-- Preload critical fonts -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" as="style" />
+    <link rel="preload" href="https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiA.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="https://fonts.gstatic.com/s/spacegrotesk/v16/V8mQoQDjQSkFtoMM3T6r8E7mF71Q-gOoraIAEj7oUXskPMBBSSJLm2E.woff2" as="font" type="font/woff2" crossorigin />
+    
     <!-- Preconnect to external origins for faster resource loading -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://cdn.gpteng.co" crossorigin />
     <link rel="dns-prefetch" href="https://cdn.gpteng.co" />
+    
+    <!-- Critical CSS inline for faster FCP -->
+    <style>
+      :root{--background:220 20% 10%;--foreground:210 20% 92%;--card:220 18% 13%;--card-foreground:210 20% 92%;--primary:168 80% 45%;--primary-foreground:220 20% 10%;--secondary:220 15% 18%;--muted:220 15% 16%;--muted-foreground:215 15% 55%;--border:220 15% 20%;--radius:0.75rem}
+      *{border-color:hsl(var(--border))}
+      body{margin:0;background-color:hsl(var(--background));color:hsl(var(--foreground));font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+      h1,h2,h3,h4,h5,h6{font-family:'Space Grotesk',sans-serif}
+      .min-h-screen{min-height:100vh}
+      .flex{display:flex}
+      .flex-col{flex-direction:column}
+      .items-center{align-items:center}
+      .justify-center{justify-content:center}
+      .text-center{text-align:center}
+      .mx-auto{margin-left:auto;margin-right:auto}
+      .p-4{padding:1rem}
+      .space-y-8>:not([hidden])~:not([hidden]){margin-top:2rem}
+      .glow-text{color:hsl(var(--primary));text-shadow:0 0 20px hsl(var(--primary)/.3)}
+    </style>
     
     <!-- TODO: Set the document title to the name of your application -->
     <title>Monnera Comercial</title>
