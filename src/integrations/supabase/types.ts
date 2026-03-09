@@ -26,6 +26,9 @@ export type Database = {
           nome_fantasia: string
           nome_responsavel: string
           parceiro_id: string
+          parcelas_pagas: number | null
+          percentual_consultor: number | null
+          qtd_parcelas: number | null
           quantidade_funcionarios: number | null
           quantidade_lojas: number
           razao_social: string
@@ -33,6 +36,7 @@ export type Database = {
           status_lead: Database["public"]["Enums"]["lead_status"]
           telefone_responsavel: string
           valor_campanhas: number | null
+          valor_mensalidade: number | null
         }
         Insert: {
           cidade: string
@@ -45,6 +49,9 @@ export type Database = {
           nome_fantasia: string
           nome_responsavel: string
           parceiro_id: string
+          parcelas_pagas?: number | null
+          percentual_consultor?: number | null
+          qtd_parcelas?: number | null
           quantidade_funcionarios?: number | null
           quantidade_lojas: number
           razao_social: string
@@ -52,6 +59,7 @@ export type Database = {
           status_lead?: Database["public"]["Enums"]["lead_status"]
           telefone_responsavel: string
           valor_campanhas?: number | null
+          valor_mensalidade?: number | null
         }
         Update: {
           cidade?: string
@@ -64,6 +72,9 @@ export type Database = {
           nome_fantasia?: string
           nome_responsavel?: string
           parceiro_id?: string
+          parcelas_pagas?: number | null
+          percentual_consultor?: number | null
+          qtd_parcelas?: number | null
           quantidade_funcionarios?: number | null
           quantidade_lojas?: number
           razao_social?: string
@@ -71,6 +82,7 @@ export type Database = {
           status_lead?: Database["public"]["Enums"]["lead_status"]
           telefone_responsavel?: string
           valor_campanhas?: number | null
+          valor_mensalidade?: number | null
         }
         Relationships: [
           {
@@ -110,6 +122,57 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "links_parceiros_parceiro_id_fkey"
+            columns: ["parceiro_id"]
+            isOneToOne: false
+            referencedRelation: "parceiros_comerciais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pagamentos_consultores: {
+        Row: {
+          created_at: string
+          data_competencia: string | null
+          data_pagamento: string | null
+          id: string
+          lead_id: string | null
+          parceiro_id: string
+          status_pagamento: string
+          updated_at: string
+          valor_comissao: number
+        }
+        Insert: {
+          created_at?: string
+          data_competencia?: string | null
+          data_pagamento?: string | null
+          id?: string
+          lead_id?: string | null
+          parceiro_id: string
+          status_pagamento?: string
+          updated_at?: string
+          valor_comissao?: number
+        }
+        Update: {
+          created_at?: string
+          data_competencia?: string | null
+          data_pagamento?: string | null
+          id?: string
+          lead_id?: string | null
+          parceiro_id?: string
+          status_pagamento?: string
+          updated_at?: string
+          valor_comissao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pagamentos_consultores_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pagamentos_consultores_parceiro_id_fkey"
             columns: ["parceiro_id"]
             isOneToOne: false
             referencedRelation: "parceiros_comerciais"
@@ -214,6 +277,8 @@ export type Database = {
     Functions: {
       generate_partner_code: { Args: never; Returns: string }
       generate_slug: { Args: { name_input: string }; Returns: string }
+      get_financeiro_consultores: { Args: never; Returns: Json }
+      get_financeiro_dashboard: { Args: never; Returns: Json }
       has_any_admin: { Args: never; Returns: boolean }
       has_role: {
         Args: {
