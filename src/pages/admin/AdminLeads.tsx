@@ -386,6 +386,7 @@ const AdminLeads = () => {
         onOpenChange={setUploadDialogOpen}
         leadId={pendingStatusChange?.leadId || ""}
         leadName={pendingStatusChange?.leadName || ""}
+        replaceMode={pendingStatusChange?.replaceOnly || false}
         onSuccess={handlePropostaUploadSuccess}
         onCancel={handlePropostaUploadCancel}
       />
