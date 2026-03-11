@@ -36,24 +36,31 @@ const CadastroLead = () => {
 
   useEffect(() => {
     const checkParceiro = async () => {
-      let data: any = null;
+      try {
+        let data: any = null;
 
-      if (slugConsultor) {
-        const res = await supabase.rpc("lookup_parceiro_by_slug", { slug: slugConsultor });
-        data = res.data?.[0] || null;
-      } else if (codigoParceiro) {
-        const res = await supabase.rpc("lookup_parceiro_by_code", { code: codigoParceiro });
-        data = res.data?.[0] || null;
-      } else {
-        setParceiroValid(false);
-        return;
-      }
+        if (slugConsultor) {
+          const res = await supabase.rpc("lookup_parceiro_by_slug", { slug: slugConsultor });
+          if (res.error) throw res.error;
+          data = res.data?.[0] || null;
+        } else if (codigoParceiro) {
+          const res = await supabase.rpc("lookup_parceiro_by_code", { code: codigoParceiro });
+          if (res.error) throw res.error;
+          data = res.data?.[0] || null;
+        } else {
+          setParceiroValid(false);
+          return;
+        }
 
-      if (data) {
-        setParceiroId(data.id);
-        setParceiroNome(data.nome);
-        setParceiroValid(true);
-      } else {
+        if (data) {
+          setParceiroId(data.id);
+          setParceiroNome(data.nome);
+          setParceiroValid(true);
+        } else {
+          setParceiroValid(false);
+        }
+      } catch (error) {
+        console.error("Erro ao verificar consultor:", error);
         setParceiroValid(false);
       }
     };
