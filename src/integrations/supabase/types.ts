@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           cidade: string
           cnpj: string
+          contrato_url: string | null
           data_cadastro: string
           descricao_necessidade: string | null
           email_responsavel: string
@@ -25,6 +26,7 @@ export type Database = {
           id: string
           nome_fantasia: string
           nome_responsavel: string
+          numero_proposta: string | null
           parceiro_id: string
           parcelas_pagas: number | null
           percentual_consultor: number | null
@@ -42,6 +44,7 @@ export type Database = {
         Insert: {
           cidade: string
           cnpj: string
+          contrato_url?: string | null
           data_cadastro?: string
           descricao_necessidade?: string | null
           email_responsavel: string
@@ -49,6 +52,7 @@ export type Database = {
           id?: string
           nome_fantasia: string
           nome_responsavel: string
+          numero_proposta?: string | null
           parceiro_id: string
           parcelas_pagas?: number | null
           percentual_consultor?: number | null
@@ -66,6 +70,7 @@ export type Database = {
         Update: {
           cidade?: string
           cnpj?: string
+          contrato_url?: string | null
           data_cadastro?: string
           descricao_necessidade?: string | null
           email_responsavel?: string
@@ -73,6 +78,7 @@ export type Database = {
           id?: string
           nome_fantasia?: string
           nome_responsavel?: string
+          numero_proposta?: string | null
           parceiro_id?: string
           parcelas_pagas?: number | null
           percentual_consultor?: number | null
@@ -333,6 +339,10 @@ export type Database = {
         | "reuniao_agendada"
         | "proposta_comercial"
         | "lead_convertido"
+        | "contato_realizado"
+        | "proposta_enviada"
+        | "contrato_enviado"
+        | "contrato_assinado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -466,6 +476,10 @@ export const Constants = {
         "reuniao_agendada",
         "proposta_comercial",
         "lead_convertido",
+        "contato_realizado",
+        "proposta_enviada",
+        "contrato_enviado",
+        "contrato_assinado",
       ],
     },
   },
