@@ -438,6 +438,28 @@ const AdminLeads = () => {
                     <td className="py-3 px-4">
                       <StatusSelect lead={l} />
                     </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-1">
+                        {l.proposta_url && (
+                          <button
+                            onClick={() => openSignedUrl(l.proposta_url)}
+                            className="p-1 hover:bg-primary/10 rounded"
+                            title="Download Proposta"
+                          >
+                            <FileText className="h-4 w-4 text-primary" />
+                          </button>
+                        )}
+                        {l.contrato_url && (
+                          <button
+                            onClick={() => openSignedUrl(l.contrato_url)}
+                            className="p-1 hover:bg-primary/10 rounded"
+                            title="Download Contrato"
+                          >
+                            <Download className="h-4 w-4 text-emerald-500" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
                     {isAdmin && (
                       <td className="py-3 px-4">
                         <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id, l.nome_fantasia)} className="text-destructive hover:text-destructive">
