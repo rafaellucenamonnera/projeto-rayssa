@@ -380,6 +380,21 @@ const AdminLeads = () => {
                   </SelectContent>
                 </Select>
               </div>
+              {/* Document buttons on card */}
+              {(l.proposta_url || l.contrato_url) && (
+                <div className="flex items-center gap-2 pt-1">
+                  {l.proposta_url && (
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openSignedUrl(l.proposta_url)}>
+                      <FileText className="mr-1 h-3 w-3" /> Proposta
+                    </Button>
+                  )}
+                  {l.contrato_url && (
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openSignedUrl(l.contrato_url)}>
+                      <Download className="mr-1 h-3 w-3" /> Contrato
+                    </Button>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}
@@ -401,8 +416,9 @@ const AdminLeads = () => {
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Cidade</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Responsável</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Telefone</th>
-                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Pipeline</th>
-                  {isAdmin && <th className="text-left py-3 px-4 text-muted-foreground font-medium"></th>}
+                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Pipeline</th>
+                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Docs</th>
+                   {isAdmin && <th className="text-left py-3 px-4 text-muted-foreground font-medium"></th>}
                 </tr>
               </thead>
               <tbody>
@@ -422,6 +438,28 @@ const AdminLeads = () => {
                     <td className="py-3 px-4">{l.telefone_responsavel}</td>
                     <td className="py-3 px-4">
                       <StatusSelect lead={l} />
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-1">
+                        {l.proposta_url && (
+                          <button
+                            onClick={() => openSignedUrl(l.proposta_url)}
+                            className="p-1 hover:bg-primary/10 rounded"
+                            title="Download Proposta"
+                          >
+                            <FileText className="h-4 w-4 text-primary" />
+                          </button>
+                        )}
+                        {l.contrato_url && (
+                          <button
+                            onClick={() => openSignedUrl(l.contrato_url)}
+                            className="p-1 hover:bg-primary/10 rounded"
+                            title="Download Contrato"
+                          >
+                            <Download className="h-4 w-4 text-emerald-500" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                     {isAdmin && (
                       <td className="py-3 px-4">
