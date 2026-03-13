@@ -45,7 +45,6 @@ const CSV_HEADERS = [
   "Status",
 ];
 
-import { PIPELINE_LABELS } from "@/lib/pipelineConstants";
 const STATUS_LABELS = PIPELINE_LABELS;
 
 function escapeCsvField(value: string | number | null | undefined): string {
