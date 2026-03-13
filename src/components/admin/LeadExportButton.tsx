@@ -44,12 +44,8 @@ const CSV_HEADERS = [
   "Status",
 ];
 
-const STATUS_LABELS: Record<string, string> = {
-  novo_lead: "Novo Lead",
-  reuniao_agendada: "Reunião Agendada",
-  proposta_comercial: "Proposta Comercial",
-  lead_convertido: "Lead Convertido",
-};
+import { PIPELINE_LABELS } from "@/lib/pipelineConstants";
+const STATUS_LABELS = PIPELINE_LABELS;
 
 function escapeCsvField(value: string | number | null | undefined): string {
   if (value === null || value === undefined) return "";

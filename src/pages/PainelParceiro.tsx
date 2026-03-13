@@ -4,15 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Copy, Link2, Users, LogOut, Loader2, MessageCircle, Mail, CalendarCheck, FileText, UserCheck, ChevronLeft } from "lucide-react";
+import { Copy, Link2, Users, LogOut, Loader2, MessageCircle, Mail, CalendarCheck, FileText, UserCheck, ChevronLeft, PhoneCall, FileSignature } from "lucide-react";
 import { toast } from "sonner";
-
-const STATUS_LABELS: Record<string, string> = {
-  novo_lead: "Novo Lead",
-  reuniao_agendada: "Reunião Agendada",
-  proposta_comercial: "Proposta Comercial",
-  lead_convertido: "Lead Convertido",
-};
+import { PIPELINE_STAGES, PIPELINE_LABELS } from "@/lib/pipelineConstants";
 
 const PainelParceiro = () => {
   const navigate = useNavigate();
@@ -74,7 +68,7 @@ const PainelParceiro = () => {
     );
   }
 
-  const slug = (parceiro as any).slug_consultor;
+  const slug = parceiro.slug_consultor;
   const linkIndicacao = slug
     ? `${window.location.origin}/indicacao/${slug}`
     : `${window.location.origin}/lead/${parceiro.codigo_parceiro}`;
@@ -102,14 +96,15 @@ const PainelParceiro = () => {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const leadsThisMonth = leads.filter((l) => new Date(l.data_cadastro) >= startOfMonth).length;
-  const statusCounts: Record<string, number> = { novo_lead: 0, reuniao_agendada: 0, proposta_comercial: 0, lead_convertido: 0 };
+  const statusCounts: Record<string, number> = {};
+  PIPELINE_STAGES.forEach((s) => { statusCounts[s.value] = 0; });
   leads.forEach((l) => {
-    const s = (l as any).status_lead || l.status || "novo_lead";
+    const s = l.status_lead || l.status || "novo_lead";
     if (statusCounts[s] !== undefined) statusCounts[s]++;
   });
 
   const filteredLeads = statusFilter
-    ? leads.filter((l) => ((l as any).status_lead || l.status) === statusFilter)
+    ? leads.filter((l) => (l.status_lead || l.status) === statusFilter)
     : leads;
 
   const handleStatusClick = (status: string) => {
@@ -125,9 +120,11 @@ const PainelParceiro = () => {
   const statCards = [
     { label: "Leads Indicados", value: leads.length, icon: Users, status: null },
     { label: "Leads este mês", value: leadsThisMonth, icon: CalendarCheck, status: null },
+    { label: "Contato Realizado", value: statusCounts.contato_realizado, icon: PhoneCall, status: "contato_realizado" },
     { label: "Reuniões Agendadas", value: statusCounts.reuniao_agendada, icon: CalendarCheck, status: "reuniao_agendada" },
-    { label: "Propostas Enviadas", value: statusCounts.proposta_comercial, icon: FileText, status: "proposta_comercial" },
-    { label: "Clientes Convertidos", value: statusCounts.lead_convertido, icon: UserCheck, status: "lead_convertido" },
+    { label: "Propostas Enviadas", value: statusCounts.proposta_enviada, icon: FileText, status: "proposta_enviada" },
+    { label: "Convertidos", value: statusCounts.lead_convertido, icon: UserCheck, status: "lead_convertido" },
+    { label: "Contratos Assinados", value: statusCounts.contrato_assinado, icon: FileSignature, status: "contrato_assinado" },
   ];
 
   return (
@@ -144,12 +141,12 @@ const PainelParceiro = () => {
           </Button>
         </div>
 
-        {/* Stat Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
+        {/* Stat Cards - scrollable on mobile */}
+        <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 lg:grid-cols-7 sm:overflow-visible">
           {statCards.map((card) => (
             <div
               key={card.label}
-              className={`stat-card !p-3 sm:!p-6 cursor-pointer transition-all ${statusFilter === card.status && card.status ? "ring-2 ring-primary" : ""}`}
+              className={`stat-card !p-3 sm:!p-4 cursor-pointer transition-all min-w-[100px] sm:min-w-0 shrink-0 sm:shrink ${statusFilter === card.status && card.status ? "ring-2 ring-primary" : ""}`}
               onClick={() => card.status && handleStatusClick(card.status)}
             >
               <div className="flex flex-col items-center text-center gap-1">
@@ -200,7 +197,7 @@ const PainelParceiro = () => {
                   <button onClick={() => { setStatusFilter(null); setSearchParams({}); }} className="text-muted-foreground hover:text-foreground">
                     <ChevronLeft className="w-5 h-5" />
                   </button>
-                  {STATUS_LABELS[statusFilter] || statusFilter}
+                  {PIPELINE_LABELS[statusFilter] || statusFilter}
                 </span>
               ) : "Meus Leads"}
             </CardTitle>
@@ -222,7 +219,7 @@ const PainelParceiro = () => {
                           <p className="text-xs text-muted-foreground">{lead.cidade}</p>
                         </div>
                         <span className="px-2 py-0.5 rounded-full text-[10px] bg-primary/10 text-primary whitespace-nowrap shrink-0">
-                          {STATUS_LABELS[(lead as any).status_lead || lead.status] || "Novo"}
+                          {PIPELINE_LABELS[lead.status_lead || lead.status] || "Lead"}
                         </span>
                       </div>
                       <div className="grid grid-cols-2 gap-1 text-xs">
@@ -265,7 +262,7 @@ const PainelParceiro = () => {
                           <td className="py-3 px-2">{lead.telefone_responsavel}</td>
                           <td className="py-3 px-2">
                             <span className="px-2 py-1 rounded-full text-xs bg-primary/10 text-primary">
-                              {STATUS_LABELS[(lead as any).status_lead || lead.status] || "Novo"}
+                              {PIPELINE_LABELS[lead.status_lead || lead.status] || "Lead"}
                             </span>
                           </td>
                           <td className="py-3 px-2 text-muted-foreground">{new Date(lead.data_cadastro).toLocaleDateString("pt-BR")}</td>
