@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      contracts: {
+        Row: {
+          arquivo_proposta_url: string | null
+          contrato_pdf_url: string | null
+          created_at: string
+          data_geracao: string | null
+          id: string
+          lead_id: string
+          numero_proposta: string | null
+        }
+        Insert: {
+          arquivo_proposta_url?: string | null
+          contrato_pdf_url?: string | null
+          created_at?: string
+          data_geracao?: string | null
+          id?: string
+          lead_id: string
+          numero_proposta?: string | null
+        }
+        Update: {
+          arquivo_proposta_url?: string | null
+          contrato_pdf_url?: string | null
+          created_at?: string
+          data_geracao?: string | null
+          id?: string
+          lead_id?: string
+          numero_proposta?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           cidade: string
@@ -22,6 +60,10 @@ export type Database = {
           data_cadastro: string
           descricao_necessidade: string | null
           email_responsavel: string
+          endereco_cep: string | null
+          endereco_estado: string | null
+          endereco_numero: string | null
+          endereco_rua: string | null
           erp_utilizado: string
           id: string
           nome_fantasia: string
@@ -48,6 +90,10 @@ export type Database = {
           data_cadastro?: string
           descricao_necessidade?: string | null
           email_responsavel: string
+          endereco_cep?: string | null
+          endereco_estado?: string | null
+          endereco_numero?: string | null
+          endereco_rua?: string | null
           erp_utilizado: string
           id?: string
           nome_fantasia: string
@@ -74,6 +120,10 @@ export type Database = {
           data_cadastro?: string
           descricao_necessidade?: string | null
           email_responsavel?: string
+          endereco_cep?: string | null
+          endereco_estado?: string | null
+          endereco_numero?: string | null
+          endereco_rua?: string | null
           erp_utilizado?: string
           id?: string
           nome_fantasia?: string
