@@ -78,20 +78,16 @@ const CadastroParceiro = () => {
       const cpfClean = form.cpf.replace(/\D/g, "");
       const slug = generateSlug(form.nome.trim());
 
-      const { data: parceiro, error: insertError } = await supabase
-        .from("parceiros_comerciais")
-        .insert({
-          codigo_parceiro,
-          nome: form.nome.trim(),
-          cpf: cpfClean,
-          email: form.email.trim().toLowerCase(),
-          telefone_ddd: form.telefone_ddd,
-          telefone_numero: form.telefone_numero,
-          user_id: authData.user.id,
-          slug_consultor: slug,
-        } as any)
-        .select()
-        .single();
+      const { data: parceiroData, error: insertError } = await supabase.rpc("register_parceiro", {
+        p_user_id: authData.user.id,
+        p_codigo_parceiro: codigo_parceiro,
+        p_nome: form.nome.trim(),
+        p_cpf: cpfClean,
+        p_email: form.email.trim().toLowerCase(),
+        p_telefone_ddd: form.telefone_ddd,
+        p_telefone_numero: form.telefone_numero,
+        p_slug_consultor: slug,
+      });
 
       if (insertError) {
         if (insertError.message.includes("parceiros_comerciais_cpf_key")) {
@@ -103,6 +99,8 @@ const CadastroParceiro = () => {
         }
         return;
       }
+
+      const parceiro = parceiroData as any;
 
       // Link is constructed dynamically in PainelParceiro from slug/codigo_parceiro
 
