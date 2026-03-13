@@ -380,6 +380,21 @@ const AdminLeads = () => {
                   </SelectContent>
                 </Select>
               </div>
+              {/* Document buttons on card */}
+              {(l.proposta_url || l.contrato_url) && (
+                <div className="flex items-center gap-2 pt-1">
+                  {l.proposta_url && (
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openSignedUrl(l.proposta_url)}>
+                      <FileText className="mr-1 h-3 w-3" /> Proposta
+                    </Button>
+                  )}
+                  {l.contrato_url && (
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openSignedUrl(l.contrato_url)}>
+                      <Download className="mr-1 h-3 w-3" /> Contrato
+                    </Button>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}
