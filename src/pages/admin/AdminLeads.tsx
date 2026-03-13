@@ -416,8 +416,9 @@ const AdminLeads = () => {
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Cidade</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Responsável</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Telefone</th>
-                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Pipeline</th>
-                  {isAdmin && <th className="text-left py-3 px-4 text-muted-foreground font-medium"></th>}
+                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Pipeline</th>
+                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Docs</th>
+                   {isAdmin && <th className="text-left py-3 px-4 text-muted-foreground font-medium"></th>}
                 </tr>
               </thead>
               <tbody>
