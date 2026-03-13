@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { toast } from "sonner";
+import { PIPELINE_LABELS } from "@/lib/pipelineConstants";
 
 interface Lead {
   id: string;
@@ -44,12 +45,7 @@ const CSV_HEADERS = [
   "Status",
 ];
 
-const STATUS_LABELS: Record<string, string> = {
-  novo_lead: "Novo Lead",
-  reuniao_agendada: "Reunião Agendada",
-  proposta_comercial: "Proposta Comercial",
-  lead_convertido: "Lead Convertido",
-};
+const STATUS_LABELS = PIPELINE_LABELS;
 
 function escapeCsvField(value: string | number | null | undefined): string {
   if (value === null || value === undefined) return "";

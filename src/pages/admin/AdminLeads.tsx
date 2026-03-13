@@ -4,20 +4,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Trash2, FileText, RefreshCw } from "lucide-react";
+import { Trash2, FileText, RefreshCw, Download, Loader2, Eye } from "lucide-react";
 import { LeadExportButton } from "@/components/admin/LeadExportButton";
 import { LeadImportDialog } from "@/components/admin/LeadImportDialog";
 import { PropostaUploadDialog } from "@/components/admin/PropostaUploadDialog";
-
-const STATUS_OPTIONS = [
-  { value: "novo_lead", label: "Novo Lead" },
-  { value: "reuniao_agendada", label: "Reunião Agendada" },
-  { value: "proposta_comercial", label: "Proposta Comercial" },
-  { value: "lead_convertido", label: "Lead Convertido" },
-];
+import { PIPELINE_STAGES, PIPELINE_LABELS } from "@/lib/pipelineConstants";
 
 const AdminLeads = () => {
   const [searchParams] = useSearchParams();
@@ -37,6 +32,16 @@ const AdminLeads = () => {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] = useState<{ leadId: string; leadName: string; replaceOnly?: boolean } | null>(null);
 
+  // Lead detail dialog
+  const [detailLead, setDetailLead] = useState<any>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  // Contract number edit
+  const [editingNumProposta, setEditingNumProposta] = useState<string>("");
+
+  // Contract generation
+  const [generatingContract, setGeneratingContract] = useState(false);
+
   const loadData = async () => {
     const [leadsRes, parceirosRes] = await Promise.all([
       supabase.from("leads").select("*").order("data_cadastro", { ascending: false }),
@@ -55,13 +60,11 @@ const AdminLeads = () => {
   }, []);
 
   const handleStatusChange = (leadId: string, leadName: string, newStatus: string) => {
-    // If changing to proposta_comercial, require PDF upload first
-    if (newStatus === "proposta_comercial") {
+    if (newStatus === "proposta_enviada" || newStatus === "proposta_comercial") {
       setPendingStatusChange({ leadId, leadName });
       setUploadDialogOpen(true);
       return;
     }
-    // Otherwise update directly
     updateStatus(leadId, newStatus);
   };
 
@@ -90,10 +93,9 @@ const AdminLeads = () => {
   const handlePropostaUploadSuccess = (propostaUrl: string) => {
     if (pendingStatusChange) {
       if (pendingStatusChange.replaceOnly) {
-        // Just replacing the PDF, no status change
         updatePropostaUrl(pendingStatusChange.leadId, propostaUrl);
       } else {
-        updateStatus(pendingStatusChange.leadId, "proposta_comercial", propostaUrl);
+        updateStatus(pendingStatusChange.leadId, "proposta_enviada", propostaUrl);
       }
       setPendingStatusChange(null);
     }
@@ -134,9 +136,71 @@ const AdminLeads = () => {
     loadData();
   };
 
+  const handleSaveNumeroProposta = async (leadId: string) => {
+    const { error } = await supabase
+      .from("leads")
+      .update({ numero_proposta: editingNumProposta } as any)
+      .eq("id", leadId);
+    if (error) {
+      toast.error("Erro ao salvar número da proposta");
+      return;
+    }
+    setLeads((prev) =>
+      prev.map((l) => (l.id === leadId ? { ...l, numero_proposta: editingNumProposta } : l))
+    );
+    if (detailLead?.id === leadId) {
+      setDetailLead({ ...detailLead, numero_proposta: editingNumProposta });
+    }
+    toast.success("Número da proposta salvo");
+  };
+
+  const handleGenerateContract = async (lead: any) => {
+    setGeneratingContract(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-contract", {
+        body: { lead_id: lead.id },
+      });
+      if (error) throw error;
+      if (data?.contrato_url) {
+        setLeads((prev) =>
+          prev.map((l) => (l.id === lead.id ? { ...l, contrato_url: data.contrato_url } : l))
+        );
+        if (detailLead?.id === lead.id) {
+          setDetailLead({ ...detailLead, contrato_url: data.contrato_url });
+        }
+        toast.success("Contrato gerado com sucesso!");
+      }
+    } catch (err: any) {
+      toast.error("Erro ao gerar contrato: " + (err.message || "Erro desconhecido"));
+    } finally {
+      setGeneratingContract(false);
+    }
+  };
+
+  const openSignedUrl = async (storagePath: string) => {
+    if (storagePath.startsWith("http")) {
+      window.open(storagePath, "_blank");
+      return;
+    }
+    const { data, error } = await supabase.storage
+      .from("propostas")
+      .createSignedUrl(storagePath, 3600);
+    if (error || !data?.signedUrl) {
+      toast.error("Erro ao gerar link da proposta");
+      return;
+    }
+    window.open(data.signedUrl, "_blank");
+  };
+
+  const openLeadDetail = (lead: any) => {
+    setDetailLead(lead);
+    setEditingNumProposta(lead.numero_proposta || "");
+    setDetailOpen(true);
+  };
+
   // Apply filters
   const filtered = leads.filter((l) => {
-    if (filterStatus !== "all" && ((l as any).status_lead || l.status) !== filterStatus) return false;
+    if (filterStatus !== "all" && (l.status_lead || l.status) !== filterStatus) return false;
     if (filterConsultor !== "all" && l.parceiro_id !== filterConsultor) return false;
     if (filterEmpresa && !l.nome_fantasia.toLowerCase().includes(filterEmpresa.toLowerCase())) return false;
     if (filterDataInicio) {
@@ -154,30 +218,17 @@ const AdminLeads = () => {
 
   // Status counts
   const statusCounts: Record<string, number> = {};
-  STATUS_OPTIONS.forEach((s) => { statusCounts[s.value] = 0; });
+  PIPELINE_STAGES.forEach((s) => { statusCounts[s.value] = 0; });
   leads.forEach((l) => {
-    const s = (l as any).status_lead || l.status || "novo_lead";
+    const s = l.status_lead || l.status || "novo_lead";
     if (statusCounts[s] !== undefined) statusCounts[s]++;
   });
 
-  const openSignedUrl = async (storagePath: string) => {
-    // Handle legacy full URLs (pre-migration)
-    if (storagePath.startsWith("http")) {
-      window.open(storagePath, "_blank");
-      return;
-    }
-    const { data, error } = await supabase.storage
-      .from("propostas")
-      .createSignedUrl(storagePath, 3600);
-    if (error || !data?.signedUrl) {
-      toast.error("Erro ao gerar link da proposta");
-      return;
-    }
-    window.open(data.signedUrl, "_blank");
-  };
+  const isConvertedOrBeyond = (status: string) =>
+    ["lead_convertido", "contrato_enviado", "contrato_assinado"].includes(status);
 
   const StatusSelect = ({ lead }: { lead: any }) => {
-    const currentStatus = (lead as any).status_lead || lead.status || "novo_lead";
+    const currentStatus = lead.status_lead || lead.status || "novo_lead";
     const hasProposta = !!lead.proposta_url;
 
     return (
@@ -186,11 +237,11 @@ const AdminLeads = () => {
           value={currentStatus}
           onValueChange={(val) => handleStatusChange(lead.id, lead.nome_fantasia, val)}
         >
-          <SelectTrigger className="h-8 w-[160px] text-xs">
+          <SelectTrigger className="h-8 w-[180px] text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {STATUS_OPTIONS.map((s) => (
+            {PIPELINE_STAGES.map((s) => (
               <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
             ))}
           </SelectContent>
@@ -220,24 +271,24 @@ const AdminLeads = () => {
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between gap-2">
-        <h1 className="text-xl sm:text-2xl font-display font-bold">Leads Recebidos</h1>
+        <h1 className="text-xl sm:text-2xl font-display font-bold">Pipeline Comercial</h1>
         <div className="flex items-center gap-2">
           <LeadExportButton leads={filtered} parceiros={parceiros} />
           <LeadImportDialog parceiros={parceirosAll} onImported={loadData} />
         </div>
       </div>
 
-      {/* Status cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-        {STATUS_OPTIONS.map((s) => (
+      {/* Status cards - scrollable on mobile */}
+      <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 lg:grid-cols-7 sm:overflow-visible">
+        {PIPELINE_STAGES.map((s) => (
           <div
             key={s.value}
-            className={`stat-card !p-3 sm:!p-6 cursor-pointer transition-all ${filterStatus === s.value ? "ring-2 ring-primary" : ""}`}
+            className={`stat-card !p-3 sm:!p-4 cursor-pointer transition-all min-w-[120px] sm:min-w-0 shrink-0 sm:shrink ${filterStatus === s.value ? "ring-2 ring-primary" : ""}`}
             onClick={() => setFilterStatus(filterStatus === s.value ? "all" : s.value)}
           >
             <div className="text-center">
-              <p className="text-[10px] sm:text-xs text-muted-foreground">{s.label}</p>
-              <p className="text-xl sm:text-2xl font-display font-bold">{statusCounts[s.value]}</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">{s.label}</p>
+              <p className="text-xl sm:text-2xl font-display font-bold">{statusCounts[s.value] || 0}</p>
             </div>
           </div>
         ))}
@@ -281,7 +332,7 @@ const AdminLeads = () => {
           <Card key={l.id} className="border-border">
             <CardContent className="p-3 sm:p-4 space-y-2">
               <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
+                <div className="min-w-0 cursor-pointer" onClick={() => openLeadDetail(l)}>
                   <p className="font-medium text-sm truncate">{l.nome_fantasia}</p>
                   <p className="text-xs text-muted-foreground">{l.cidade}</p>
                 </div>
@@ -289,15 +340,9 @@ const AdminLeads = () => {
                   <span className="text-xs text-muted-foreground whitespace-nowrap">
                     {new Date(l.data_cadastro).toLocaleDateString("pt-BR")}
                   </span>
-                  {l.proposta_url && (
-                    <button
-                      onClick={() => openSignedUrl(l.proposta_url)}
-                      className="p-1 hover:bg-primary/10 rounded"
-                      title="Ver proposta"
-                    >
-                      <FileText className="h-4 w-4 text-primary" />
-                    </button>
-                  )}
+                  <button onClick={() => openLeadDetail(l)} className="p-1 hover:bg-primary/10 rounded">
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  </button>
                   {isAdmin && (
                     <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id, l.nome_fantasia)} className="text-destructive hover:text-destructive h-8 w-8">
                       <Trash2 className="h-4 w-4" />
@@ -322,14 +367,14 @@ const AdminLeads = () => {
               </div>
               <div>
                 <Select
-                  value={(l as any).status_lead || l.status || "novo_lead"}
+                  value={l.status_lead || l.status || "novo_lead"}
                   onValueChange={(val) => handleStatusChange(l.id, l.nome_fantasia, val)}
                 >
                   <SelectTrigger className="h-8 w-full text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {STATUS_OPTIONS.map((s) => (
+                    {PIPELINE_STAGES.map((s) => (
                       <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
                     ))}
                   </SelectContent>
@@ -356,7 +401,7 @@ const AdminLeads = () => {
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Cidade</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Responsável</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Telefone</th>
-                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Status</th>
+                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Pipeline</th>
                   {isAdmin && <th className="text-left py-3 px-4 text-muted-foreground font-medium"></th>}
                 </tr>
               </thead>
@@ -367,7 +412,11 @@ const AdminLeads = () => {
                     <td className="py-3 px-4">
                       <span className="px-2 py-1 rounded bg-primary/10 text-primary text-xs">{parceiros[l.parceiro_id] || '-'}</span>
                     </td>
-                    <td className="py-3 px-4">{l.nome_fantasia}</td>
+                    <td className="py-3 px-4">
+                      <button onClick={() => openLeadDetail(l)} className="hover:text-primary transition-colors text-left">
+                        {l.nome_fantasia}
+                      </button>
+                    </td>
                     <td className="py-3 px-4">{l.cidade}</td>
                     <td className="py-3 px-4">{l.nome_responsavel}</td>
                     <td className="py-3 px-4">{l.telefone_responsavel}</td>
@@ -402,6 +451,163 @@ const AdminLeads = () => {
         onSuccess={handlePropostaUploadSuccess}
         onCancel={handlePropostaUploadCancel}
       />
+
+      {/* Lead Detail Dialog */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display">{detailLead?.nome_fantasia}</DialogTitle>
+          </DialogHeader>
+          {detailLead && (
+            <div className="space-y-6">
+              {/* Lead Data */}
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground text-xs mb-1">Razão Social</p>
+                  <p className="font-medium">{detailLead.razao_social}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs mb-1">CNPJ</p>
+                  <p className="font-mono">{detailLead.cnpj}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs mb-1">Cidade</p>
+                  <p>{detailLead.cidade}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs mb-1">Qtd Lojas</p>
+                  <p>{detailLead.quantidade_lojas}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs mb-1">ERP / Sistema</p>
+                  <p>{detailLead.erp_utilizado}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs mb-1">Qtd Funcionários</p>
+                  <p>{detailLead.quantidade_funcionarios || "—"}</p>
+                </div>
+              </div>
+
+              {/* Responsável */}
+              <div className="border-t border-border pt-4">
+                <h3 className="text-sm font-semibold mb-3">Responsável</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-1">Nome</p>
+                    <p>{detailLead.nome_responsavel}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-1">Telefone</p>
+                    <p>{detailLead.telefone_responsavel}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-muted-foreground text-xs mb-1">Email</p>
+                    <p>{detailLead.email_responsavel}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Consultor */}
+              <div className="border-t border-border pt-4">
+                <h3 className="text-sm font-semibold mb-3">Consultor</h3>
+                <p className="text-sm">{parceiros[detailLead.parceiro_id] || "—"}</p>
+              </div>
+
+              {/* Pipeline Status */}
+              <div className="border-t border-border pt-4">
+                <h3 className="text-sm font-semibold mb-3">Pipeline</h3>
+                <div className="flex flex-wrap gap-2">
+                  {PIPELINE_STAGES.map((s) => {
+                    const currentStatus = detailLead.status_lead || "novo_lead";
+                    const currentIdx = PIPELINE_STAGES.findIndex((st) => st.value === currentStatus);
+                    const thisIdx = PIPELINE_STAGES.findIndex((st) => st.value === s.value);
+                    const isActive = thisIdx <= currentIdx;
+                    return (
+                      <div
+                        key={s.value}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                          isActive
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-secondary text-muted-foreground"
+                        }`}
+                      >
+                        {s.label}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Valor Campanhas */}
+              {detailLead.valor_campanhas != null && (
+                <div className="border-t border-border pt-4">
+                  <h3 className="text-sm font-semibold mb-2">Valor Médio de Campanhas</h3>
+                  <p className="text-lg font-bold font-display">
+                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(detailLead.valor_campanhas)}
+                  </p>
+                </div>
+              )}
+
+              {/* Contract section - visible for converted leads */}
+              {isConvertedOrBeyond(detailLead.status_lead) && (
+                <div className="border-t border-border pt-4 space-y-4">
+                  <h3 className="text-sm font-semibold">Contrato</h3>
+
+                  {/* Número da proposta */}
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1">
+                      <label className="text-xs text-muted-foreground mb-1 block">Número da Proposta</label>
+                      <Input
+                        value={editingNumProposta}
+                        onChange={(e) => setEditingNumProposta(e.target.value)}
+                        placeholder="Ex: PROP-2026-001"
+                        className="h-9"
+                      />
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleSaveNumeroProposta(detailLead.id)}
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  {/* Proposta PDF */}
+                  {detailLead.proposta_url && (
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" variant="outline" onClick={() => openSignedUrl(detailLead.proposta_url)}>
+                        <FileText className="mr-2 h-4 w-4" /> Ver Proposta
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Generate / Download Contract */}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => handleGenerateContract(detailLead)}
+                      disabled={generatingContract}
+                    >
+                      {generatingContract ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <FileText className="mr-2 h-4 w-4" />
+                      )}
+                      {detailLead.contrato_url ? "Regerar Contrato" : "Gerar Contrato"}
+                    </Button>
+                    {detailLead.contrato_url && (
+                      <Button size="sm" variant="outline" onClick={() => openSignedUrl(detailLead.contrato_url)}>
+                        <Download className="mr-2 h-4 w-4" /> Download Contrato
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
