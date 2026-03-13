@@ -312,6 +312,19 @@ export type Database = {
           nome: string
         }[]
       }
+      register_parceiro: {
+        Args: {
+          p_codigo_parceiro: string
+          p_cpf: string
+          p_email: string
+          p_nome: string
+          p_slug_consultor: string
+          p_telefone_ddd: string
+          p_telefone_numero: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "gestor_conta"
