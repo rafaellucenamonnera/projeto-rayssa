@@ -127,17 +127,20 @@ const AdminLeads = () => {
     }
   };
 
-  const updatePropostaUrl = async (leadId: string, propostaUrl: string) => {
+  const updatePropostaUrl = async (leadId: string, propostaUrl: string, numeroProposta?: string) => {
+    const updateData: any = { proposta_url: propostaUrl };
+    if (numeroProposta) updateData.numero_proposta = numeroProposta;
+
     const { error } = await supabase
       .from("leads")
-      .update({ proposta_url: propostaUrl } as any)
+      .update(updateData)
       .eq("id", leadId);
     if (error) {
       toast.error("Erro ao atualizar proposta");
       return;
     }
     setLeads((prev) =>
-      prev.map((l) => (l.id === leadId ? { ...l, proposta_url: propostaUrl } : l))
+      prev.map((l) => (l.id === leadId ? { ...l, proposta_url: propostaUrl, ...(numeroProposta && { numero_proposta: numeroProposta }) } : l))
     );
     toast.success("Proposta substituída com sucesso");
   };
