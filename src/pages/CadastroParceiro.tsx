@@ -55,6 +55,8 @@ const CadastroParceiro = () => {
 
     setLoading(true);
     try {
+      let userId: string;
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: form.email.trim().toLowerCase(),
         password: form.senha,
@@ -62,16 +64,38 @@ const CadastroParceiro = () => {
 
       if (authError) {
         if (authError.message.includes("already registered")) {
-          setErrors({ email: "Email já cadastrado" });
+          // User exists in Auth — try signing in with provided password
+          const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+            email: form.email.trim().toLowerCase(),
+            password: form.senha,
+          });
+          if (loginError) {
+            setErrors({ email: "Email já registrado. Verifique a senha informada." });
+            return;
+          }
+          if (!loginData.user) throw new Error("Erro ao autenticar");
+
+          // Check if already registered as parceiro
+          const { data: existing } = await supabase
+            .from("parceiros_comerciais")
+            .select("id")
+            .eq("user_id", loginData.user.id)
+            .maybeSingle();
+          if (existing) {
+            setErrors({ email: "Você já está cadastrado como consultor." });
+            return;
+          }
+          userId = loginData.user.id;
         } else if (authError.message.includes("weak_password") || authError.message.includes("weak") || (authError as any).code === "weak_password") {
           setErrors({ senha: "Senha muito fraca. Escolha uma senha mais segura e diferente de senhas comuns." });
+          return;
         } else {
           throw authError;
         }
-        return;
+      } else {
+        if (!authData.user) throw new Error("Erro ao criar conta");
+        userId = authData.user.id;
       }
-
-      if (!authData.user) throw new Error("Erro ao criar conta");
 
       const { data: codeData, error: codeError } = await supabase.rpc("generate_partner_code");
       if (codeError) throw codeError;
@@ -81,7 +105,7 @@ const CadastroParceiro = () => {
       const slug = generateSlug(form.nome.trim());
 
       const { data: parceiroData, error: insertError } = await supabase.rpc("register_parceiro", {
-        p_user_id: authData.user.id,
+        p_user_id: userId,
         p_codigo_parceiro: codigo_parceiro,
         p_nome: form.nome.trim(),
         p_cpf: cpfClean,
@@ -95,7 +119,7 @@ const CadastroParceiro = () => {
         // Cleanup orphan auth user
         try {
           await supabase.functions.invoke("delete-orphan-user", {
-            body: { user_id: authData.user.id },
+            body: { user_id: userId },
           });
         } catch (cleanupErr) {
           console.error("Failed to cleanup orphan user:", cleanupErr);
