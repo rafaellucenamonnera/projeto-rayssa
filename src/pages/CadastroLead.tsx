@@ -98,6 +98,10 @@ const CadastroLead = () => {
         razao_social: form.razao_social.trim(),
         cnpj: form.cnpj.replace(/\D/g, ''),
         cidade: form.cidade.trim(),
+        endereco_rua: form.endereco_rua.trim() || null,
+        endereco_numero: form.endereco_numero.trim() || null,
+        endereco_estado: form.endereco_estado.trim() || null,
+        endereco_cep: form.endereco_cep.trim() || null,
         quantidade_lojas: parseInt(form.quantidade_lojas),
         nome_responsavel: form.nome_responsavel.trim(),
         telefone_responsavel: form.telefone_responsavel.trim(),
@@ -106,7 +110,7 @@ const CadastroLead = () => {
         quantidade_funcionarios: form.quantidade_funcionarios ? parseInt(form.quantidade_funcionarios) : null,
         valor_campanhas: form.valor_campanhas ? parseFloat(form.valor_campanhas) : null,
         descricao_necessidade: form.descricao_necessidade.trim() || null,
-      });
+      } as any);
 
       if (error) throw error;
       setSubmitted(true);
