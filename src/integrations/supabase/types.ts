@@ -297,6 +297,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_valid_parceiro: { Args: { p_id: string }; Returns: boolean }
       lookup_parceiro_by_code: {
         Args: { code: string }
         Returns: {
