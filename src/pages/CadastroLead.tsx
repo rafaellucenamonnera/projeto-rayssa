@@ -197,6 +197,22 @@ const CadastroLead = () => {
                 {errors.cidade && <p className="text-destructive text-xs">{errors.cidade}</p>}
               </div>
               <div className={fieldClass}>
+                <Label>Rua / Avenida</Label>
+                <Input value={form.endereco_rua} onChange={(e) => setForm({ ...form, endereco_rua: e.target.value })} placeholder="Ex: Av. Brasil" />
+              </div>
+              <div className={fieldClass}>
+                <Label>Número</Label>
+                <Input value={form.endereco_numero} onChange={(e) => setForm({ ...form, endereco_numero: e.target.value })} placeholder="Ex: 1500" />
+              </div>
+              <div className={fieldClass}>
+                <Label>Estado</Label>
+                <Input value={form.endereco_estado} onChange={(e) => setForm({ ...form, endereco_estado: e.target.value })} placeholder="Ex: SP" maxLength={2} />
+              </div>
+              <div className={fieldClass}>
+                <Label>CEP</Label>
+                <Input value={form.endereco_cep} onChange={(e) => setForm({ ...form, endereco_cep: e.target.value })} placeholder="00000-000" maxLength={9} />
+              </div>
+              <div className={fieldClass}>
                 <Label>Quantidade de Lojas *</Label>
                 <Input type="number" min="1" value={form.quantidade_lojas} onChange={(e) => setForm({ ...form, quantidade_lojas: e.target.value })} />
                 {errors.quantidade_lojas && <p className="text-destructive text-xs">{errors.quantidade_lojas}</p>}
