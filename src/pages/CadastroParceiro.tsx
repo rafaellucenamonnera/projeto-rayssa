@@ -119,7 +119,7 @@ const CadastroParceiro = () => {
         // Cleanup orphan auth user
         try {
           await supabase.functions.invoke("delete-orphan-user", {
-            body: { user_id: authData.user.id },
+            body: { user_id: userId },
           });
         } catch (cleanupErr) {
           console.error("Failed to cleanup orphan user:", cleanupErr);
