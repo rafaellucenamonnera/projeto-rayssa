@@ -24,6 +24,10 @@ const CadastroLead = () => {
     razao_social: "",
     cnpj: "",
     cidade: "",
+    endereco_rua: "",
+    endereco_numero: "",
+    endereco_estado: "",
+    endereco_cep: "",
     quantidade_lojas: "",
     nome_responsavel: "",
     telefone_responsavel: "",
@@ -94,6 +98,10 @@ const CadastroLead = () => {
         razao_social: form.razao_social.trim(),
         cnpj: form.cnpj.replace(/\D/g, ''),
         cidade: form.cidade.trim(),
+        endereco_rua: form.endereco_rua.trim() || null,
+        endereco_numero: form.endereco_numero.trim() || null,
+        endereco_estado: form.endereco_estado.trim() || null,
+        endereco_cep: form.endereco_cep.trim() || null,
         quantidade_lojas: parseInt(form.quantidade_lojas),
         nome_responsavel: form.nome_responsavel.trim(),
         telefone_responsavel: form.telefone_responsavel.trim(),
@@ -102,7 +110,7 @@ const CadastroLead = () => {
         quantidade_funcionarios: form.quantidade_funcionarios ? parseInt(form.quantidade_funcionarios) : null,
         valor_campanhas: form.valor_campanhas ? parseFloat(form.valor_campanhas) : null,
         descricao_necessidade: form.descricao_necessidade.trim() || null,
-      });
+      } as any);
 
       if (error) throw error;
       setSubmitted(true);
@@ -187,6 +195,22 @@ const CadastroLead = () => {
                 <Label>Cidade Matriz *</Label>
                 <Input value={form.cidade} onChange={(e) => setForm({ ...form, cidade: e.target.value })} />
                 {errors.cidade && <p className="text-destructive text-xs">{errors.cidade}</p>}
+              </div>
+              <div className={fieldClass}>
+                <Label>Rua / Avenida</Label>
+                <Input value={form.endereco_rua} onChange={(e) => setForm({ ...form, endereco_rua: e.target.value })} placeholder="Ex: Av. Brasil" />
+              </div>
+              <div className={fieldClass}>
+                <Label>Número</Label>
+                <Input value={form.endereco_numero} onChange={(e) => setForm({ ...form, endereco_numero: e.target.value })} placeholder="Ex: 1500" />
+              </div>
+              <div className={fieldClass}>
+                <Label>Estado</Label>
+                <Input value={form.endereco_estado} onChange={(e) => setForm({ ...form, endereco_estado: e.target.value })} placeholder="Ex: SP" maxLength={2} />
+              </div>
+              <div className={fieldClass}>
+                <Label>CEP</Label>
+                <Input value={form.endereco_cep} onChange={(e) => setForm({ ...form, endereco_cep: e.target.value })} placeholder="00000-000" maxLength={9} />
               </div>
               <div className={fieldClass}>
                 <Label>Quantidade de Lojas *</Label>

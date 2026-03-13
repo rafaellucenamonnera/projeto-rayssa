@@ -13,7 +13,7 @@ interface PropostaUploadDialogProps {
   leadId: string;
   leadName: string;
   replaceMode?: boolean;
-  onSuccess: (propostaUrl: string) => void;
+  onSuccess: (propostaUrl: string, numeroProposta: string) => void;
   onCancel: () => void;
 }
 
@@ -27,6 +27,7 @@ export function PropostaUploadDialog({
   onCancel,
 }: PropostaUploadDialogProps) {
   const [file, setFile] = useState<File | null>(null);
+  const [numeroProposta, setNumeroProposta] = useState("");
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -46,6 +47,10 @@ export function PropostaUploadDialog({
   };
 
   const handleUpload = async () => {
+    if (!numeroProposta.trim()) {
+      toast.error("Informe o Número da Proposta Comercial");
+      return;
+    }
     if (!file) {
       toast.error("Selecione um arquivo PDF");
       return;
@@ -63,9 +68,9 @@ export function PropostaUploadDialog({
 
       if (uploadError) throw uploadError;
 
-      // Store only the path, not the public URL (bucket is private)
-      onSuccess(filePath);
+      onSuccess(filePath, numeroProposta.trim());
       setFile(null);
+      setNumeroProposta("");
       onOpenChange(false);
     } catch (error: any) {
       console.error("Upload error:", error);
@@ -77,6 +82,7 @@ export function PropostaUploadDialog({
 
   const handleCancel = () => {
     setFile(null);
+    setNumeroProposta("");
     onCancel();
     onOpenChange(false);
   };
@@ -95,12 +101,22 @@ export function PropostaUploadDialog({
           <DialogDescription>
             {replaceMode
               ? <>Selecione o novo PDF para substituir a proposta atual do lead <strong>{leadName}</strong>.</>
-              : <>Para alterar o status para "Proposta Comercial", é obrigatório anexar o PDF da proposta para o lead <strong>{leadName}</strong>.</>
+              : <>Para alterar o status para "Proposta Enviada", é obrigatório anexar o PDF da proposta para o lead <strong>{leadName}</strong>.</>
             }
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="numero-proposta">Número da Proposta Comercial *</Label>
+            <Input
+              id="numero-proposta"
+              value={numeroProposta}
+              onChange={(e) => setNumeroProposta(e.target.value)}
+              placeholder="Ex: PROP-2026-001"
+            />
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="proposta-file">Arquivo PDF da Proposta</Label>
             <div className="flex items-center gap-2">
@@ -126,7 +142,7 @@ export function PropostaUploadDialog({
           <Button variant="outline" onClick={handleCancel} disabled={uploading}>
             Cancelar
           </Button>
-          <Button onClick={handleUpload} disabled={!file || uploading}>
+          <Button onClick={handleUpload} disabled={!file || !numeroProposta.trim() || uploading}>
             {uploading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
