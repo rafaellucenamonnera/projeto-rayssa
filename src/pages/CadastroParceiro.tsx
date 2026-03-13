@@ -63,6 +63,8 @@ const CadastroParceiro = () => {
       if (authError) {
         if (authError.message.includes("already registered")) {
           setErrors({ email: "Email já cadastrado" });
+        } else if (authError.message.includes("weak_password") || authError.message.includes("weak") || (authError as any).code === "weak_password") {
+          setErrors({ senha: "Senha muito fraca. Escolha uma senha mais segura e diferente de senhas comuns." });
         } else {
           throw authError;
         }
