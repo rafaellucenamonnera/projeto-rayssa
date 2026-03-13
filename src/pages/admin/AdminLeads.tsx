@@ -86,10 +86,13 @@ const AdminLeads = () => {
     }
   };
 
-  const updateStatus = async (leadId: string, newStatus: string, propostaUrl?: string) => {
+  const updateStatus = async (leadId: string, newStatus: string, propostaUrl?: string, numeroProposta?: string) => {
     const updateData: any = { status_lead: newStatus };
     if (propostaUrl) {
       updateData.proposta_url = propostaUrl;
+    }
+    if (numeroProposta) {
+      updateData.numero_proposta = numeroProposta;
     }
 
     const { error } = await supabase
@@ -103,17 +106,22 @@ const AdminLeads = () => {
     }
 
     setLeads((prev) =>
-      prev.map((l) => (l.id === leadId ? { ...l, status_lead: newStatus, ...(propostaUrl && { proposta_url: propostaUrl }) } : l))
+      prev.map((l) => (l.id === leadId ? { ...l, status_lead: newStatus, ...(propostaUrl && { proposta_url: propostaUrl }), ...(numeroProposta && { numero_proposta: numeroProposta }) } : l))
     );
     toast.success("Status atualizado");
+
+    // Auto-generate contract when status changes to lead_convertido
+    if (newStatus === "lead_convertido") {
+      autoGenerateContract(leadId);
+    }
   };
 
-  const handlePropostaUploadSuccess = (propostaUrl: string) => {
+  const handlePropostaUploadSuccess = (propostaUrl: string, numeroProposta: string) => {
     if (pendingStatusChange) {
       if (pendingStatusChange.replaceOnly) {
-        updatePropostaUrl(pendingStatusChange.leadId, propostaUrl);
+        updatePropostaUrl(pendingStatusChange.leadId, propostaUrl, numeroProposta);
       } else {
-        updateStatus(pendingStatusChange.leadId, "proposta_enviada", propostaUrl);
+        updateStatus(pendingStatusChange.leadId, "proposta_enviada", propostaUrl, numeroProposta);
       }
       setPendingStatusChange(null);
     }
