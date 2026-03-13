@@ -105,7 +105,7 @@ const CadastroParceiro = () => {
       const slug = generateSlug(form.nome.trim());
 
       const { data: parceiroData, error: insertError } = await supabase.rpc("register_parceiro", {
-        p_user_id: authData.user.id,
+        p_user_id: userId,
         p_codigo_parceiro: codigo_parceiro,
         p_nome: form.nome.trim(),
         p_cpf: cpfClean,
