@@ -92,6 +92,16 @@ const CadastroParceiro = () => {
       });
 
       if (insertError) {
+        // Cleanup orphan auth user
+        try {
+          await supabase.functions.invoke("delete-orphan-user", {
+            body: { user_id: authData.user.id },
+          });
+        } catch (cleanupErr) {
+          console.error("Failed to cleanup orphan user:", cleanupErr);
+        }
+        await supabase.auth.signOut();
+
         if (insertError.message.includes("parceiros_comerciais_cpf_key")) {
           setErrors({ cpf: "CPF já cadastrado" });
         } else if (insertError.message.includes("parceiros_comerciais_email_key")) {
