@@ -68,6 +68,24 @@ const AdminLeads = () => {
     updateStatus(leadId, newStatus);
   };
 
+  const autoGenerateContract = async (leadId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-contract", {
+        body: { lead_id: leadId },
+      });
+      if (error) throw error;
+      if (data?.contrato_url) {
+        setLeads((prev) =>
+          prev.map((l) => (l.id === leadId ? { ...l, contrato_url: data.contrato_url } : l))
+        );
+        toast.success("Contrato gerado automaticamente!");
+      }
+    } catch (err: any) {
+      console.error("Auto contract generation failed:", err);
+      toast.error("Erro ao gerar contrato automático: " + (err.message || "Erro desconhecido"));
+    }
+  };
+
   const updateStatus = async (leadId: string, newStatus: string, propostaUrl?: string) => {
     const updateData: any = { status_lead: newStatus };
     if (propostaUrl) {
