@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { toast } from "sonner";
+import { PIPELINE_LABELS } from "@/lib/pipelineConstants";
 
 interface Lead {
   id: string;
