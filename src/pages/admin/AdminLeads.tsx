@@ -434,7 +434,7 @@ const AdminLeads = () => {
                     </Button>
                   )}
                   {l.contrato_url && (
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openSignedUrl(l.contrato_url)}>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openSignedUrl(l.contrato_url, `contrato-${l.nome_fantasia}.pdf`)}>
                       <Download className="mr-1 h-3 w-3" /> Contrato
                     </Button>
                   )}
