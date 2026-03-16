@@ -703,6 +703,43 @@ const AdminLeads = () => {
                 </div>
               )}
 
+              {/* Conversion Link */}
+              {isConvertedOrBeyond(detailLead.status_lead) && detailLead.completion_token && !detailLead.dados_completos && (
+                <div className="border-t border-border pt-4 space-y-3">
+                  <h3 className="text-sm font-semibold">Link de Preenchimento</h3>
+                  <p className="text-xs text-muted-foreground">Envie este link ao cliente para completar os dados da empresa e gerar o contrato.</p>
+                  <div className="bg-secondary rounded-lg p-3">
+                    <p className="text-xs font-mono text-primary break-all">
+                      {`${window.location.origin}/completar-cadastro/${detailLead.completion_token}`}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}/completar-cadastro/${detailLead.completion_token}`);
+                      toast.success("Link copiado!");
+                    }}>
+                      <Copy className="mr-1 h-3 w-3" /> Copiar
+                    </Button>
+                    <Button size="sm" variant="outline" asChild>
+                      <a href={`https://wa.me/?text=${encodeURIComponent(
+                        `Seja bem-vindo ao Monnera, ${detailLead.nome_responsavel}!\n\nAgora só precisamos formalizar nossa parceria para iniciarmos o processo de implantação da plataforma.\n\nPreencha os dados abaixo para que possamos gerar seu contrato.\n\n${window.location.origin}/completar-cadastro/${detailLead.completion_token}`
+                      )}`} target="_blank" rel="noopener noreferrer">
+                        <MessageCircle className="mr-1 h-3 w-3" /> WhatsApp
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {detailLead.dados_completos && (
+                <div className="border-t border-border pt-4">
+                  <div className="flex items-center gap-2 text-sm text-primary">
+                    <CheckCircle className="h-4 w-4" />
+                    <span className="font-medium">Dados completos recebidos</span>
+                  </div>
+                </div>
+              )}
+
               {/* Contract section - visible for converted leads */}
               {isConvertedOrBeyond(detailLead.status_lead) && (
                 <div className="border-t border-border pt-4 space-y-4">
