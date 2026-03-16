@@ -50,16 +50,22 @@ const AdminLeads = () => {
   const [generatingContract, setGeneratingContract] = useState(false);
 
   const loadData = async () => {
-    const [leadsRes, parceirosRes] = await Promise.all([
+    const [leadsRes, parceirosRes, stageRes] = await Promise.all([
       supabase.from("leads").select("*").order("data_cadastro", { ascending: false }),
       supabase.from("parceiros_comerciais").select("id, nome"),
+      supabase.from("lead_stage_history").select("lead_id, data_entrada").is("data_saida", null),
     ]);
     setLeads(leadsRes.data || []);
     const map: Record<string, string> = {};
     const list = parceirosRes.data || [];
-    list.forEach((p) => { map[p.id] = p.nome; });
+    list.forEach((p: any) => { map[p.id] = p.nome; });
     setParceiros(map);
     setParceirosAll(list);
+
+    // Build stage map: lead_id -> data_entrada of current open stage
+    const sm: Record<string, string> = {};
+    (stageRes.data || []).forEach((s: any) => { sm[s.lead_id] = s.data_entrada; });
+    setStageMap(sm);
   };
 
   useEffect(() => {
