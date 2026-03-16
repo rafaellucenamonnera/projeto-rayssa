@@ -14,6 +14,7 @@ const ConfirmacaoCadastro = lazy(() => import("./pages/ConfirmacaoCadastro"));
 const LoginParceiro = lazy(() => import("./pages/LoginParceiro"));
 const PainelParceiro = lazy(() => import("./pages/PainelParceiro"));
 const CadastroLead = lazy(() => import("./pages/CadastroLead"));
+const FormularioConversao = lazy(() => import("./pages/FormularioConversao"));
 const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
 const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
