@@ -668,6 +668,14 @@ const AdminLeads = () => {
                 </div>
               )}
 
+              {/* Motivo da Perda */}
+              {detailLead.motivo_perda && (
+                <div className="border-t border-border pt-4">
+                  <h3 className="text-sm font-semibold mb-2">Motivo da Perda</h3>
+                  <p className="text-sm text-muted-foreground">{detailLead.motivo_perda}</p>
+                </div>
+              )}
+
               {/* Contract section - visible for converted leads */}
               {isConvertedOrBeyond(detailLead.status_lead) && (
                 <div className="border-t border-border pt-4 space-y-4">
