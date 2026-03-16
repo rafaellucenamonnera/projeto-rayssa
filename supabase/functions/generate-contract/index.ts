@@ -1,5 +1,4 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import pako from "https://esm.sh/pako@2.1.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,44 +20,89 @@ function formatDateBR(date: Date): string {
   return `${date.getDate()} de ${meses[date.getMonth()]} de ${date.getFullYear()}`;
 }
 
-function buildEnderecoCompleto(lead: any): string {
+function buildEnderecoCompleto(lead: Record<string, unknown>): string {
   const parts: string[] = [];
-  if (lead.endereco_rua) parts.push(lead.endereco_rua);
+  if (lead.endereco_rua) parts.push(String(lead.endereco_rua));
   if (lead.endereco_numero) parts.push(`nº ${lead.endereco_numero}`);
-  if (lead.cidade) parts.push(lead.cidade);
-  if (lead.endereco_estado) parts.push(lead.endereco_estado);
+  if (lead.cidade) parts.push(String(lead.cidade));
+  if (lead.endereco_estado) parts.push(String(lead.endereco_estado));
   if (lead.endereco_cep) parts.push(`CEP ${lead.endereco_cep}`);
-  return parts.length > 0 ? parts.join(", ") : lead.cidade || "—";
+  return parts.length > 0 ? parts.join(", ") : String(lead.cidade || "—");
 }
 
-/** Encode JS string as latin-1 bytes */
 function strToBytes(s: string): Uint8Array {
   const arr = new Uint8Array(s.length);
   for (let i = 0; i < s.length; i++) arr[i] = s.charCodeAt(i) & 0xff;
   return arr;
 }
 
-/** Decode latin-1 bytes to JS string */
 function bytesToStr(b: Uint8Array): string {
-  let s = "";
-  for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
-  return s;
+  const chunks: string[] = [];
+  const chunkSize = 8192;
+  for (let i = 0; i < b.length; i += chunkSize) {
+    const end = Math.min(i + chunkSize, b.length);
+    let chunk = "";
+    for (let j = i; j < end; j++) chunk += String.fromCharCode(b[j]);
+    chunks.push(chunk);
+  }
+  return chunks.join("");
 }
 
-/**
- * Walk through the raw PDF, find every stream...endstream block,
- * decompress if FlateDecode, do text replacements, recompress, reassemble.
- */
-function replacePdfStreams(
+async function inflateBytes(compressed: Uint8Array): Promise<Uint8Array> {
+  const ds = new DecompressionStream("raw");
+  const writer = ds.writable.getWriter();
+  writer.write(compressed);
+  writer.close();
+  const reader = ds.readable.getReader();
+  const chunks: Uint8Array[] = [];
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+  }
+  let totalLen = 0;
+  for (const c of chunks) totalLen += c.length;
+  const result = new Uint8Array(totalLen);
+  let offset = 0;
+  for (const c of chunks) {
+    result.set(c, offset);
+    offset += c.length;
+  }
+  return result;
+}
+
+async function deflateBytes(data: Uint8Array): Promise<Uint8Array> {
+  const cs = new CompressionStream("raw");
+  const writer = cs.writable.getWriter();
+  writer.write(data);
+  writer.close();
+  const reader = cs.readable.getReader();
+  const chunks: Uint8Array[] = [];
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+  }
+  let totalLen = 0;
+  for (const c of chunks) totalLen += c.length;
+  const result = new Uint8Array(totalLen);
+  let offset = 0;
+  for (const c of chunks) {
+    result.set(c, offset);
+    offset += c.length;
+  }
+  return result;
+}
+
+async function replacePdfStreams(
   pdfBytes: Uint8Array,
   replacements: [string, string][],
-): Uint8Array {
+): Promise<{ result: Uint8Array; count: number }> {
   const pdfStr = bytesToStr(pdfBytes);
   const parts: string[] = [];
   let lastIdx = 0;
-  let totalReplacements = 0;
+  let totalCount = 0;
 
-  // Match stream blocks
   const re = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
   let m: RegExpExecArray | null;
 
@@ -68,15 +112,13 @@ function replacePdfStreams(
 
     const rawContent = m[1];
     const fullMatch = m[0];
-
-    // Check if FlateDecode in the dictionary before this stream
     const dictWindow = pdfStr.substring(Math.max(0, m.index - 600), m.index);
     const isFlate = /\/Filter\s*\/FlateDecode/.test(dictWindow);
 
     if (isFlate) {
       try {
         const compressed = strToBytes(rawContent);
-        const inflated = pako.inflate(compressed);
+        const inflated = await inflateBytes(compressed);
         let text = bytesToStr(inflated);
         let changed = false;
 
@@ -84,17 +126,17 @@ function replacePdfStreams(
           if (text.includes(search)) {
             text = text.split(search).join(replace);
             changed = true;
-            totalReplacements++;
-            console.log(`Replaced placeholder: "${search}"`);
+            totalCount++;
+            console.log(`[OK] Replaced: "${search}" -> "${replace.substring(0, 30)}..."`);
           }
         }
 
         if (changed) {
           const newBytes = strToBytes(text);
-          const deflated = pako.deflate(newBytes);
+          const deflated = await deflateBytes(newBytes);
           const deflatedStr = bytesToStr(deflated);
 
-          // Update /Length in the preceding dictionary
+          // Update /Length
           const lastPart = parts[parts.length - 1];
           const lenRe = /\/Length\s+(\d+)/g;
           let lm: RegExpExecArray | null;
@@ -102,9 +144,10 @@ function replacePdfStreams(
           while ((lm = lenRe.exec(lastPart)) !== null) lastLen = lm;
 
           if (lastLen) {
-            const pre = lastPart.substring(0, lastLen.index);
-            const post = lastPart.substring(lastLen.index + lastLen[0].length);
-            parts[parts.length - 1] = pre + `/Length ${deflated.length}` + post;
+            parts[parts.length - 1] =
+              lastPart.substring(0, lastLen.index) +
+              `/Length ${deflated.length}` +
+              lastPart.substring(lastLen.index + lastLen[0].length);
           }
 
           parts.push(`stream\n${deflatedStr}\nendstream`);
@@ -112,19 +155,18 @@ function replacePdfStreams(
           parts.push(fullMatch);
         }
       } catch (e) {
-        console.log(`Could not decompress stream: ${(e as Error).message}`);
+        console.log(`[WARN] Decompression failed: ${(e as Error).message}`);
         parts.push(fullMatch);
       }
     } else {
-      // Uncompressed stream
       let content = rawContent;
       let changed = false;
       for (const [search, replace] of replacements) {
         if (content.includes(search)) {
           content = content.split(search).join(replace);
           changed = true;
-          totalReplacements++;
-          console.log(`Replaced (uncompressed): "${search}"`);
+          totalCount++;
+          console.log(`[OK] Replaced (raw): "${search}"`);
         }
       }
       if (changed) {
@@ -135,9 +177,10 @@ function replacePdfStreams(
         while ((lm = lenRe.exec(lastPart)) !== null) lastLen = lm;
         if (lastLen) {
           const newLen = strToBytes(content).length;
-          const pre = lastPart.substring(0, lastLen.index);
-          const post = lastPart.substring(lastLen.index + lastLen[0].length);
-          parts[parts.length - 1] = pre + `/Length ${newLen}` + post;
+          parts[parts.length - 1] =
+            lastPart.substring(0, lastLen.index) +
+            `/Length ${newLen}` +
+            lastPart.substring(lastLen.index + lastLen[0].length);
         }
         parts.push(`stream\n${content}\nendstream`);
       } else {
@@ -149,9 +192,7 @@ function replacePdfStreams(
   }
 
   parts.push(pdfStr.substring(lastIdx));
-  console.log(`Total stream replacements: ${totalReplacements}`);
-
-  return strToBytes(parts.join(""));
+  return { result: strToBytes(parts.join("")), count: totalCount };
 }
 
 Deno.serve(async (req) => {
@@ -160,11 +201,12 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log("generate-contract: starting...");
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Validate auth
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("Não autorizado");
 
@@ -172,12 +214,9 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) throw new Error("Não autorizado");
 
-    // Check role
     const { data: roles } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id);
-    const userRoles = (roles || []).map((r: any) => r.role);
+      .from("user_roles").select("role").eq("user_id", user.id);
+    const userRoles = (roles || []).map((r: Record<string, string>) => r.role);
     if (!userRoles.includes("admin") && !userRoles.includes("gestor_conta")) {
       throw new Error("Acesso negado");
     }
@@ -185,37 +224,29 @@ Deno.serve(async (req) => {
     const { lead_id } = await req.json();
     if (!lead_id) throw new Error("lead_id é obrigatório");
 
-    // Fetch lead
     const { data: lead, error: leadError } = await supabase
-      .from("leads")
-      .select("*")
-      .eq("id", lead_id)
-      .single();
+      .from("leads").select("*").eq("id", lead_id).single();
     if (leadError || !lead) throw new Error("Lead não encontrado");
 
-    console.log("Lead:", lead.razao_social, lead.cnpj);
+    console.log("Lead found:", lead.razao_social);
 
-    // Download template PDF
     const { data: templateData, error: templateError } = await supabase.storage
-      .from("propostas")
-      .download("templates/contrato-padrao.pdf");
+      .from("propostas").download("templates/contrato-padrao.pdf");
     if (templateError || !templateData) {
       throw new Error("Template não encontrado: " + (templateError?.message || ""));
     }
 
     const templateBytes = new Uint8Array(await templateData.arrayBuffer());
-    console.log("Template size:", templateBytes.length);
+    console.log("Template loaded:", templateBytes.length, "bytes");
 
-    // Build replacements
     const razaoSocial = lead.razao_social || "—";
     const cnpjFormatted = formatCNPJ(lead.cnpj || "");
-    const enderecoCompleto = buildEnderecoCompleto(lead);
+    const enderecoCompleto = buildEnderecoCompleto(lead as Record<string, unknown>);
     const dataContrato = formatDateBR(new Date());
     const numeroProposta = lead.numero_proposta || "—";
 
-    console.log("Values:", JSON.stringify({ razaoSocial, cnpjFormatted, enderecoCompleto, dataContrato, numeroProposta }));
+    console.log("Replacements:", JSON.stringify({ razaoSocial, cnpjFormatted, enderecoCompleto, dataContrato, numeroProposta }));
 
-    // These placeholders match exactly what's in the template PDF
     const replacements: [string, string][] = [
       ["razao social", razaoSocial],
       ["Numero cnpj", cnpjFormatted],
@@ -225,35 +256,24 @@ Deno.serve(async (req) => {
       ["proposta monnera", numeroProposta],
     ];
 
-    const modifiedBytes = replacePdfStreams(templateBytes, replacements);
-    console.log("Modified PDF size:", modifiedBytes.length);
+    const { result: modifiedBytes, count } = await replacePdfStreams(templateBytes, replacements);
+    console.log("Replacements done:", count, "Modified size:", modifiedBytes.length);
 
-    // Generate filename
     const contractNum = lead.numero_proposta ||
       `MNR-${new Date().getFullYear()}-${lead_id.slice(0, 8).toUpperCase()}`;
     const filePath = `contratos/${lead_id}/${contractNum.replace(/[^a-zA-Z0-9-]/g, "_")}.pdf`;
 
-    // Upload
     const { error: uploadError } = await supabase.storage
       .from("propostas")
-      .upload(filePath, modifiedBytes, {
-        contentType: "application/pdf",
-        upsert: true,
-      });
+      .upload(filePath, modifiedBytes, { contentType: "application/pdf", upsert: true });
     if (uploadError) throw new Error("Erro ao salvar: " + uploadError.message);
 
-    // Update lead
-    await supabase
-      .from("leads")
+    await supabase.from("leads")
       .update({ contrato_url: filePath, numero_proposta: contractNum } as any)
       .eq("id", lead_id);
 
-    // Update contracts table
     const { data: existing } = await supabase
-      .from("contracts")
-      .select("id")
-      .eq("lead_id", lead_id)
-      .maybeSingle();
+      .from("contracts").select("id").eq("lead_id", lead_id).maybeSingle();
 
     const contractData = {
       numero_proposta: numeroProposta,
@@ -268,12 +288,14 @@ Deno.serve(async (req) => {
       await supabase.from("contracts").insert({ lead_id, ...contractData } as any);
     }
 
+    console.log("Contract generated successfully:", filePath);
+
     return new Response(
-      JSON.stringify({ contrato_url: filePath, numero_proposta: contractNum }),
+      JSON.stringify({ contrato_url: filePath, numero_proposta: contractNum, replacements_count: count }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error: any) {
-    console.error("generate-contract error:", error);
+    console.error("generate-contract error:", error.message);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
