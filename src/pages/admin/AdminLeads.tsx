@@ -135,6 +135,11 @@ const AdminLeads = () => {
       updateData.numero_proposta = numeroProposta;
     }
 
+    // Generate completion_token when converting lead
+    if (newStatus === "lead_convertido") {
+      updateData.completion_token = crypto.randomUUID();
+    }
+
     const { error } = await supabase
       .from("leads")
       .update(updateData)
@@ -146,12 +151,18 @@ const AdminLeads = () => {
     }
 
     setLeads((prev) =>
-      prev.map((l) => (l.id === leadId ? { ...l, status_lead: newStatus, ...(propostaUrl && { proposta_url: propostaUrl }), ...(numeroProposta && { numero_proposta: numeroProposta }) } : l))
+      prev.map((l) => (l.id === leadId ? { ...l, ...updateData } : l))
     );
     toast.success("Status atualizado");
 
-    // Auto-generate contract when status changes to lead_convertido
+    // Show conversion link dialog
     if (newStatus === "lead_convertido") {
+      const lead = leads.find((l) => l.id === leadId);
+      const link = `${window.location.origin}/completar-cadastro/${updateData.completion_token}`;
+      setConversionLink(link);
+      setConversionLinkOpen(true);
+
+      // Also auto-generate contract
       autoGenerateContract(leadId);
     }
   };
