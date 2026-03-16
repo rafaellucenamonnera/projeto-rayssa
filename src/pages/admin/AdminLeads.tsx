@@ -13,6 +13,9 @@ import { LeadExportButton } from "@/components/admin/LeadExportButton";
 import { LeadImportDialog } from "@/components/admin/LeadImportDialog";
 import { PropostaUploadDialog } from "@/components/admin/PropostaUploadDialog";
 import { LeadPerdidoDialog } from "@/components/admin/LeadPerdidoDialog";
+import { AgendarReuniaoDialog } from "@/components/admin/AgendarReuniaoDialog";
+import { LeadComments } from "@/components/admin/LeadComments";
+import { LeadReuniao } from "@/components/admin/LeadReuniao";
 import { DaysInStage } from "@/components/admin/DaysInStage";
 import { PIPELINE_STAGES, PIPELINE_LABELS } from "@/lib/pipelineConstants";
 
