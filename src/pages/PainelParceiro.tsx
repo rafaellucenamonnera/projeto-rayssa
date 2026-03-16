@@ -53,12 +53,21 @@ const PainelParceiro = () => {
         slug_consultor: p.slug_consultor,
       }));
 
-      const { data: leadsData } = await supabase
-        .from("leads")
-        .select("*")
-        .eq("parceiro_id", p.id)
-        .order("data_cadastro", { ascending: false });
-      setLeads(leadsData || []);
+      const [leadsRes, stageRes] = await Promise.all([
+        supabase
+          .from("leads")
+          .select("*")
+          .eq("parceiro_id", p.id)
+          .order("data_cadastro", { ascending: false }),
+        supabase
+          .from("lead_stage_history")
+          .select("lead_id, data_entrada")
+          .is("data_saida", null),
+      ]);
+      setLeads(leadsRes.data || []);
+      const sm: Record<string, string> = {};
+      (stageRes.data || []).forEach((s: any) => { sm[s.lead_id] = s.data_entrada; });
+      setStageMap(sm);
       setLoading(false);
     };
     loadData();
