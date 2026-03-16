@@ -37,6 +37,10 @@ const AdminLeads = () => {
   const [detailLead, setDetailLead] = useState<any>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
+  // Lead perdido dialog
+  const [perdidoDialogOpen, setPerdidoDialogOpen] = useState(false);
+  const [pendingPerdido, setPendingPerdido] = useState<{ leadId: string; leadName: string } | null>(null);
+
   // Contract number edit
   const [editingNumProposta, setEditingNumProposta] = useState<string>("");
 
