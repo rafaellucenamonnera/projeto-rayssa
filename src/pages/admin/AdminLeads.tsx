@@ -611,15 +611,15 @@ const AdminLeads = () => {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">Razão Social</p>
-                  <p className="font-medium">{detailLead.razao_social}</p>
+                  <p className="font-medium">{detailLead.razao_social || "—"}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">CNPJ</p>
-                  <p className="font-mono">{detailLead.cnpj}</p>
+                  <p className="font-mono">{detailLead.cnpj || "—"}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">Cidade</p>
-                  <p>{detailLead.cidade}</p>
+                  <p>{detailLead.cidade || "—"}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">Qtd Lojas</p>
