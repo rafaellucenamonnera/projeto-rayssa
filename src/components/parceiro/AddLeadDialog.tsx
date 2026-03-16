@@ -73,7 +73,9 @@ export const AddLeadDialog = ({ open, onOpenChange, parceiroId, parceiroNome, on
       setSubmitted(true);
       onSuccess();
     } catch (error: any) {
-      toast.error("Erro ao cadastrar lead. Tente novamente.");
+      console.error("Erro ao cadastrar lead:", error);
+      const msg = error?.message || error?.details || "Erro desconhecido";
+      toast.error(`Erro ao cadastrar lead: ${msg}`);
     } finally {
       setLoading(false);
     }

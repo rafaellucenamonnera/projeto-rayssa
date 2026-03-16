@@ -13,6 +13,9 @@ import { LeadExportButton } from "@/components/admin/LeadExportButton";
 import { LeadImportDialog } from "@/components/admin/LeadImportDialog";
 import { PropostaUploadDialog } from "@/components/admin/PropostaUploadDialog";
 import { LeadPerdidoDialog } from "@/components/admin/LeadPerdidoDialog";
+import { AgendarReuniaoDialog } from "@/components/admin/AgendarReuniaoDialog";
+import { LeadComments } from "@/components/admin/LeadComments";
+import { LeadReuniao } from "@/components/admin/LeadReuniao";
 import { DaysInStage } from "@/components/admin/DaysInStage";
 import { PIPELINE_STAGES, PIPELINE_LABELS } from "@/lib/pipelineConstants";
 
@@ -53,6 +56,24 @@ const AdminLeads = () => {
   const [conversionLinkOpen, setConversionLinkOpen] = useState(false);
   const [conversionLink, setConversionLink] = useState("");
 
+  // Reunião dialog
+  const [reuniaoDialogOpen, setReuniaoDialogOpen] = useState(false);
+  const [pendingReuniao, setPendingReuniao] = useState<{ leadId: string; leadName: string } | null>(null);
+
+  // User name for comments
+  const [currentUserName, setCurrentUserName] = useState("Usuário");
+
+  useEffect(() => {
+    const fetchUserName = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase.from("profiles").select("nome").eq("user_id", user.id).maybeSingle();
+        if (data) setCurrentUserName(data.nome);
+      }
+    };
+    fetchUserName();
+  }, []);
+
   const loadData = async () => {
     const [leadsRes, parceirosRes, stageRes] = await Promise.all([
       supabase.from("leads").select("*").order("data_cadastro", { ascending: false }),
@@ -87,7 +108,26 @@ const AdminLeads = () => {
       setPerdidoDialogOpen(true);
       return;
     }
+    if (newStatus === "reuniao_agendada") {
+      setPendingReuniao({ leadId, leadName });
+      setReuniaoDialogOpen(true);
+      // Don't return - we'll update status after scheduling
+      return;
+    }
     updateStatus(leadId, newStatus);
+  };
+
+  const handleReuniaoConfirm = () => {
+    if (pendingReuniao) {
+      updateStatus(pendingReuniao.leadId, "reuniao_agendada");
+    }
+    setReuniaoDialogOpen(false);
+    setPendingReuniao(null);
+  };
+
+  const handleReuniaoCancel = () => {
+    setReuniaoDialogOpen(false);
+    setPendingReuniao(null);
   };
 
   const handlePerdidoConfirm = async (motivo: string) => {
@@ -599,7 +639,16 @@ const AdminLeads = () => {
         onCancel={() => { setPerdidoDialogOpen(false); setPendingPerdido(null); }}
       />
 
-      {/* Lead Detail Dialog */}
+      {/* Agendar Reunião Dialog */}
+      <AgendarReuniaoDialog
+        open={reuniaoDialogOpen}
+        onOpenChange={setReuniaoDialogOpen}
+        leadId={pendingReuniao?.leadId || ""}
+        leadName={pendingReuniao?.leadName || ""}
+        onConfirm={handleReuniaoConfirm}
+        onCancel={handleReuniaoCancel}
+      />
+
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -796,6 +845,26 @@ const AdminLeads = () => {
                   </div>
                 </div>
               )}
+
+              {/* Reuniões */}
+              <div className="border-t border-border pt-4">
+                <LeadReuniao
+                  leadId={detailLead.id}
+                  currentStage={detailLead.status_lead || "novo_lead"}
+                  onMoveToRealizada={() => {
+                    updateStatus(detailLead.id, "reuniao_realizada");
+                  }}
+                />
+              </div>
+
+              {/* Histórico de Conversa */}
+              <div className="border-t border-border pt-4">
+                <LeadComments
+                  leadId={detailLead.id}
+                  currentStage={detailLead.status_lead || "novo_lead"}
+                  userName={currentUserName}
+                />
+              </div>
             </div>
           )}
         </DialogContent>
