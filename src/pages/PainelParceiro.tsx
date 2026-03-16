@@ -17,6 +17,7 @@ const PainelParceiro = () => {
   const [leads, setLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string | null>(searchParams.get("status"));
+  const [addLeadOpen, setAddLeadOpen] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
