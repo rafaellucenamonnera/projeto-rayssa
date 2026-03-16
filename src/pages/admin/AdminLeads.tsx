@@ -563,6 +563,15 @@ const AdminLeads = () => {
         onCancel={handlePropostaUploadCancel}
       />
 
+      {/* Lead Perdido Dialog */}
+      <LeadPerdidoDialog
+        open={perdidoDialogOpen}
+        onOpenChange={setPerdidoDialogOpen}
+        leadName={pendingPerdido?.leadName || ""}
+        onConfirm={handlePerdidoConfirm}
+        onCancel={() => { setPerdidoDialogOpen(false); setPendingPerdido(null); }}
+      />
+
       {/* Lead Detail Dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[85vh] overflow-y-auto">
