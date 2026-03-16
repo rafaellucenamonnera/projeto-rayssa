@@ -56,6 +56,24 @@ const AdminLeads = () => {
   const [conversionLinkOpen, setConversionLinkOpen] = useState(false);
   const [conversionLink, setConversionLink] = useState("");
 
+  // Reunião dialog
+  const [reuniaoDialogOpen, setReuniaoDialogOpen] = useState(false);
+  const [pendingReuniao, setPendingReuniao] = useState<{ leadId: string; leadName: string } | null>(null);
+
+  // User name for comments
+  const [currentUserName, setCurrentUserName] = useState("Usuário");
+
+  useEffect(() => {
+    const fetchUserName = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase.from("profiles").select("nome").eq("user_id", user.id).maybeSingle();
+        if (data) setCurrentUserName(data.nome);
+      }
+    };
+    fetchUserName();
+  }, []);
+
   const loadData = async () => {
     const [leadsRes, parceirosRes, stageRes] = await Promise.all([
       supabase.from("leads").select("*").order("data_cadastro", { ascending: false }),
