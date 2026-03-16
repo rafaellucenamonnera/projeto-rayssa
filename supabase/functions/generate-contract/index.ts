@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { PDFDocument, rgb, StandardFonts } from "https://esm.sh/pdf-lib@1.17.1";
+import pako from "https://esm.sh/pako@2.1.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -31,27 +31,128 @@ function buildEnderecoCompleto(lead: any): string {
   return parts.length > 0 ? parts.join(", ") : lead.cidade || "—";
 }
 
-/**
- * Extract all text from a PDF page's content stream to find placeholder positions.
- * Since pdf-lib cannot do text search/replace on existing PDFs, we use a different
- * approach: we create a NEW PDF that overlays white rectangles over the placeholder
- * areas and writes the replacement text on top.
- * 
- * However, this approach requires knowing the exact coordinates of placeholders,
- * which is template-specific. Instead, we'll use a form-fill approach:
- * We'll overlay the dynamic data at known positions in the template.
- */
+/** Encode JS string as latin-1 bytes */
+function strToBytes(s: string): Uint8Array {
+  const arr = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) arr[i] = s.charCodeAt(i) & 0xff;
+  return arr;
+}
 
-// Template field positions - these are the coordinates where placeholders appear
-// in the official Monnera contract template PDF.
-// Format: { page, x, y, width, fontSize }
-const TEMPLATE_FIELDS = {
-  // Page 1 - Contract header area
-  razao_social_1: { page: 0, x: 72, y: 687, maxWidth: 450, fontSize: 11 },
-  cnpj: { page: 0, x: 72, y: 670, maxWidth: 300, fontSize: 11 },
-  endereco: { page: 0, x: 72, y: 653, maxWidth: 450, fontSize: 11 },
-  // These will be calibrated after first test
-};
+/** Decode latin-1 bytes to JS string */
+function bytesToStr(b: Uint8Array): string {
+  let s = "";
+  for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+  return s;
+}
+
+/**
+ * Walk through the raw PDF, find every stream...endstream block,
+ * decompress if FlateDecode, do text replacements, recompress, reassemble.
+ */
+function replacePdfStreams(
+  pdfBytes: Uint8Array,
+  replacements: [string, string][],
+): Uint8Array {
+  const pdfStr = bytesToStr(pdfBytes);
+  const parts: string[] = [];
+  let lastIdx = 0;
+  let totalReplacements = 0;
+
+  // Match stream blocks
+  const re = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
+  let m: RegExpExecArray | null;
+
+  while ((m = re.exec(pdfStr)) !== null) {
+    const before = pdfStr.substring(lastIdx, m.index);
+    parts.push(before);
+
+    const rawContent = m[1];
+    const fullMatch = m[0];
+
+    // Check if FlateDecode in the dictionary before this stream
+    const dictWindow = pdfStr.substring(Math.max(0, m.index - 600), m.index);
+    const isFlate = /\/Filter\s*\/FlateDecode/.test(dictWindow);
+
+    if (isFlate) {
+      try {
+        const compressed = strToBytes(rawContent);
+        const inflated = pako.inflate(compressed);
+        let text = bytesToStr(inflated);
+        let changed = false;
+
+        for (const [search, replace] of replacements) {
+          if (text.includes(search)) {
+            text = text.split(search).join(replace);
+            changed = true;
+            totalReplacements++;
+            console.log(`Replaced placeholder: "${search}"`);
+          }
+        }
+
+        if (changed) {
+          const newBytes = strToBytes(text);
+          const deflated = pako.deflate(newBytes);
+          const deflatedStr = bytesToStr(deflated);
+
+          // Update /Length in the preceding dictionary
+          const lastPart = parts[parts.length - 1];
+          const lenRe = /\/Length\s+(\d+)/g;
+          let lm: RegExpExecArray | null;
+          let lastLen: RegExpExecArray | null = null;
+          while ((lm = lenRe.exec(lastPart)) !== null) lastLen = lm;
+
+          if (lastLen) {
+            const pre = lastPart.substring(0, lastLen.index);
+            const post = lastPart.substring(lastLen.index + lastLen[0].length);
+            parts[parts.length - 1] = pre + `/Length ${deflated.length}` + post;
+          }
+
+          parts.push(`stream\n${deflatedStr}\nendstream`);
+        } else {
+          parts.push(fullMatch);
+        }
+      } catch (e) {
+        console.log(`Could not decompress stream: ${(e as Error).message}`);
+        parts.push(fullMatch);
+      }
+    } else {
+      // Uncompressed stream
+      let content = rawContent;
+      let changed = false;
+      for (const [search, replace] of replacements) {
+        if (content.includes(search)) {
+          content = content.split(search).join(replace);
+          changed = true;
+          totalReplacements++;
+          console.log(`Replaced (uncompressed): "${search}"`);
+        }
+      }
+      if (changed) {
+        const lastPart = parts[parts.length - 1];
+        const lenRe = /\/Length\s+(\d+)/g;
+        let lm: RegExpExecArray | null;
+        let lastLen: RegExpExecArray | null = null;
+        while ((lm = lenRe.exec(lastPart)) !== null) lastLen = lm;
+        if (lastLen) {
+          const newLen = strToBytes(content).length;
+          const pre = lastPart.substring(0, lastLen.index);
+          const post = lastPart.substring(lastLen.index + lastLen[0].length);
+          parts[parts.length - 1] = pre + `/Length ${newLen}` + post;
+        }
+        parts.push(`stream\n${content}\nendstream`);
+      } else {
+        parts.push(fullMatch);
+      }
+    }
+
+    lastIdx = m.index + fullMatch.length;
+  }
+
+  parts.push(pdfStr.substring(lastIdx));
+  console.log(`Total stream replacements: ${totalReplacements}`);
+
+  return strToBytes(parts.join(""));
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -68,10 +169,7 @@ Deno.serve(async (req) => {
     if (!authHeader) throw new Error("Não autorizado");
 
     const token = authHeader.replace("Bearer ", "");
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser(token);
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) throw new Error("Não autorizado");
 
     // Check role
@@ -95,61 +193,29 @@ Deno.serve(async (req) => {
       .single();
     if (leadError || !lead) throw new Error("Lead não encontrado");
 
-    console.log("Lead data:", JSON.stringify({
-      razao_social: lead.razao_social,
-      cnpj: lead.cnpj,
-      cidade: lead.cidade,
-      endereco_rua: lead.endereco_rua,
-      endereco_numero: lead.endereco_numero,
-      endereco_estado: lead.endereco_estado,
-      endereco_cep: lead.endereco_cep,
-      numero_proposta: lead.numero_proposta,
-    }));
+    console.log("Lead:", lead.razao_social, lead.cnpj);
 
-    // Download template PDF from storage
+    // Download template PDF
     const { data: templateData, error: templateError } = await supabase.storage
       .from("propostas")
       .download("templates/contrato-padrao.pdf");
     if (templateError || !templateData) {
-      throw new Error(
-        "Template do contrato não encontrado: " +
-          (templateError?.message || ""),
-      );
+      throw new Error("Template não encontrado: " + (templateError?.message || ""));
     }
 
     const templateBytes = new Uint8Array(await templateData.arrayBuffer());
-    console.log("Template PDF loaded, size:", templateBytes.length);
+    console.log("Template size:", templateBytes.length);
 
-    // Load the template PDF
-    const pdfDoc = await PDFDocument.load(templateBytes, { 
-      ignoreEncryption: true,
-      updateMetadata: false,
-    });
-
-    // Build replacement values
+    // Build replacements
     const razaoSocial = lead.razao_social || "—";
     const cnpjFormatted = formatCNPJ(lead.cnpj || "");
     const enderecoCompleto = buildEnderecoCompleto(lead);
     const dataContrato = formatDateBR(new Date());
     const numeroProposta = lead.numero_proposta || "—";
 
-    console.log("Replacement values:", JSON.stringify({
-      razaoSocial,
-      cnpjFormatted,
-      enderecoCompleto,
-      dataContrato,
-      numeroProposta,
-    }));
+    console.log("Values:", JSON.stringify({ razaoSocial, cnpjFormatted, enderecoCompleto, dataContrato, numeroProposta }));
 
-    // Strategy: Modify the PDF content streams directly to replace placeholder text
-    // pdf-lib doesn't support text replacement natively, so we need to work with
-    // the raw page content
-    const pages = pdfDoc.getPages();
-    
-    // We need to iterate through each page's content and replace text
-    // Since pdf-lib can't do find/replace, we'll use the raw PDF manipulation approach
-    // but properly handle the PDF text encoding
-    
+    // These placeholders match exactly what's in the template PDF
     const replacements: [string, string][] = [
       ["razao social", razaoSocial],
       ["Numero cnpj", cnpjFormatted],
@@ -159,242 +225,52 @@ Deno.serve(async (req) => {
       ["proposta monnera", numeroProposta],
     ];
 
-    // Access the internal PDF structure to modify content streams
-    const pdfRef = pdfDoc as any;
-    const context = pdfRef.context;
-    
-    let totalReplacements = 0;
-    
-    for (let pageIdx = 0; pageIdx < pages.length; pageIdx++) {
-      const page = pages[pageIdx];
-      const pageRef = page as any;
-      const pageNode = pageRef.node;
-      
-      // Get the content stream(s) for this page
-      const contentsRef = pageNode.get(context.obj("Contents") as any);
-      if (!contentsRef) continue;
-      
-      // Handle both single stream and array of streams
-      const contentRefs: any[] = [];
-      if (contentsRef.constructor.name === "PDFArray") {
-        for (let i = 0; i < contentsRef.size(); i++) {
-          contentRefs.push(contentsRef.get(i));
-        }
-      } else {
-        contentRefs.push(contentsRef);
-      }
-      
-      for (const ref of contentRefs) {
-        const stream = context.lookup(ref);
-        if (!stream) continue;
-        
-        try {
-          // Get the decoded content
-          let contentBytes: Uint8Array;
-          if (stream.constructor.name === "PDFRawStream") {
-            contentBytes = stream.getContents();
-          } else if (stream.constructor.name === "PDFFlateStream" || stream.decode) {
-            contentBytes = stream.decode ? stream.decode() : stream.getContents();
-          } else {
-            contentBytes = stream.getContents();
-          }
-          
-          // Convert to string
-          let contentStr = new TextDecoder("latin1").decode(contentBytes);
-          let modified = false;
-          
-          // Replace placeholder text in PDF content stream
-          // PDF text appears in () within Tj/TJ operators
-          for (const [search, replace] of replacements) {
-            if (contentStr.includes(search)) {
-              contentStr = contentStr.split(search).join(replace);
-              modified = true;
-              totalReplacements++;
-              console.log(`Page ${pageIdx + 1}: Replaced "${search}" with "${replace}"`);
-            }
-          }
-          
-          if (modified) {
-            // Create new content with the replacements
-            const newContentBytes = new TextEncoder().encode(contentStr);
-            
-            // We need to create a new uncompressed stream
-            // Remove any existing filter (FlateDecode) to avoid double-encoding issues
-            const { PDFRawStream, PDFName, PDFNumber } = await import("https://esm.sh/pdf-lib@1.17.1");
-            
-            const newStream = PDFRawStream.of(
-              new Map([
-                [PDFName.of("Length"), PDFNumber.of(newContentBytes.length)],
-              ]),
-              newContentBytes
-            );
-            
-            // Replace the stream in the context
-            if (ref.constructor.name === "PDFRef") {
-              context.assign(ref, newStream);
-            }
-          }
-        } catch (streamError) {
-          console.error(`Error processing stream on page ${pageIdx + 1}:`, streamError.message);
-        }
-      }
-    }
+    const modifiedBytes = replacePdfStreams(templateBytes, replacements);
+    console.log("Modified PDF size:", modifiedBytes.length);
 
-    console.log(`Total replacements made: ${totalReplacements}`);
-
-    // If no replacements were made with the direct approach, 
-    // try an alternative: work with the raw PDF bytes
-    if (totalReplacements === 0) {
-      console.log("No replacements via pdf-lib internals, trying raw byte approach...");
-      
-      // Reload and try raw manipulation
-      const rawPdf = new TextDecoder("latin1").decode(templateBytes);
-      let modifiedPdf = rawPdf;
-      let rawReplacements = 0;
-      
-      for (const [search, replace] of replacements) {
-        if (modifiedPdf.includes(search)) {
-          modifiedPdf = modifiedPdf.split(search).join(replace);
-          rawReplacements++;
-          console.log(`Raw: Replaced "${search}" with "${replace}"`);
-        }
-      }
-      
-      if (rawReplacements > 0) {
-        console.log(`Raw replacements made: ${rawReplacements}`);
-        const modifiedBytes = new TextEncoder().encode(modifiedPdf);
-        
-        // Upload this version instead
-        const contractNum =
-          lead.numero_proposta ||
-          `MNR-${new Date().getFullYear()}-${lead_id.slice(0, 8).toUpperCase()}`;
-        const filePath = `contratos/${lead_id}/${contractNum.replace(/[^a-zA-Z0-9-]/g, "_")}.pdf`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("propostas")
-          .upload(filePath, modifiedBytes, {
-            contentType: "application/pdf",
-            upsert: true,
-          });
-
-        if (uploadError)
-          throw new Error("Erro ao salvar contrato: " + uploadError.message);
-
-        await supabase
-          .from("leads")
-          .update({
-            contrato_url: filePath,
-            numero_proposta: contractNum,
-          } as any)
-          .eq("id", lead_id);
-
-        // Update contracts table
-        const { data: existingContract } = await supabase
-          .from("contracts")
-          .select("id")
-          .eq("lead_id", lead_id)
-          .maybeSingle();
-
-        if (existingContract) {
-          await supabase
-            .from("contracts")
-            .update({
-              numero_proposta: numeroProposta,
-              contrato_pdf_url: filePath,
-              arquivo_proposta_url: lead.proposta_url || null,
-              data_geracao: new Date().toISOString(),
-            } as any)
-            .eq("id", existingContract.id);
-        } else {
-          await supabase
-            .from("contracts")
-            .insert({
-              lead_id: lead_id,
-              numero_proposta: numeroProposta,
-              contrato_pdf_url: filePath,
-              arquivo_proposta_url: lead.proposta_url || null,
-            } as any);
-        }
-
-        return new Response(
-          JSON.stringify({
-            contrato_url: filePath,
-            numero_proposta: contractNum,
-          }),
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          },
-        );
-      }
-    }
-
-    // Save the modified PDF
-    const modifiedPdfBytes = await pdfDoc.save();
-    console.log("Modified PDF size:", modifiedPdfBytes.length);
-
-    // Generate contract filename
-    const contractNum =
-      lead.numero_proposta ||
+    // Generate filename
+    const contractNum = lead.numero_proposta ||
       `MNR-${new Date().getFullYear()}-${lead_id.slice(0, 8).toUpperCase()}`;
     const filePath = `contratos/${lead_id}/${contractNum.replace(/[^a-zA-Z0-9-]/g, "_")}.pdf`;
 
-    // Upload to storage
+    // Upload
     const { error: uploadError } = await supabase.storage
       .from("propostas")
-      .upload(filePath, modifiedPdfBytes, {
+      .upload(filePath, modifiedBytes, {
         contentType: "application/pdf",
         upsert: true,
       });
+    if (uploadError) throw new Error("Erro ao salvar: " + uploadError.message);
 
-    if (uploadError)
-      throw new Error("Erro ao salvar contrato: " + uploadError.message);
-
-    // Update lead with contrato_url
+    // Update lead
     await supabase
       .from("leads")
-      .update({
-        contrato_url: filePath,
-        numero_proposta: contractNum,
-      } as any)
+      .update({ contrato_url: filePath, numero_proposta: contractNum } as any)
       .eq("id", lead_id);
 
-    // Also create/update contracts table record
-    const { data: existingContract } = await supabase
+    // Update contracts table
+    const { data: existing } = await supabase
       .from("contracts")
       .select("id")
       .eq("lead_id", lead_id)
       .maybeSingle();
 
-    if (existingContract) {
-      await supabase
-        .from("contracts")
-        .update({
-          numero_proposta: numeroProposta,
-          contrato_pdf_url: filePath,
-          arquivo_proposta_url: lead.proposta_url || null,
-          data_geracao: new Date().toISOString(),
-        } as any)
-        .eq("id", existingContract.id);
+    const contractData = {
+      numero_proposta: numeroProposta,
+      contrato_pdf_url: filePath,
+      arquivo_proposta_url: lead.proposta_url || null,
+      data_geracao: new Date().toISOString(),
+    };
+
+    if (existing) {
+      await supabase.from("contracts").update(contractData as any).eq("id", existing.id);
     } else {
-      await supabase
-        .from("contracts")
-        .insert({
-          lead_id: lead_id,
-          numero_proposta: numeroProposta,
-          contrato_pdf_url: filePath,
-          arquivo_proposta_url: lead.proposta_url || null,
-        } as any);
+      await supabase.from("contracts").insert({ lead_id, ...contractData } as any);
     }
 
     return new Response(
-      JSON.stringify({
-        contrato_url: filePath,
-        numero_proposta: contractNum,
-        replacements_made: totalReplacements,
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
+      JSON.stringify({ contrato_url: filePath, numero_proposta: contractNum }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error: any) {
     console.error("generate-contract error:", error);
