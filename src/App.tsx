@@ -53,6 +53,7 @@ const App = () => (
               <Route path="/parceiro" element={<PainelParceiro />} />
               <Route path="/lead/:codigoParceiro" element={<CadastroLead />} />
               <Route path="/indicacao/:slugConsultor" element={<CadastroLead />} />
+              <Route path="/completar-cadastro/:token" element={<FormularioConversao />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
