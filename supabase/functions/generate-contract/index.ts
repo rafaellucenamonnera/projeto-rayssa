@@ -108,14 +108,22 @@ Deno.serve(async (req) => {
       delimiters: { start: "{", end: "}" },
     });
 
+    // The template has these exact placeholders:
+    // Page 1:  {Razão Social}  {CNPJ}  {ENDERECO COMPLETO}
+    // Page 7:  {Número da Proposta}
+    // Page 15: {DATA DE GERAÇÃO DO CONTRATO}  {RAZAO SOCIAL}
     doc.render({
-      "RAZAO SOCIAL": razaoSocial,
-      "NUMERO CNPJ": cnpjFormatted,
+      // Exact keys as they appear in the DOCX template
+      "Razão Social": razaoSocial,
+      "CNPJ": cnpjFormatted,
       "ENDERECO COMPLETO": enderecoCompleto,
-      "NUMERO DA PROPOSTA": numeroProposta,
+      "Número da Proposta": numeroProposta,
       "DATA DE GERAÇÃO DO CONTRATO": dataGeracao,
-      // Alternative keys without accents (in case template uses them)
+      "RAZAO SOCIAL": razaoSocial,
+      // Alternative keys without accents (safety net)
       "DATA DE GERACAO DO CONTRATO": dataGeracao,
+      "Razao Social": razaoSocial,
+      "Numero da Proposta": numeroProposta,
     });
 
     const outputBuffer = doc.getZip().generate({ type: "uint8array" });
