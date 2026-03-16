@@ -845,6 +845,26 @@ const AdminLeads = () => {
                   </div>
                 </div>
               )}
+
+              {/* Reuniões */}
+              <div className="border-t border-border pt-4">
+                <LeadReuniao
+                  leadId={detailLead.id}
+                  currentStage={detailLead.status_lead || "novo_lead"}
+                  onMoveToRealizada={() => {
+                    updateStatus(detailLead.id, "reuniao_realizada");
+                  }}
+                />
+              </div>
+
+              {/* Histórico de Conversa */}
+              <div className="border-t border-border pt-4">
+                <LeadComments
+                  leadId={detailLead.id}
+                  currentStage={detailLead.status_lead || "novo_lead"}
+                  userName={currentUserName}
+                />
+              </div>
             </div>
           )}
         </DialogContent>
