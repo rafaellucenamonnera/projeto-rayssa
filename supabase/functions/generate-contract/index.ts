@@ -69,7 +69,7 @@ async function inflateBytes(compressed: Uint8Array): Promise<Uint8Array> {
 }
 
 async function deflateBytes(data: Uint8Array): Promise<Uint8Array> {
-  const cs = new CompressionStream("raw");
+  const cs = new CompressionStream("deflate");
   const writer = cs.writable.getWriter();
   writer.write(data);
   writer.close();
