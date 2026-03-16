@@ -519,7 +519,10 @@ const AdminLeads = () => {
                     <td className="py-3 px-4">{l.nome_responsavel}</td>
                     <td className="py-3 px-4">{l.telefone_responsavel}</td>
                     <td className="py-3 px-4">
-                      <StatusSelect lead={l} />
+                      <div className="space-y-1">
+                        <StatusSelect lead={l} />
+                        <DaysInStage dataEntrada={stageMap[l.id]} compact />
+                      </div>
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-1">
