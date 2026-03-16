@@ -148,9 +148,14 @@ const PainelParceiro = () => {
             <h1 className="text-xl sm:text-2xl font-display font-bold truncate">Painel do Consultor</h1>
             <p className="text-sm text-muted-foreground truncate">Olá, {parceiro.nome}!</p>
           </div>
-          <Button variant="outline" size="sm" onClick={handleLogout} className="shrink-0">
-            <LogOut className="mr-2 h-4 w-4" /> <span className="hidden sm:inline">Sair</span>
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button size="sm" onClick={() => setAddLeadOpen(true)}>
+              <Plus className="mr-1 h-4 w-4" /> <span className="hidden sm:inline">Adicionar Lead</span><span className="sm:hidden">Lead</span>
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" /> <span className="hidden sm:inline">Sair</span>
+            </Button>
+          </div>
         </div>
 
         {/* Stat Cards - scrollable on mobile */}
