@@ -20,6 +20,7 @@ const AdminLeads = () => {
   const [searchParams] = useSearchParams();
   const { isAdmin } = useAuth();
   const [leads, setLeads] = useState<any[]>([]);
+  const [stageMap, setStageMap] = useState<Record<string, string>>({}); // lead_id -> data_entrada of current stage
   const [parceiros, setParceiros] = useState<Record<string, string>>({});
   const [parceirosAll, setParceirosAll] = useState<{ id: string; nome: string }[]>([]);
 
