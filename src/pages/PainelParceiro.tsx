@@ -8,6 +8,7 @@ import { Copy, Link2, Users, LogOut, Loader2, MessageCircle, Mail, CalendarCheck
 import { toast } from "sonner";
 import { PIPELINE_STAGES, PIPELINE_LABELS } from "@/lib/pipelineConstants";
 import { AddLeadDialog } from "@/components/parceiro/AddLeadDialog";
+import { DaysInStage } from "@/components/admin/DaysInStage";
 
 const PainelParceiro = () => {
   const navigate = useNavigate();
