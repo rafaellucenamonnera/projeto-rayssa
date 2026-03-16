@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { PDFDocument, rgb, StandardFonts } from "https://esm.sh/pdf-lib@1.17.1";
+import PizZip from "https://esm.sh/pizzip@3.1.7";
+import Docxtemplater from "https://esm.sh/docxtemplater@3.50.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,37 +15,21 @@ function formatCNPJ(cnpj: string): string {
 }
 
 function formatDateBR(date: Date): string {
-  const meses = [
-    "janeiro", "fevereiro", "março", "abril", "maio", "junho",
-    "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
-  ];
-  return `${date.getDate()} de ${meses[date.getMonth()]} de ${date.getFullYear()}`;
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yyyy = date.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
 }
 
 function buildEnderecoCompleto(lead: Record<string, unknown>): string {
   const parts: string[] = [];
   if (lead.endereco_rua) parts.push(String(lead.endereco_rua));
-  if (lead.endereco_numero) parts.push(`n\u00BA ${lead.endereco_numero}`);
+  if (lead.endereco_numero) parts.push(String(lead.endereco_numero));
   if (lead.cidade) parts.push(String(lead.cidade));
   if (lead.endereco_estado) parts.push(String(lead.endereco_estado));
-  if (lead.endereco_cep) parts.push(`CEP ${lead.endereco_cep}`);
-  return parts.length > 0 ? parts.join(", ") : String(lead.cidade || "\u2014");
+  if (lead.endereco_cep) parts.push(String(lead.endereco_cep));
+  return parts.length > 0 ? parts.join(" - ") : "—";
 }
-
-// Placeholder positions in the template PDF (page 1)
-// These are calibrated for the official Monnera contract template
-// The template is A4 (595.28 x 841.89 points)
-// Placeholders are in the second paragraph of page 1:
-// "(razao social) pessoa juridica... inscrita no CNPJ sob o nº (Numero cnpj) com sede/filial (endereco completo)"
-// And on page 7: "Proposta Comercial Monnera nº (proposta monnera)"
-const OVERLAYS = {
-  // Page 1 - Company identification paragraph
-  razao_social: { page: 0, x: 85, y: 621, width: 100, height: 12, fontSize: 9 },
-  cnpj: { page: 0, x: 406, y: 609, width: 110, height: 12, fontSize: 9 },
-  endereco: { page: 0, x: 112, y: 597, width: 250, height: 12, fontSize: 8 },
-  // Page 7 - Proposta number  
-  proposta: { page: 6, x: 368, y: 546, width: 120, height: 12, fontSize: 9 },
-};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -52,12 +37,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log("generate-contract: starting...");
+    console.log("generate-contract: starting (DOCX mode)...");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
+    // Auth check
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("Nao autorizado");
 
@@ -73,110 +59,88 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { lead_id, debug } = body;
+    const { lead_id } = body;
     if (!lead_id) throw new Error("lead_id e obrigatorio");
 
+    // Fetch lead
     const { data: lead, error: leadError } = await supabase
       .from("leads").select("*").eq("id", lead_id).single();
     if (leadError || !lead) throw new Error("Lead nao encontrado");
 
     console.log("Lead found:", lead.razao_social);
 
-    const { data: templateData, error: templateError } = await supabase.storage
-      .from("propostas").download("templates/contrato-padrao.pdf");
-    if (templateError || !templateData) {
-      throw new Error("Template nao encontrado: " + (templateError?.message || ""));
+    // Validate required fields
+    const missing: string[] = [];
+    if (!lead.razao_social) missing.push("Razão Social");
+    if (!lead.cnpj) missing.push("CNPJ");
+    if (!lead.nome_responsavel) missing.push("Responsável");
+    if (!lead.email_responsavel) missing.push("Email");
+    if (!lead.telefone_responsavel) missing.push("Telefone");
+    if (missing.length > 0) {
+      throw new Error(`Campos obrigatórios faltando: ${missing.join(", ")}`);
     }
 
-    const templateBytes = new Uint8Array(await templateData.arrayBuffer());
-    console.log("Template loaded:", templateBytes.length, "bytes");
+    // Download DOCX template
+    const { data: templateData, error: templateError } = await supabase.storage
+      .from("propostas")
+      .download("templates/contrato-padrao.docx");
+    if (templateError || !templateData) {
+      throw new Error("Template DOCX nao encontrado no storage (propostas/templates/contrato-padrao.docx). Faça upload do template primeiro.");
+    }
 
-    // Load PDF with pdf-lib
-    const pdfDoc = await PDFDocument.load(templateBytes, { ignoreEncryption: true });
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-    const pages = pdfDoc.getPages();
+    const templateBytes = await templateData.arrayBuffer();
+    console.log("Template DOCX loaded:", templateBytes.byteLength, "bytes");
 
-    console.log("PDF pages:", pages.length);
-    console.log("Page 1 size:", pages[0].getWidth(), "x", pages[0].getHeight());
-
-    const razaoSocial = lead.razao_social || "\u2014";
+    // Prepare data for placeholders
+    const razaoSocial = lead.razao_social || "—";
     const cnpjFormatted = formatCNPJ(lead.cnpj || "");
     const enderecoCompleto = buildEnderecoCompleto(lead as Record<string, unknown>);
-    const dataContrato = formatDateBR(new Date());
-    const numeroProposta = lead.numero_proposta || "\u2014";
+    const numeroProposta = lead.numero_proposta || "—";
+    const dataGeracao = formatDateBR(new Date());
 
-    console.log("Values:", JSON.stringify({ razaoSocial, cnpjFormatted, enderecoCompleto, numeroProposta }));
+    console.log("Values:", JSON.stringify({ razaoSocial, cnpjFormatted, enderecoCompleto, numeroProposta, dataGeracao }));
 
-    // If debug mode, return page dimensions and overlay positions for calibration
-    if (debug === true) {
-      const pageInfo = pages.map((p, i) => ({
-        page: i + 1,
-        width: p.getWidth(),
-        height: p.getHeight(),
-      }));
-      return new Response(
-        JSON.stringify({ pages: pageInfo, overlays: OVERLAYS, values: { razaoSocial, cnpjFormatted, enderecoCompleto, numeroProposta } }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
+    // Process DOCX with docxtemplater
+    const zip = new PizZip(templateBytes);
+    const doc = new Docxtemplater(zip, {
+      paragraphLoop: true,
+      linebreaks: true,
+      delimiters: { start: "{", end: "}" },
+    });
 
-    // Draw white rectangles over placeholder text, then write new text
-    const white = rgb(1, 1, 1);
-    const black = rgb(0, 0, 0);
+    doc.render({
+      "RAZAO SOCIAL": razaoSocial,
+      "NUMERO CNPJ": cnpjFormatted,
+      "ENDERECO COMPLETO": enderecoCompleto,
+      "NUMERO DA PROPOSTA": numeroProposta,
+      "DATA DE GERAÇÃO DO CONTRATO": dataGeracao,
+      // Alternative keys without accents (in case template uses them)
+      "DATA DE GERACAO DO CONTRATO": dataGeracao,
+    });
 
-    // Razao Social overlay
-    if (pages.length > OVERLAYS.razao_social.page) {
-      const p = pages[OVERLAYS.razao_social.page];
-      const o = OVERLAYS.razao_social;
-      const textWidth = fontBold.widthOfTextAtSize(razaoSocial, o.fontSize);
-      p.drawRectangle({ x: o.x, y: o.y - 2, width: Math.max(o.width, textWidth + 4), height: o.height, color: white });
-      p.drawText(razaoSocial, { x: o.x, y: o.y, size: o.fontSize, font: fontBold, color: black });
-    }
+    const outputBuffer = doc.getZip().generate({ type: "uint8array" });
+    console.log("Generated DOCX size:", outputBuffer.length);
 
-    // CNPJ overlay
-    if (pages.length > OVERLAYS.cnpj.page) {
-      const p = pages[OVERLAYS.cnpj.page];
-      const o = OVERLAYS.cnpj;
-      const textWidth = font.widthOfTextAtSize(cnpjFormatted, o.fontSize);
-      p.drawRectangle({ x: o.x, y: o.y - 2, width: Math.max(o.width, textWidth + 4), height: o.height, color: white });
-      p.drawText(cnpjFormatted, { x: o.x, y: o.y, size: o.fontSize, font, color: black });
-    }
-
-    // Endereco overlay
-    if (pages.length > OVERLAYS.endereco.page) {
-      const p = pages[OVERLAYS.endereco.page];
-      const o = OVERLAYS.endereco;
-      const textWidth = font.widthOfTextAtSize(enderecoCompleto, o.fontSize);
-      p.drawRectangle({ x: o.x, y: o.y - 2, width: Math.max(o.width, textWidth + 4), height: o.height, color: white });
-      p.drawText(enderecoCompleto, { x: o.x, y: o.y, size: o.fontSize, font, color: black });
-    }
-
-    // Proposta overlay on page 7
-    if (pages.length > OVERLAYS.proposta.page) {
-      const p = pages[OVERLAYS.proposta.page];
-      const o = OVERLAYS.proposta;
-      const textWidth = font.widthOfTextAtSize(numeroProposta, o.fontSize);
-      p.drawRectangle({ x: o.x, y: o.y - 2, width: Math.max(o.width, textWidth + 4), height: o.height, color: white });
-      p.drawText(numeroProposta, { x: o.x, y: o.y, size: o.fontSize, font, color: black });
-    }
-
-    const modifiedBytes = await pdfDoc.save();
-    console.log("Modified PDF size:", modifiedBytes.length);
-
+    // Save to storage
     const contractNum = lead.numero_proposta ||
       `MNR-${new Date().getFullYear()}-${lead_id.slice(0, 8).toUpperCase()}`;
-    const filePath = `contratos/${lead_id}/${contractNum.replace(/[^a-zA-Z0-9-]/g, "_")}.pdf`;
+    const safeNum = contractNum.replace(/[^a-zA-Z0-9-]/g, "_");
+    const filePath = `contratos/${lead_id}/${safeNum}.docx`;
 
     const { error: uploadError } = await supabase.storage
       .from("propostas")
-      .upload(filePath, modifiedBytes, { contentType: "application/pdf", upsert: true });
+      .upload(filePath, outputBuffer, {
+        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        upsert: true,
+      });
     if (uploadError) throw new Error("Erro ao salvar: " + uploadError.message);
 
+    // Update lead record
     await supabase.from("leads")
       .update({ contrato_url: filePath, numero_proposta: contractNum } as any)
       .eq("id", lead_id);
 
+    // Upsert contracts table
     const { data: existing } = await supabase
       .from("contracts").select("id").eq("lead_id", lead_id).maybeSingle();
 
@@ -193,7 +157,7 @@ Deno.serve(async (req) => {
       await supabase.from("contracts").insert({ lead_id, ...contractData } as any);
     }
 
-    console.log("Contract generated:", filePath);
+    console.log("Contract DOCX generated:", filePath);
 
     return new Response(
       JSON.stringify({ contrato_url: filePath, numero_proposta: contractNum }),
