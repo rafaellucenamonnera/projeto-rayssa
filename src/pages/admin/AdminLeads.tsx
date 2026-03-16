@@ -12,6 +12,7 @@ import { Trash2, FileText, RefreshCw, Download, Loader2, Eye } from "lucide-reac
 import { LeadExportButton } from "@/components/admin/LeadExportButton";
 import { LeadImportDialog } from "@/components/admin/LeadImportDialog";
 import { PropostaUploadDialog } from "@/components/admin/PropostaUploadDialog";
+import { LeadPerdidoDialog } from "@/components/admin/LeadPerdidoDialog";
 import { PIPELINE_STAGES, PIPELINE_LABELS } from "@/lib/pipelineConstants";
 
 const AdminLeads = () => {
@@ -35,6 +36,10 @@ const AdminLeads = () => {
   // Lead detail dialog
   const [detailLead, setDetailLead] = useState<any>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+
+  // Lead perdido dialog
+  const [perdidoDialogOpen, setPerdidoDialogOpen] = useState(false);
+  const [pendingPerdido, setPendingPerdido] = useState<{ leadId: string; leadName: string } | null>(null);
 
   // Contract number edit
   const [editingNumProposta, setEditingNumProposta] = useState<string>("");
@@ -65,7 +70,30 @@ const AdminLeads = () => {
       setUploadDialogOpen(true);
       return;
     }
+    if (newStatus === "lead_perdido") {
+      setPendingPerdido({ leadId, leadName });
+      setPerdidoDialogOpen(true);
+      return;
+    }
     updateStatus(leadId, newStatus);
+  };
+
+  const handlePerdidoConfirm = async (motivo: string) => {
+    if (!pendingPerdido) return;
+    const { error } = await supabase
+      .from("leads")
+      .update({ status_lead: "lead_perdido", motivo_perda: motivo } as any)
+      .eq("id", pendingPerdido.leadId);
+    if (error) {
+      toast.error("Erro ao atualizar status");
+      return;
+    }
+    setLeads((prev) =>
+      prev.map((l) => (l.id === pendingPerdido.leadId ? { ...l, status_lead: "lead_perdido", motivo_perda: motivo } : l))
+    );
+    toast.success("Lead marcado como perdido");
+    setPerdidoDialogOpen(false);
+    setPendingPerdido(null);
   };
 
   const autoGenerateContract = async (leadId: string) => {
@@ -535,6 +563,15 @@ const AdminLeads = () => {
         onCancel={handlePropostaUploadCancel}
       />
 
+      {/* Lead Perdido Dialog */}
+      <LeadPerdidoDialog
+        open={perdidoDialogOpen}
+        onOpenChange={setPerdidoDialogOpen}
+        leadName={pendingPerdido?.leadName || ""}
+        onConfirm={handlePerdidoConfirm}
+        onCancel={() => { setPerdidoDialogOpen(false); setPendingPerdido(null); }}
+      />
+
       {/* Lead Detail Dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[85vh] overflow-y-auto">
@@ -628,6 +665,14 @@ const AdminLeads = () => {
                   <p className="text-lg font-bold font-display">
                     {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(detailLead.valor_campanhas)}
                   </p>
+                </div>
+              )}
+
+              {/* Motivo da Perda */}
+              {detailLead.motivo_perda && (
+                <div className="border-t border-border pt-4">
+                  <h3 className="text-sm font-semibold mb-2">Motivo da Perda</h3>
+                  <p className="text-sm text-muted-foreground">{detailLead.motivo_perda}</p>
                 </div>
               )}
 

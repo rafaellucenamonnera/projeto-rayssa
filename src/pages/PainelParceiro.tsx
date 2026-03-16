@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Copy, Link2, Users, LogOut, Loader2, MessageCircle, Mail, CalendarCheck, FileText, UserCheck, ChevronLeft, PhoneCall, FileSignature } from "lucide-react";
+import { Copy, Link2, Users, LogOut, Loader2, MessageCircle, Mail, CalendarCheck, FileText, UserCheck, ChevronLeft, PhoneCall, FileSignature, Plus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { PIPELINE_STAGES, PIPELINE_LABELS } from "@/lib/pipelineConstants";
+import { AddLeadDialog } from "@/components/parceiro/AddLeadDialog";
 
 const PainelParceiro = () => {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ const PainelParceiro = () => {
   const [leads, setLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string | null>(searchParams.get("status"));
+  const [addLeadOpen, setAddLeadOpen] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -117,6 +119,15 @@ const PainelParceiro = () => {
     }
   };
 
+  const reloadLeads = async () => {
+    const { data: leadsData } = await supabase
+      .from("leads")
+      .select("*")
+      .eq("parceiro_id", parceiro.id)
+      .order("data_cadastro", { ascending: false });
+    setLeads(leadsData || []);
+  };
+
   const statCards = [
     { label: "Leads Indicados", value: leads.length, icon: Users, status: null },
     { label: "Leads este mês", value: leadsThisMonth, icon: CalendarCheck, status: null },
@@ -125,6 +136,7 @@ const PainelParceiro = () => {
     { label: "Propostas Enviadas", value: statusCounts.proposta_enviada, icon: FileText, status: "proposta_enviada" },
     { label: "Convertidos", value: statusCounts.lead_convertido, icon: UserCheck, status: "lead_convertido" },
     { label: "Contratos Assinados", value: statusCounts.contrato_assinado, icon: FileSignature, status: "contrato_assinado" },
+    { label: "Perdidos", value: statusCounts.lead_perdido || 0, icon: XCircle, status: "lead_perdido" },
   ];
 
   return (
@@ -136,9 +148,14 @@ const PainelParceiro = () => {
             <h1 className="text-xl sm:text-2xl font-display font-bold truncate">Painel do Consultor</h1>
             <p className="text-sm text-muted-foreground truncate">Olá, {parceiro.nome}!</p>
           </div>
-          <Button variant="outline" size="sm" onClick={handleLogout} className="shrink-0">
-            <LogOut className="mr-2 h-4 w-4" /> <span className="hidden sm:inline">Sair</span>
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button size="sm" onClick={() => setAddLeadOpen(true)}>
+              <Plus className="mr-1 h-4 w-4" /> <span className="hidden sm:inline">Adicionar Lead</span><span className="sm:hidden">Lead</span>
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" /> <span className="hidden sm:inline">Sair</span>
+            </Button>
+          </div>
         </div>
 
         {/* Stat Cards - scrollable on mobile */}
@@ -276,6 +293,15 @@ const PainelParceiro = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Add Lead Dialog */}
+      <AddLeadDialog
+        open={addLeadOpen}
+        onOpenChange={setAddLeadOpen}
+        parceiroId={parceiro.id}
+        parceiroNome={parceiro.nome}
+        onSuccess={reloadLeads}
+      />
     </div>
   );
 };
