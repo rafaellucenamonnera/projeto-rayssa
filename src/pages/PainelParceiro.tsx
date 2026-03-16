@@ -16,6 +16,7 @@ const PainelParceiro = () => {
   const { user, loading: authLoading, signOut } = useAuth();
   const [parceiro, setParceiro] = useState<any>(null);
   const [leads, setLeads] = useState<any[]>([]);
+  const [stageMap, setStageMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string | null>(searchParams.get("status"));
   const [addLeadOpen, setAddLeadOpen] = useState(false);
