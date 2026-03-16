@@ -800,6 +800,34 @@ const AdminLeads = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Conversion Link Dialog */}
+      <Dialog open={conversionLinkOpen} onOpenChange={setConversionLinkOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display">Link de Conversão Gerado</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Envie este link ao cliente para que ele complete os dados da empresa e formalize o contrato.
+            </p>
+            <div className="bg-secondary rounded-lg p-3">
+              <p className="text-xs font-mono text-primary break-all">{conversionLink}</p>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => {
+                navigator.clipboard.writeText(conversionLink);
+                toast.success("Link copiado!");
+              }}>
+                <Copy className="mr-1 h-3 w-3" /> Copiar Link
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setConversionLinkOpen(false)}>
+                Fechar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
