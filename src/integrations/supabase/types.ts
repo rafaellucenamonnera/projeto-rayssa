@@ -66,9 +66,11 @@ export type Database = {
           endereco_rua: string | null
           erp_utilizado: string
           id: string
+          motivo_perda: string | null
           nome_fantasia: string
           nome_responsavel: string
           numero_proposta: string | null
+          origem: string
           parceiro_id: string
           parcelas_pagas: number | null
           percentual_consultor: number | null
@@ -96,9 +98,11 @@ export type Database = {
           endereco_rua?: string | null
           erp_utilizado: string
           id?: string
+          motivo_perda?: string | null
           nome_fantasia: string
           nome_responsavel: string
           numero_proposta?: string | null
+          origem?: string
           parceiro_id: string
           parcelas_pagas?: number | null
           percentual_consultor?: number | null
@@ -126,9 +130,11 @@ export type Database = {
           endereco_rua?: string | null
           erp_utilizado?: string
           id?: string
+          motivo_perda?: string | null
           nome_fantasia?: string
           nome_responsavel?: string
           numero_proposta?: string | null
+          origem?: string
           parceiro_id?: string
           parcelas_pagas?: number | null
           percentual_consultor?: number | null
@@ -393,6 +399,8 @@ export type Database = {
         | "proposta_enviada"
         | "contrato_enviado"
         | "contrato_assinado"
+        | "reuniao_realizada"
+        | "lead_perdido"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -530,6 +538,8 @@ export const Constants = {
         "proposta_enviada",
         "contrato_enviado",
         "contrato_assinado",
+        "reuniao_realizada",
+        "lead_perdido",
       ],
     },
   },
