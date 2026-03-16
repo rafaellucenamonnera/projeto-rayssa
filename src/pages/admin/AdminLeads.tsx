@@ -108,7 +108,26 @@ const AdminLeads = () => {
       setPerdidoDialogOpen(true);
       return;
     }
+    if (newStatus === "reuniao_agendada") {
+      setPendingReuniao({ leadId, leadName });
+      setReuniaoDialogOpen(true);
+      // Don't return - we'll update status after scheduling
+      return;
+    }
     updateStatus(leadId, newStatus);
+  };
+
+  const handleReuniaoConfirm = () => {
+    if (pendingReuniao) {
+      updateStatus(pendingReuniao.leadId, "reuniao_agendada");
+    }
+    setReuniaoDialogOpen(false);
+    setPendingReuniao(null);
+  };
+
+  const handleReuniaoCancel = () => {
+    setReuniaoDialogOpen(false);
+    setPendingReuniao(null);
   };
 
   const handlePerdidoConfirm = async (motivo: string) => {
