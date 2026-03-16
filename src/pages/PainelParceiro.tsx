@@ -293,6 +293,15 @@ const PainelParceiro = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Add Lead Dialog */}
+      <AddLeadDialog
+        open={addLeadOpen}
+        onOpenChange={setAddLeadOpen}
+        parceiroId={parceiro.id}
+        parceiroNome={parceiro.nome}
+        onSuccess={reloadLeads}
+      />
     </div>
   );
 };
