@@ -446,6 +446,7 @@ const AdminLeads = () => {
                   <span>{l.telefone_responsavel}</span>
                 </div>
               </div>
+              <DaysInStage dataEntrada={stageMap[l.id]} />
               <div>
                 <Select
                   value={l.status_lead || l.status || "novo_lead"}
