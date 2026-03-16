@@ -497,7 +497,7 @@ const AdminLeads = () => {
                         )}
                         {l.contrato_url && (
                           <button
-                            onClick={() => openSignedUrl(l.contrato_url)}
+                            onClick={() => openSignedUrl(l.contrato_url, `contrato-${l.nome_fantasia}.pdf`)}
                             className="p-1 hover:bg-primary/10 rounded"
                             title="Download Contrato"
                           >
