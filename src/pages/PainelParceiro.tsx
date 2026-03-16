@@ -119,6 +119,15 @@ const PainelParceiro = () => {
     }
   };
 
+  const reloadLeads = async () => {
+    const { data: leadsData } = await supabase
+      .from("leads")
+      .select("*")
+      .eq("parceiro_id", parceiro.id)
+      .order("data_cadastro", { ascending: false });
+    setLeads(leadsData || []);
+  };
+
   const statCards = [
     { label: "Leads Indicados", value: leads.length, icon: Users, status: null },
     { label: "Leads este mês", value: leadsThisMonth, icon: CalendarCheck, status: null },
@@ -127,6 +136,7 @@ const PainelParceiro = () => {
     { label: "Propostas Enviadas", value: statusCounts.proposta_enviada, icon: FileText, status: "proposta_enviada" },
     { label: "Convertidos", value: statusCounts.lead_convertido, icon: UserCheck, status: "lead_convertido" },
     { label: "Contratos Assinados", value: statusCounts.contrato_assinado, icon: FileSignature, status: "contrato_assinado" },
+    { label: "Perdidos", value: statusCounts.lead_perdido || 0, icon: XCircle, status: "lead_perdido" },
   ];
 
   return (
