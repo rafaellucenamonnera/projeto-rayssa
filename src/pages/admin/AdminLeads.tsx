@@ -70,7 +70,30 @@ const AdminLeads = () => {
       setUploadDialogOpen(true);
       return;
     }
+    if (newStatus === "lead_perdido") {
+      setPendingPerdido({ leadId, leadName });
+      setPerdidoDialogOpen(true);
+      return;
+    }
     updateStatus(leadId, newStatus);
+  };
+
+  const handlePerdidoConfirm = async (motivo: string) => {
+    if (!pendingPerdido) return;
+    const { error } = await supabase
+      .from("leads")
+      .update({ status_lead: "lead_perdido", motivo_perda: motivo } as any)
+      .eq("id", pendingPerdido.leadId);
+    if (error) {
+      toast.error("Erro ao atualizar status");
+      return;
+    }
+    setLeads((prev) =>
+      prev.map((l) => (l.id === pendingPerdido.leadId ? { ...l, status_lead: "lead_perdido", motivo_perda: motivo } : l))
+    );
+    toast.success("Lead marcado como perdido");
+    setPerdidoDialogOpen(false);
+    setPendingPerdido(null);
   };
 
   const autoGenerateContract = async (leadId: string) => {
