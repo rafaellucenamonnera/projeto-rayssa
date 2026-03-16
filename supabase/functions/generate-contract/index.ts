@@ -64,10 +64,7 @@ async function inflateBytes(compressed: Uint8Array): Promise<Uint8Array> {
   for (const c of chunks) totalLen += c.length;
   const result = new Uint8Array(totalLen);
   let offset = 0;
-  for (const c of chunks) {
-    result.set(c, offset);
-    offset += c.length;
-  }
+  for (const c of chunks) { result.set(c, offset); offset += c.length; }
   return result;
 }
 
@@ -87,24 +84,177 @@ async function deflateBytes(data: Uint8Array): Promise<Uint8Array> {
   for (const c of chunks) totalLen += c.length;
   const result = new Uint8Array(totalLen);
   let offset = 0;
-  for (const c of chunks) {
-    result.set(c, offset);
-    offset += c.length;
-  }
+  for (const c of chunks) { result.set(c, offset); offset += c.length; }
   return result;
+}
+
+/**
+ * Extract readable text from PDF text operators in a content stream.
+ * Handles both (text) Tj and [(text) kern (text)] TJ operators.
+ * Returns the concatenated text.
+ */
+function extractTextFromStream(stream: string): string {
+  let text = "";
+  // Match text within parentheses in Tj/TJ operators
+  const textRe = /\(([^)]*)\)/g;
+  let m: RegExpExecArray | null;
+  while ((m = textRe.exec(stream)) !== null) {
+    text += m[1];
+  }
+  return text;
+}
+
+/**
+ * Replace text within PDF text operators (inside parentheses).
+ * This handles text that may be split across multiple () groups in TJ arrays.
+ * 
+ * Strategy: For each line containing text operators, concatenate all text from
+ * parenthesized groups, do the replacement, then put it back in a single (text) Tj.
+ */
+function replaceTextInOperators(
+  stream: string,
+  replacements: [string, string][],
+): { result: string; count: number } {
+  let count = 0;
+  let result = stream;
+
+  // First, try simple replacement within individual () groups
+  for (const [search, replace] of replacements) {
+    if (result.includes(`(${search})`)) {
+      result = result.split(`(${search})`).join(`(${replace})`);
+      count++;
+      console.log(`[EXACT] Replaced: "${search}"`);
+      continue;
+    }
+  }
+
+  // For remaining replacements, handle text split across TJ arrays
+  // Find TJ array operators: [ (text1) kern (text2) ... ] TJ
+  for (const [search, replace] of replacements) {
+    if (count > 0 && result.includes(replace)) continue; // already replaced
+    
+    // Check if the search text exists when concatenating text from () groups
+    const fullText = extractTextFromStream(result);
+    if (!fullText.includes(search)) continue;
+    
+    // Find TJ array blocks and reconstruct them
+    // Pattern: [ ... ] TJ
+    const tjArrayRe = /\[([^\]]*)\]\s*TJ/g;
+    let tjMatch: RegExpExecArray | null;
+    const tjBlocks: { start: number; end: number; text: string; fullMatch: string }[] = [];
+    
+    while ((tjMatch = tjArrayRe.exec(result)) !== null) {
+      const inner = tjMatch[1];
+      let blockText = "";
+      const innerTextRe = /\(([^)]*)\)/g;
+      let itm: RegExpExecArray | null;
+      while ((itm = innerTextRe.exec(inner)) !== null) {
+        blockText += itm[1];
+      }
+      tjBlocks.push({
+        start: tjMatch.index,
+        end: tjMatch.index + tjMatch[0].length,
+        text: blockText,
+        fullMatch: tjMatch[0],
+      });
+    }
+
+    // Also find simple Tj operators
+    const tjRe = /\(([^)]*)\)\s*Tj/g;
+    let tjSimple: RegExpExecArray | null;
+    while ((tjSimple = tjRe.exec(result)) !== null) {
+      // Skip if already in a TJ block
+      const pos = tjSimple.index;
+      const inBlock = tjBlocks.some(b => pos >= b.start && pos < b.end);
+      if (!inBlock) {
+        tjBlocks.push({
+          start: tjSimple.index,
+          end: tjSimple.index + tjSimple[0].length,
+          text: tjSimple[1],
+          fullMatch: tjSimple[0],
+        });
+      }
+    }
+
+    // Sort by position
+    tjBlocks.sort((a, b) => a.start - b.start);
+
+    // Try to find the search text spanning consecutive blocks
+    for (let i = 0; i < tjBlocks.length; i++) {
+      let combined = "";
+      for (let j = i; j < tjBlocks.length && j < i + 5; j++) {
+        combined += tjBlocks[j].text;
+        if (combined.includes(search)) {
+          // Found it! Replace in this range of blocks
+          const newText = combined.replace(search, replace);
+          // Replace the first block's text and clear the others
+          const newBlock = `(${newText}) Tj`;
+          
+          // Build new result
+          let newResult = result.substring(0, tjBlocks[i].start);
+          newResult += newBlock;
+          // Skip blocks i+1 to j (their text is now in the first block)
+          // But we need to handle the text-positioning commands between blocks
+          // For simplicity, just replace the text in the first matching () group
+          // within the stream
+          
+          // Actually, simpler approach: just replace the concatenated text 
+          // within each individual block
+          break;
+        }
+      }
+    }
+
+    // Simpler fallback: line-by-line approach
+    // Split the stream into lines, for each line extract all text,
+    // check if it contains the search, and replace
+    const lines = result.split('\n');
+    let modified = false;
+    for (let li = 0; li < lines.length; li++) {
+      const line = lines[li];
+      const lineText = extractTextFromStream(line);
+      if (lineText.includes(search)) {
+        // Replace by putting all text in a single Tj
+        const newText = lineText.replace(search, replace);
+        // Find the text-showing operator in this line
+        if (line.includes('TJ') || line.includes('Tj')) {
+          // Replace the entire text operation with a simple one
+          const newLine = line.replace(
+            /\[([^\]]*)\]\s*TJ|\(([^)]*)\)\s*Tj/g,
+            `(${newText}) Tj`
+          );
+          if (newLine !== line) {
+            lines[li] = newLine;
+            modified = true;
+            count++;
+            console.log(`[LINE] Replaced: "${search}"`);
+            break;
+          }
+        }
+      }
+    }
+    if (modified) {
+      result = lines.join('\n');
+    }
+  }
+
+  return { result, count };
 }
 
 async function replacePdfStreams(
   pdfBytes: Uint8Array,
   replacements: [string, string][],
-): Promise<{ result: Uint8Array; count: number }> {
+  debugMode: boolean = false,
+): Promise<{ result: Uint8Array; count: number; debug: string[] }> {
   const pdfStr = bytesToStr(pdfBytes);
   const parts: string[] = [];
   let lastIdx = 0;
   let totalCount = 0;
+  const debugInfo: string[] = [];
 
   const re = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
   let m: RegExpExecArray | null;
+  let streamIdx = 0;
 
   while ((m = re.exec(pdfStr)) !== null) {
     const before = pdfStr.substring(lastIdx, m.index);
@@ -120,45 +270,64 @@ async function replacePdfStreams(
         const compressed = strToBytes(rawContent);
         const inflated = await inflateBytes(compressed);
         let text = bytesToStr(inflated);
-        let changed = false;
-
-        for (const [search, replace] of replacements) {
-          if (text.includes(search)) {
-            text = text.split(search).join(replace);
-            changed = true;
-            totalCount++;
-            console.log(`[OK] Replaced: "${search}" -> "${replace.substring(0, 30)}..."`);
-          }
-        }
-
-        if (changed) {
-          const newBytes = strToBytes(text);
-          const deflated = await deflateBytes(newBytes);
-          const deflatedStr = bytesToStr(deflated);
-
-          // Update /Length
-          const lastPart = parts[parts.length - 1];
-          const lenRe = /\/Length\s+(\d+)/g;
-          let lm: RegExpExecArray | null;
-          let lastLen: RegExpExecArray | null = null;
-          while ((lm = lenRe.exec(lastPart)) !== null) lastLen = lm;
-
-          if (lastLen) {
-            parts[parts.length - 1] =
-              lastPart.substring(0, lastLen.index) +
-              `/Length ${deflated.length}` +
-              lastPart.substring(lastLen.index + lastLen[0].length);
+        
+        // Check if this stream has text operators (BT/ET blocks)
+        if (text.includes("BT") && text.includes("Tj")) {
+          const extractedText = extractTextFromStream(text);
+          
+          if (debugMode) {
+            // Log streams that contain text
+            for (const [search] of replacements) {
+              if (extractedText.toLowerCase().includes(search.toLowerCase())) {
+                debugInfo.push(`Stream ${streamIdx}: Found "${search}" in extracted text`);
+                // Log a snippet around the match
+                const idx = extractedText.toLowerCase().indexOf(search.toLowerCase());
+                const snippet = extractedText.substring(Math.max(0, idx - 20), idx + search.length + 20);
+                debugInfo.push(`  Context: "...${snippet}..."`);
+                
+                // Also log the raw PDF operators around this text
+                const rawIdx = text.indexOf(search.charAt(0));
+                if (rawIdx >= 0) {
+                  const rawSnippet = text.substring(Math.max(0, rawIdx - 50), rawIdx + 100);
+                  debugInfo.push(`  Raw operators: ${rawSnippet.substring(0, 200)}`);
+                }
+              }
+            }
           }
 
-          parts.push(`stream\n${deflatedStr}\nendstream`);
+          // Try replacements
+          const { result: newText, count } = replaceTextInOperators(text, replacements);
+          
+          if (count > 0) {
+            totalCount += count;
+            const newBytes = strToBytes(newText);
+            const deflated = await deflateBytes(newBytes);
+            const deflatedStr = bytesToStr(deflated);
+
+            const lastPart = parts[parts.length - 1];
+            const lenRe = /\/Length\s+(\d+)/g;
+            let lm: RegExpExecArray | null;
+            let lastLen: RegExpExecArray | null = null;
+            while ((lm = lenRe.exec(lastPart)) !== null) lastLen = lm;
+            if (lastLen) {
+              parts[parts.length - 1] =
+                lastPart.substring(0, lastLen.index) +
+                `/Length ${deflated.length}` +
+                lastPart.substring(lastLen.index + lastLen[0].length);
+            }
+            parts.push(`stream\n${deflatedStr}\nendstream`);
+          } else {
+            parts.push(fullMatch);
+          }
         } else {
           parts.push(fullMatch);
         }
       } catch (e) {
-        console.log(`[WARN] Decompression failed: ${(e as Error).message}`);
+        if (debugMode) debugInfo.push(`Stream ${streamIdx}: Decompression error: ${(e as Error).message}`);
         parts.push(fullMatch);
       }
     } else {
+      // Uncompressed - try direct replacement
       let content = rawContent;
       let changed = false;
       for (const [search, replace] of replacements) {
@@ -166,7 +335,6 @@ async function replacePdfStreams(
           content = content.split(search).join(replace);
           changed = true;
           totalCount++;
-          console.log(`[OK] Replaced (raw): "${search}"`);
         }
       }
       if (changed) {
@@ -189,10 +357,11 @@ async function replacePdfStreams(
     }
 
     lastIdx = m.index + fullMatch.length;
+    streamIdx++;
   }
 
   parts.push(pdfStr.substring(lastIdx));
-  return { result: strToBytes(parts.join("")), count: totalCount };
+  return { result: strToBytes(parts.join("")), count: totalCount, debug: debugInfo };
 }
 
 Deno.serve(async (req) => {
@@ -221,7 +390,8 @@ Deno.serve(async (req) => {
       throw new Error("Acesso negado");
     }
 
-    const { lead_id } = await req.json();
+    const body = await req.json();
+    const { lead_id, debug } = body;
     if (!lead_id) throw new Error("lead_id é obrigatório");
 
     const { data: lead, error: leadError } = await supabase
@@ -245,8 +415,6 @@ Deno.serve(async (req) => {
     const dataContrato = formatDateBR(new Date());
     const numeroProposta = lead.numero_proposta || "—";
 
-    console.log("Replacements:", JSON.stringify({ razaoSocial, cnpjFormatted, enderecoCompleto, dataContrato, numeroProposta }));
-
     const replacements: [string, string][] = [
       ["razao social", razaoSocial],
       ["Numero cnpj", cnpjFormatted],
@@ -256,8 +424,21 @@ Deno.serve(async (req) => {
       ["proposta monnera", numeroProposta],
     ];
 
-    const { result: modifiedBytes, count } = await replacePdfStreams(templateBytes, replacements);
-    console.log("Replacements done:", count, "Modified size:", modifiedBytes.length);
+    const { result: modifiedBytes, count, debug: debugInfo } = 
+      await replacePdfStreams(templateBytes, replacements, debug === true);
+    
+    console.log("Replacements done:", count);
+    if (debugInfo.length > 0) {
+      for (const d of debugInfo) console.log("DEBUG:", d);
+    }
+
+    // If debug mode, return debug info without saving
+    if (debug === true) {
+      return new Response(
+        JSON.stringify({ replacements_count: count, debug: debugInfo }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     const contractNum = lead.numero_proposta ||
       `MNR-${new Date().getFullYear()}-${lead_id.slice(0, 8).toUpperCase()}`;
@@ -287,8 +468,6 @@ Deno.serve(async (req) => {
     } else {
       await supabase.from("contracts").insert({ lead_id, ...contractData } as any);
     }
-
-    console.log("Contract generated successfully:", filePath);
 
     return new Response(
       JSON.stringify({ contrato_url: filePath, numero_proposta: contractNum, replacements_count: count }),
