@@ -13,12 +13,14 @@ import { LeadExportButton } from "@/components/admin/LeadExportButton";
 import { LeadImportDialog } from "@/components/admin/LeadImportDialog";
 import { PropostaUploadDialog } from "@/components/admin/PropostaUploadDialog";
 import { LeadPerdidoDialog } from "@/components/admin/LeadPerdidoDialog";
+import { DaysInStage } from "@/components/admin/DaysInStage";
 import { PIPELINE_STAGES, PIPELINE_LABELS } from "@/lib/pipelineConstants";
 
 const AdminLeads = () => {
   const [searchParams] = useSearchParams();
   const { isAdmin } = useAuth();
   const [leads, setLeads] = useState<any[]>([]);
+  const [stageMap, setStageMap] = useState<Record<string, string>>({}); // lead_id -> data_entrada of current stage
   const [parceiros, setParceiros] = useState<Record<string, string>>({});
   const [parceirosAll, setParceirosAll] = useState<{ id: string; nome: string }[]>([]);
 
@@ -48,16 +50,22 @@ const AdminLeads = () => {
   const [generatingContract, setGeneratingContract] = useState(false);
 
   const loadData = async () => {
-    const [leadsRes, parceirosRes] = await Promise.all([
+    const [leadsRes, parceirosRes, stageRes] = await Promise.all([
       supabase.from("leads").select("*").order("data_cadastro", { ascending: false }),
       supabase.from("parceiros_comerciais").select("id, nome"),
+      supabase.from("lead_stage_history").select("lead_id, data_entrada").is("data_saida", null),
     ]);
     setLeads(leadsRes.data || []);
     const map: Record<string, string> = {};
     const list = parceirosRes.data || [];
-    list.forEach((p) => { map[p.id] = p.nome; });
+    list.forEach((p: any) => { map[p.id] = p.nome; });
     setParceiros(map);
     setParceirosAll(list);
+
+    // Build stage map: lead_id -> data_entrada of current open stage
+    const sm: Record<string, string> = {};
+    (stageRes.data || []).forEach((s: any) => { sm[s.lead_id] = s.data_entrada; });
+    setStageMap(sm);
   };
 
   useEffect(() => {
@@ -438,6 +446,7 @@ const AdminLeads = () => {
                   <span>{l.telefone_responsavel}</span>
                 </div>
               </div>
+              <DaysInStage dataEntrada={stageMap[l.id]} />
               <div>
                 <Select
                   value={l.status_lead || l.status || "novo_lead"}
@@ -510,7 +519,10 @@ const AdminLeads = () => {
                     <td className="py-3 px-4">{l.nome_responsavel}</td>
                     <td className="py-3 px-4">{l.telefone_responsavel}</td>
                     <td className="py-3 px-4">
-                      <StatusSelect lead={l} />
+                      <div className="space-y-1">
+                        <StatusSelect lead={l} />
+                        <DaysInStage dataEntrada={stageMap[l.id]} compact />
+                      </div>
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-1">

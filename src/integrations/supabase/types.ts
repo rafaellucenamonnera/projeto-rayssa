@@ -52,6 +52,41 @@ export type Database = {
           },
         ]
       }
+      lead_stage_history: {
+        Row: {
+          data_entrada: string
+          data_saida: string | null
+          dias_na_etapa: number | null
+          etapa: string
+          id: string
+          lead_id: string
+        }
+        Insert: {
+          data_entrada?: string
+          data_saida?: string | null
+          dias_na_etapa?: number | null
+          etapa: string
+          id?: string
+          lead_id: string
+        }
+        Update: {
+          data_entrada?: string
+          data_saida?: string | null
+          dias_na_etapa?: number | null
+          etapa?: string
+          id?: string
+          lead_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_stage_history_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           cidade: string
@@ -351,6 +386,7 @@ export type Database = {
       get_financeiro_dashboard:
         | { Args: never; Returns: Json }
         | { Args: { p_ano?: number; p_mes?: number }; Returns: Json }
+      get_pipeline_stage_metrics: { Args: never; Returns: Json }
       has_any_admin: { Args: never; Returns: boolean }
       has_role: {
         Args: {

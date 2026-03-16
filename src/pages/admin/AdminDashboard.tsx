@@ -3,13 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, FileText, TrendingUp, CalendarCheck, FileSpreadsheet, CheckCircle, Trophy, PhoneCall, FileSignature, Send } from "lucide-react";
-import { PIPELINE_STAGES } from "@/lib/pipelineConstants";
+import { Users, FileText, TrendingUp, CalendarCheck, FileSpreadsheet, CheckCircle, Trophy, PhoneCall, FileSignature, Send, Clock, AlertTriangle, BarChart3 } from "lucide-react";
+import { PIPELINE_LABELS } from "@/lib/pipelineConstants";
 
 const STATUS_CONFIG = [
   { value: "novo_lead", label: "Lead", icon: FileText, colorClass: "bg-primary/10 text-primary" },
   { value: "contato_realizado", label: "Contato Realizado", icon: PhoneCall, colorClass: "bg-cyan-500/10 text-cyan-500" },
   { value: "reuniao_agendada", label: "Reunião Agendada", icon: CalendarCheck, colorClass: "bg-amber-500/10 text-amber-500" },
+  { value: "reuniao_realizada", label: "Reunião Realizada", icon: CheckCircle, colorClass: "bg-orange-500/10 text-orange-500" },
   { value: "proposta_enviada", label: "Proposta Enviada", icon: Send, colorClass: "bg-blue-500/10 text-blue-500" },
   { value: "lead_convertido", label: "Lead Convertido", icon: CheckCircle, colorClass: "bg-emerald-500/10 text-emerald-500" },
   { value: "contrato_enviado", label: "Contrato Enviado", icon: FileSpreadsheet, colorClass: "bg-violet-500/10 text-violet-500" },
@@ -24,19 +25,42 @@ interface RankingItem {
   assinados: number;
 }
 
+interface StageMetric {
+  etapa: string;
+  tempo_medio: number;
+  total_passagens: number;
+}
+
+interface StalledLead {
+  id: string;
+  nome_fantasia: string;
+  etapa: string;
+  dias: number;
+  parceiro_nome: string;
+}
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [totalParceiros, setTotalParceiros] = useState(0);
   const [totalLeads, setTotalLeads] = useState(0);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [ranking, setRanking] = useState<RankingItem[]>([]);
+  const [stageMetrics, setStageMetrics] = useState<StageMetric[]>([]);
+  const [stalledLeads, setStalledLeads] = useState<StalledLead[]>([]);
+  const [bottleneck, setBottleneck] = useState<StageMetric | null>(null);
 
   useEffect(() => {
     const load = async () => {
-      const [parceiros, leads, parceirosData] = await Promise.all([
+      const [parceiros, leads, parceirosData, metricsRes, stalledRes] = await Promise.all([
         supabase.from("parceiros_comerciais").select("id", { count: "exact", head: true }),
         supabase.from("leads").select("status_lead, parceiro_id"),
         supabase.from("parceiros_comerciais").select("id, nome"),
+        supabase.rpc("get_pipeline_stage_metrics"),
+        supabase
+          .from("lead_stage_history")
+          .select("lead_id, etapa, data_entrada")
+          .is("data_saida", null)
+          .order("data_entrada", { ascending: true }),
       ]);
       setTotalParceiros(parceiros.count || 0);
 
@@ -47,7 +71,7 @@ const AdminDashboard = () => {
       STATUS_CONFIG.forEach((s) => { counts[s.value] = 0; });
 
       const parceiroMap = new Map<string, { total: number; convertidos: number; assinados: number }>();
-      leadsData.forEach((l) => {
+      leadsData.forEach((l: any) => {
         const s = l.status_lead || "novo_lead";
         counts[s] = (counts[s] || 0) + 1;
 
@@ -59,22 +83,58 @@ const AdminDashboard = () => {
       });
       setStatusCounts(counts);
 
-      const nomeMap = new Map((parceirosData.data || []).map((p) => [p.id, p.nome]));
+      const nomeMap = new Map((parceirosData.data || []).map((p: any) => [p.id, p.nome]));
       const rankingList: RankingItem[] = Array.from(parceiroMap.entries())
         .map(([id, data]) => ({ parceiro_id: id, nome: nomeMap.get(id) || "—", ...data }))
         .sort((a, b) => b.total - a.total)
         .slice(0, 10);
       setRanking(rankingList);
+
+      // Stage metrics
+      const metrics: StageMetric[] = (metricsRes.data as any) || [];
+      setStageMetrics(metrics);
+      if (metrics.length > 0) {
+        const bn = metrics.reduce((max, m) => m.tempo_medio > max.tempo_medio ? m : max, metrics[0]);
+        setBottleneck(bn);
+      }
+
+      // Stalled leads - calculate days and build list
+      const stalledData = (stalledRes.data || []) as any[];
+      // Get lead names
+      const leadIds = stalledData.map((s: any) => s.lead_id);
+      if (leadIds.length > 0) {
+        const { data: leadDetails } = await supabase
+          .from("leads")
+          .select("id, nome_fantasia, parceiro_id")
+          .in("id", leadIds);
+
+        const stalled: StalledLead[] = stalledData.map((s: any) => {
+          const lead = (leadDetails || []).find((l: any) => l.id === s.lead_id);
+          const dias = Math.max(0, Math.floor((Date.now() - new Date(s.data_entrada).getTime()) / (1000 * 60 * 60 * 24)));
+          return {
+            id: s.lead_id,
+            nome_fantasia: lead?.nome_fantasia || "—",
+            etapa: s.etapa,
+            dias,
+            parceiro_nome: nomeMap.get(lead?.parceiro_id || "") || "—",
+          };
+        })
+          .sort((a: StalledLead, b: StalledLead) => b.dias - a.dias)
+          .slice(0, 10);
+        setStalledLeads(stalled);
+      }
     };
     load();
   }, []);
 
   const medals = ["🥇", "🥈", "🥉"];
 
-  // Conversion rate: lead → contrato_assinado
   const conversionRate = totalLeads > 0
     ? Math.round(((statusCounts.contrato_assinado || 0) / totalLeads) * 100)
     : 0;
+
+  const getDaysColor = (dias: number) =>
+    dias <= 3 ? "text-emerald-600" : dias <= 7 ? "text-amber-500" : "text-destructive";
 
   return (
     <div className="space-y-6">
@@ -121,7 +181,7 @@ const AdminDashboard = () => {
       {/* Pipeline por status */}
       <div>
         <h2 className="text-lg font-display font-semibold mb-3">Pipeline Comercial</h2>
-        <div className="flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 lg:grid-cols-7 sm:overflow-visible">
+        <div className="flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 lg:grid-cols-8 sm:overflow-visible">
           {STATUS_CONFIG.map((s) => {
             const Icon = s.icon;
             const count = statusCounts[s.value] || 0;
@@ -150,6 +210,111 @@ const AdminDashboard = () => {
             );
           })}
         </div>
+      </div>
+
+      {/* Inteligência Comercial */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Tempo Médio por Etapa */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-display flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-primary" />
+              Tempo Médio por Etapa
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {stageMetrics.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Sem dados de histórico ainda.</p>
+            ) : (
+              <div className="space-y-3">
+                {stageMetrics.filter(m => m.etapa !== "lead_perdido").map((m) => {
+                  const maxTempo = Math.max(...stageMetrics.map(s => s.tempo_medio), 1);
+                  const pct = Math.round((m.tempo_medio / maxTempo) * 100);
+                  const isBottleneck = bottleneck?.etapa === m.etapa;
+                  return (
+                    <div key={m.etapa} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className={`${isBottleneck ? "font-semibold text-destructive" : ""}`}>
+                          {PIPELINE_LABELS[m.etapa] || m.etapa}
+                          {isBottleneck && " 🔴"}
+                        </span>
+                        <span className={`font-mono text-xs ${getDaysColor(m.tempo_medio)}`}>
+                          {m.tempo_medio} {m.tempo_medio === 1 ? "dia" : "dias"}
+                        </span>
+                      </div>
+                      <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            isBottleneck ? "bg-destructive" : "bg-primary"
+                          }`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Bottleneck callout */}
+            {bottleneck && bottleneck.etapa !== "lead_perdido" && (
+              <div className="mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                <div className="flex items-center gap-2 text-sm">
+                  <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
+                  <div>
+                    <p className="font-semibold text-destructive">Gargalo atual do funil</p>
+                    <p className="text-xs text-muted-foreground">
+                      {PIPELINE_LABELS[bottleneck.etapa] || bottleneck.etapa} — Tempo médio: {bottleneck.tempo_medio} dias
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Leads Mais Tempo na Mesma Etapa */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-display flex items-center gap-2">
+              <Clock className="w-5 h-5 text-amber-500" />
+              Leads Mais Tempo na Mesma Etapa
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {stalledLeads.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Sem leads parados.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Empresa</TableHead>
+                    <TableHead>Etapa</TableHead>
+                    <TableHead className="text-right">Dias</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {stalledLeads.map((l) => (
+                    <TableRow key={l.id} className="cursor-pointer" onClick={() => navigate(`/admin/leads?status=${l.etapa}`)}>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium text-sm">{l.nome_fantasia}</p>
+                          <p className="text-[10px] text-muted-foreground">{l.parceiro_nome}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {PIPELINE_LABELS[l.etapa] || l.etapa}
+                      </TableCell>
+                      <TableCell className={`text-right font-mono font-bold ${getDaysColor(l.dias)}`}>
+                        {l.dias}d
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Ranking de consultores */}

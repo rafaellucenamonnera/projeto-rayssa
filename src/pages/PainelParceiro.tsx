@@ -8,6 +8,7 @@ import { Copy, Link2, Users, LogOut, Loader2, MessageCircle, Mail, CalendarCheck
 import { toast } from "sonner";
 import { PIPELINE_STAGES, PIPELINE_LABELS } from "@/lib/pipelineConstants";
 import { AddLeadDialog } from "@/components/parceiro/AddLeadDialog";
+import { DaysInStage } from "@/components/admin/DaysInStage";
 
 const PainelParceiro = () => {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ const PainelParceiro = () => {
   const { user, loading: authLoading, signOut } = useAuth();
   const [parceiro, setParceiro] = useState<any>(null);
   const [leads, setLeads] = useState<any[]>([]);
+  const [stageMap, setStageMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string | null>(searchParams.get("status"));
   const [addLeadOpen, setAddLeadOpen] = useState(false);
@@ -51,12 +53,21 @@ const PainelParceiro = () => {
         slug_consultor: p.slug_consultor,
       }));
 
-      const { data: leadsData } = await supabase
-        .from("leads")
-        .select("*")
-        .eq("parceiro_id", p.id)
-        .order("data_cadastro", { ascending: false });
-      setLeads(leadsData || []);
+      const [leadsRes, stageRes] = await Promise.all([
+        supabase
+          .from("leads")
+          .select("*")
+          .eq("parceiro_id", p.id)
+          .order("data_cadastro", { ascending: false }),
+        supabase
+          .from("lead_stage_history")
+          .select("lead_id, data_entrada")
+          .is("data_saida", null),
+      ]);
+      setLeads(leadsRes.data || []);
+      const sm: Record<string, string> = {};
+      (stageRes.data || []).forEach((s: any) => { sm[s.lead_id] = s.data_entrada; });
+      setStageMap(sm);
       setLoading(false);
     };
     loadData();
@@ -120,12 +131,14 @@ const PainelParceiro = () => {
   };
 
   const reloadLeads = async () => {
-    const { data: leadsData } = await supabase
-      .from("leads")
-      .select("*")
-      .eq("parceiro_id", parceiro.id)
-      .order("data_cadastro", { ascending: false });
-    setLeads(leadsData || []);
+    const [leadsRes, stageRes] = await Promise.all([
+      supabase.from("leads").select("*").eq("parceiro_id", parceiro.id).order("data_cadastro", { ascending: false }),
+      supabase.from("lead_stage_history").select("lead_id, data_entrada").is("data_saida", null),
+    ]);
+    setLeads(leadsRes.data || []);
+    const sm: Record<string, string> = {};
+    (stageRes.data || []).forEach((s: any) => { sm[s.lead_id] = s.data_entrada; });
+    setStageMap(sm);
   };
 
   const statCards = [
@@ -248,9 +261,12 @@ const PainelParceiro = () => {
                           <span className="text-muted-foreground">Tel: </span>
                           <span>{lead.telefone_responsavel}</span>
                         </div>
-                        <div className="col-span-2">
-                          <span className="text-muted-foreground">Data: </span>
-                          <span>{new Date(lead.data_cadastro).toLocaleDateString("pt-BR")}</span>
+                        <div className="col-span-2 flex items-center justify-between">
+                          <span>
+                            <span className="text-muted-foreground">Data: </span>
+                            <span>{new Date(lead.data_cadastro).toLocaleDateString("pt-BR")}</span>
+                          </span>
+                          <DaysInStage dataEntrada={stageMap[lead.id]} compact />
                         </div>
                       </div>
                     </div>
@@ -278,9 +294,12 @@ const PainelParceiro = () => {
                           <td className="py-3 px-2">{lead.nome_responsavel}</td>
                           <td className="py-3 px-2">{lead.telefone_responsavel}</td>
                           <td className="py-3 px-2">
-                            <span className="px-2 py-1 rounded-full text-xs bg-primary/10 text-primary">
-                              {PIPELINE_LABELS[lead.status_lead || lead.status] || "Lead"}
-                            </span>
+                            <div className="space-y-1">
+                              <span className="px-2 py-1 rounded-full text-xs bg-primary/10 text-primary">
+                                {PIPELINE_LABELS[lead.status_lead || lead.status] || "Lead"}
+                              </span>
+                              <DaysInStage dataEntrada={stageMap[lead.id]} compact />
+                            </div>
                           </td>
                           <td className="py-3 px-2 text-muted-foreground">{new Date(lead.data_cadastro).toLocaleDateString("pt-BR")}</td>
                         </tr>
