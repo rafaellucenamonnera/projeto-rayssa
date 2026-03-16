@@ -429,7 +429,7 @@ const AdminLeads = () => {
               {(l.proposta_url || l.contrato_url) && (
                 <div className="flex items-center gap-2 pt-1">
                   {l.proposta_url && (
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openSignedUrl(l.proposta_url)}>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openSignedUrl(l.proposta_url, `proposta-${l.nome_fantasia}.pdf`)}>
                       <FileText className="mr-1 h-3 w-3" /> Proposta
                     </Button>
                   )}
