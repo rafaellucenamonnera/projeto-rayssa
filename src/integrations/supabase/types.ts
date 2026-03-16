@@ -52,6 +52,44 @@ export type Database = {
           },
         ]
       }
+      lead_comments: {
+        Row: {
+          comentario: string
+          data_comentario: string
+          etapa: string
+          id: string
+          lead_id: string
+          user_id: string
+          usuario: string
+        }
+        Insert: {
+          comentario: string
+          data_comentario?: string
+          etapa: string
+          id?: string
+          lead_id: string
+          user_id: string
+          usuario: string
+        }
+        Update: {
+          comentario?: string
+          data_comentario?: string
+          etapa?: string
+          id?: string
+          lead_id?: string
+          user_id?: string
+          usuario?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_comments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_stage_history: {
         Row: {
           data_entrada: string
@@ -395,6 +433,62 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      reunioes: {
+        Row: {
+          created_at: string
+          created_by: string
+          data_reuniao: string
+          google_event_id: string | null
+          google_meet_link: string | null
+          horario_reuniao: string
+          id: string
+          lead_id: string
+          link_reuniao: string | null
+          observacao: string | null
+          realizada: boolean
+          resumo: string | null
+          tipo_reuniao: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          data_reuniao: string
+          google_event_id?: string | null
+          google_meet_link?: string | null
+          horario_reuniao: string
+          id?: string
+          lead_id: string
+          link_reuniao?: string | null
+          observacao?: string | null
+          realizada?: boolean
+          resumo?: string | null
+          tipo_reuniao?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          data_reuniao?: string
+          google_event_id?: string | null
+          google_meet_link?: string | null
+          horario_reuniao?: string
+          id?: string
+          lead_id?: string
+          link_reuniao?: string | null
+          observacao?: string | null
+          realizada?: boolean
+          resumo?: string | null
+          tipo_reuniao?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reunioes_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
