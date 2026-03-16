@@ -434,7 +434,7 @@ const AdminLeads = () => {
                     </Button>
                   )}
                   {l.contrato_url && (
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openSignedUrl(l.contrato_url, `contrato-${l.nome_fantasia}.pdf`)}>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openSignedUrl(l.contrato_url, `contrato-${l.nome_fantasia}.docx`)}>
                       <Download className="mr-1 h-3 w-3" /> Contrato
                     </Button>
                   )}
@@ -497,7 +497,7 @@ const AdminLeads = () => {
                         )}
                         {l.contrato_url && (
                           <button
-                            onClick={() => openSignedUrl(l.contrato_url, `contrato-${l.nome_fantasia}.pdf`)}
+                            onClick={() => openSignedUrl(l.contrato_url, `contrato-${l.nome_fantasia}.docx`)}
                             className="p-1 hover:bg-primary/10 rounded"
                             title="Download Contrato"
                           >
@@ -680,7 +680,7 @@ const AdminLeads = () => {
                       {detailLead.contrato_url ? "Regerar Contrato" : "Gerar Contrato"}
                     </Button>
                     {detailLead.contrato_url && (
-                      <Button size="sm" variant="outline" onClick={() => openSignedUrl(detailLead.contrato_url, `contrato-${detailLead.nome_fantasia}.pdf`)}>
+                      <Button size="sm" variant="outline" onClick={() => openSignedUrl(detailLead.contrato_url, `contrato-${detailLead.nome_fantasia}.docx`)}>
                         <Download className="mr-2 h-4 w-4" /> Download Contrato
                       </Button>
                     )}
