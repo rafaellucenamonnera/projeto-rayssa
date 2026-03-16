@@ -261,9 +261,12 @@ const PainelParceiro = () => {
                           <span className="text-muted-foreground">Tel: </span>
                           <span>{lead.telefone_responsavel}</span>
                         </div>
-                        <div className="col-span-2">
-                          <span className="text-muted-foreground">Data: </span>
-                          <span>{new Date(lead.data_cadastro).toLocaleDateString("pt-BR")}</span>
+                        <div className="col-span-2 flex items-center justify-between">
+                          <span>
+                            <span className="text-muted-foreground">Data: </span>
+                            <span>{new Date(lead.data_cadastro).toLocaleDateString("pt-BR")}</span>
+                          </span>
+                          <DaysInStage dataEntrada={stageMap[lead.id]} compact />
                         </div>
                       </div>
                     </div>
