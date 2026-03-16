@@ -49,6 +49,10 @@ const AdminLeads = () => {
   // Contract generation
   const [generatingContract, setGeneratingContract] = useState(false);
 
+  // Conversion link dialog
+  const [conversionLinkOpen, setConversionLinkOpen] = useState(false);
+  const [conversionLink, setConversionLink] = useState("");
+
   const loadData = async () => {
     const [leadsRes, parceirosRes, stageRes] = await Promise.all([
       supabase.from("leads").select("*").order("data_cadastro", { ascending: false }),
