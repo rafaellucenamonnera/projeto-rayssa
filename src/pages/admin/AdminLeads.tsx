@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Trash2, FileText, RefreshCw, Download, Loader2, Eye } from "lucide-react";
+import { Trash2, FileText, RefreshCw, Download, Loader2, Eye, Link2, Copy, MessageCircle, CheckCircle } from "lucide-react";
 import { LeadExportButton } from "@/components/admin/LeadExportButton";
 import { LeadImportDialog } from "@/components/admin/LeadImportDialog";
 import { PropostaUploadDialog } from "@/components/admin/PropostaUploadDialog";
@@ -48,6 +48,10 @@ const AdminLeads = () => {
 
   // Contract generation
   const [generatingContract, setGeneratingContract] = useState(false);
+
+  // Conversion link dialog
+  const [conversionLinkOpen, setConversionLinkOpen] = useState(false);
+  const [conversionLink, setConversionLink] = useState("");
 
   const loadData = async () => {
     const [leadsRes, parceirosRes, stageRes] = await Promise.all([
@@ -131,6 +135,11 @@ const AdminLeads = () => {
       updateData.numero_proposta = numeroProposta;
     }
 
+    // Generate completion_token when converting lead
+    if (newStatus === "lead_convertido") {
+      updateData.completion_token = crypto.randomUUID();
+    }
+
     const { error } = await supabase
       .from("leads")
       .update(updateData)
@@ -142,12 +151,18 @@ const AdminLeads = () => {
     }
 
     setLeads((prev) =>
-      prev.map((l) => (l.id === leadId ? { ...l, status_lead: newStatus, ...(propostaUrl && { proposta_url: propostaUrl }), ...(numeroProposta && { numero_proposta: numeroProposta }) } : l))
+      prev.map((l) => (l.id === leadId ? { ...l, ...updateData } : l))
     );
     toast.success("Status atualizado");
 
-    // Auto-generate contract when status changes to lead_convertido
+    // Show conversion link dialog
     if (newStatus === "lead_convertido") {
+      const lead = leads.find((l) => l.id === leadId);
+      const link = `${window.location.origin}/completar-cadastro/${updateData.completion_token}`;
+      setConversionLink(link);
+      setConversionLinkOpen(true);
+
+      // Also auto-generate contract
       autoGenerateContract(leadId);
     }
   };
@@ -596,15 +611,15 @@ const AdminLeads = () => {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">Razão Social</p>
-                  <p className="font-medium">{detailLead.razao_social}</p>
+                  <p className="font-medium">{detailLead.razao_social || "—"}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">CNPJ</p>
-                  <p className="font-mono">{detailLead.cnpj}</p>
+                  <p className="font-mono">{detailLead.cnpj || "—"}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">Cidade</p>
-                  <p>{detailLead.cidade}</p>
+                  <p>{detailLead.cidade || "—"}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">Qtd Lojas</p>
@@ -688,6 +703,43 @@ const AdminLeads = () => {
                 </div>
               )}
 
+              {/* Conversion Link */}
+              {isConvertedOrBeyond(detailLead.status_lead) && detailLead.completion_token && !detailLead.dados_completos && (
+                <div className="border-t border-border pt-4 space-y-3">
+                  <h3 className="text-sm font-semibold">Link de Preenchimento</h3>
+                  <p className="text-xs text-muted-foreground">Envie este link ao cliente para completar os dados da empresa e gerar o contrato.</p>
+                  <div className="bg-secondary rounded-lg p-3">
+                    <p className="text-xs font-mono text-primary break-all">
+                      {`${window.location.origin}/completar-cadastro/${detailLead.completion_token}`}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}/completar-cadastro/${detailLead.completion_token}`);
+                      toast.success("Link copiado!");
+                    }}>
+                      <Copy className="mr-1 h-3 w-3" /> Copiar
+                    </Button>
+                    <Button size="sm" variant="outline" asChild>
+                      <a href={`https://wa.me/?text=${encodeURIComponent(
+                        `Seja bem-vindo ao Monnera, ${detailLead.nome_responsavel}!\n\nAgora só precisamos formalizar nossa parceria para iniciarmos o processo de implantação da plataforma.\n\nPreencha os dados abaixo para que possamos gerar seu contrato.\n\n${window.location.origin}/completar-cadastro/${detailLead.completion_token}`
+                      )}`} target="_blank" rel="noopener noreferrer">
+                        <MessageCircle className="mr-1 h-3 w-3" /> WhatsApp
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {detailLead.dados_completos && (
+                <div className="border-t border-border pt-4">
+                  <div className="flex items-center gap-2 text-sm text-primary">
+                    <CheckCircle className="h-4 w-4" />
+                    <span className="font-medium">Dados completos recebidos</span>
+                  </div>
+                </div>
+              )}
+
               {/* Contract section - visible for converted leads */}
               {isConvertedOrBeyond(detailLead.status_lead) && (
                 <div className="border-t border-border pt-4 space-y-4">
@@ -746,6 +798,34 @@ const AdminLeads = () => {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Conversion Link Dialog */}
+      <Dialog open={conversionLinkOpen} onOpenChange={setConversionLinkOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display">Link de Conversão Gerado</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Envie este link ao cliente para que ele complete os dados da empresa e formalize o contrato.
+            </p>
+            <div className="bg-secondary rounded-lg p-3">
+              <p className="text-xs font-mono text-primary break-all">{conversionLink}</p>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => {
+                navigator.clipboard.writeText(conversionLink);
+                toast.success("Link copiado!");
+              }}>
+                <Copy className="mr-1 h-3 w-3" /> Copiar Link
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setConversionLinkOpen(false)}>
+                Fechar
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

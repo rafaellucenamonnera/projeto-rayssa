@@ -89,9 +89,11 @@ export type Database = {
       }
       leads: {
         Row: {
-          cidade: string
-          cnpj: string
+          cidade: string | null
+          cnpj: string | null
+          completion_token: string | null
           contrato_url: string | null
+          dados_completos: boolean
           data_cadastro: string
           descricao_necessidade: string | null
           email_responsavel: string
@@ -113,7 +115,7 @@ export type Database = {
           qtd_parcelas: number | null
           quantidade_funcionarios: number | null
           quantidade_lojas: number
-          razao_social: string
+          razao_social: string | null
           status: string
           status_lead: Database["public"]["Enums"]["lead_status"]
           telefone_responsavel: string
@@ -121,9 +123,11 @@ export type Database = {
           valor_mensalidade: number | null
         }
         Insert: {
-          cidade: string
-          cnpj: string
+          cidade?: string | null
+          cnpj?: string | null
+          completion_token?: string | null
           contrato_url?: string | null
+          dados_completos?: boolean
           data_cadastro?: string
           descricao_necessidade?: string | null
           email_responsavel: string
@@ -145,7 +149,7 @@ export type Database = {
           qtd_parcelas?: number | null
           quantidade_funcionarios?: number | null
           quantidade_lojas: number
-          razao_social: string
+          razao_social?: string | null
           status?: string
           status_lead?: Database["public"]["Enums"]["lead_status"]
           telefone_responsavel: string
@@ -153,9 +157,11 @@ export type Database = {
           valor_mensalidade?: number | null
         }
         Update: {
-          cidade?: string
-          cnpj?: string
+          cidade?: string | null
+          cnpj?: string | null
+          completion_token?: string | null
           contrato_url?: string | null
+          dados_completos?: boolean
           data_cadastro?: string
           descricao_necessidade?: string | null
           email_responsavel?: string
@@ -177,7 +183,7 @@ export type Database = {
           qtd_parcelas?: number | null
           quantidade_funcionarios?: number | null
           quantidade_lojas?: number
-          razao_social?: string
+          razao_social?: string | null
           status?: string
           status_lead?: Database["public"]["Enums"]["lead_status"]
           telefone_responsavel?: string
@@ -225,6 +231,41 @@ export type Database = {
             columns: ["parceiro_id"]
             isOneToOne: false
             referencedRelation: "parceiros_comerciais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lojas: {
+        Row: {
+          cnpj: string
+          created_at: string
+          id: string
+          lead_id: string
+          nome_interno: string
+          razao_social: string
+        }
+        Insert: {
+          cnpj: string
+          created_at?: string
+          id?: string
+          lead_id: string
+          nome_interno: string
+          razao_social: string
+        }
+        Update: {
+          cnpj?: string
+          created_at?: string
+          id?: string
+          lead_id?: string
+          nome_interno?: string
+          razao_social?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lojas_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]
