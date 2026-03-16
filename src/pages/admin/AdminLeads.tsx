@@ -639,7 +639,16 @@ const AdminLeads = () => {
         onCancel={() => { setPerdidoDialogOpen(false); setPendingPerdido(null); }}
       />
 
-      {/* Lead Detail Dialog */}
+      {/* Agendar Reunião Dialog */}
+      <AgendarReuniaoDialog
+        open={reuniaoDialogOpen}
+        onOpenChange={setReuniaoDialogOpen}
+        leadId={pendingReuniao?.leadId || ""}
+        leadName={pendingReuniao?.leadName || ""}
+        onConfirm={handleReuniaoConfirm}
+        onCancel={handleReuniaoCancel}
+      />
+
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
