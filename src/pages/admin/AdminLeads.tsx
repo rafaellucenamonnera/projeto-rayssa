@@ -206,19 +206,35 @@ const AdminLeads = () => {
     }
   };
 
-  const openSignedUrl = async (storagePath: string) => {
-    if (storagePath.startsWith("http")) {
-      window.open(storagePath, "_blank");
-      return;
+  const openSignedUrl = async (storagePath: string, fileName?: string) => {
+    try {
+      let url = storagePath;
+      if (!storagePath.startsWith("http")) {
+        const { data, error } = await supabase.storage
+          .from("propostas")
+          .createSignedUrl(storagePath, 3600);
+        if (error || !data?.signedUrl) {
+          toast.error("Erro ao gerar link do documento");
+          return;
+        }
+        url = data.signedUrl;
+      }
+      // Fetch as blob to avoid ad-blocker/popup-blocker issues
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Erro ao baixar documento");
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = fileName || storagePath.split("/").pop() || "documento.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch (err: any) {
+      console.error("Download error:", err);
+      toast.error("Erro ao baixar documento: " + err.message);
     }
-    const { data, error } = await supabase.storage
-      .from("propostas")
-      .createSignedUrl(storagePath, 3600);
-    if (error || !data?.signedUrl) {
-      toast.error("Erro ao gerar link da proposta");
-      return;
-    }
-    window.open(data.signedUrl, "_blank");
   };
 
   const openLeadDetail = (lead: any) => {
@@ -413,12 +429,12 @@ const AdminLeads = () => {
               {(l.proposta_url || l.contrato_url) && (
                 <div className="flex items-center gap-2 pt-1">
                   {l.proposta_url && (
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openSignedUrl(l.proposta_url)}>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openSignedUrl(l.proposta_url, `proposta-${l.nome_fantasia}.pdf`)}>
                       <FileText className="mr-1 h-3 w-3" /> Proposta
                     </Button>
                   )}
                   {l.contrato_url && (
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openSignedUrl(l.contrato_url)}>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openSignedUrl(l.contrato_url, `contrato-${l.nome_fantasia}.pdf`)}>
                       <Download className="mr-1 h-3 w-3" /> Contrato
                     </Button>
                   )}
@@ -472,7 +488,7 @@ const AdminLeads = () => {
                       <div className="flex items-center gap-1">
                         {l.proposta_url && (
                           <button
-                            onClick={() => openSignedUrl(l.proposta_url)}
+                            onClick={() => openSignedUrl(l.proposta_url, `proposta-${l.nome_fantasia}.pdf`)}
                             className="p-1 hover:bg-primary/10 rounded"
                             title="Download Proposta"
                           >
@@ -481,7 +497,7 @@ const AdminLeads = () => {
                         )}
                         {l.contrato_url && (
                           <button
-                            onClick={() => openSignedUrl(l.contrato_url)}
+                            onClick={() => openSignedUrl(l.contrato_url, `contrato-${l.nome_fantasia}.pdf`)}
                             className="p-1 hover:bg-primary/10 rounded"
                             title="Download Contrato"
                           >
@@ -664,7 +680,7 @@ const AdminLeads = () => {
                       {detailLead.contrato_url ? "Regerar Contrato" : "Gerar Contrato"}
                     </Button>
                     {detailLead.contrato_url && (
-                      <Button size="sm" variant="outline" onClick={() => openSignedUrl(detailLead.contrato_url)}>
+                      <Button size="sm" variant="outline" onClick={() => openSignedUrl(detailLead.contrato_url, `contrato-${detailLead.nome_fantasia}.pdf`)}>
                         <Download className="mr-2 h-4 w-4" /> Download Contrato
                       </Button>
                     )}
