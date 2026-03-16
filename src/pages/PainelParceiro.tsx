@@ -294,9 +294,12 @@ const PainelParceiro = () => {
                           <td className="py-3 px-2">{lead.nome_responsavel}</td>
                           <td className="py-3 px-2">{lead.telefone_responsavel}</td>
                           <td className="py-3 px-2">
-                            <span className="px-2 py-1 rounded-full text-xs bg-primary/10 text-primary">
-                              {PIPELINE_LABELS[lead.status_lead || lead.status] || "Lead"}
-                            </span>
+                            <div className="space-y-1">
+                              <span className="px-2 py-1 rounded-full text-xs bg-primary/10 text-primary">
+                                {PIPELINE_LABELS[lead.status_lead || lead.status] || "Lead"}
+                              </span>
+                              <DaysInStage dataEntrada={stageMap[lead.id]} compact />
+                            </div>
                           </td>
                           <td className="py-3 px-2 text-muted-foreground">{new Date(lead.data_cadastro).toLocaleDateString("pt-BR")}</td>
                         </tr>
