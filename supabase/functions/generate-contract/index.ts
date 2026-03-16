@@ -49,7 +49,7 @@ function bytesToStr(b: Uint8Array): string {
 }
 
 async function inflateBytes(compressed: Uint8Array): Promise<Uint8Array> {
-  const ds = new DecompressionStream("raw");
+  const ds = new DecompressionStream("deflate");
   const writer = ds.writable.getWriter();
   writer.write(compressed);
   writer.close();
