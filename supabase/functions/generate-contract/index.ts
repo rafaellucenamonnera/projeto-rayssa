@@ -67,17 +67,30 @@ Deno.serve(async (req) => {
       .from("leads").select("*").eq("id", lead_id).single();
     if (leadError || !lead) throw new Error("Lead nao encontrado");
 
-    console.log("Lead found:", lead.razao_social);
+    console.log("Lead found:", lead.razao_social || lead.nome_fantasia);
 
     // Validate required fields
     const missing: string[] = [];
     if (!lead.razao_social) missing.push("Razão Social");
-    if (!lead.cnpj) missing.push("CNPJ");
     if (!lead.nome_responsavel) missing.push("Responsável");
     if (!lead.email_responsavel) missing.push("Email");
     if (!lead.telefone_responsavel) missing.push("Telefone");
     if (missing.length > 0) {
-      throw new Error(`Campos obrigatórios faltando: ${missing.join(", ")}`);
+      throw new Error(`Campos obrigatórios faltando: ${missing.join(", ")}. O cliente precisa preencher o formulário de conversão primeiro.`);
+    }
+
+    // Fetch lojas for multi-CNPJ support
+    const { data: lojas } = await supabase
+      .from("lojas").select("cnpj, razao_social, nome_interno").eq("lead_id", lead_id);
+
+    // Build CNPJ string: if lojas exist, join all CNPJs; otherwise use lead CNPJ
+    let cnpjFormatted: string;
+    if (lojas && lojas.length > 0) {
+      cnpjFormatted = lojas.map((l: any) => formatCNPJ(l.cnpj)).join(", ");
+    } else if (lead.cnpj) {
+      cnpjFormatted = formatCNPJ(lead.cnpj);
+    } else {
+      cnpjFormatted = "—";
     }
 
     // Download DOCX template
@@ -92,8 +105,7 @@ Deno.serve(async (req) => {
     console.log("Template DOCX loaded:", templateBytes.byteLength, "bytes");
 
     // Prepare data for placeholders
-    const razaoSocial = lead.razao_social || "—";
-    const cnpjFormatted = formatCNPJ(lead.cnpj || "");
+    const razaoSocial = lead.razao_social || lead.nome_fantasia || "—";
     const enderecoCompleto = buildEnderecoCompleto(lead as Record<string, unknown>);
     const numeroProposta = lead.numero_proposta || "—";
     const dataGeracao = formatDateBR(new Date());
@@ -108,19 +120,13 @@ Deno.serve(async (req) => {
       delimiters: { start: "{", end: "}" },
     });
 
-    // The template has these exact placeholders:
-    // Page 1:  {Razão Social}  {CNPJ}  {ENDERECO COMPLETO}
-    // Page 7:  {Número da Proposta}
-    // Page 15: {DATA DE GERAÇÃO DO CONTRATO}  {RAZAO SOCIAL}
     doc.render({
-      // Exact keys as they appear in the DOCX template
       "Razão Social": razaoSocial,
       "CNPJ": cnpjFormatted,
       "ENDERECO COMPLETO": enderecoCompleto,
       "Número da Proposta": numeroProposta,
       "DATA DE GERAÇÃO DO CONTRATO": dataGeracao,
       "RAZAO SOCIAL": razaoSocial,
-      // Alternative keys without accents (safety net)
       "DATA DE GERACAO DO CONTRATO": dataGeracao,
       "Razao Social": razaoSocial,
       "Numero da Proposta": numeroProposta,
