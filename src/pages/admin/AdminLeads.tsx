@@ -488,7 +488,7 @@ const AdminLeads = () => {
                       <div className="flex items-center gap-1">
                         {l.proposta_url && (
                           <button
-                            onClick={() => openSignedUrl(l.proposta_url)}
+                            onClick={() => openSignedUrl(l.proposta_url, `proposta-${l.nome_fantasia}.pdf`)}
                             className="p-1 hover:bg-primary/10 rounded"
                             title="Download Proposta"
                           >
