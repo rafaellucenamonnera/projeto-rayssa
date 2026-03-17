@@ -141,6 +141,22 @@ const FormularioConversao = () => {
     if (!form.telefone_responsavel.trim()) errs.telefone_responsavel = "Obrigatório";
     if (!form.email_responsavel.trim()) errs.email_responsavel = "Obrigatório";
 
+    // Implantação validations
+    if (!form.responsavel_tecnico_nome.trim()) errs.responsavel_tecnico_nome = "Obrigatório";
+    if (!form.responsavel_tecnico_telefone.trim()) errs.responsavel_tecnico_telefone = "Obrigatório";
+    if (!form.responsavel_tecnico_email.trim()) errs.responsavel_tecnico_email = "Obrigatório";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.responsavel_tecnico_email)) errs.responsavel_tecnico_email = "Email inválido";
+
+    if (!form.responsavel_comercial_nome.trim()) errs.responsavel_comercial_nome = "Obrigatório";
+    if (!form.responsavel_comercial_telefone.trim()) errs.responsavel_comercial_telefone = "Obrigatório";
+    if (!form.responsavel_comercial_email.trim()) errs.responsavel_comercial_email = "Obrigatório";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.responsavel_comercial_email)) errs.responsavel_comercial_email = "Email inválido";
+
+    if (!form.responsavel_rh_nome.trim()) errs.responsavel_rh_nome = "Obrigatório";
+    if (!form.responsavel_rh_telefone.trim()) errs.responsavel_rh_telefone = "Obrigatório";
+    if (!form.responsavel_rh_email.trim()) errs.responsavel_rh_email = "Obrigatório";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.responsavel_rh_email)) errs.responsavel_rh_email = "Email inválido";
+
     // Validate lojas if multi-store
     if (form.quantidade_lojas > 1) {
       const cnpjs: string[] = [];
