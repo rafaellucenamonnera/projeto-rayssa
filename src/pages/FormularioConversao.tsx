@@ -198,6 +198,15 @@ const FormularioConversao = () => {
           nome_responsavel: form.nome_responsavel.trim(),
           telefone_responsavel: form.telefone_responsavel.trim(),
           email_responsavel: form.email_responsavel.trim().toLowerCase(),
+          responsavel_tecnico_nome: form.responsavel_tecnico_nome.trim(),
+          responsavel_tecnico_telefone: form.responsavel_tecnico_telefone.replace(/\D/g, ""),
+          responsavel_tecnico_email: form.responsavel_tecnico_email.trim().toLowerCase(),
+          responsavel_comercial_nome: form.responsavel_comercial_nome.trim(),
+          responsavel_comercial_telefone: form.responsavel_comercial_telefone.replace(/\D/g, ""),
+          responsavel_comercial_email: form.responsavel_comercial_email.trim().toLowerCase(),
+          responsavel_rh_nome: form.responsavel_rh_nome.trim(),
+          responsavel_rh_telefone: form.responsavel_rh_telefone.replace(/\D/g, ""),
+          responsavel_rh_email: form.responsavel_rh_email.trim().toLowerCase(),
           dados_completos: true,
         } as any)
         .eq("id", lead.id);
