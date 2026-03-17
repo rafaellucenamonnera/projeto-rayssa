@@ -81,6 +81,15 @@ const FormularioConversao = () => {
         nome_responsavel: data.nome_responsavel || "",
         telefone_responsavel: data.telefone_responsavel || "",
         email_responsavel: data.email_responsavel || "",
+        responsavel_tecnico_nome: data.responsavel_tecnico_nome || "",
+        responsavel_tecnico_telefone: data.responsavel_tecnico_telefone || "",
+        responsavel_tecnico_email: data.responsavel_tecnico_email || "",
+        responsavel_comercial_nome: data.responsavel_comercial_nome || "",
+        responsavel_comercial_telefone: data.responsavel_comercial_telefone || "",
+        responsavel_comercial_email: data.responsavel_comercial_email || "",
+        responsavel_rh_nome: data.responsavel_rh_nome || "",
+        responsavel_rh_telefone: data.responsavel_rh_telefone || "",
+        responsavel_rh_email: data.responsavel_rh_email || "",
       });
 
       // Initialize lojas array if multi-store
