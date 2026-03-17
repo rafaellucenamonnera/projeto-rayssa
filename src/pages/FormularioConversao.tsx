@@ -37,6 +37,16 @@ const FormularioConversao = () => {
     nome_responsavel: "",
     telefone_responsavel: "",
     email_responsavel: "",
+    // Implantação
+    responsavel_tecnico_nome: "",
+    responsavel_tecnico_telefone: "",
+    responsavel_tecnico_email: "",
+    responsavel_comercial_nome: "",
+    responsavel_comercial_telefone: "",
+    responsavel_comercial_email: "",
+    responsavel_rh_nome: "",
+    responsavel_rh_telefone: "",
+    responsavel_rh_email: "",
   });
 
   const [lojas, setLojas] = useState<LojaForm[]>([]);
