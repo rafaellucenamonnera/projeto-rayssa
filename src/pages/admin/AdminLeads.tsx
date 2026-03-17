@@ -814,6 +814,33 @@ const AdminLeads = () => {
                 </div>
               )}
 
+              {/* Informações de Implantação */}
+              {detailLead.dados_completos && detailLead.responsavel_tecnico_nome && (
+                <div className="border-t border-border pt-4 space-y-3">
+                  <h3 className="text-sm font-semibold">Informações de Implantação</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Resp. Técnico</p>
+                      <p>{detailLead.responsavel_tecnico_nome}</p>
+                      <p className="text-xs text-muted-foreground">{detailLead.responsavel_tecnico_telefone}</p>
+                      <p className="text-xs text-muted-foreground">{detailLead.responsavel_tecnico_email}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Resp. Comercial</p>
+                      <p>{detailLead.responsavel_comercial_nome}</p>
+                      <p className="text-xs text-muted-foreground">{detailLead.responsavel_comercial_telefone}</p>
+                      <p className="text-xs text-muted-foreground">{detailLead.responsavel_comercial_email}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Resp. RH</p>
+                      <p>{detailLead.responsavel_rh_nome}</p>
+                      <p className="text-xs text-muted-foreground">{detailLead.responsavel_rh_telefone}</p>
+                      <p className="text-xs text-muted-foreground">{detailLead.responsavel_rh_email}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Contract section - visible for converted leads */}
               {isConvertedOrBeyond(detailLead.status_lead) && (
                 <div className="border-t border-border pt-4 space-y-4">
