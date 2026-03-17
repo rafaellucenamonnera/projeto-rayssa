@@ -37,6 +37,16 @@ const FormularioConversao = () => {
     nome_responsavel: "",
     telefone_responsavel: "",
     email_responsavel: "",
+    // Implantação
+    responsavel_tecnico_nome: "",
+    responsavel_tecnico_telefone: "",
+    responsavel_tecnico_email: "",
+    responsavel_comercial_nome: "",
+    responsavel_comercial_telefone: "",
+    responsavel_comercial_email: "",
+    responsavel_rh_nome: "",
+    responsavel_rh_telefone: "",
+    responsavel_rh_email: "",
   });
 
   const [lojas, setLojas] = useState<LojaForm[]>([]);
@@ -71,6 +81,15 @@ const FormularioConversao = () => {
         nome_responsavel: data.nome_responsavel || "",
         telefone_responsavel: data.telefone_responsavel || "",
         email_responsavel: data.email_responsavel || "",
+        responsavel_tecnico_nome: data.responsavel_tecnico_nome || "",
+        responsavel_tecnico_telefone: data.responsavel_tecnico_telefone || "",
+        responsavel_tecnico_email: data.responsavel_tecnico_email || "",
+        responsavel_comercial_nome: data.responsavel_comercial_nome || "",
+        responsavel_comercial_telefone: data.responsavel_comercial_telefone || "",
+        responsavel_comercial_email: data.responsavel_comercial_email || "",
+        responsavel_rh_nome: data.responsavel_rh_nome || "",
+        responsavel_rh_telefone: data.responsavel_rh_telefone || "",
+        responsavel_rh_email: data.responsavel_rh_email || "",
       });
 
       // Initialize lojas array if multi-store
@@ -122,6 +141,22 @@ const FormularioConversao = () => {
     if (!form.telefone_responsavel.trim()) errs.telefone_responsavel = "Obrigatório";
     if (!form.email_responsavel.trim()) errs.email_responsavel = "Obrigatório";
 
+    // Implantação validations
+    if (!form.responsavel_tecnico_nome.trim()) errs.responsavel_tecnico_nome = "Obrigatório";
+    if (!form.responsavel_tecnico_telefone.trim()) errs.responsavel_tecnico_telefone = "Obrigatório";
+    if (!form.responsavel_tecnico_email.trim()) errs.responsavel_tecnico_email = "Obrigatório";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.responsavel_tecnico_email)) errs.responsavel_tecnico_email = "Email inválido";
+
+    if (!form.responsavel_comercial_nome.trim()) errs.responsavel_comercial_nome = "Obrigatório";
+    if (!form.responsavel_comercial_telefone.trim()) errs.responsavel_comercial_telefone = "Obrigatório";
+    if (!form.responsavel_comercial_email.trim()) errs.responsavel_comercial_email = "Obrigatório";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.responsavel_comercial_email)) errs.responsavel_comercial_email = "Email inválido";
+
+    if (!form.responsavel_rh_nome.trim()) errs.responsavel_rh_nome = "Obrigatório";
+    if (!form.responsavel_rh_telefone.trim()) errs.responsavel_rh_telefone = "Obrigatório";
+    if (!form.responsavel_rh_email.trim()) errs.responsavel_rh_email = "Obrigatório";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.responsavel_rh_email)) errs.responsavel_rh_email = "Email inválido";
+
     // Validate lojas if multi-store
     if (form.quantidade_lojas > 1) {
       const cnpjs: string[] = [];
@@ -163,6 +198,15 @@ const FormularioConversao = () => {
           nome_responsavel: form.nome_responsavel.trim(),
           telefone_responsavel: form.telefone_responsavel.trim(),
           email_responsavel: form.email_responsavel.trim().toLowerCase(),
+          responsavel_tecnico_nome: form.responsavel_tecnico_nome.trim(),
+          responsavel_tecnico_telefone: form.responsavel_tecnico_telefone.replace(/\D/g, ""),
+          responsavel_tecnico_email: form.responsavel_tecnico_email.trim().toLowerCase(),
+          responsavel_comercial_nome: form.responsavel_comercial_nome.trim(),
+          responsavel_comercial_telefone: form.responsavel_comercial_telefone.replace(/\D/g, ""),
+          responsavel_comercial_email: form.responsavel_comercial_email.trim().toLowerCase(),
+          responsavel_rh_nome: form.responsavel_rh_nome.trim(),
+          responsavel_rh_telefone: form.responsavel_rh_telefone.replace(/\D/g, ""),
+          responsavel_rh_email: form.responsavel_rh_email.trim().toLowerCase(),
           dados_completos: true,
         } as any)
         .eq("id", lead.id);
@@ -314,6 +358,71 @@ const FormularioConversao = () => {
                   <Label>Email *</Label>
                   <Input type="email" value={form.email_responsavel} onChange={(e) => setForm({ ...form, email_responsavel: e.target.value })} />
                   {errors.email_responsavel && <p className="text-destructive text-xs">{errors.email_responsavel}</p>}
+                </div>
+              </div>
+            </div>
+
+            {/* Informações de Implantação */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Informações de Implantação</h3>
+
+              {/* Responsável Técnico */}
+              <p className="text-xs font-medium text-foreground">Responsável Técnico pela Instalação</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className={fieldClass}>
+                  <Label className="text-xs">Nome *</Label>
+                  <Input value={form.responsavel_tecnico_nome} onChange={(e) => setForm({ ...form, responsavel_tecnico_nome: e.target.value })} />
+                  {errors.responsavel_tecnico_nome && <p className="text-destructive text-xs">{errors.responsavel_tecnico_nome}</p>}
+                </div>
+                <div className={fieldClass}>
+                  <Label className="text-xs">Telefone *</Label>
+                  <Input value={form.responsavel_tecnico_telefone} onChange={(e) => setForm({ ...form, responsavel_tecnico_telefone: e.target.value })} placeholder="(11) 99999-9999" />
+                  {errors.responsavel_tecnico_telefone && <p className="text-destructive text-xs">{errors.responsavel_tecnico_telefone}</p>}
+                </div>
+                <div className={fieldClass}>
+                  <Label className="text-xs">E-mail *</Label>
+                  <Input type="email" value={form.responsavel_tecnico_email} onChange={(e) => setForm({ ...form, responsavel_tecnico_email: e.target.value })} />
+                  {errors.responsavel_tecnico_email && <p className="text-destructive text-xs">{errors.responsavel_tecnico_email}</p>}
+                </div>
+              </div>
+
+              {/* Responsável Comercial */}
+              <p className="text-xs font-medium text-foreground">Responsável Comercial pelas Campanhas</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className={fieldClass}>
+                  <Label className="text-xs">Nome *</Label>
+                  <Input value={form.responsavel_comercial_nome} onChange={(e) => setForm({ ...form, responsavel_comercial_nome: e.target.value })} />
+                  {errors.responsavel_comercial_nome && <p className="text-destructive text-xs">{errors.responsavel_comercial_nome}</p>}
+                </div>
+                <div className={fieldClass}>
+                  <Label className="text-xs">Telefone *</Label>
+                  <Input value={form.responsavel_comercial_telefone} onChange={(e) => setForm({ ...form, responsavel_comercial_telefone: e.target.value })} placeholder="(11) 99999-9999" />
+                  {errors.responsavel_comercial_telefone && <p className="text-destructive text-xs">{errors.responsavel_comercial_telefone}</p>}
+                </div>
+                <div className={fieldClass}>
+                  <Label className="text-xs">E-mail *</Label>
+                  <Input type="email" value={form.responsavel_comercial_email} onChange={(e) => setForm({ ...form, responsavel_comercial_email: e.target.value })} />
+                  {errors.responsavel_comercial_email && <p className="text-destructive text-xs">{errors.responsavel_comercial_email}</p>}
+                </div>
+              </div>
+
+              {/* Responsável RH */}
+              <p className="text-xs font-medium text-foreground">Responsável pelo RH</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className={fieldClass}>
+                  <Label className="text-xs">Nome *</Label>
+                  <Input value={form.responsavel_rh_nome} onChange={(e) => setForm({ ...form, responsavel_rh_nome: e.target.value })} />
+                  {errors.responsavel_rh_nome && <p className="text-destructive text-xs">{errors.responsavel_rh_nome}</p>}
+                </div>
+                <div className={fieldClass}>
+                  <Label className="text-xs">Telefone *</Label>
+                  <Input value={form.responsavel_rh_telefone} onChange={(e) => setForm({ ...form, responsavel_rh_telefone: e.target.value })} placeholder="(11) 99999-9999" />
+                  {errors.responsavel_rh_telefone && <p className="text-destructive text-xs">{errors.responsavel_rh_telefone}</p>}
+                </div>
+                <div className={fieldClass}>
+                  <Label className="text-xs">E-mail *</Label>
+                  <Input type="email" value={form.responsavel_rh_email} onChange={(e) => setForm({ ...form, responsavel_rh_email: e.target.value })} />
+                  {errors.responsavel_rh_email && <p className="text-destructive text-xs">{errors.responsavel_rh_email}</p>}
                 </div>
               </div>
             </div>
