@@ -133,6 +133,7 @@ export type Database = {
           contrato_url: string | null
           dados_completos: boolean
           data_cadastro: string
+          data_contrato_assinado: string | null
           descricao_necessidade: string | null
           email_responsavel: string
           endereco_cep: string | null
@@ -154,6 +155,15 @@ export type Database = {
           quantidade_funcionarios: number | null
           quantidade_lojas: number
           razao_social: string | null
+          responsavel_comercial_email: string | null
+          responsavel_comercial_nome: string | null
+          responsavel_comercial_telefone: string | null
+          responsavel_rh_email: string | null
+          responsavel_rh_nome: string | null
+          responsavel_rh_telefone: string | null
+          responsavel_tecnico_email: string | null
+          responsavel_tecnico_nome: string | null
+          responsavel_tecnico_telefone: string | null
           status: string
           status_lead: Database["public"]["Enums"]["lead_status"]
           telefone_responsavel: string
@@ -167,6 +177,7 @@ export type Database = {
           contrato_url?: string | null
           dados_completos?: boolean
           data_cadastro?: string
+          data_contrato_assinado?: string | null
           descricao_necessidade?: string | null
           email_responsavel: string
           endereco_cep?: string | null
@@ -188,6 +199,15 @@ export type Database = {
           quantidade_funcionarios?: number | null
           quantidade_lojas: number
           razao_social?: string | null
+          responsavel_comercial_email?: string | null
+          responsavel_comercial_nome?: string | null
+          responsavel_comercial_telefone?: string | null
+          responsavel_rh_email?: string | null
+          responsavel_rh_nome?: string | null
+          responsavel_rh_telefone?: string | null
+          responsavel_tecnico_email?: string | null
+          responsavel_tecnico_nome?: string | null
+          responsavel_tecnico_telefone?: string | null
           status?: string
           status_lead?: Database["public"]["Enums"]["lead_status"]
           telefone_responsavel: string
@@ -201,6 +221,7 @@ export type Database = {
           contrato_url?: string | null
           dados_completos?: boolean
           data_cadastro?: string
+          data_contrato_assinado?: string | null
           descricao_necessidade?: string | null
           email_responsavel?: string
           endereco_cep?: string | null
@@ -222,6 +243,15 @@ export type Database = {
           quantidade_funcionarios?: number | null
           quantidade_lojas?: number
           razao_social?: string | null
+          responsavel_comercial_email?: string | null
+          responsavel_comercial_nome?: string | null
+          responsavel_comercial_telefone?: string | null
+          responsavel_rh_email?: string | null
+          responsavel_rh_nome?: string | null
+          responsavel_rh_telefone?: string | null
+          responsavel_tecnico_email?: string | null
+          responsavel_tecnico_nome?: string | null
+          responsavel_tecnico_telefone?: string | null
           status?: string
           status_lead?: Database["public"]["Enums"]["lead_status"]
           telefone_responsavel?: string
