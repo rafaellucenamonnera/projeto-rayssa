@@ -362,6 +362,71 @@ const FormularioConversao = () => {
               </div>
             </div>
 
+            {/* Informações de Implantação */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Informações de Implantação</h3>
+
+              {/* Responsável Técnico */}
+              <p className="text-xs font-medium text-foreground">Responsável Técnico pela Instalação</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className={fieldClass}>
+                  <Label className="text-xs">Nome *</Label>
+                  <Input value={form.responsavel_tecnico_nome} onChange={(e) => setForm({ ...form, responsavel_tecnico_nome: e.target.value })} />
+                  {errors.responsavel_tecnico_nome && <p className="text-destructive text-xs">{errors.responsavel_tecnico_nome}</p>}
+                </div>
+                <div className={fieldClass}>
+                  <Label className="text-xs">Telefone *</Label>
+                  <Input value={form.responsavel_tecnico_telefone} onChange={(e) => setForm({ ...form, responsavel_tecnico_telefone: e.target.value })} placeholder="(11) 99999-9999" />
+                  {errors.responsavel_tecnico_telefone && <p className="text-destructive text-xs">{errors.responsavel_tecnico_telefone}</p>}
+                </div>
+                <div className={fieldClass}>
+                  <Label className="text-xs">E-mail *</Label>
+                  <Input type="email" value={form.responsavel_tecnico_email} onChange={(e) => setForm({ ...form, responsavel_tecnico_email: e.target.value })} />
+                  {errors.responsavel_tecnico_email && <p className="text-destructive text-xs">{errors.responsavel_tecnico_email}</p>}
+                </div>
+              </div>
+
+              {/* Responsável Comercial */}
+              <p className="text-xs font-medium text-foreground">Responsável Comercial pelas Campanhas</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className={fieldClass}>
+                  <Label className="text-xs">Nome *</Label>
+                  <Input value={form.responsavel_comercial_nome} onChange={(e) => setForm({ ...form, responsavel_comercial_nome: e.target.value })} />
+                  {errors.responsavel_comercial_nome && <p className="text-destructive text-xs">{errors.responsavel_comercial_nome}</p>}
+                </div>
+                <div className={fieldClass}>
+                  <Label className="text-xs">Telefone *</Label>
+                  <Input value={form.responsavel_comercial_telefone} onChange={(e) => setForm({ ...form, responsavel_comercial_telefone: e.target.value })} placeholder="(11) 99999-9999" />
+                  {errors.responsavel_comercial_telefone && <p className="text-destructive text-xs">{errors.responsavel_comercial_telefone}</p>}
+                </div>
+                <div className={fieldClass}>
+                  <Label className="text-xs">E-mail *</Label>
+                  <Input type="email" value={form.responsavel_comercial_email} onChange={(e) => setForm({ ...form, responsavel_comercial_email: e.target.value })} />
+                  {errors.responsavel_comercial_email && <p className="text-destructive text-xs">{errors.responsavel_comercial_email}</p>}
+                </div>
+              </div>
+
+              {/* Responsável RH */}
+              <p className="text-xs font-medium text-foreground">Responsável pelo RH</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className={fieldClass}>
+                  <Label className="text-xs">Nome *</Label>
+                  <Input value={form.responsavel_rh_nome} onChange={(e) => setForm({ ...form, responsavel_rh_nome: e.target.value })} />
+                  {errors.responsavel_rh_nome && <p className="text-destructive text-xs">{errors.responsavel_rh_nome}</p>}
+                </div>
+                <div className={fieldClass}>
+                  <Label className="text-xs">Telefone *</Label>
+                  <Input value={form.responsavel_rh_telefone} onChange={(e) => setForm({ ...form, responsavel_rh_telefone: e.target.value })} placeholder="(11) 99999-9999" />
+                  {errors.responsavel_rh_telefone && <p className="text-destructive text-xs">{errors.responsavel_rh_telefone}</p>}
+                </div>
+                <div className={fieldClass}>
+                  <Label className="text-xs">E-mail *</Label>
+                  <Input type="email" value={form.responsavel_rh_email} onChange={(e) => setForm({ ...form, responsavel_rh_email: e.target.value })} />
+                  {errors.responsavel_rh_email && <p className="text-destructive text-xs">{errors.responsavel_rh_email}</p>}
+                </div>
+              </div>
+            </div>
+
             {/* Lojas (multi-store) */}
             {form.quantidade_lojas > 1 && (
               <div className="space-y-4">
