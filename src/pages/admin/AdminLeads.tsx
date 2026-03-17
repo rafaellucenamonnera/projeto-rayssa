@@ -195,6 +195,11 @@ const AdminLeads = () => {
       updateData.completion_token = crypto.randomUUID();
     }
 
+    // Set data_contrato_assinado
+    if (newStatus === "contrato_assinado") {
+      updateData.data_contrato_assinado = new Date().toISOString();
+    }
+
     const { error } = await supabase
       .from("leads")
       .update(updateData)
