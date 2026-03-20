@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Calendar, Clock, Link2, Video, Loader2, AlertTriangle } from "lucide-react";
+import { Calendar, Clock, Video, Loader2, AlertTriangle, Pencil } from "lucide-react";
+import { EditReuniaoDialog } from "./EditReuniaoDialog";
 
 interface LeadReuniaoProps {
   leadId: string;
@@ -29,6 +30,8 @@ export const LeadReuniao = ({ leadId, currentStage, onMoveToRealizada }: LeadReu
   const [showResumo, setShowResumo] = useState<string | null>(null);
   const [resumo, setResumo] = useState("");
   const [saving, setSaving] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingReuniao, setEditingReuniao] = useState<Reuniao | null>(null);
 
   const loadReunioes = async () => {
     setLoading(true);
@@ -88,18 +91,29 @@ export const LeadReuniao = ({ leadId, currentStage, onMoveToRealizada }: LeadReu
 
         return (
           <div key={r.id} className="bg-secondary/50 rounded-lg p-3 space-y-2">
-            <div className="flex items-center gap-3 text-sm">
-              <span className="flex items-center gap-1">
-                <Calendar className="h-3 w-3 text-muted-foreground" />
-                {new Date(r.data_reuniao + "T00:00:00").toLocaleDateString("pt-BR")}
-              </span>
-              <span className="flex items-center gap-1">
-                <Clock className="h-3 w-3 text-muted-foreground" />
-                {r.horario_reuniao.slice(0, 5)}
-              </span>
-              <span className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded">
-                {tipoLabel[r.tipo_reuniao] || r.tipo_reuniao}
-              </span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 text-sm">
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3 text-muted-foreground" />
+                  {new Date(r.data_reuniao + "T00:00:00").toLocaleDateString("pt-BR")}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3 w-3 text-muted-foreground" />
+                  {r.horario_reuniao.slice(0, 5)}
+                </span>
+                <span className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded">
+                  {tipoLabel[r.tipo_reuniao] || r.tipo_reuniao}
+                </span>
+              </div>
+              {!r.realizada && (
+                <button
+                  onClick={() => { setEditingReuniao(r); setEditDialogOpen(true); }}
+                  className="p-1 hover:bg-primary/10 rounded"
+                  title="Editar reunião"
+                >
+                  <Pencil className="h-3 w-3 text-muted-foreground" />
+                </button>
+              )}
             </div>
 
             {meetLink && (
@@ -151,6 +165,13 @@ export const LeadReuniao = ({ leadId, currentStage, onMoveToRealizada }: LeadReu
           </div>
         );
       })}
+
+      <EditReuniaoDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        reuniao={editingReuniao}
+        onSaved={loadReunioes}
+      />
     </div>
   );
 };
