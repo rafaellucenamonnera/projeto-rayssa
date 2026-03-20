@@ -1,0 +1,2 @@
+ALTER TABLE public.leads DROP CONSTRAINT leads_cnpj_length;
+ALTER TABLE public.leads ADD CONSTRAINT leads_cnpj_length CHECK (cnpj IS NULL OR cnpj = '' OR length(regexp_replace(cnpj, '\D', '', 'g')) = 14);
