@@ -5,15 +5,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Trash2, FileText, RefreshCw, Download, Loader2, Eye, Link2, Copy, MessageCircle, CheckCircle, BookOpen } from "lucide-react";
+import {
+  Trash2, FileText, RefreshCw, Download, Loader2, Eye, Copy,
+  MessageCircle, CheckCircle, BookOpen, Calendar, Clock, Video,
+  DollarSign, Package, BarChart3, User, AlertTriangle
+} from "lucide-react";
 import { LeadExportButton } from "@/components/admin/LeadExportButton";
 import { LeadImportDialog } from "@/components/admin/LeadImportDialog";
 import { PropostaUploadDialog } from "@/components/admin/PropostaUploadDialog";
 import { LeadPerdidoDialog } from "@/components/admin/LeadPerdidoDialog";
 import { AgendarReuniaoDialog } from "@/components/admin/AgendarReuniaoDialog";
+import { CadastroFinanceiroDialog } from "@/components/admin/CadastroFinanceiroDialog";
 import { LeadComments } from "@/components/admin/LeadComments";
 import { LeadReuniao } from "@/components/admin/LeadReuniao";
 import { DaysInStage } from "@/components/admin/DaysInStage";
@@ -23,9 +29,10 @@ const AdminLeads = () => {
   const [searchParams] = useSearchParams();
   const { isAdmin } = useAuth();
   const [leads, setLeads] = useState<any[]>([]);
-  const [stageMap, setStageMap] = useState<Record<string, string>>({}); // lead_id -> data_entrada of current stage
+  const [stageMap, setStageMap] = useState<Record<string, string>>({});
   const [parceiros, setParceiros] = useState<Record<string, string>>({});
   const [parceirosAll, setParceirosAll] = useState<{ id: string; nome: string }[]>([]);
+  const [reunioesMap, setReunioesMap] = useState<Record<string, any>>({});
 
   // Filters
   const [filterStatus, setFilterStatus] = useState<string>(searchParams.get("status") || "all");
@@ -55,10 +62,15 @@ const AdminLeads = () => {
   // Conversion link dialog
   const [conversionLinkOpen, setConversionLinkOpen] = useState(false);
   const [conversionLink, setConversionLink] = useState("");
+  const [conversionLeadName, setConversionLeadName] = useState("");
 
   // Reunião dialog
   const [reuniaoDialogOpen, setReuniaoDialogOpen] = useState(false);
   const [pendingReuniao, setPendingReuniao] = useState<{ leadId: string; leadName: string } | null>(null);
+
+  // Financial dialog
+  const [financeiroDialogOpen, setFinanceiroDialogOpen] = useState(false);
+  const [pendingFinanceiro, setPendingFinanceiro] = useState<{ leadId: string; leadName: string; parceiroId: string } | null>(null);
 
   // User name for comments
   const [currentUserName, setCurrentUserName] = useState("Usuário");
@@ -75,10 +87,11 @@ const AdminLeads = () => {
   }, []);
 
   const loadData = async () => {
-    const [leadsRes, parceirosRes, stageRes] = await Promise.all([
+    const [leadsRes, parceirosRes, stageRes, reunioesRes] = await Promise.all([
       supabase.from("leads").select("*").order("data_cadastro", { ascending: false }),
       supabase.from("parceiros_comerciais").select("id, nome"),
       supabase.from("lead_stage_history").select("lead_id, data_entrada").is("data_saida", null),
+      supabase.from("reunioes").select("*").eq("realizada", false).order("data_reuniao", { ascending: true }),
     ]);
     setLeads(leadsRes.data || []);
     const map: Record<string, string> = {};
@@ -87,10 +100,16 @@ const AdminLeads = () => {
     setParceiros(map);
     setParceirosAll(list);
 
-    // Build stage map: lead_id -> data_entrada of current open stage
     const sm: Record<string, string> = {};
     (stageRes.data || []).forEach((s: any) => { sm[s.lead_id] = s.data_entrada; });
     setStageMap(sm);
+
+    // Build reunioes map: lead_id -> latest upcoming reuniao
+    const rm: Record<string, any> = {};
+    (reunioesRes.data || []).forEach((r: any) => {
+      if (!rm[r.lead_id]) rm[r.lead_id] = r;
+    });
+    setReunioesMap(rm);
   };
 
   useEffect(() => {
@@ -111,7 +130,17 @@ const AdminLeads = () => {
     if (newStatus === "reuniao_agendada") {
       setPendingReuniao({ leadId, leadName });
       setReuniaoDialogOpen(true);
-      // Don't return - we'll update status after scheduling
+      return;
+    }
+    if (newStatus === "contrato_assinado") {
+      const lead = leads.find((l) => l.id === leadId);
+      if (lead && !lead.dados_completos) {
+        toast.error("O cliente precisa preencher o formulário de cadastro completo antes de avançar para Contrato Assinado.");
+        return;
+      }
+      // Open financial modal
+      setPendingFinanceiro({ leadId, leadName, parceiroId: lead?.parceiro_id || "" });
+      setFinanceiroDialogOpen(true);
       return;
     }
     updateStatus(leadId, newStatus);
@@ -146,6 +175,25 @@ const AdminLeads = () => {
     toast.success("Lead marcado como perdido");
     setPerdidoDialogOpen(false);
     setPendingPerdido(null);
+  };
+
+  const handleFinanceiroSaved = (data: { valor_mensalidade: number; percentual_consultor: number; qtd_parcelas: number }) => {
+    if (!pendingFinanceiro) return;
+    // Now update status to contrato_assinado
+    updateStatus(pendingFinanceiro.leadId, "contrato_assinado");
+    setLeads((prev) =>
+      prev.map((l) => l.id === pendingFinanceiro.leadId
+        ? { ...l, ...data, parcelas_pagas: 0 }
+        : l
+      )
+    );
+    setFinanceiroDialogOpen(false);
+    setPendingFinanceiro(null);
+  };
+
+  const handleFinanceiroCancel = () => {
+    setFinanceiroDialogOpen(false);
+    setPendingFinanceiro(null);
   };
 
   const autoGenerateContract = async (leadId: string) => {
@@ -183,19 +231,12 @@ const AdminLeads = () => {
 
   const updateStatus = async (leadId: string, newStatus: string, propostaUrl?: string, numeroProposta?: string) => {
     const updateData: any = { status_lead: newStatus };
-    if (propostaUrl) {
-      updateData.proposta_url = propostaUrl;
-    }
-    if (numeroProposta) {
-      updateData.numero_proposta = numeroProposta;
-    }
+    if (propostaUrl) updateData.proposta_url = propostaUrl;
+    if (numeroProposta) updateData.numero_proposta = numeroProposta;
 
-    // Generate completion_token when converting lead
     if (newStatus === "lead_convertido") {
       updateData.completion_token = crypto.randomUUID();
     }
-
-    // Set data_contrato_assinado
     if (newStatus === "contrato_assinado") {
       updateData.data_contrato_assinado = new Date().toISOString();
     }
@@ -215,18 +256,15 @@ const AdminLeads = () => {
     );
     toast.success("Status atualizado");
 
-    // Show conversion link dialog
     if (newStatus === "lead_convertido") {
       const lead = leads.find((l) => l.id === leadId);
       const link = `${window.location.origin}/completar-cadastro/${updateData.completion_token}`;
       setConversionLink(link);
+      setConversionLeadName(lead?.nome_responsavel || "");
       setConversionLinkOpen(true);
-
-      // Also auto-generate contract
       autoGenerateContract(leadId);
     }
 
-    // Auto-generate dossiê when moving to contrato_assinado
     if (newStatus === "contrato_assinado") {
       autoGenerateDossie(leadId);
     }
@@ -322,6 +360,68 @@ const AdminLeads = () => {
     }
   };
 
+  const handleRegistrarParcela = async (leadId: string) => {
+    const lead = leads.find((l) => l.id === leadId);
+    if (!lead) return;
+    const newPagas = (lead.parcelas_pagas || 0) + 1;
+    if (newPagas > (lead.qtd_parcelas || 0)) {
+      toast.error("Todas as parcelas já foram pagas");
+      return;
+    }
+    const { error } = await supabase
+      .from("leads")
+      .update({ parcelas_pagas: newPagas } as any)
+      .eq("id", leadId);
+    if (error) {
+      toast.error("Erro ao registrar parcela");
+      return;
+    }
+    setLeads((prev) =>
+      prev.map((l) => (l.id === leadId ? { ...l, parcelas_pagas: newPagas } : l))
+    );
+    if (detailLead?.id === leadId) {
+      setDetailLead({ ...detailLead, parcelas_pagas: newPagas });
+    }
+    toast.success(`Parcela ${newPagas} de ${lead.qtd_parcelas} registrada`);
+  };
+
+  const handleDownloadDossie = async (leadId: string, leadName: string) => {
+    try {
+      // List files in dossies folder for this lead
+      const { data: files } = await supabase.storage
+        .from("propostas")
+        .list(`dossies`, { search: leadId });
+
+      const dossieFile = files?.find((f) => f.name.includes(leadId));
+      if (!dossieFile) {
+        toast.error("Dossiê não encontrado. Tente gerar novamente.");
+        return;
+      }
+
+      const { data, error } = await supabase.storage
+        .from("propostas")
+        .createSignedUrl(`dossies/${dossieFile.name}`, 3600);
+      if (error || !data?.signedUrl) {
+        toast.error("Erro ao gerar link do dossiê");
+        return;
+      }
+
+      const response = await fetch(data.signedUrl);
+      if (!response.ok) throw new Error("Erro ao baixar");
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `dossie-${leadName}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch (err: any) {
+      toast.error("Erro ao baixar dossiê: " + (err.message || ""));
+    }
+  };
+
   const openSignedUrl = async (storagePath: string, fileName?: string) => {
     try {
       let url = storagePath;
@@ -335,7 +435,6 @@ const AdminLeads = () => {
         }
         url = data.signedUrl;
       }
-      // Fetch as blob to avoid ad-blocker/popup-blocker issues
       const response = await fetch(url);
       if (!response.ok) throw new Error("Erro ao baixar documento");
       const blob = await response.blob();
@@ -388,6 +487,8 @@ const AdminLeads = () => {
   const isConvertedOrBeyond = (status: string) =>
     ["lead_convertido", "contrato_enviado", "contrato_assinado"].includes(status);
 
+  const fmt = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+
   const StatusSelect = ({ lead }: { lead: any }) => {
     const currentStatus = lead.status_lead || lead.status || "novo_lead";
     const hasProposta = !!lead.proposta_url;
@@ -429,6 +530,81 @@ const AdminLeads = () => {
     );
   };
 
+  // Meeting info component for cards
+  const MeetingInfo = ({ lead }: { lead: any }) => {
+    const reuniao = reunioesMap[lead.id];
+    if (!reuniao) return null;
+    const meetLink = reuniao.google_meet_link || reuniao.link_reuniao;
+
+    return (
+      <div className="text-xs space-y-0.5 pt-1 border-t border-border/50">
+        <div className="flex items-center gap-2">
+          <span className="flex items-center gap-1">
+            <Calendar className="h-3 w-3 text-muted-foreground" />
+            {new Date(reuniao.data_reuniao + "T00:00:00").toLocaleDateString("pt-BR")}
+          </span>
+          <span className="flex items-center gap-1">
+            <Clock className="h-3 w-3 text-muted-foreground" />
+            {reuniao.horario_reuniao?.slice(0, 5)}
+          </span>
+        </div>
+        {meetLink && (
+          <a href={meetLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline">
+            <Video className="h-3 w-3" /> Abrir reunião
+          </a>
+        )}
+      </div>
+    );
+  };
+
+  // Financial info component for cards
+  const FinancialInfo = ({ lead }: { lead: any }) => {
+    if (!lead.valor_mensalidade || lead.valor_mensalidade <= 0) return null;
+    const comissaoMensal = (lead.valor_mensalidade || 0) * (lead.percentual_consultor || 0);
+    const parcelas = lead.qtd_parcelas || 0;
+    const pagas = lead.parcelas_pagas || 0;
+    const valorTotal = comissaoMensal * parcelas;
+    const progressPercent = parcelas > 0 ? (pagas / parcelas) * 100 : 0;
+    const statusFinanceiro = pagas >= parcelas && parcelas > 0 ? "Quitado" : "Em andamento";
+
+    return (
+      <div className="text-xs space-y-1.5 pt-1 border-t border-border/50">
+        <div className="grid grid-cols-2 gap-1">
+          <span className="flex items-center gap-1">
+            <DollarSign className="h-3 w-3 text-muted-foreground" />
+            {fmt(comissaoMensal)}/mês
+          </span>
+          <span className="flex items-center gap-1">
+            <Package className="h-3 w-3 text-muted-foreground" />
+            {parcelas} parcelas
+          </span>
+          <span className="flex items-center gap-1">
+            <BarChart3 className="h-3 w-3 text-muted-foreground" />
+            {fmt(valorTotal)}
+          </span>
+          <span className="flex items-center gap-1">
+            <User className="h-3 w-3 text-muted-foreground" />
+            {parceiros[lead.parceiro_id] || '-'}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Progress value={progressPercent} className="h-2 flex-1" />
+          <span className="text-[10px] text-muted-foreground whitespace-nowrap">{pagas} de {parcelas}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className={`text-[10px] font-medium ${statusFinanceiro === "Quitado" ? "text-emerald-600" : "text-amber-600"}`}>
+            {statusFinanceiro}
+          </span>
+          {pagas < parcelas && parcelas > 0 && (
+            <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => handleRegistrarParcela(lead.id)}>
+              + Parcela
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between gap-2">
@@ -439,7 +615,7 @@ const AdminLeads = () => {
         </div>
       </div>
 
-      {/* Status cards - scrollable on mobile */}
+      {/* Status cards */}
       <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 lg:grid-cols-7 sm:overflow-visible">
         {PIPELINE_STAGES.map((s) => (
           <div
@@ -457,15 +633,9 @@ const AdminLeads = () => {
 
       {/* Filters */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-        <Input
-          placeholder="Filtrar por empresa..."
-          value={filterEmpresa}
-          onChange={(e) => setFilterEmpresa(e.target.value)}
-        />
+        <Input placeholder="Filtrar por empresa..." value={filterEmpresa} onChange={(e) => setFilterEmpresa(e.target.value)} />
         <Select value={filterConsultor} onValueChange={setFilterConsultor}>
-          <SelectTrigger>
-            <SelectValue placeholder="Consultor" />
-          </SelectTrigger>
+          <SelectTrigger><SelectValue placeholder="Consultor" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos Consultores</SelectItem>
             {parceirosAll.map((p) => (
@@ -473,18 +643,8 @@ const AdminLeads = () => {
             ))}
           </SelectContent>
         </Select>
-        <Input
-          type="date"
-          value={filterDataInicio}
-          onChange={(e) => setFilterDataInicio(e.target.value)}
-          placeholder="Data início"
-        />
-        <Input
-          type="date"
-          value={filterDataFim}
-          onChange={(e) => setFilterDataFim(e.target.value)}
-          placeholder="Data fim"
-        />
+        <Input type="date" value={filterDataInicio} onChange={(e) => setFilterDataInicio(e.target.value)} placeholder="Data início" />
+        <Input type="date" value={filterDataFim} onChange={(e) => setFilterDataFim(e.target.value)} placeholder="Data fim" />
       </div>
 
       {/* Mobile card view */}
@@ -527,14 +687,13 @@ const AdminLeads = () => {
                 </div>
               </div>
               <DaysInStage dataEntrada={stageMap[l.id]} />
+              <MeetingInfo lead={l} />
               <div>
                 <Select
                   value={l.status_lead || l.status || "novo_lead"}
                   onValueChange={(val) => handleStatusChange(l.id, l.nome_fantasia, val)}
                 >
-                  <SelectTrigger className="h-8 w-full text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger className="h-8 w-full text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {PIPELINE_STAGES.map((s) => (
                       <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
@@ -542,7 +701,18 @@ const AdminLeads = () => {
                   </SelectContent>
                 </Select>
               </div>
-              {/* Document buttons on card */}
+              {/* Conversion link button */}
+              {isConvertedOrBeyond(l.status_lead) && l.completion_token && !l.dados_completos && (
+                <Button size="sm" variant="outline" className="w-full h-7 text-xs" onClick={() => {
+                  const link = `${window.location.origin}/completar-cadastro/${l.completion_token}`;
+                  navigator.clipboard.writeText(link);
+                  toast.success("Link copiado!");
+                }}>
+                  <Copy className="mr-1 h-3 w-3" /> Copiar link de cadastro
+                </Button>
+              )}
+              <FinancialInfo lead={l} />
+              {/* Document buttons */}
               {(l.proposta_url || l.contrato_url) && (
                 <div className="flex items-center gap-2 pt-1">
                   {l.proposta_url && (
@@ -556,6 +726,12 @@ const AdminLeads = () => {
                     </Button>
                   )}
                 </div>
+              )}
+              {/* Dossie button */}
+              {l.status_lead === "contrato_assinado" && (
+                <Button size="sm" variant="outline" className="w-full h-7 text-xs" onClick={() => handleDownloadDossie(l.id, l.nome_fantasia)}>
+                  <BookOpen className="mr-1 h-3 w-3" /> Baixar dossiê completo
+                </Button>
               )}
             </CardContent>
           </Card>
@@ -578,9 +754,9 @@ const AdminLeads = () => {
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Cidade</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Responsável</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Telefone</th>
-                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Pipeline</th>
-                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Docs</th>
-                   {isAdmin && <th className="text-left py-3 px-4 text-muted-foreground font-medium"></th>}
+                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Pipeline</th>
+                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Docs</th>
+                  {isAdmin && <th className="text-left py-3 px-4 text-muted-foreground font-medium"></th>}
                 </tr>
               </thead>
               <tbody>
@@ -607,21 +783,18 @@ const AdminLeads = () => {
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-1">
                         {l.proposta_url && (
-                          <button
-                            onClick={() => openSignedUrl(l.proposta_url, `proposta-${l.nome_fantasia}.pdf`)}
-                            className="p-1 hover:bg-primary/10 rounded"
-                            title="Download Proposta"
-                          >
+                          <button onClick={() => openSignedUrl(l.proposta_url, `proposta-${l.nome_fantasia}.pdf`)} className="p-1 hover:bg-primary/10 rounded" title="Download Proposta">
                             <FileText className="h-4 w-4 text-primary" />
                           </button>
                         )}
                         {l.contrato_url && (
-                          <button
-                            onClick={() => openSignedUrl(l.contrato_url, `contrato-${l.nome_fantasia}.docx`)}
-                            className="p-1 hover:bg-primary/10 rounded"
-                            title="Download Contrato"
-                          >
+                          <button onClick={() => openSignedUrl(l.contrato_url, `contrato-${l.nome_fantasia}.docx`)} className="p-1 hover:bg-primary/10 rounded" title="Download Contrato">
                             <Download className="h-4 w-4 text-emerald-500" />
+                          </button>
+                        )}
+                        {l.status_lead === "contrato_assinado" && (
+                          <button onClick={() => handleDownloadDossie(l.id, l.nome_fantasia)} className="p-1 hover:bg-primary/10 rounded" title="Baixar dossiê">
+                            <BookOpen className="h-4 w-4 text-blue-500" />
                           </button>
                         )}
                       </div>
@@ -674,6 +847,19 @@ const AdminLeads = () => {
         onCancel={handleReuniaoCancel}
       />
 
+      {/* Cadastro Financeiro Dialog */}
+      <CadastroFinanceiroDialog
+        open={financeiroDialogOpen}
+        onOpenChange={setFinanceiroDialogOpen}
+        leadId={pendingFinanceiro?.leadId || ""}
+        leadName={pendingFinanceiro?.leadName || ""}
+        parceiroId={pendingFinanceiro?.parceiroId || ""}
+        parceiros={parceirosAll}
+        onSaved={handleFinanceiroSaved}
+        onCancel={handleFinanceiroCancel}
+      />
+
+      {/* Lead Detail Dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -763,9 +949,46 @@ const AdminLeads = () => {
               {detailLead.valor_campanhas != null && (
                 <div className="border-t border-border pt-4">
                   <h3 className="text-sm font-semibold mb-2">Valor Médio de Campanhas</h3>
-                  <p className="text-lg font-bold font-display">
-                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(detailLead.valor_campanhas)}
-                  </p>
+                  <p className="text-lg font-bold font-display">{fmt(detailLead.valor_campanhas)}</p>
+                </div>
+              )}
+
+              {/* Financial Info */}
+              {detailLead.valor_mensalidade > 0 && (
+                <div className="border-t border-border pt-4 space-y-3">
+                  <h3 className="text-sm font-semibold">Informações Financeiras</h3>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">💰 Comissão mensal</p>
+                      <p className="font-medium">{fmt((detailLead.valor_mensalidade || 0) * (detailLead.percentual_consultor || 0))}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">📦 Parcelas contratadas</p>
+                      <p className="font-medium">{detailLead.qtd_parcelas || 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">📊 Valor total do contrato</p>
+                      <p className="font-bold">{fmt((detailLead.valor_mensalidade || 0) * (detailLead.percentual_consultor || 0) * (detailLead.qtd_parcelas || 0))}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">👤 Consultor responsável</p>
+                      <p className="font-medium">{parceiros[detailLead.parceiro_id] || "—"}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span>Parcelas pagas: {detailLead.parcelas_pagas || 0} de {detailLead.qtd_parcelas || 0}</span>
+                      <span className={`text-xs font-medium ${(detailLead.parcelas_pagas || 0) >= (detailLead.qtd_parcelas || 0) && (detailLead.qtd_parcelas || 0) > 0 ? "text-emerald-600" : "text-amber-600"}`}>
+                        {(detailLead.parcelas_pagas || 0) >= (detailLead.qtd_parcelas || 0) && (detailLead.qtd_parcelas || 0) > 0 ? "Quitado" : "Em andamento"}
+                      </span>
+                    </div>
+                    <Progress value={(detailLead.qtd_parcelas || 0) > 0 ? ((detailLead.parcelas_pagas || 0) / (detailLead.qtd_parcelas || 0)) * 100 : 0} className="h-3" />
+                    {(detailLead.parcelas_pagas || 0) < (detailLead.qtd_parcelas || 0) && (detailLead.qtd_parcelas || 0) > 0 && (
+                      <Button size="sm" onClick={() => handleRegistrarParcela(detailLead.id)}>
+                        Registrar parcela paga
+                      </Button>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -780,9 +1003,13 @@ const AdminLeads = () => {
               {/* Conversion Link */}
               {isConvertedOrBeyond(detailLead.status_lead) && detailLead.completion_token && !detailLead.dados_completos && (
                 <div className="border-t border-border pt-4 space-y-3">
-                  <h3 className="text-sm font-semibold">Link de Preenchimento</h3>
-                  <p className="text-xs text-muted-foreground">Envie este link ao cliente para completar os dados da empresa e gerar o contrato.</p>
-                  <div className="bg-secondary rounded-lg p-3">
+                  <h3 className="text-sm font-semibold">Abrir cadastro do cliente</h3>
+                  <div className="bg-secondary rounded-lg p-3 text-sm space-y-2">
+                    <p>Para formalizarmos nossa parceria, por favor preencha as informações contidas neste link.</p>
+                    <p>Desta forma seremos assertivos na condução de seu processo de onboarding no Monnera.</p>
+                    <p className="font-medium">Seja bem-vindo!</p>
+                  </div>
+                  <div className="bg-secondary/50 rounded-lg p-3">
                     <p className="text-xs font-mono text-primary break-all">
                       {`${window.location.origin}/completar-cadastro/${detailLead.completion_token}`}
                     </p>
@@ -796,7 +1023,7 @@ const AdminLeads = () => {
                     </Button>
                     <Button size="sm" variant="outline" asChild>
                       <a href={`https://wa.me/?text=${encodeURIComponent(
-                        `Seja bem-vindo ao Monnera, ${detailLead.nome_responsavel}!\n\nAgora só precisamos formalizar nossa parceria para iniciarmos o processo de implantação da plataforma.\n\nPreencha os dados abaixo para que possamos gerar seu contrato.\n\n${window.location.origin}/completar-cadastro/${detailLead.completion_token}`
+                        `Para formalizarmos nossa parceria, por favor preencha as informações contidas neste link.\n\nDesta forma seremos assertivos na condução de seu processo de onboarding no Monnera.\n\nSeja bem-vindo!\n\n${window.location.origin}/completar-cadastro/${detailLead.completion_token}`
                       )}`} target="_blank" rel="noopener noreferrer">
                         <MessageCircle className="mr-1 h-3 w-3" /> WhatsApp
                       </a>
@@ -841,12 +1068,10 @@ const AdminLeads = () => {
                 </div>
               )}
 
-              {/* Contract section - visible for converted leads */}
+              {/* Contract section */}
               {isConvertedOrBeyond(detailLead.status_lead) && (
                 <div className="border-t border-border pt-4 space-y-4">
                   <h3 className="text-sm font-semibold">Contrato</h3>
-
-                  {/* Número da proposta */}
                   <div className="flex items-end gap-2">
                     <div className="flex-1">
                       <label className="text-xs text-muted-foreground mb-1 block">Número da Proposta</label>
@@ -857,16 +1082,10 @@ const AdminLeads = () => {
                         className="h-9"
                       />
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleSaveNumeroProposta(detailLead.id)}
-                    >
+                    <Button size="sm" variant="outline" onClick={() => handleSaveNumeroProposta(detailLead.id)}>
                       Salvar
                     </Button>
                   </div>
-
-                  {/* Proposta PDF */}
                   {detailLead.proposta_url && (
                     <div className="flex items-center gap-2">
                       <Button size="sm" variant="outline" onClick={() => openSignedUrl(detailLead.proposta_url)}>
@@ -874,19 +1093,9 @@ const AdminLeads = () => {
                       </Button>
                     </div>
                   )}
-
-                  {/* Generate / Download Contract */}
                   <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => handleGenerateContract(detailLead)}
-                      disabled={generatingContract}
-                    >
-                      {generatingContract ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <FileText className="mr-2 h-4 w-4" />
-                      )}
+                    <Button size="sm" onClick={() => handleGenerateContract(detailLead)} disabled={generatingContract}>
+                      {generatingContract ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
                       {detailLead.contrato_url ? "Regerar Contrato" : "Gerar Contrato"}
                     </Button>
                     {detailLead.contrato_url && (
@@ -895,6 +1104,15 @@ const AdminLeads = () => {
                       </Button>
                     )}
                   </div>
+                </div>
+              )}
+
+              {/* Dossiê download */}
+              {detailLead.status_lead === "contrato_assinado" && (
+                <div className="border-t border-border pt-4">
+                  <Button size="sm" onClick={() => handleDownloadDossie(detailLead.id, detailLead.nome_fantasia)}>
+                    <BookOpen className="mr-2 h-4 w-4" /> Baixar dossiê completo
+                  </Button>
                 </div>
               )}
 
@@ -929,10 +1147,12 @@ const AdminLeads = () => {
             <DialogTitle className="font-display">Link de Conversão Gerado</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Envie este link ao cliente para que ele complete os dados da empresa e formalize o contrato.
-            </p>
-            <div className="bg-secondary rounded-lg p-3">
+            <div className="bg-secondary rounded-lg p-4 text-sm space-y-2">
+              <p>Para formalizarmos nossa parceria, por favor preencha as informações contidas neste link.</p>
+              <p>Desta forma seremos assertivos na condução de seu processo de onboarding no Monnera.</p>
+              <p className="font-medium">Seja bem-vindo!</p>
+            </div>
+            <div className="bg-secondary/50 rounded-lg p-3">
               <p className="text-xs font-mono text-primary break-all">{conversionLink}</p>
             </div>
             <div className="flex gap-2">
