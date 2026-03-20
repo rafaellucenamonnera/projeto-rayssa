@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, MessageSquare, Send } from "lucide-react";
+import { Loader2, MessageSquare, Send, Pencil, Trash2, X, Check } from "lucide-react";
 import { PIPELINE_LABELS } from "@/lib/pipelineConstants";
 
 interface LeadCommentsProps {
@@ -18,6 +18,7 @@ interface Comment {
   usuario: string;
   comentario: string;
   data_comentario: string;
+  user_id: string;
 }
 
 export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsProps) => {
@@ -25,6 +26,16 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setCurrentUserId(user.id);
+    });
+  }, []);
 
   const loadComments = async () => {
     setLoading(true);
@@ -59,10 +70,42 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
       if (error) throw error;
       setNewComment("");
       loadComments();
-    } catch (err: any) {
+    } catch {
       toast.error("Erro ao adicionar comentário");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleEdit = async (commentId: string) => {
+    if (!editingText.trim()) return;
+    try {
+      const { error } = await supabase
+        .from("lead_comments")
+        .update({ comentario: editingText.trim().slice(0, 500) } as any)
+        .eq("id", commentId);
+      if (error) throw error;
+      toast.success("Comentário atualizado");
+      setEditingId(null);
+      setEditingText("");
+      loadComments();
+    } catch {
+      toast.error("Erro ao editar comentário");
+    }
+  };
+
+  const handleDelete = async (commentId: string) => {
+    try {
+      const { error } = await supabase
+        .from("lead_comments")
+        .delete()
+        .eq("id", commentId);
+      if (error) throw error;
+      toast.success("Comentário excluído");
+      setDeletingId(null);
+      loadComments();
+    } catch {
+      toast.error("Erro ao excluir comentário");
     }
   };
 
@@ -100,20 +143,78 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
         <p className="text-xs text-muted-foreground text-center py-3">Nenhum comentário ainda.</p>
       ) : (
         <div className="space-y-3 max-h-60 overflow-y-auto">
-          {comments.map((c) => (
-            <div key={c.id} className="bg-secondary/50 rounded-lg p-3 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium">{c.usuario}</span>
-                <span className="text-[10px] text-muted-foreground">
-                  {new Date(c.data_comentario).toLocaleDateString("pt-BR")} {new Date(c.data_comentario).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+          {comments.map((c) => {
+            const isOwner = c.user_id === currentUserId;
+            const isEditing = editingId === c.id;
+            const isDeleting = deletingId === c.id;
+
+            return (
+              <div key={c.id} className="bg-secondary/50 rounded-lg p-3 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium">{c.usuario}</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-muted-foreground">
+                      {new Date(c.data_comentario).toLocaleDateString("pt-BR")} {new Date(c.data_comentario).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                    {isOwner && !isEditing && !isDeleting && (
+                      <>
+                        <button
+                          onClick={() => { setEditingId(c.id); setEditingText(c.comentario); }}
+                          className="p-0.5 hover:bg-primary/10 rounded"
+                          title="Editar comentário"
+                        >
+                          <Pencil className="h-3 w-3 text-muted-foreground" />
+                        </button>
+                        <button
+                          onClick={() => setDeletingId(c.id)}
+                          className="p-0.5 hover:bg-destructive/10 rounded"
+                          title="Excluir comentário"
+                        >
+                          <Trash2 className="h-3 w-3 text-muted-foreground" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <span className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary rounded">
+                  {PIPELINE_LABELS[c.etapa] || c.etapa}
                 </span>
+
+                {isEditing ? (
+                  <div className="space-y-2 pt-1">
+                    <Textarea
+                      value={editingText}
+                      onChange={(e) => setEditingText(e.target.value.slice(0, 500))}
+                      rows={2}
+                      maxLength={500}
+                    />
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleEdit(c.id)}>
+                        <Check className="mr-1 h-3 w-3" /> Salvar
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setEditingId(null); setEditingText(""); }}>
+                        <X className="mr-1 h-3 w-3" /> Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                ) : isDeleting ? (
+                  <div className="pt-1 space-y-2">
+                    <p className="text-xs text-destructive">Tem certeza que deseja excluir este comentário?</p>
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => handleDelete(c.id)}>
+                        Confirmar exclusão
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setDeletingId(null)}>
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm">{c.comentario}</p>
+                )}
               </div>
-              <span className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary rounded">
-                {PIPELINE_LABELS[c.etapa] || c.etapa}
-              </span>
-              <p className="text-sm">{c.comentario}</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
