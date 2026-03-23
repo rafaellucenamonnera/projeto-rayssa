@@ -202,6 +202,7 @@ const AdminLeads = () => {
         body: { lead_id: leadId },
       });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       if (data?.contrato_url) {
         setLeads((prev) =>
           prev.map((l) => (l.id === leadId ? { ...l, contrato_url: data.contrato_url } : l))
