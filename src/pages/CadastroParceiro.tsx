@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { validateCPF, validateEmail, formatCPF } from "@/lib/validators";
+import { validateDocumento, validateEmail, formatDocumento } from "@/lib/validators";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import logoMonnera from "@/assets/logo-monnera.jpg";
@@ -39,7 +39,7 @@ const CadastroParceiro = () => {
   const validate = () => {
     const errs: Record<string, string> = {};
     if (!form.nome.trim()) errs.nome = "Nome é obrigatório";
-    if (!validateCPF(form.cpf)) errs.cpf = "CPF inválido";
+    if (!validateDocumento(form.cpf)) errs.cpf = "Documento inválido. Informe um CPF ou CNPJ válido.";
     if (!/^\d{2}$/.test(form.telefone_ddd)) errs.telefone_ddd = "DDD inválido (2 dígitos)";
     if (!/^\d{9}$/.test(form.telefone_numero)) errs.telefone_numero = "Número inválido (9 dígitos)";
     if (!validateEmail(form.email)) errs.email = "Email inválido";
@@ -170,8 +170,8 @@ const CadastroParceiro = () => {
               {errors.nome && <p className="text-destructive text-sm mt-1">{errors.nome}</p>}
             </div>
             <div>
-              <Label htmlFor="cpf">CPF</Label>
-              <Input id="cpf" value={form.cpf} onChange={(e) => setForm({ ...form, cpf: formatCPF(e.target.value) })} placeholder="000.000.000-00" maxLength={14} />
+              <Label htmlFor="cpf">CPF ou CNPJ</Label>
+              <Input id="cpf" value={form.cpf} onChange={(e) => setForm({ ...form, cpf: formatDocumento(e.target.value) })} placeholder="000.000.000-00" maxLength={18} />
               {errors.cpf && <p className="text-destructive text-sm mt-1">{errors.cpf}</p>}
             </div>
             <div className="grid grid-cols-3 gap-3">

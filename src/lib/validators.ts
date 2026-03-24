@@ -51,3 +51,16 @@ export function formatCNPJ(value: string): string {
   if (cleaned.length <= 12) return `${cleaned.slice(0, 2)}.${cleaned.slice(2, 5)}.${cleaned.slice(5, 8)}/${cleaned.slice(8)}`;
   return `${cleaned.slice(0, 2)}.${cleaned.slice(2, 5)}.${cleaned.slice(5, 8)}/${cleaned.slice(8, 12)}-${cleaned.slice(12)}`;
 }
+
+export function formatDocumento(value: string): string {
+  const cleaned = value.replace(/\D/g, '');
+  if (cleaned.length <= 11) return formatCPF(value);
+  return formatCNPJ(value);
+}
+
+export function validateDocumento(doc: string): boolean {
+  const cleaned = doc.replace(/\D/g, '');
+  if (cleaned.length === 11) return validateCPF(doc);
+  if (cleaned.length === 14) return validateCNPJ(doc);
+  return false;
+}
