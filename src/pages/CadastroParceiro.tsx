@@ -170,8 +170,8 @@ const CadastroParceiro = () => {
               {errors.nome && <p className="text-destructive text-sm mt-1">{errors.nome}</p>}
             </div>
             <div>
-              <Label htmlFor="cpf">CPF</Label>
-              <Input id="cpf" value={form.cpf} onChange={(e) => setForm({ ...form, cpf: formatCPF(e.target.value) })} placeholder="000.000.000-00" maxLength={14} />
+              <Label htmlFor="cpf">CPF ou CNPJ</Label>
+              <Input id="cpf" value={form.cpf} onChange={(e) => setForm({ ...form, cpf: formatDocumento(e.target.value) })} placeholder="000.000.000-00" maxLength={18} />
               {errors.cpf && <p className="text-destructive text-sm mt-1">{errors.cpf}</p>}
             </div>
             <div className="grid grid-cols-3 gap-3">
