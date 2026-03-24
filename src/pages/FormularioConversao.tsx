@@ -55,6 +55,9 @@ const FormularioConversao = () => {
     const loadLead = async () => {
       if (!token) { setInvalid(true); setLoading(false); return; }
 
+      // Sign out any existing session to ensure anon access for this public form
+      await supabase.auth.signOut();
+
       const { data, error } = await supabase
         .from("leads")
         .select("*")
