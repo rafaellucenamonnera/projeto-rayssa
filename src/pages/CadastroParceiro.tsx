@@ -39,7 +39,7 @@ const CadastroParceiro = () => {
   const validate = () => {
     const errs: Record<string, string> = {};
     if (!form.nome.trim()) errs.nome = "Nome é obrigatório";
-    if (!validateCPF(form.cpf)) errs.cpf = "CPF inválido";
+    if (!validateDocumento(form.cpf)) errs.cpf = "Documento inválido. Informe um CPF ou CNPJ válido.";
     if (!/^\d{2}$/.test(form.telefone_ddd)) errs.telefone_ddd = "DDD inválido (2 dígitos)";
     if (!/^\d{9}$/.test(form.telefone_numero)) errs.telefone_numero = "Número inválido (9 dígitos)";
     if (!validateEmail(form.email)) errs.email = "Email inválido";
