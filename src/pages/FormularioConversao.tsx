@@ -229,7 +229,12 @@ const FormularioConversao = () => {
       setSubmitted(true);
     } catch (error: any) {
       console.error("Erro ao enviar:", error);
-      toast.error("Erro ao enviar dados. Tente novamente.");
+      const msg = error?.message || "Erro desconhecido";
+      if (msg.includes("row-level security")) {
+        toast.error("Erro de permissão. Tente abrir o link em uma aba anônima/privada.");
+      } else {
+        toast.error("Erro ao enviar dados. Tente novamente.");
+      }
     } finally {
       setSubmitting(false);
     }
