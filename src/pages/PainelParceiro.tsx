@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { PIPELINE_STAGES, PIPELINE_LABELS } from "@/lib/pipelineConstants";
 import { AddLeadDialog } from "@/components/parceiro/AddLeadDialog";
 import { DaysInStage } from "@/components/admin/DaysInStage";
+import { KitVendasSection } from "@/components/parceiro/KitVendasSection";
 
 const PainelParceiro = () => {
   const navigate = useNavigate();
@@ -217,6 +218,9 @@ const PainelParceiro = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Kit de Vendas */}
+        <KitVendasSection />
 
         {/* Leads */}
         <Card className="border-border">

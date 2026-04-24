@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, FileText, UserCog, DollarSign } from "lucide-react";
+import { LayoutDashboard, Users, FileText, UserCog, DollarSign, Briefcase } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,6 +24,7 @@ export function AdminSidebar() {
     { title: "Financeiro", url: "/admin/financeiro", icon: DollarSign },
     { title: "Consultores", url: "/admin/parceiros", icon: Users },
     { title: "Leads", url: "/admin/leads", icon: FileText },
+    { title: "Kit de Vendas", url: "/admin/kit-vendas", icon: Briefcase },
     ...(isAdmin ? [{ title: "Usuários Monnera", url: "/admin/usuarios", icon: UserCog }] : []),
   ];
 
