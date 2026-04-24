@@ -22,6 +22,7 @@ const AdminFinanceiro = lazy(() => import("./pages/admin/AdminFinanceiro"));
 const AdminParceiros = lazy(() => import("./pages/admin/AdminParceiros"));
 const AdminLeads = lazy(() => import("./pages/admin/AdminLeads"));
 const AdminUsuarios = lazy(() => import("./pages/admin/AdminUsuarios"));
+const AdminKitVendas = lazy(() => import("./pages/admin/AdminKitVendas"));
 const PrimeiroAcesso = lazy(() => import("./pages/PrimeiroAcesso"));
 const ResetarSenha = lazy(() => import("./pages/ResetarSenha"));
 const EsqueciSenha = lazy(() => import("./pages/EsqueciSenha"));
@@ -61,6 +62,7 @@ const App = () => (
                 <Route path="parceiros" element={<AdminParceiros />} />
                 <Route path="leads" element={<AdminLeads />} />
                 <Route path="usuarios" element={<AdminUsuarios />} />
+                <Route path="kit-vendas" element={<AdminKitVendas />} />
               </Route>
               <Route path="/primeiro-acesso" element={<PrimeiroAcesso />} />
               <Route path="/resetar-senha" element={<ResetarSenha />} />

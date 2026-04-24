@@ -52,6 +52,117 @@ export type Database = {
           },
         ]
       }
+      kit_argumentos: {
+        Row: {
+          created_at: string
+          id: string
+          objecao: string
+          ordem: number
+          resposta: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          objecao: string
+          ordem?: number
+          resposta: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          objecao?: string
+          ordem?: number
+          resposta?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      kit_portfolio: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          pdf_url: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          pdf_url: string
+          titulo?: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          pdf_url?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      kit_videos: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          id: string
+          ordem: number
+          titulo: string
+          updated_at: string
+          video_url: string
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          ordem?: number
+          titulo: string
+          updated_at?: string
+          video_url: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          ordem?: number
+          titulo?: string
+          updated_at?: string
+          video_url?: string
+        }
+        Relationships: []
+      }
+      kit_whatsapp_messages: {
+        Row: {
+          created_at: string
+          id: string
+          mensagem: string
+          ordem: number
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mensagem: string
+          ordem?: number
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mensagem?: string
+          ordem?: number
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lead_comments: {
         Row: {
           comentario: string
