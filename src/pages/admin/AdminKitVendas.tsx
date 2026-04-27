@@ -111,6 +111,7 @@ export default function AdminKitVendas() {
           <TabsTrigger value="videos"><Video className="w-4 h-4 mr-2" />Vídeos</TabsTrigger>
           <TabsTrigger value="portfolio"><FileText className="w-4 h-4 mr-2" />Portfólio</TabsTrigger>
           <TabsTrigger value="argumentos"><MessagesSquare className="w-4 h-4 mr-2" />Argumentos</TabsTrigger>
+          <TabsTrigger value="redes"><Share2 className="w-4 h-4 mr-2" />Redes Sociais</TabsTrigger>
         </TabsList>
 
         {/* WhatsApp */}
@@ -197,14 +198,35 @@ export default function AdminKitVendas() {
             </Card>
           ))}
         </TabsContent>
+        {/* Redes Sociais */}
+        <TabsContent value="redes" className="space-y-3">
+          <Button onClick={() => setEditing({ type: "rede", data: { titulo: "", link: "", comentario: "", ordem: redes.length } })}>
+            <Plus className="w-4 h-4 mr-2" />Novo material
+          </Button>
+          {redes.length === 0 && <p className="text-sm text-muted-foreground">Nenhum material cadastrado.</p>}
+          {redes.map((r) => (
+            <Card key={r.id}>
+              <CardHeader className="flex flex-row items-center justify-between p-4">
+                <div className="min-w-0">
+                  <CardTitle className="text-base">{r.titulo}</CardTitle>
+                  <a href={r.link} target="_blank" rel="noreferrer" className="text-xs text-primary break-all hover:underline">{r.link}</a>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <Button size="icon" variant="ghost" onClick={() => setEditing({ type: "rede", data: r })}><Pencil className="w-4 h-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => handleDelete("rede", r.id)}><Trash2 className="w-4 h-4" /></Button>
+                </div>
+              </CardHeader>
+              {r.comentario && <CardContent className="p-4 pt-0"><p className="text-sm text-muted-foreground whitespace-pre-wrap">{r.comentario}</p></CardContent>}
+            </Card>
+          ))}
+        </TabsContent>
       </Tabs>
-
       {/* Edit Dialog */}
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {editing?.data.id ? "Editar" : "Novo"} {editing?.type === "whatsapp" ? "mensagem" : editing?.type === "video" ? "vídeo" : editing?.type === "portfolio" ? "PDF do portfólio" : "argumento"}
+              {editing?.data.id ? "Editar" : "Novo"} {editing?.type === "whatsapp" ? "mensagem" : editing?.type === "video" ? "vídeo" : editing?.type === "portfolio" ? "PDF do portfólio" : editing?.type === "rede" ? "material de rede social" : "argumento"}
             </DialogTitle>
           </DialogHeader>
 
