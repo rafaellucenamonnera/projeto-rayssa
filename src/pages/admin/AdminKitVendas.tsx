@@ -330,6 +330,15 @@ export default function AdminKitVendas() {
             </div>
           )}
 
+          {editing?.type === "rede" && (
+            <div className="space-y-3">
+              <div><Label>Título do material</Label><Input value={editing.data.titulo} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, titulo: e.target.value } })} placeholder="Ex: Post Instagram - Lançamento" /></div>
+              <div><Label>Link do material</Label><Input value={editing.data.link} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, link: e.target.value } })} placeholder="https://..." /></div>
+              <div><Label>Comentário sobre o material</Label><Textarea rows={3} value={editing.data.comentario || ""} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, comentario: e.target.value } })} placeholder="Como e quando usar este material" /></div>
+              <div><Label>Ordem</Label><Input type="number" value={editing.data.ordem} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, ordem: Number(e.target.value) } })} /></div>
+            </div>
+          )}
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
             <Button onClick={handleSave} disabled={saving || uploading}>
