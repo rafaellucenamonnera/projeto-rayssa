@@ -11,7 +11,7 @@ type WMsg = { id: string; titulo: string; subtitulo: string | null; mensagem: st
 type Vid = { id: string; titulo: string; subtitulo: string | null; descricao: string | null; video_url: string; thumbnail_url: string | null };
 type Port = { id: string; titulo: string; pdf_url: string };
 type Arg = { id: string; objecao: string; resposta: string; pilar: string; pilar_descricao: string | null };
-type Rede = { id: string; titulo: string; link: string; comentario: string | null };
+type Rede = { id: string; titulo: string; link: string; comentario: string | null; imagem_url: string | null };
 
 const isYoutube = (url: string) => /youtube\.com|youtu\.be/.test(url);
 const isVimeo = (url: string) => /vimeo\.com/.test(url);
@@ -73,7 +73,7 @@ export function KitVendasSection() {
         supabase.from("kit_videos").select("id, titulo, subtitulo, descricao, video_url, thumbnail_url").order("ordem"),
         supabase.from("kit_portfolio").select("id, titulo, pdf_url").eq("ativo", true).order("created_at", { ascending: false }),
         supabase.from("kit_argumentos").select("id, objecao, resposta, pilar, pilar_descricao").order("ordem"),
-        supabase.from("kit_redes_sociais").select("id, titulo, link, comentario").order("ordem"),
+        supabase.from("kit_redes_sociais").select("id, titulo, link, comentario, imagem_url").order("ordem"),
       ]);
       setWhatsapp((w.data as WMsg[]) || []);
       setVideos((v.data as Vid[]) || []);
@@ -388,6 +388,8 @@ export function KitVendasSection() {
             <div className="space-y-2.5">
               {redes.map((r) => {
                 const open = !!expanded[r.id];
+                let domain = r.link;
+                try { domain = new URL(r.link).hostname.replace(/^www\./, ""); } catch {}
                 return (
                   <div key={r.id} className="rounded-xl bg-secondary/40 border border-border overflow-hidden">
                     <button
@@ -395,19 +397,38 @@ export function KitVendasSection() {
                       onClick={() => toggle(r.id)}
                       className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-secondary/60 transition-colors"
                     >
-                      <div className="min-w-0">
-                        <p className="font-display font-semibold text-base truncate">{r.titulo}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5 truncate">{r.link}</p>
+                      <div className="flex items-center gap-3 min-w-0">
+                        {r.imagem_url ? (
+                          <img src={r.imagem_url} alt="" className="w-12 h-12 rounded-md object-cover border border-border shrink-0" loading="lazy" />
+                        ) : (
+                          <div className="w-12 h-12 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                            <Share2 className="w-5 h-5 text-primary" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="font-display font-semibold text-base truncate">{r.titulo}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate">{domain}</p>
+                        </div>
                       </div>
                       <ExpandIcon open={open} />
                     </button>
                     {open && (
                       <div className="px-4 pb-4 space-y-3 border-t border-border/50 pt-3">
+                        {r.imagem_url && (
+                          <div className="rounded-lg overflow-hidden bg-black/20 max-w-xs">
+                            <img src={r.imagem_url} alt={r.titulo} className="w-full h-auto" loading="lazy" />
+                          </div>
+                        )}
                         {r.comentario && <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{r.comentario}</p>}
                         <div className="flex flex-wrap gap-2">
                           <Button size="sm" onClick={() => copy(r.link, "Link copiado!")}>
                             <LinkIcon className="w-3.5 h-3.5 mr-1.5" />Copiar Link
                           </Button>
+                          {r.imagem_url && (
+                            <Button size="sm" variant="outline" onClick={() => downloadFile(r.imagem_url!, `${r.titulo}.jpg`)}>
+                              <Download className="w-3.5 h-3.5 mr-1.5" />Baixar Imagem
+                            </Button>
+                          )}
                           <Button size="sm" variant="outline" asChild>
                             <a href={r.link} target="_blank" rel="noreferrer">
                               <ExternalLink className="w-3.5 h-3.5 mr-1.5" />Abrir

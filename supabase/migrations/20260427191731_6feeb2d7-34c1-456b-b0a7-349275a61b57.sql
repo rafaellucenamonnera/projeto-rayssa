@@ -1,0 +1,1 @@
+ALTER TABLE public.kit_redes_sociais ADD COLUMN IF NOT EXISTS imagem_url text;

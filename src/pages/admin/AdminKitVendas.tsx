@@ -14,7 +14,7 @@ type WMsg = { id: string; titulo: string; subtitulo: string | null; mensagem: st
 type Vid = { id: string; titulo: string; subtitulo: string | null; descricao: string | null; video_url: string; thumbnail_url: string | null; ordem: number };
 type Port = { id: string; titulo: string; pdf_url: string; ativo: boolean };
 type Arg = { id: string; objecao: string; resposta: string; pilar: string; pilar_descricao: string | null; ordem: number };
-type Rede = { id: string; titulo: string; link: string; comentario: string | null; ordem: number };
+type Rede = { id: string; titulo: string; link: string; comentario: string | null; imagem_url: string | null; ordem: number };
 
 export default function AdminKitVendas() {
   const [whatsapp, setWhatsapp] = useState<WMsg[]>([]);
@@ -200,16 +200,21 @@ export default function AdminKitVendas() {
         </TabsContent>
         {/* Redes Sociais */}
         <TabsContent value="redes" className="space-y-3">
-          <Button onClick={() => setEditing({ type: "rede", data: { titulo: "", link: "", comentario: "", ordem: redes.length } })}>
+          <Button onClick={() => setEditing({ type: "rede", data: { titulo: "", link: "", comentario: "", imagem_url: "", ordem: redes.length } })}>
             <Plus className="w-4 h-4 mr-2" />Novo material
           </Button>
           {redes.length === 0 && <p className="text-sm text-muted-foreground">Nenhum material cadastrado.</p>}
           {redes.map((r) => (
             <Card key={r.id}>
-              <CardHeader className="flex flex-row items-center justify-between p-4">
-                <div className="min-w-0">
-                  <CardTitle className="text-base">{r.titulo}</CardTitle>
-                  <a href={r.link} target="_blank" rel="noreferrer" className="text-xs text-primary break-all hover:underline">{r.link}</a>
+              <CardHeader className="flex flex-row items-center justify-between p-4 gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  {r.imagem_url && (
+                    <img src={r.imagem_url} alt="" className="w-12 h-12 rounded-md object-cover border border-border shrink-0" loading="lazy" />
+                  )}
+                  <div className="min-w-0">
+                    <CardTitle className="text-base">{r.titulo}</CardTitle>
+                    <a href={r.link} target="_blank" rel="noreferrer" className="text-xs text-primary break-all hover:underline">{r.link}</a>
+                  </div>
                 </div>
                 <div className="flex gap-2 shrink-0">
                   <Button size="icon" variant="ghost" onClick={() => setEditing({ type: "rede", data: r })}><Pencil className="w-4 h-4" /></Button>
@@ -335,6 +340,19 @@ export default function AdminKitVendas() {
               <div><Label>Título do material</Label><Input value={editing.data.titulo} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, titulo: e.target.value } })} placeholder="Ex: Post Instagram - Lançamento" /></div>
               <div><Label>Link do material</Label><Input value={editing.data.link} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, link: e.target.value } })} placeholder="https://..." /></div>
               <div><Label>Comentário sobre o material</Label><Textarea rows={3} value={editing.data.comentario || ""} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, comentario: e.target.value } })} placeholder="Como e quando usar este material" /></div>
+              <div>
+                <Label>Imagem de capa (opcional — aparece no preview)</Label>
+                <Input value={editing.data.imagem_url || ""} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, imagem_url: e.target.value } })} placeholder="https://..." />
+                <div className="mt-2">
+                  <Input type="file" accept="image/*" disabled={uploading} onChange={async (e) => {
+                    const f = e.target.files?.[0]; if (!f) return;
+                    const url = await uploadFile(f, "redes");
+                    if (url) setEditing({ ...editing, data: { ...editing.data, imagem_url: url } });
+                  }} />
+                  {uploading && <p className="text-xs text-muted-foreground mt-1"><Loader2 className="inline w-3 h-3 animate-spin mr-1" />Enviando...</p>}
+                </div>
+                {editing.data.imagem_url && <img src={editing.data.imagem_url} alt="" className="mt-2 max-h-32 rounded border border-border" />}
+              </div>
               <div><Label>Ordem</Label><Input type="number" value={editing.data.ordem} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, ordem: Number(e.target.value) } })} /></div>
             </div>
           )}
