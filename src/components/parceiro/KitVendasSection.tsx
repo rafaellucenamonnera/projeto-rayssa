@@ -73,7 +73,7 @@ export function KitVendasSection() {
         supabase.from("kit_videos").select("id, titulo, subtitulo, descricao, video_url, thumbnail_url").order("ordem"),
         supabase.from("kit_portfolio").select("id, titulo, pdf_url").eq("ativo", true).order("created_at", { ascending: false }),
         supabase.from("kit_argumentos").select("id, objecao, resposta, pilar, pilar_descricao").order("ordem"),
-        supabase.from("kit_redes_sociais").select("id, titulo, link, comentario").order("ordem"),
+        supabase.from("kit_redes_sociais").select("id, titulo, link, comentario, imagem_url").order("ordem"),
       ]);
       setWhatsapp((w.data as WMsg[]) || []);
       setVideos((v.data as Vid[]) || []);
