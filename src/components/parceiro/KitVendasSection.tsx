@@ -11,7 +11,7 @@ type WMsg = { id: string; titulo: string; subtitulo: string | null; mensagem: st
 type Vid = { id: string; titulo: string; subtitulo: string | null; descricao: string | null; video_url: string; thumbnail_url: string | null };
 type Port = { id: string; titulo: string; pdf_url: string };
 type Arg = { id: string; objecao: string; resposta: string; pilar: string; pilar_descricao: string | null };
-type Rede = { id: string; titulo: string; link: string; comentario: string | null };
+type Rede = { id: string; titulo: string; link: string; comentario: string | null; imagem_url: string | null };
 
 const isYoutube = (url: string) => /youtube\.com|youtu\.be/.test(url);
 const isVimeo = (url: string) => /vimeo\.com/.test(url);
