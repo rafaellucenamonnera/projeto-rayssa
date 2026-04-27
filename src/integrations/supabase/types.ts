@@ -117,6 +117,7 @@ export type Database = {
           comentario: string | null
           created_at: string
           id: string
+          imagem_url: string | null
           link: string
           ordem: number
           titulo: string
@@ -126,6 +127,7 @@ export type Database = {
           comentario?: string | null
           created_at?: string
           id?: string
+          imagem_url?: string | null
           link: string
           ordem?: number
           titulo: string
@@ -135,6 +137,7 @@ export type Database = {
           comentario?: string | null
           created_at?: string
           id?: string
+          imagem_url?: string | null
           link?: string
           ordem?: number
           titulo?: string
