@@ -58,11 +58,13 @@
 
   body {
     @apply bg-background text-foreground font-sans;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Manrope', 'Inter', system-ui, sans-serif;
+    font-weight: 500;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: 'Manrope', 'Inter', system-ui, sans-serif;
+    font-weight: 700;
   }
 }
 
