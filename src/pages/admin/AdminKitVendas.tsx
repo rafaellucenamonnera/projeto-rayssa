@@ -200,16 +200,21 @@ export default function AdminKitVendas() {
         </TabsContent>
         {/* Redes Sociais */}
         <TabsContent value="redes" className="space-y-3">
-          <Button onClick={() => setEditing({ type: "rede", data: { titulo: "", link: "", comentario: "", ordem: redes.length } })}>
+          <Button onClick={() => setEditing({ type: "rede", data: { titulo: "", link: "", comentario: "", imagem_url: "", ordem: redes.length } })}>
             <Plus className="w-4 h-4 mr-2" />Novo material
           </Button>
           {redes.length === 0 && <p className="text-sm text-muted-foreground">Nenhum material cadastrado.</p>}
           {redes.map((r) => (
             <Card key={r.id}>
-              <CardHeader className="flex flex-row items-center justify-between p-4">
-                <div className="min-w-0">
-                  <CardTitle className="text-base">{r.titulo}</CardTitle>
-                  <a href={r.link} target="_blank" rel="noreferrer" className="text-xs text-primary break-all hover:underline">{r.link}</a>
+              <CardHeader className="flex flex-row items-center justify-between p-4 gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  {r.imagem_url && (
+                    <img src={r.imagem_url} alt="" className="w-12 h-12 rounded-md object-cover border border-border shrink-0" loading="lazy" />
+                  )}
+                  <div className="min-w-0">
+                    <CardTitle className="text-base">{r.titulo}</CardTitle>
+                    <a href={r.link} target="_blank" rel="noreferrer" className="text-xs text-primary break-all hover:underline">{r.link}</a>
+                  </div>
                 </div>
                 <div className="flex gap-2 shrink-0">
                   <Button size="icon" variant="ghost" onClick={() => setEditing({ type: "rede", data: r })}><Pencil className="w-4 h-4" /></Button>
