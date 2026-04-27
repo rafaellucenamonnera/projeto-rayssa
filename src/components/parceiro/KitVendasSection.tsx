@@ -373,6 +373,56 @@ export function KitVendasSection() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Redes Sociais Dialog */}
+      <Dialog open={openDialog === "redes"} onOpenChange={(o) => !o && setOpenDialog(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-display">
+              <Share2 className="w-5 h-5 text-primary" />Redes Sociais
+            </DialogTitle>
+          </DialogHeader>
+          {redes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum material disponível ainda.</p>
+          ) : (
+            <div className="space-y-2.5">
+              {redes.map((r) => {
+                const open = !!expanded[r.id];
+                return (
+                  <div key={r.id} className="rounded-xl bg-secondary/40 border border-border overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => toggle(r.id)}
+                      className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-secondary/60 transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-display font-semibold text-base truncate">{r.titulo}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">{r.link}</p>
+                      </div>
+                      <ExpandIcon open={open} />
+                    </button>
+                    {open && (
+                      <div className="px-4 pb-4 space-y-3 border-t border-border/50 pt-3">
+                        {r.comentario && <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{r.comentario}</p>}
+                        <div className="flex flex-wrap gap-2">
+                          <Button size="sm" onClick={() => copy(r.link, "Link copiado!")}>
+                            <LinkIcon className="w-3.5 h-3.5 mr-1.5" />Copiar Link
+                          </Button>
+                          <Button size="sm" variant="outline" asChild>
+                            <a href={r.link} target="_blank" rel="noreferrer">
+                              <ExternalLink className="w-3.5 h-3.5 mr-1.5" />Abrir
+                            </a>
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
