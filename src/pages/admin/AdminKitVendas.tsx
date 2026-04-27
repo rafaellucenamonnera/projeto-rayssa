@@ -14,7 +14,7 @@ type WMsg = { id: string; titulo: string; subtitulo: string | null; mensagem: st
 type Vid = { id: string; titulo: string; subtitulo: string | null; descricao: string | null; video_url: string; thumbnail_url: string | null; ordem: number };
 type Port = { id: string; titulo: string; pdf_url: string; ativo: boolean };
 type Arg = { id: string; objecao: string; resposta: string; pilar: string; pilar_descricao: string | null; ordem: number };
-type Rede = { id: string; titulo: string; link: string; comentario: string | null; ordem: number };
+type Rede = { id: string; titulo: string; link: string; comentario: string | null; imagem_url: string | null; ordem: number };
 
 export default function AdminKitVendas() {
   const [whatsapp, setWhatsapp] = useState<WMsg[]>([]);
