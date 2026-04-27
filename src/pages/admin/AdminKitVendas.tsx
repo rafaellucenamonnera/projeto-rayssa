@@ -7,19 +7,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Upload, FileText, MessageSquare, Video, MessagesSquare, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, FileText, MessageSquare, Video, MessagesSquare, Loader2, Share2 } from "lucide-react";
 import { toast } from "sonner";
 
 type WMsg = { id: string; titulo: string; subtitulo: string | null; mensagem: string; imagem_url: string | null; ordem: number };
 type Vid = { id: string; titulo: string; subtitulo: string | null; descricao: string | null; video_url: string; thumbnail_url: string | null; ordem: number };
 type Port = { id: string; titulo: string; pdf_url: string; ativo: boolean };
 type Arg = { id: string; objecao: string; resposta: string; pilar: string; pilar_descricao: string | null; ordem: number };
+type Rede = { id: string; titulo: string; link: string; comentario: string | null; ordem: number };
 
 export default function AdminKitVendas() {
   const [whatsapp, setWhatsapp] = useState<WMsg[]>([]);
   const [videos, setVideos] = useState<Vid[]>([]);
   const [portfolio, setPortfolio] = useState<Port[]>([]);
   const [argumentos, setArgumentos] = useState<Arg[]>([]);
+  const [redes, setRedes] = useState<Rede[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Dialog state
@@ -29,17 +31,29 @@ export default function AdminKitVendas() {
 
   const reload = async () => {
     setLoading(true);
-    const [w, v, p, a] = await Promise.all([
+    const [w, v, p, a, r] = await Promise.all([
       supabase.from("kit_whatsapp_messages").select("*").order("ordem"),
       supabase.from("kit_videos").select("*").order("ordem"),
       supabase.from("kit_portfolio").select("*").order("created_at", { ascending: false }),
       supabase.from("kit_argumentos").select("*").order("ordem"),
+      supabase.from("kit_redes_sociais").select("*").order("ordem"),
     ]);
     setWhatsapp((w.data as WMsg[]) || []);
     setVideos((v.data as Vid[]) || []);
     setPortfolio((p.data as Port[]) || []);
     setArgumentos((a.data as Arg[]) || []);
+    setRedes((r.data as Rede[]) || []);
     setLoading(false);
+  };
+
+  useEffect(() => { reload(); }, []);
+
+  const tableMap: Record<string, "kit_whatsapp_messages" | "kit_videos" | "kit_portfolio" | "kit_argumentos" | "kit_redes_sociais"> = {
+    whatsapp: "kit_whatsapp_messages",
+    video: "kit_videos",
+    portfolio: "kit_portfolio",
+    argumento: "kit_argumentos",
+    rede: "kit_redes_sociais",
   };
 
   useEffect(() => { reload(); }, []);
