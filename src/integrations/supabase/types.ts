@@ -58,6 +58,8 @@ export type Database = {
           id: string
           objecao: string
           ordem: number
+          pilar: string
+          pilar_descricao: string | null
           resposta: string
           updated_at: string
         }
@@ -66,6 +68,8 @@ export type Database = {
           id?: string
           objecao: string
           ordem?: number
+          pilar?: string
+          pilar_descricao?: string | null
           resposta: string
           updated_at?: string
         }
@@ -74,6 +78,8 @@ export type Database = {
           id?: string
           objecao?: string
           ordem?: number
+          pilar?: string
+          pilar_descricao?: string | null
           resposta?: string
           updated_at?: string
         }
@@ -112,6 +118,8 @@ export type Database = {
           descricao: string | null
           id: string
           ordem: number
+          subtitulo: string | null
+          thumbnail_url: string | null
           titulo: string
           updated_at: string
           video_url: string
@@ -121,6 +129,8 @@ export type Database = {
           descricao?: string | null
           id?: string
           ordem?: number
+          subtitulo?: string | null
+          thumbnail_url?: string | null
           titulo: string
           updated_at?: string
           video_url: string
@@ -130,6 +140,8 @@ export type Database = {
           descricao?: string | null
           id?: string
           ordem?: number
+          subtitulo?: string | null
+          thumbnail_url?: string | null
           titulo?: string
           updated_at?: string
           video_url?: string
@@ -140,24 +152,30 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          imagem_url: string | null
           mensagem: string
           ordem: number
+          subtitulo: string | null
           titulo: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           id?: string
+          imagem_url?: string | null
           mensagem: string
           ordem?: number
+          subtitulo?: string | null
           titulo: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           id?: string
+          imagem_url?: string | null
           mensagem?: string
           ordem?: number
+          subtitulo?: string | null
           titulo?: string
           updated_at?: string
         }
