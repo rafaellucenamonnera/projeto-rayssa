@@ -77,17 +77,17 @@ const CadastroLead = () => {
 
     setLoading(true);
     try {
-      const { error } = await supabase.from("leads").insert({
-        parceiro_id: parceiroId,
-        nome_responsavel: form.nome_responsavel.trim(),
-        telefone_responsavel: form.telefone_responsavel.trim(),
-        email_responsavel: form.email_responsavel.trim().toLowerCase(),
-        nome_fantasia: form.nome_fantasia.trim(),
-        quantidade_lojas: parseInt(form.quantidade_lojas),
-        erp_utilizado: form.erp_utilizado.trim(),
-        valor_campanhas: form.valor_campanhas ? parseFloat(form.valor_campanhas) : null,
-        origem: "link_indicacao",
-      } as any);
+      const { error } = await supabase.rpc("register_lead_public", {
+        p_parceiro_id: parceiroId,
+        p_nome_responsavel: form.nome_responsavel.trim(),
+        p_telefone_responsavel: form.telefone_responsavel.trim(),
+        p_email_responsavel: form.email_responsavel.trim().toLowerCase(),
+        p_nome_fantasia: form.nome_fantasia.trim(),
+        p_quantidade_lojas: parseInt(form.quantidade_lojas),
+        p_erp_utilizado: form.erp_utilizado.trim(),
+        p_valor_campanhas: form.valor_campanhas ? parseFloat(form.valor_campanhas) : null,
+        p_origem: "link_indicacao",
+      });
 
       if (error) throw error;
       setSubmitted(true);

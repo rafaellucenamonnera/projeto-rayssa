@@ -768,6 +768,20 @@ export type Database = {
           nome: string
         }[]
       }
+      register_lead_public: {
+        Args: {
+          p_email_responsavel: string
+          p_erp_utilizado: string
+          p_nome_fantasia: string
+          p_nome_responsavel: string
+          p_origem?: string
+          p_parceiro_id: string
+          p_quantidade_lojas: number
+          p_telefone_responsavel: string
+          p_valor_campanhas?: number
+        }
+        Returns: string
+      }
       register_parceiro: {
         Args: {
           p_codigo_parceiro: string
