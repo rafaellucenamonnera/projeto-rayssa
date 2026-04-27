@@ -180,55 +180,52 @@ const FormularioConversao = () => {
 
     setSubmitting(true);
     try {
-      // Update lead with complete data
-      const { error: updateError } = await supabase
-        .from("leads")
-        .update({
-          nome_fantasia: form.nome_fantasia.trim(),
-          razao_social: form.razao_social.trim(),
-          cidade: form.cidade.trim(),
-          endereco_rua: form.endereco_rua.trim(),
-          endereco_numero: form.endereco_numero.trim(),
-          endereco_estado: form.endereco_estado.trim().toUpperCase(),
-          endereco_cep: form.endereco_cep.trim(),
-          quantidade_lojas: form.quantidade_lojas,
-          nome_responsavel: form.nome_responsavel.trim(),
-          telefone_responsavel: form.telefone_responsavel.trim(),
-          email_responsavel: form.email_responsavel.trim().toLowerCase(),
-          responsavel_tecnico_nome: form.responsavel_tecnico_nome.trim(),
-          responsavel_tecnico_telefone: form.responsavel_tecnico_telefone.replace(/\D/g, ""),
-          responsavel_tecnico_email: form.responsavel_tecnico_email.trim().toLowerCase(),
-          responsavel_comercial_nome: form.responsavel_comercial_nome.trim(),
-          responsavel_comercial_telefone: form.responsavel_comercial_telefone.replace(/\D/g, ""),
-          responsavel_comercial_email: form.responsavel_comercial_email.trim().toLowerCase(),
-          responsavel_rh_nome: form.responsavel_rh_nome.trim(),
-          responsavel_rh_telefone: form.responsavel_rh_telefone.replace(/\D/g, ""),
-          responsavel_rh_email: form.responsavel_rh_email.trim().toLowerCase(),
-          dados_completos: true,
-        } as any)
-        .eq("id", lead.id);
+      const payload = {
+        nome_fantasia: form.nome_fantasia.trim(),
+        razao_social: form.razao_social.trim(),
+        cidade: form.cidade.trim(),
+        endereco_rua: form.endereco_rua.trim(),
+        endereco_numero: form.endereco_numero.trim(),
+        endereco_estado: form.endereco_estado.trim().toUpperCase(),
+        endereco_cep: form.endereco_cep.trim(),
+        quantidade_lojas: form.quantidade_lojas,
+        nome_responsavel: form.nome_responsavel.trim(),
+        telefone_responsavel: form.telefone_responsavel.trim(),
+        email_responsavel: form.email_responsavel.trim().toLowerCase(),
+        responsavel_tecnico_nome: form.responsavel_tecnico_nome.trim(),
+        responsavel_tecnico_telefone: form.responsavel_tecnico_telefone.replace(/\D/g, ""),
+        responsavel_tecnico_email: form.responsavel_tecnico_email.trim().toLowerCase(),
+        responsavel_comercial_nome: form.responsavel_comercial_nome.trim(),
+        responsavel_comercial_telefone: form.responsavel_comercial_telefone.replace(/\D/g, ""),
+        responsavel_comercial_email: form.responsavel_comercial_email.trim().toLowerCase(),
+        responsavel_rh_nome: form.responsavel_rh_nome.trim(),
+        responsavel_rh_telefone: form.responsavel_rh_telefone.replace(/\D/g, ""),
+        responsavel_rh_email: form.responsavel_rh_email.trim().toLowerCase(),
+      };
 
-      if (updateError) throw updateError;
+      const lojasPayload =
+        form.quantidade_lojas > 1 && lojas.length > 0
+          ? lojas.map((l) => ({
+              cnpj: l.cnpj.replace(/\D/g, ""),
+              razao_social: l.razao_social.trim(),
+              nome_interno: l.nome_interno.trim(),
+            }))
+          : [];
 
-      // Insert lojas if multi-store
-      if (form.quantidade_lojas > 1 && lojas.length > 0) {
-        const lojasData = lojas.map((l) => ({
-          lead_id: lead.id,
-          cnpj: l.cnpj.replace(/\D/g, ""),
-          razao_social: l.razao_social.trim(),
-          nome_interno: l.nome_interno.trim(),
-        }));
+      const { error: rpcError } = await supabase.rpc("complete_lead_by_token", {
+        p_token: token,
+        p_data: payload,
+        p_lojas: lojasPayload,
+      } as any);
 
-        const { error: lojasError } = await supabase.from("lojas").insert(lojasData as any);
-        if (lojasError) throw lojasError;
-      }
+      if (rpcError) throw rpcError;
 
       setSubmitted(true);
     } catch (error: any) {
       console.error("Erro ao enviar:", error);
       const msg = error?.message || "Erro desconhecido";
-      if (msg.includes("row-level security")) {
-        toast.error("Erro de permissão. Tente abrir o link em uma aba anônima/privada.");
+      if (msg.includes("Token") || msg.includes("token")) {
+        toast.error("Link inválido ou já utilizado.");
       } else {
         toast.error("Erro ao enviar dados. Tente novamente.");
       }
