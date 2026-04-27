@@ -10,10 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Plus, Pencil, Trash2, Upload, FileText, MessageSquare, Video, MessagesSquare, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-type WMsg = { id: string; titulo: string; mensagem: string; ordem: number };
-type Vid = { id: string; titulo: string; descricao: string | null; video_url: string; ordem: number };
+type WMsg = { id: string; titulo: string; subtitulo: string | null; mensagem: string; imagem_url: string | null; ordem: number };
+type Vid = { id: string; titulo: string; subtitulo: string | null; descricao: string | null; video_url: string; thumbnail_url: string | null; ordem: number };
 type Port = { id: string; titulo: string; pdf_url: string; ativo: boolean };
-type Arg = { id: string; objecao: string; resposta: string; ordem: number };
+type Arg = { id: string; objecao: string; resposta: string; pilar: string; pilar_descricao: string | null; ordem: number };
 
 export default function AdminKitVendas() {
   const [whatsapp, setWhatsapp] = useState<WMsg[]>([]);
@@ -107,7 +107,7 @@ export default function AdminKitVendas() {
 
         {/* WhatsApp */}
         <TabsContent value="whatsapp" className="space-y-3">
-          <Button onClick={() => setEditing({ type: "whatsapp", data: { titulo: "", mensagem: "", ordem: whatsapp.length } })}>
+          <Button onClick={() => setEditing({ type: "whatsapp", data: { titulo: "", subtitulo: "1º contato", mensagem: "", imagem_url: "", ordem: whatsapp.length } })}>
             <Plus className="w-4 h-4 mr-2" />Nova mensagem
           </Button>
           {whatsapp.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma mensagem cadastrada.</p>}
@@ -127,7 +127,7 @@ export default function AdminKitVendas() {
 
         {/* Vídeos */}
         <TabsContent value="videos" className="space-y-3">
-          <Button onClick={() => setEditing({ type: "video", data: { titulo: "", descricao: "", video_url: "", ordem: videos.length } })}>
+          <Button onClick={() => setEditing({ type: "video", data: { titulo: "", subtitulo: "", descricao: "", video_url: "", thumbnail_url: "", ordem: videos.length } })}>
             <Plus className="w-4 h-4 mr-2" />Novo vídeo
           </Button>
           {videos.length === 0 && <p className="text-sm text-muted-foreground">Nenhum vídeo cadastrado.</p>}
@@ -172,7 +172,7 @@ export default function AdminKitVendas() {
 
         {/* Argumentos */}
         <TabsContent value="argumentos" className="space-y-3">
-          <Button onClick={() => setEditing({ type: "argumento", data: { objecao: "", resposta: "", ordem: argumentos.length } })}>
+          <Button onClick={() => setEditing({ type: "argumento", data: { objecao: "", resposta: "", pilar: "Conexão", pilar_descricao: "", ordem: argumentos.length } })}>
             <Plus className="w-4 h-4 mr-2" />Novo argumento
           </Button>
           {argumentos.length === 0 && <p className="text-sm text-muted-foreground">Nenhum argumento cadastrado.</p>}
@@ -203,7 +203,21 @@ export default function AdminKitVendas() {
           {editing?.type === "whatsapp" && (
             <div className="space-y-3">
               <div><Label>Título</Label><Input value={editing.data.titulo} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, titulo: e.target.value } })} /></div>
+              <div><Label>Subtítulo (ex: "1º contato")</Label><Input value={editing.data.subtitulo || ""} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, subtitulo: e.target.value } })} /></div>
               <div><Label>Mensagem</Label><Textarea rows={6} value={editing.data.mensagem} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, mensagem: e.target.value } })} /></div>
+              <div>
+                <Label>Imagem (opcional)</Label>
+                <Input value={editing.data.imagem_url || ""} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, imagem_url: e.target.value } })} placeholder="https://..." />
+                <div className="mt-2">
+                  <Input type="file" accept="image/*" disabled={uploading} onChange={async (e) => {
+                    const f = e.target.files?.[0]; if (!f) return;
+                    const url = await uploadFile(f, "whatsapp");
+                    if (url) setEditing({ ...editing, data: { ...editing.data, imagem_url: url } });
+                  }} />
+                  {uploading && <p className="text-xs text-muted-foreground mt-1"><Loader2 className="inline w-3 h-3 animate-spin mr-1" />Enviando...</p>}
+                </div>
+                {editing.data.imagem_url && <img src={editing.data.imagem_url} alt="" className="mt-2 max-h-32 rounded border border-border" />}
+              </div>
               <div><Label>Ordem</Label><Input type="number" value={editing.data.ordem} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, ordem: Number(e.target.value) } })} /></div>
             </div>
           )}
@@ -211,6 +225,7 @@ export default function AdminKitVendas() {
           {editing?.type === "video" && (
             <div className="space-y-3">
               <div><Label>Título</Label><Input value={editing.data.titulo} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, titulo: e.target.value } })} /></div>
+              <div><Label>Subtítulo (opcional)</Label><Input value={editing.data.subtitulo || ""} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, subtitulo: e.target.value } })} /></div>
               <div><Label>Descrição</Label><Textarea rows={3} value={editing.data.descricao || ""} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, descricao: e.target.value } })} /></div>
               <div>
                 <Label>URL do vídeo (YouTube/Vimeo) ou upload MP4</Label>
@@ -222,6 +237,17 @@ export default function AdminKitVendas() {
                     if (url) setEditing({ ...editing, data: { ...editing.data, video_url: url } });
                   }} />
                   {uploading && <p className="text-xs text-muted-foreground mt-1"><Loader2 className="inline w-3 h-3 animate-spin mr-1" />Enviando...</p>}
+                </div>
+              </div>
+              <div>
+                <Label>Thumbnail (opcional, usado se não for YouTube)</Label>
+                <Input value={editing.data.thumbnail_url || ""} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, thumbnail_url: e.target.value } })} placeholder="https://..." />
+                <div className="mt-2">
+                  <Input type="file" accept="image/*" disabled={uploading} onChange={async (e) => {
+                    const f = e.target.files?.[0]; if (!f) return;
+                    const url = await uploadFile(f, "thumbnails");
+                    if (url) setEditing({ ...editing, data: { ...editing.data, thumbnail_url: url } });
+                  }} />
                 </div>
               </div>
               <div><Label>Ordem</Label><Input type="number" value={editing.data.ordem} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, ordem: Number(e.target.value) } })} /></div>
@@ -252,8 +278,24 @@ export default function AdminKitVendas() {
 
           {editing?.type === "argumento" && (
             <div className="space-y-3">
-              <div><Label>Objeção</Label><Input value={editing.data.objecao} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, objecao: e.target.value } })} /></div>
-              <div><Label>Resposta</Label><Textarea rows={6} value={editing.data.resposta} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, resposta: e.target.value } })} /></div>
+              <div>
+                <Label>Pilar</Label>
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={editing.data.pilar || "Conexão"}
+                  onChange={(e) => setEditing({ ...editing, data: { ...editing.data, pilar: e.target.value } })}
+                >
+                  <option value="Conexão">Conexão</option>
+                  <option value="Centralização">Centralização</option>
+                  <option value="Segurança">Segurança</option>
+                </select>
+              </div>
+              <div>
+                <Label>Descrição do pilar (opcional, aparece uma vez por pilar)</Label>
+                <Textarea rows={3} value={editing.data.pilar_descricao || ""} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, pilar_descricao: e.target.value } })} />
+              </div>
+              <div><Label>Frase / argumento (texto que será copiado)</Label><Textarea rows={3} value={editing.data.objecao} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, objecao: e.target.value } })} /></div>
+              <div><Label>Resposta detalhada (opcional, uso interno)</Label><Textarea rows={3} value={editing.data.resposta || ""} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, resposta: e.target.value } })} /></div>
               <div><Label>Ordem</Label><Input type="number" value={editing.data.ordem} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, ordem: Number(e.target.value) } })} /></div>
             </div>
           )}
