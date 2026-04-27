@@ -1,0 +1,1 @@
+UPDATE public.parceiros_comerciais SET aprovado = true WHERE id = 'c938471d-c65c-467b-931c-22636e21aea4';
