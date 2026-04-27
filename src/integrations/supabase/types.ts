@@ -702,6 +702,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      complete_lead_by_token: {
+        Args: { p_data: Json; p_lojas?: Json; p_token: string }
+        Returns: Json
+      }
       generate_partner_code: { Args: never; Returns: string }
       generate_slug: { Args: { name_input: string }; Returns: string }
       get_financeiro_consultores:
@@ -710,6 +714,33 @@ export type Database = {
       get_financeiro_dashboard:
         | { Args: never; Returns: Json }
         | { Args: { p_ano?: number; p_mes?: number }; Returns: Json }
+      get_lead_by_completion_token: {
+        Args: { p_token: string }
+        Returns: {
+          cidade: string
+          dados_completos: boolean
+          email_responsavel: string
+          endereco_cep: string
+          endereco_estado: string
+          endereco_numero: string
+          endereco_rua: string
+          id: string
+          nome_fantasia: string
+          nome_responsavel: string
+          quantidade_lojas: number
+          razao_social: string
+          responsavel_comercial_email: string
+          responsavel_comercial_nome: string
+          responsavel_comercial_telefone: string
+          responsavel_rh_email: string
+          responsavel_rh_nome: string
+          responsavel_rh_telefone: string
+          responsavel_tecnico_email: string
+          responsavel_tecnico_nome: string
+          responsavel_tecnico_telefone: string
+          telefone_responsavel: string
+        }[]
+      }
       get_pipeline_stage_metrics: { Args: never; Returns: Json }
       has_any_admin: { Args: never; Returns: boolean }
       has_role: {
