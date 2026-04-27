@@ -55,13 +55,10 @@ const FormularioConversao = () => {
     const loadLead = async () => {
       if (!token) { setInvalid(true); setLoading(false); return; }
 
-      const { data, error } = await supabase
-        .from("leads")
-        .select("*")
-        .eq("completion_token", token)
-        .eq("dados_completos", false)
-        .maybeSingle();
+      const { data: rows, error } = await supabase
+        .rpc("get_lead_by_completion_token", { p_token: token });
 
+      const data = Array.isArray(rows) ? rows[0] : rows;
       if (error || !data) {
         setInvalid(true);
         setLoading(false);
