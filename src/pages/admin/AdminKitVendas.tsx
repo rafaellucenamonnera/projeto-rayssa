@@ -58,12 +58,6 @@ export default function AdminKitVendas() {
 
   useEffect(() => { reload(); }, []);
 
-  const tableMap: Record<string, "kit_whatsapp_messages" | "kit_videos" | "kit_portfolio" | "kit_argumentos"> = {
-    whatsapp: "kit_whatsapp_messages",
-    video: "kit_videos",
-    portfolio: "kit_portfolio",
-    argumento: "kit_argumentos",
-  };
 
   const handleDelete = async (type: string, id: string) => {
     if (!confirm("Remover este item?")) return;
