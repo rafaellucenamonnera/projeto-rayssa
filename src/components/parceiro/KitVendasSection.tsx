@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { MessageSquare, Video, FileText, MessagesSquare, Copy, Download, ChevronDown, Link as LinkIcon } from "lucide-react";
+import { MessageSquare, Video, FileText, MessagesSquare, Copy, Download, ChevronDown, Link as LinkIcon, Share2, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,7 @@ type WMsg = { id: string; titulo: string; subtitulo: string | null; mensagem: st
 type Vid = { id: string; titulo: string; subtitulo: string | null; descricao: string | null; video_url: string; thumbnail_url: string | null };
 type Port = { id: string; titulo: string; pdf_url: string };
 type Arg = { id: string; objecao: string; resposta: string; pilar: string; pilar_descricao: string | null };
+type Rede = { id: string; titulo: string; link: string; comentario: string | null };
 
 const isYoutube = (url: string) => /youtube\.com|youtu\.be/.test(url);
 const isVimeo = (url: string) => /vimeo\.com/.test(url);
@@ -57,25 +58,28 @@ function ExpandIcon({ open }: { open: boolean }) {
 }
 
 export function KitVendasSection() {
-  const [openDialog, setOpenDialog] = useState<null | "whatsapp" | "videos" | "portfolio" | "argumentos">(null);
+  const [openDialog, setOpenDialog] = useState<null | "whatsapp" | "videos" | "portfolio" | "argumentos" | "redes">(null);
   const [whatsapp, setWhatsapp] = useState<WMsg[]>([]);
   const [videos, setVideos] = useState<Vid[]>([]);
   const [portfolio, setPortfolio] = useState<Port[]>([]);
   const [argumentos, setArgumentos] = useState<Arg[]>([]);
+  const [redes, setRedes] = useState<Rede[]>([]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     (async () => {
-      const [w, v, p, a] = await Promise.all([
+      const [w, v, p, a, r] = await Promise.all([
         supabase.from("kit_whatsapp_messages").select("id, titulo, subtitulo, mensagem, imagem_url").order("ordem"),
         supabase.from("kit_videos").select("id, titulo, subtitulo, descricao, video_url, thumbnail_url").order("ordem"),
         supabase.from("kit_portfolio").select("id, titulo, pdf_url").eq("ativo", true).order("created_at", { ascending: false }),
         supabase.from("kit_argumentos").select("id, objecao, resposta, pilar, pilar_descricao").order("ordem"),
+        supabase.from("kit_redes_sociais").select("id, titulo, link, comentario").order("ordem"),
       ]);
       setWhatsapp((w.data as WMsg[]) || []);
       setVideos((v.data as Vid[]) || []);
       setPortfolio((p.data as Port[]) || []);
       setArgumentos((a.data as Arg[]) || []);
+      setRedes((r.data as Rede[]) || []);
     })();
   }, []);
 
@@ -84,6 +88,7 @@ export function KitVendasSection() {
     { key: "videos" as const, icon: Video, title: "Vídeos", desc: "Vídeos prontos para apoiar suas abordagens e tornar a conversa com leads mais clara e envolvente." },
     { key: "portfolio" as const, icon: FileText, title: "Portfólio", desc: "Portfólio resumido para enviar onde quiser e acrescentar conteúdo nas negociações" },
     { key: "argumentos" as const, icon: MessagesSquare, title: "Argumentos", desc: "Argumentos de venda organizados para facilitar suas conversas e conduzir leads com mais segurança" },
+    { key: "redes" as const, icon: Share2, title: "Redes Sociais", desc: "Materiais de redes sociais prontos para você compartilhar e fortalecer sua presença digital." },
   ];
 
   const copy = (text: string, msg = "Copiado!") => {
@@ -252,7 +257,7 @@ export function KitVendasSection() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
             {cards.map((c) => (
               <button
                 key={c.key}
@@ -364,6 +369,56 @@ export function KitVendasSection() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Redes Sociais Dialog */}
+      <Dialog open={openDialog === "redes"} onOpenChange={(o) => !o && setOpenDialog(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-display">
+              <Share2 className="w-5 h-5 text-primary" />Redes Sociais
+            </DialogTitle>
+          </DialogHeader>
+          {redes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum material disponível ainda.</p>
+          ) : (
+            <div className="space-y-2.5">
+              {redes.map((r) => {
+                const open = !!expanded[r.id];
+                return (
+                  <div key={r.id} className="rounded-xl bg-secondary/40 border border-border overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => toggle(r.id)}
+                      className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-secondary/60 transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-display font-semibold text-base truncate">{r.titulo}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">{r.link}</p>
+                      </div>
+                      <ExpandIcon open={open} />
+                    </button>
+                    {open && (
+                      <div className="px-4 pb-4 space-y-3 border-t border-border/50 pt-3">
+                        {r.comentario && <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{r.comentario}</p>}
+                        <div className="flex flex-wrap gap-2">
+                          <Button size="sm" onClick={() => copy(r.link, "Link copiado!")}>
+                            <LinkIcon className="w-3.5 h-3.5 mr-1.5" />Copiar Link
+                          </Button>
+                          <Button size="sm" variant="outline" asChild>
+                            <a href={r.link} target="_blank" rel="noreferrer">
+                              <ExternalLink className="w-3.5 h-3.5 mr-1.5" />Abrir
+                            </a>
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </DialogContent>

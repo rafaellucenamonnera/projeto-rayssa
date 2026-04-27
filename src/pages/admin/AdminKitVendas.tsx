@@ -7,19 +7,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Upload, FileText, MessageSquare, Video, MessagesSquare, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, FileText, MessageSquare, Video, MessagesSquare, Loader2, Share2 } from "lucide-react";
 import { toast } from "sonner";
 
 type WMsg = { id: string; titulo: string; subtitulo: string | null; mensagem: string; imagem_url: string | null; ordem: number };
 type Vid = { id: string; titulo: string; subtitulo: string | null; descricao: string | null; video_url: string; thumbnail_url: string | null; ordem: number };
 type Port = { id: string; titulo: string; pdf_url: string; ativo: boolean };
 type Arg = { id: string; objecao: string; resposta: string; pilar: string; pilar_descricao: string | null; ordem: number };
+type Rede = { id: string; titulo: string; link: string; comentario: string | null; ordem: number };
 
 export default function AdminKitVendas() {
   const [whatsapp, setWhatsapp] = useState<WMsg[]>([]);
   const [videos, setVideos] = useState<Vid[]>([]);
   const [portfolio, setPortfolio] = useState<Port[]>([]);
   const [argumentos, setArgumentos] = useState<Arg[]>([]);
+  const [redes, setRedes] = useState<Rede[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Dialog state
@@ -29,27 +31,33 @@ export default function AdminKitVendas() {
 
   const reload = async () => {
     setLoading(true);
-    const [w, v, p, a] = await Promise.all([
+    const [w, v, p, a, r] = await Promise.all([
       supabase.from("kit_whatsapp_messages").select("*").order("ordem"),
       supabase.from("kit_videos").select("*").order("ordem"),
       supabase.from("kit_portfolio").select("*").order("created_at", { ascending: false }),
       supabase.from("kit_argumentos").select("*").order("ordem"),
+      supabase.from("kit_redes_sociais").select("*").order("ordem"),
     ]);
     setWhatsapp((w.data as WMsg[]) || []);
     setVideos((v.data as Vid[]) || []);
     setPortfolio((p.data as Port[]) || []);
     setArgumentos((a.data as Arg[]) || []);
+    setRedes((r.data as Rede[]) || []);
     setLoading(false);
   };
 
   useEffect(() => { reload(); }, []);
 
-  const tableMap: Record<string, "kit_whatsapp_messages" | "kit_videos" | "kit_portfolio" | "kit_argumentos"> = {
+  const tableMap: Record<string, "kit_whatsapp_messages" | "kit_videos" | "kit_portfolio" | "kit_argumentos" | "kit_redes_sociais"> = {
     whatsapp: "kit_whatsapp_messages",
     video: "kit_videos",
     portfolio: "kit_portfolio",
     argumento: "kit_argumentos",
+    rede: "kit_redes_sociais",
   };
+
+  useEffect(() => { reload(); }, []);
+
 
   const handleDelete = async (type: string, id: string) => {
     if (!confirm("Remover este item?")) return;
@@ -103,6 +111,7 @@ export default function AdminKitVendas() {
           <TabsTrigger value="videos"><Video className="w-4 h-4 mr-2" />Vídeos</TabsTrigger>
           <TabsTrigger value="portfolio"><FileText className="w-4 h-4 mr-2" />Portfólio</TabsTrigger>
           <TabsTrigger value="argumentos"><MessagesSquare className="w-4 h-4 mr-2" />Argumentos</TabsTrigger>
+          <TabsTrigger value="redes"><Share2 className="w-4 h-4 mr-2" />Redes Sociais</TabsTrigger>
         </TabsList>
 
         {/* WhatsApp */}
@@ -189,14 +198,35 @@ export default function AdminKitVendas() {
             </Card>
           ))}
         </TabsContent>
+        {/* Redes Sociais */}
+        <TabsContent value="redes" className="space-y-3">
+          <Button onClick={() => setEditing({ type: "rede", data: { titulo: "", link: "", comentario: "", ordem: redes.length } })}>
+            <Plus className="w-4 h-4 mr-2" />Novo material
+          </Button>
+          {redes.length === 0 && <p className="text-sm text-muted-foreground">Nenhum material cadastrado.</p>}
+          {redes.map((r) => (
+            <Card key={r.id}>
+              <CardHeader className="flex flex-row items-center justify-between p-4">
+                <div className="min-w-0">
+                  <CardTitle className="text-base">{r.titulo}</CardTitle>
+                  <a href={r.link} target="_blank" rel="noreferrer" className="text-xs text-primary break-all hover:underline">{r.link}</a>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <Button size="icon" variant="ghost" onClick={() => setEditing({ type: "rede", data: r })}><Pencil className="w-4 h-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => handleDelete("rede", r.id)}><Trash2 className="w-4 h-4" /></Button>
+                </div>
+              </CardHeader>
+              {r.comentario && <CardContent className="p-4 pt-0"><p className="text-sm text-muted-foreground whitespace-pre-wrap">{r.comentario}</p></CardContent>}
+            </Card>
+          ))}
+        </TabsContent>
       </Tabs>
-
       {/* Edit Dialog */}
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {editing?.data.id ? "Editar" : "Novo"} {editing?.type === "whatsapp" ? "mensagem" : editing?.type === "video" ? "vídeo" : editing?.type === "portfolio" ? "PDF do portfólio" : "argumento"}
+              {editing?.data.id ? "Editar" : "Novo"} {editing?.type === "whatsapp" ? "mensagem" : editing?.type === "video" ? "vídeo" : editing?.type === "portfolio" ? "PDF do portfólio" : editing?.type === "rede" ? "material de rede social" : "argumento"}
             </DialogTitle>
           </DialogHeader>
 
@@ -296,6 +326,15 @@ export default function AdminKitVendas() {
               </div>
               <div><Label>Frase / argumento (texto que será copiado)</Label><Textarea rows={3} value={editing.data.objecao} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, objecao: e.target.value } })} /></div>
               <div><Label>Resposta detalhada (opcional, uso interno)</Label><Textarea rows={3} value={editing.data.resposta || ""} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, resposta: e.target.value } })} /></div>
+              <div><Label>Ordem</Label><Input type="number" value={editing.data.ordem} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, ordem: Number(e.target.value) } })} /></div>
+            </div>
+          )}
+
+          {editing?.type === "rede" && (
+            <div className="space-y-3">
+              <div><Label>Título do material</Label><Input value={editing.data.titulo} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, titulo: e.target.value } })} placeholder="Ex: Post Instagram - Lançamento" /></div>
+              <div><Label>Link do material</Label><Input value={editing.data.link} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, link: e.target.value } })} placeholder="https://..." /></div>
+              <div><Label>Comentário sobre o material</Label><Textarea rows={3} value={editing.data.comentario || ""} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, comentario: e.target.value } })} placeholder="Como e quando usar este material" /></div>
               <div><Label>Ordem</Label><Input type="number" value={editing.data.ordem} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, ordem: Number(e.target.value) } })} /></div>
             </div>
           )}

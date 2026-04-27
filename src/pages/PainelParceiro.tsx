@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Copy, Link2, Users, LogOut, Loader2, MessageCircle, Mail, CalendarCheck, FileText, UserCheck, ChevronLeft, PhoneCall, FileSignature, Plus, XCircle } from "lucide-react";
+import { Copy, Link2, Users, LogOut, Loader2, MessageCircle, Mail, CalendarCheck, FileText, UserCheck, ChevronLeft, PhoneCall, FileSignature, Plus, XCircle, CalendarPlus } from "lucide-react";
 import { toast } from "sonner";
 import { PIPELINE_STAGES, PIPELINE_LABELS } from "@/lib/pipelineConstants";
 import { AddLeadDialog } from "@/components/parceiro/AddLeadDialog";
@@ -213,6 +213,11 @@ const PainelParceiro = () => {
               <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
                 <a href={`mailto:?subject=${emailSubject}&body=${emailBody}`}>
                   <Mail className="mr-2 h-4 w-4" /> Email
+                </a>
+              </Button>
+              <Button size="sm" asChild className="w-full sm:w-auto sm:ml-auto">
+                <a href="https://calendar.app.google/wzotf4LMLcW1vKwo6" target="_blank" rel="noopener noreferrer">
+                  <CalendarPlus className="mr-2 h-4 w-4" /> Agende para o time Monnera
                 </a>
               </Button>
             </div>

@@ -112,6 +112,36 @@ export type Database = {
         }
         Relationships: []
       }
+      kit_redes_sociais: {
+        Row: {
+          comentario: string | null
+          created_at: string
+          id: string
+          link: string
+          ordem: number
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          comentario?: string | null
+          created_at?: string
+          id?: string
+          link: string
+          ordem?: number
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          comentario?: string | null
+          created_at?: string
+          id?: string
+          link?: string
+          ordem?: number
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       kit_videos: {
         Row: {
           created_at: string
