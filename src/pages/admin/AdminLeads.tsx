@@ -228,8 +228,10 @@ const AdminLeads = () => {
     setPendingFinanceiro(null);
 
     // Continua o fluxo de mudança de etapa, agora com financeiro válido
-    if (nextStatus) {
-      // pequeno timeout para garantir que o estado atualizou
+    if (nextStatus === "contrato_assinado") {
+      // já estamos validados; vai direto
+      setTimeout(() => updateStatus(leadId, "contrato_assinado"), 0);
+    } else if (nextStatus) {
       setTimeout(() => handleStatusChange(leadId, leadName, nextStatus), 0);
     }
   };
