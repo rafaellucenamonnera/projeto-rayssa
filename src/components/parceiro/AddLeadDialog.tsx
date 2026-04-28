@@ -133,8 +133,8 @@ export const AddLeadDialog = ({ open, onOpenChange, parceiroId, parceiroNome, on
             </div>
           </div>
           <div className={fieldClass}>
-            <Label>Nome da farmácia *</Label>
-            <Input value={form.nome_fantasia} onChange={(e) => setForm({ ...form, nome_fantasia: e.target.value })} placeholder="Nome da farmácia" />
+            <Label>Nome da Empresa *</Label>
+            <Input value={form.nome_fantasia} onChange={(e) => setForm({ ...form, nome_fantasia: e.target.value })} placeholder="Nome da Empresa" />
             {errors.nome_fantasia && <p className="text-destructive text-xs">{errors.nome_fantasia}</p>}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
