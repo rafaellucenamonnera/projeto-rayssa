@@ -1209,6 +1209,11 @@ const AdminLeads = () => {
                 />
               </div>
 
+              {/* Contatos do Lead */}
+              <div className="border-t border-border pt-4">
+                <LeadContatos leadId={detailLead.id} />
+              </div>
+
               {/* Histórico de Conversa */}
               <div className="border-t border-border pt-4">
                 <LeadComments
