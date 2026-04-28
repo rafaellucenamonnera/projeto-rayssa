@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,7 +46,16 @@ const hasValidFinanceiro = (lead: any) =>
 
 const AdminLeads = () => {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const { isAdmin } = useAuth();
+  const painelTitleMap: Record<string, string> = {
+    "/admin/painel-comercial": "Painel Comercial",
+    "/admin/painel-onboarding": "Painel Onboarding / Integração",
+    "/admin/painel-sucesso": "Painel Sucesso",
+    "/admin/painel-campanhas": "Painel Criação Campanhas",
+    "/admin/leads": "Painel Comercial",
+  };
+  const painelTitle = painelTitleMap[location.pathname] || "Painel Comercial";
   const [leads, setLeads] = useState<any[]>([]);
   const [stageMap, setStageMap] = useState<Record<string, string>>({});
   const [parceiros, setParceiros] = useState<Record<string, string>>({});
@@ -655,7 +664,7 @@ const AdminLeads = () => {
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h1 className="text-xl sm:text-2xl font-display font-bold">Pipeline Comercial</h1>
+        <h1 className="text-xl sm:text-2xl font-display font-bold">{painelTitle}</h1>
         <div className="flex items-center gap-2 flex-wrap">
           <div className="hidden lg:inline-flex rounded-md border border-border overflow-hidden text-xs">
             <button
