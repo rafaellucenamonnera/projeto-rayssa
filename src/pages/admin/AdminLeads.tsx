@@ -799,8 +799,23 @@ const AdminLeads = () => {
         )}
       </div>
 
+      {/* Desktop Kanban */}
+      {view === "kanban" && (
+        <div className="hidden lg:block">
+          <PipelineKanban
+            leads={filtered}
+            parceirosMap={parceiros}
+            onMoveLead={(id, newStage) => {
+              const lead = leads.find((l) => l.id === id);
+              if (lead) handleStatusChange(id, lead.nome_fantasia, newStage);
+            }}
+            onOpenLead={(l) => openLeadDetail(l)}
+          />
+        </div>
+      )}
+
       {/* Desktop table */}
-      <Card className="border-border hidden lg:block">
+      <Card className={`border-border hidden ${view === "lista" ? "lg:block" : ""}`}>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
