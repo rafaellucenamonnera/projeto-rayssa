@@ -138,6 +138,16 @@ const AdminLeads = () => {
   }, []);
 
   const handleStatusChange = (leadId: string, leadName: string, newStatus: string) => {
+    const lead = leads.find((l) => l.id === leadId);
+
+    // Bloqueio financeiro: a partir de "Proposta Enviada" exigir dados completos
+    if (FINANCEIRO_REQUIRED_FROM.includes(newStatus) && lead && !hasValidFinanceiro(lead)) {
+      toast.warning("Preencha o financeiro para avançar este lead.");
+      setPendingFinanceiro({ leadId, leadName, parceiroId: lead.parceiro_id || "", nextStatus: newStatus, lead });
+      setFinanceiroDialogOpen(true);
+      return;
+    }
+
     if (newStatus === "proposta_enviada" || newStatus === "proposta_comercial") {
       setPendingStatusChange({ leadId, leadName });
       setUploadDialogOpen(true);
@@ -154,13 +164,12 @@ const AdminLeads = () => {
       return;
     }
     if (newStatus === "contrato_assinado") {
-      const lead = leads.find((l) => l.id === leadId);
       if (lead && !lead.dados_completos) {
         toast.error("O cliente precisa preencher o formulário de cadastro completo antes de avançar para Contrato Assinado.");
         return;
       }
-      // Open financial modal
-      setPendingFinanceiro({ leadId, leadName, parceiroId: lead?.parceiro_id || "" });
+      // Reabrir modal financeiro para revisão (já tem dados válidos aqui)
+      setPendingFinanceiro({ leadId, leadName, parceiroId: lead?.parceiro_id || "", nextStatus: "contrato_assinado", lead });
       setFinanceiroDialogOpen(true);
       return;
     }
