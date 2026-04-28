@@ -60,6 +60,8 @@ ChartContainer.displayName = "Chart";
 
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(([_, config]) => config.theme || config.color);
+  const safeChartId = CSS.escape(id);
+  const safeCssVar = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, "-");
 
   if (!colorConfig.length) {
     return null;
@@ -71,11 +73,11 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
         __html: Object.entries(THEMES)
           .map(
             ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
+${prefix} [data-chart="${safeChartId}"] {
 ${colorConfig
   .map(([key, itemConfig]) => {
     const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
-    return color ? `  --color-${key}: ${color};` : null;
+    return color ? `  --color-${safeCssVar(key)}: ${color};` : null;
   })
   .join("\n")}
 }
