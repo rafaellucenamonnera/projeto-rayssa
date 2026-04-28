@@ -901,6 +901,14 @@ const AdminLeads = () => {
         leadName={pendingFinanceiro?.leadName || ""}
         parceiroId={pendingFinanceiro?.parceiroId || ""}
         parceiros={parceirosAll}
+        initialData={pendingFinanceiro?.lead ? {
+          valor_setup: pendingFinanceiro.lead.valor_setup,
+          valor_mensalidade: pendingFinanceiro.lead.valor_mensalidade,
+          valor_campanhas: pendingFinanceiro.lead.valor_campanhas,
+          qtd_parcelas: pendingFinanceiro.lead.qtd_parcelas,
+          quantidade_lojas: pendingFinanceiro.lead.quantidade_lojas,
+          percentual_consultor: pendingFinanceiro.lead.percentual_consultor,
+        } : undefined}
         onSaved={handleFinanceiroSaved}
         onCancel={handleFinanceiroCancel}
       />
