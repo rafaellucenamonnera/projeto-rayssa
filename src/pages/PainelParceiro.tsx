@@ -25,7 +25,6 @@ const PainelParceiro = () => {
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
-      localStorage.removeItem("monnera_parceiro");
       navigate("/login");
       return;
     }
@@ -47,27 +46,23 @@ const PainelParceiro = () => {
       }
 
       setParceiro(p);
-      localStorage.setItem("monnera_parceiro", JSON.stringify({
-        id: p.id,
-        nome: p.nome,
-        codigo_parceiro: p.codigo_parceiro,
-        slug_consultor: p.slug_consultor,
-      }));
 
-      const [leadsRes, stageRes] = await Promise.all([
-        supabase
-          .from("leads")
-          .select("*")
-          .eq("parceiro_id", p.id)
-          .order("data_cadastro", { ascending: false }),
-        supabase
-          .from("lead_stage_history")
-          .select("lead_id, data_entrada")
-          .is("data_saida", null),
-      ]);
-      setLeads(leadsRes.data || []);
+      const { data: leadsData } = await supabase
+        .from("leads")
+        .select("*")
+        .eq("parceiro_id", p.id)
+        .order("data_cadastro", { ascending: false });
+      const leadIds = (leadsData || []).map((lead) => lead.id);
+      const { data: stageData } = leadIds.length
+        ? await supabase
+            .from("lead_stage_history")
+            .select("lead_id, data_entrada")
+            .in("lead_id", leadIds)
+            .is("data_saida", null)
+        : { data: [] as { lead_id: string; data_entrada: string }[] };
+      setLeads(leadsData || []);
       const sm: Record<string, string> = {};
-      (stageRes.data || []).forEach((s: any) => { sm[s.lead_id] = s.data_entrada; });
+      (stageData || []).forEach((s: any) => { sm[s.lead_id] = s.data_entrada; });
       setStageMap(sm);
       setLoading(false);
     };
@@ -132,13 +127,22 @@ const PainelParceiro = () => {
   };
 
   const reloadLeads = async () => {
-    const [leadsRes, stageRes] = await Promise.all([
-      supabase.from("leads").select("*").eq("parceiro_id", parceiro.id).order("data_cadastro", { ascending: false }),
-      supabase.from("lead_stage_history").select("lead_id, data_entrada").is("data_saida", null),
-    ]);
-    setLeads(leadsRes.data || []);
+    const { data: leadsData } = await supabase
+      .from("leads")
+      .select("*")
+      .eq("parceiro_id", parceiro.id)
+      .order("data_cadastro", { ascending: false });
+    const leadIds = (leadsData || []).map((lead) => lead.id);
+    const { data: stageData } = leadIds.length
+      ? await supabase
+          .from("lead_stage_history")
+          .select("lead_id, data_entrada")
+          .in("lead_id", leadIds)
+          .is("data_saida", null)
+      : { data: [] as { lead_id: string; data_entrada: string }[] };
+    setLeads(leadsData || []);
     const sm: Record<string, string> = {};
-    (stageRes.data || []).forEach((s: any) => { sm[s.lead_id] = s.data_entrada; });
+    (stageData || []).forEach((s: any) => { sm[s.lead_id] = s.data_entrada; });
     setStageMap(sm);
   };
 
