@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, FileText, UserCog, DollarSign, Briefcase } from "lucide-react";
+import { LayoutDashboard, Users, FileText, UserCog, DollarSign, Briefcase, Settings, ShieldCheck, PlugZap } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,10 +23,20 @@ export function AdminSidebar() {
     { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
     { title: "Financeiro", url: "/admin/financeiro", icon: DollarSign },
     { title: "Consultores", url: "/admin/parceiros", icon: Users },
-    { title: "Leads", url: "/admin/leads", icon: FileText },
+    { title: "Painel Comercial", url: "/admin/painel-comercial", icon: FileText },
+    { title: "Painel Onboarding / Integração", url: "/admin/painel-onboarding", icon: FileText },
+    { title: "Painel Sucesso", url: "/admin/painel-sucesso", icon: FileText },
+    { title: "Painel Criação Campanhas", url: "/admin/painel-campanhas", icon: FileText },
     { title: "Atualizar Kit e Redes Sociais", url: "/admin/kit-vendas", icon: Briefcase },
-    ...(isAdmin ? [{ title: "Usuários Monnera", url: "/admin/usuarios", icon: UserCog }] : []),
   ];
+
+  const configItems = isAdmin
+    ? [
+        { title: "Usuários", url: "/admin/usuarios", icon: UserCog },
+        { title: "Permissões", url: "/admin/permissoes", icon: ShieldCheck },
+        { title: "Integrações", url: "/admin/integracoes", icon: PlugZap },
+      ]
+    : [];
 
   return (
     <Sidebar collapsible="icon">
@@ -59,6 +69,34 @@ export function AdminSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>
+              <span className="flex items-center gap-2">
+                <Settings className="h-3.5 w-3.5" />
+                Configurações
+              </span>
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {configItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        className="hover:bg-sidebar-accent/50"
+                        activeClassName="bg-sidebar-accent text-primary font-medium"
+                      >
+                        <item.icon className="mr-2 h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
     </Sidebar>
   );
