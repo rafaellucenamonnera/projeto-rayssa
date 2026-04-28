@@ -23,6 +23,8 @@ const AdminParceiros = lazy(() => import("./pages/admin/AdminParceiros"));
 const AdminLeads = lazy(() => import("./pages/admin/AdminLeads"));
 const AdminUsuarios = lazy(() => import("./pages/admin/AdminUsuarios"));
 const AdminKitVendas = lazy(() => import("./pages/admin/AdminKitVendas"));
+const AdminPermissoes = lazy(() => import("./pages/admin/AdminPermissoes"));
+const AdminIntegracoes = lazy(() => import("./pages/admin/AdminIntegracoes"));
 const PrimeiroAcesso = lazy(() => import("./pages/PrimeiroAcesso"));
 const ResetarSenha = lazy(() => import("./pages/ResetarSenha"));
 const EsqueciSenha = lazy(() => import("./pages/EsqueciSenha"));
@@ -61,7 +63,13 @@ const App = () => (
                 <Route path="financeiro" element={<AdminFinanceiro />} />
                 <Route path="parceiros" element={<AdminParceiros />} />
                 <Route path="leads" element={<AdminLeads />} />
+                <Route path="painel-comercial" element={<AdminLeads />} />
+                <Route path="painel-onboarding" element={<AdminLeads />} />
+                <Route path="painel-sucesso" element={<AdminLeads />} />
+                <Route path="painel-campanhas" element={<AdminLeads />} />
                 <Route path="usuarios" element={<AdminUsuarios />} />
+                <Route path="permissoes" element={<AdminPermissoes />} />
+                <Route path="integracoes" element={<AdminIntegracoes />} />
                 <Route path="kit-vendas" element={<AdminKitVendas />} />
               </Route>
               <Route path="/primeiro-acesso" element={<PrimeiroAcesso />} />
