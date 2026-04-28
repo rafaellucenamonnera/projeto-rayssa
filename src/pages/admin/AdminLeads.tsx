@@ -23,7 +23,25 @@ import { CadastroFinanceiroDialog } from "@/components/admin/CadastroFinanceiroD
 import { LeadComments } from "@/components/admin/LeadComments";
 import { LeadReuniao } from "@/components/admin/LeadReuniao";
 import { DaysInStage } from "@/components/admin/DaysInStage";
+import { PipelineKanban } from "@/components/admin/PipelineKanban";
 import { PIPELINE_STAGES, PIPELINE_LABELS } from "@/lib/pipelineConstants";
+
+// Etapas a partir das quais é obrigatório ter financeiro preenchido
+const FINANCEIRO_REQUIRED_FROM = [
+  "proposta_enviada",
+  "proposta_comercial",
+  "lead_convertido",
+  "contrato_enviado",
+  "contrato_assinado",
+];
+
+const hasValidFinanceiro = (lead: any) =>
+  Number(lead?.valor_setup ?? 0) >= 0 &&
+  Number(lead?.valor_mensalidade ?? 0) > 0 &&
+  Number(lead?.qtd_parcelas ?? 0) > 0 &&
+  Number(lead?.quantidade_lojas ?? 0) > 0 &&
+  Number(lead?.valor_campanhas ?? 0) >= 0 &&
+  lead?.valor_campanhas !== null && lead?.valor_campanhas !== undefined;
 
 const AdminLeads = () => {
   const [searchParams] = useSearchParams();
