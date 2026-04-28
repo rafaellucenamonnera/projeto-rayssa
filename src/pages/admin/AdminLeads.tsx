@@ -207,18 +207,31 @@ const AdminLeads = () => {
     setPendingPerdido(null);
   };
 
-  const handleFinanceiroSaved = (data: { valor_mensalidade: number; percentual_consultor: number; qtd_parcelas: number }) => {
+  const handleFinanceiroSaved = (data: {
+    valor_setup: number;
+    valor_mensalidade: number;
+    valor_campanhas: number;
+    percentual_consultor: number;
+    qtd_parcelas: number;
+  }) => {
     if (!pendingFinanceiro) return;
-    // Now update status to contrato_assinado
-    updateStatus(pendingFinanceiro.leadId, "contrato_assinado");
+    const { leadId, leadName, nextStatus } = pendingFinanceiro;
+
+    // Atualiza estado local imediatamente para liberar bloqueio
     setLeads((prev) =>
-      prev.map((l) => l.id === pendingFinanceiro.leadId
+      prev.map((l) => l.id === leadId
         ? { ...l, ...data, parcelas_pagas: 0 }
         : l
       )
     );
     setFinanceiroDialogOpen(false);
     setPendingFinanceiro(null);
+
+    // Continua o fluxo de mudança de etapa, agora com financeiro válido
+    if (nextStatus) {
+      // pequeno timeout para garantir que o estado atualizou
+      setTimeout(() => handleStatusChange(leadId, leadName, nextStatus), 0);
+    }
   };
 
   const handleFinanceiroCancel = () => {
