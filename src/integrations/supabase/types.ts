@@ -252,6 +252,48 @@ export type Database = {
           },
         ]
       }
+      lead_contatos: {
+        Row: {
+          cargo: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          lead_id: string
+          nome: string
+          observacao: string | null
+          principal: boolean
+          telefone: string | null
+          updated_at: string
+        }
+        Insert: {
+          cargo?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          lead_id: string
+          nome: string
+          observacao?: string | null
+          principal?: boolean
+          telefone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cargo?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          lead_id?: string
+          nome?: string
+          observacao?: string | null
+          principal?: boolean
+          telefone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lead_stage_history: {
         Row: {
           data_entrada: string
