@@ -653,9 +653,21 @@ const AdminLeads = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <h1 className="text-xl sm:text-2xl font-display font-bold">Pipeline Comercial</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="hidden lg:inline-flex rounded-md border border-border overflow-hidden text-xs">
+            <button
+              type="button"
+              onClick={() => setView("kanban")}
+              className={`px-3 py-1.5 transition-colors ${view === "kanban" ? "bg-primary text-primary-foreground" : "bg-card hover:bg-secondary"}`}
+            >Kanban</button>
+            <button
+              type="button"
+              onClick={() => setView("lista")}
+              className={`px-3 py-1.5 transition-colors ${view === "lista" ? "bg-primary text-primary-foreground" : "bg-card hover:bg-secondary"}`}
+            >Lista</button>
+          </div>
           <LeadExportButton leads={filtered} parceiros={parceiros} />
           <LeadImportDialog parceiros={parceirosAll} onImported={loadData} />
         </div>
