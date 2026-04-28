@@ -23,7 +23,25 @@ import { CadastroFinanceiroDialog } from "@/components/admin/CadastroFinanceiroD
 import { LeadComments } from "@/components/admin/LeadComments";
 import { LeadReuniao } from "@/components/admin/LeadReuniao";
 import { DaysInStage } from "@/components/admin/DaysInStage";
+import { PipelineKanban } from "@/components/admin/PipelineKanban";
 import { PIPELINE_STAGES, PIPELINE_LABELS } from "@/lib/pipelineConstants";
+
+// Etapas a partir das quais é obrigatório ter financeiro preenchido
+const FINANCEIRO_REQUIRED_FROM = [
+  "proposta_enviada",
+  "proposta_comercial",
+  "lead_convertido",
+  "contrato_enviado",
+  "contrato_assinado",
+];
+
+const hasValidFinanceiro = (lead: any) =>
+  Number(lead?.valor_setup ?? 0) >= 0 &&
+  Number(lead?.valor_mensalidade ?? 0) > 0 &&
+  Number(lead?.qtd_parcelas ?? 0) > 0 &&
+  Number(lead?.quantidade_lojas ?? 0) > 0 &&
+  Number(lead?.valor_campanhas ?? 0) >= 0 &&
+  lead?.valor_campanhas !== null && lead?.valor_campanhas !== undefined;
 
 const AdminLeads = () => {
   const [searchParams] = useSearchParams();
@@ -70,7 +88,10 @@ const AdminLeads = () => {
 
   // Financial dialog
   const [financeiroDialogOpen, setFinanceiroDialogOpen] = useState(false);
-  const [pendingFinanceiro, setPendingFinanceiro] = useState<{ leadId: string; leadName: string; parceiroId: string } | null>(null);
+  const [pendingFinanceiro, setPendingFinanceiro] = useState<{ leadId: string; leadName: string; parceiroId: string; nextStatus?: string; lead?: any } | null>(null);
+
+  // Kanban toggle
+  const [view, setView] = useState<"kanban" | "lista">("kanban");
 
   // User name for comments
   const [currentUserName, setCurrentUserName] = useState("Usuário");
@@ -117,6 +138,16 @@ const AdminLeads = () => {
   }, []);
 
   const handleStatusChange = (leadId: string, leadName: string, newStatus: string) => {
+    const lead = leads.find((l) => l.id === leadId);
+
+    // Bloqueio financeiro: a partir de "Proposta Enviada" exigir dados completos
+    if (FINANCEIRO_REQUIRED_FROM.includes(newStatus) && lead && !hasValidFinanceiro(lead)) {
+      toast.warning("Preencha o financeiro para avançar este lead.");
+      setPendingFinanceiro({ leadId, leadName, parceiroId: lead.parceiro_id || "", nextStatus: newStatus, lead });
+      setFinanceiroDialogOpen(true);
+      return;
+    }
+
     if (newStatus === "proposta_enviada" || newStatus === "proposta_comercial") {
       setPendingStatusChange({ leadId, leadName });
       setUploadDialogOpen(true);
@@ -133,13 +164,12 @@ const AdminLeads = () => {
       return;
     }
     if (newStatus === "contrato_assinado") {
-      const lead = leads.find((l) => l.id === leadId);
       if (lead && !lead.dados_completos) {
         toast.error("O cliente precisa preencher o formulário de cadastro completo antes de avançar para Contrato Assinado.");
         return;
       }
-      // Open financial modal
-      setPendingFinanceiro({ leadId, leadName, parceiroId: lead?.parceiro_id || "" });
+      // Reabrir modal financeiro para revisão (já tem dados válidos aqui)
+      setPendingFinanceiro({ leadId, leadName, parceiroId: lead?.parceiro_id || "", nextStatus: "contrato_assinado", lead });
       setFinanceiroDialogOpen(true);
       return;
     }
@@ -177,18 +207,33 @@ const AdminLeads = () => {
     setPendingPerdido(null);
   };
 
-  const handleFinanceiroSaved = (data: { valor_mensalidade: number; percentual_consultor: number; qtd_parcelas: number }) => {
+  const handleFinanceiroSaved = (data: {
+    valor_setup: number;
+    valor_mensalidade: number;
+    valor_campanhas: number;
+    percentual_consultor: number;
+    qtd_parcelas: number;
+  }) => {
     if (!pendingFinanceiro) return;
-    // Now update status to contrato_assinado
-    updateStatus(pendingFinanceiro.leadId, "contrato_assinado");
+    const { leadId, leadName, nextStatus } = pendingFinanceiro;
+
+    // Atualiza estado local imediatamente para liberar bloqueio
     setLeads((prev) =>
-      prev.map((l) => l.id === pendingFinanceiro.leadId
+      prev.map((l) => l.id === leadId
         ? { ...l, ...data, parcelas_pagas: 0 }
         : l
       )
     );
     setFinanceiroDialogOpen(false);
     setPendingFinanceiro(null);
+
+    // Continua o fluxo de mudança de etapa, agora com financeiro válido
+    if (nextStatus === "contrato_assinado") {
+      // já estamos validados; vai direto
+      setTimeout(() => updateStatus(leadId, "contrato_assinado"), 0);
+    } else if (nextStatus) {
+      setTimeout(() => handleStatusChange(leadId, leadName, nextStatus), 0);
+    }
   };
 
   const handleFinanceiroCancel = () => {
@@ -608,9 +653,21 @@ const AdminLeads = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <h1 className="text-xl sm:text-2xl font-display font-bold">Pipeline Comercial</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="hidden lg:inline-flex rounded-md border border-border overflow-hidden text-xs">
+            <button
+              type="button"
+              onClick={() => setView("kanban")}
+              className={`px-3 py-1.5 transition-colors ${view === "kanban" ? "bg-primary text-primary-foreground" : "bg-card hover:bg-secondary"}`}
+            >Kanban</button>
+            <button
+              type="button"
+              onClick={() => setView("lista")}
+              className={`px-3 py-1.5 transition-colors ${view === "lista" ? "bg-primary text-primary-foreground" : "bg-card hover:bg-secondary"}`}
+            >Lista</button>
+          </div>
           <LeadExportButton leads={filtered} parceiros={parceiros} />
           <LeadImportDialog parceiros={parceirosAll} onImported={loadData} />
         </div>
@@ -742,8 +799,23 @@ const AdminLeads = () => {
         )}
       </div>
 
+      {/* Desktop Kanban */}
+      {view === "kanban" && (
+        <div className="hidden lg:block">
+          <PipelineKanban
+            leads={filtered}
+            parceirosMap={parceiros}
+            onMoveLead={(id, newStage) => {
+              const lead = leads.find((l) => l.id === id);
+              if (lead) handleStatusChange(id, lead.nome_fantasia, newStage);
+            }}
+            onOpenLead={(l) => openLeadDetail(l)}
+          />
+        </div>
+      )}
+
       {/* Desktop table */}
-      <Card className="border-border hidden lg:block">
+      <Card className={`border-border hidden ${view === "lista" ? "lg:block" : ""}`}>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -856,6 +928,14 @@ const AdminLeads = () => {
         leadName={pendingFinanceiro?.leadName || ""}
         parceiroId={pendingFinanceiro?.parceiroId || ""}
         parceiros={parceirosAll}
+        initialData={pendingFinanceiro?.lead ? {
+          valor_setup: pendingFinanceiro.lead.valor_setup,
+          valor_mensalidade: pendingFinanceiro.lead.valor_mensalidade,
+          valor_campanhas: pendingFinanceiro.lead.valor_campanhas,
+          qtd_parcelas: pendingFinanceiro.lead.qtd_parcelas,
+          quantidade_lojas: pendingFinanceiro.lead.quantidade_lojas,
+          percentual_consultor: pendingFinanceiro.lead.percentual_consultor,
+        } : undefined}
         onSaved={handleFinanceiroSaved}
         onCancel={handleFinanceiroCancel}
       />

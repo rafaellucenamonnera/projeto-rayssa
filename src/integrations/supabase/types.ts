@@ -303,6 +303,10 @@ export type Database = {
           endereco_numero: string | null
           endereco_rua: string | null
           erp_utilizado: string
+          financeiro_editado_em: string | null
+          financeiro_editado_por: string | null
+          financeiro_preenchido_em: string | null
+          financeiro_preenchido_por: string | null
           id: string
           motivo_perda: string | null
           nome_fantasia: string
@@ -331,6 +335,7 @@ export type Database = {
           telefone_responsavel: string
           valor_campanhas: number | null
           valor_mensalidade: number | null
+          valor_setup: number | null
         }
         Insert: {
           cidade?: string | null
@@ -347,6 +352,10 @@ export type Database = {
           endereco_numero?: string | null
           endereco_rua?: string | null
           erp_utilizado: string
+          financeiro_editado_em?: string | null
+          financeiro_editado_por?: string | null
+          financeiro_preenchido_em?: string | null
+          financeiro_preenchido_por?: string | null
           id?: string
           motivo_perda?: string | null
           nome_fantasia: string
@@ -375,6 +384,7 @@ export type Database = {
           telefone_responsavel: string
           valor_campanhas?: number | null
           valor_mensalidade?: number | null
+          valor_setup?: number | null
         }
         Update: {
           cidade?: string | null
@@ -391,6 +401,10 @@ export type Database = {
           endereco_numero?: string | null
           endereco_rua?: string | null
           erp_utilizado?: string
+          financeiro_editado_em?: string | null
+          financeiro_editado_por?: string | null
+          financeiro_preenchido_em?: string | null
+          financeiro_preenchido_por?: string | null
           id?: string
           motivo_perda?: string | null
           nome_fantasia?: string
@@ -419,6 +433,7 @@ export type Database = {
           telefone_responsavel?: string
           valor_campanhas?: number | null
           valor_mensalidade?: number | null
+          valor_setup?: number | null
         }
         Relationships: [
           {
