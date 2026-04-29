@@ -859,6 +859,10 @@ export type Database = {
         Args: { p_data: Json; p_lojas?: Json; p_token: string }
         Returns: Json
       }
+      duplicate_card: {
+        Args: { card_id: string; target_stage_id: string }
+        Returns: string
+      }
       generate_partner_code: { Args: never; Returns: string }
       generate_slug: { Args: { name_input: string }; Returns: string }
       get_financeiro_consultores:
