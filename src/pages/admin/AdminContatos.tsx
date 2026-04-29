@@ -297,6 +297,21 @@ const AdminContatos = () => {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Importar contatos</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Button variant="outline" size="sm" onClick={downloadCsvTemplate}>
+              <Download className="h-4 w-4 mr-1" /> Baixar modelo CSV
+            </Button>
+            <Input type="file" accept=".csv" onChange={(e) => handleImportFile(e.target.files?.[0])} disabled={importing} />
+            {importing ? <p className="text-xs text-muted-foreground">Importando...</p> : null}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
