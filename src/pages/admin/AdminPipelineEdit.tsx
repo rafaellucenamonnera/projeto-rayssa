@@ -24,22 +24,19 @@ type Stage = {
   panel_key: string;
 };
 
-const PANELS = [
-  { id: "comercial", label: "Painel Comercial" },
-  { id: "onboarding", label: "Painel Onboarding / Integração" },
-  { id: "sucesso", label: "Painel Sucesso" },
-  { id: "campanhas", label: "Painel Criação Campanhas" },
-];
+type Panel = { id: string; name: string; sort_order: number };
 
 export default function AdminPipelineEdit() {
   const { isInternalUser, isAdmin } = useAuth();
   const [allowed, setAllowed] = useState(false);
   const [checked, setChecked] = useState(false);
-  const [selectedPanelId, setSelectedPanelId] = useState(PANELS[0].id);
+  const [panels, setPanels] = useState<Panel[]>([]);
+  const [selectedPanelId, setSelectedPanelId] = useState<string>("");
   const [stageCache, setStageCache] = useState<Record<string, Stage[]>>({});
   const [loading, setLoading] = useState(false);
 
   const stages = stageCache[selectedPanelId] || [];
+  const currentPanel = panels.find((p) => p.id === selectedPanelId);
 
   const loadPermission = async () => {
     const { data: auth } = await supabase.auth.getUser();
@@ -62,6 +59,20 @@ export default function AdminPipelineEdit() {
     setChecked(true);
   };
 
+  const loadPanels = async () => {
+    const { data, error } = await (supabase as any)
+      .from("pipeline_panels")
+      .select("id, name, sort_order")
+      .order("sort_order", { ascending: true });
+    if (error) {
+      toast.error("Erro ao carregar painéis");
+      return;
+    }
+    const list = (data as Panel[]) || [];
+    setPanels(list);
+    if (list.length && !selectedPanelId) setSelectedPanelId(list[0].id);
+  };
+
   const loadPanelStages = async (panelId: string, force = false) => {
     if (!panelId) return;
     if (!force && stageCache[panelId]) return;
@@ -82,12 +93,29 @@ export default function AdminPipelineEdit() {
   }, [isInternalUser, isAdmin]);
 
   useEffect(() => {
-    if (allowed) loadPanelStages(selectedPanelId);
+    if (allowed) loadPanels();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allowed]);
+
+  useEffect(() => {
+    if (allowed && selectedPanelId) loadPanelStages(selectedPanelId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allowed, selectedPanelId]);
 
   if (!isInternalUser) return <Navigate to="/admin/login" replace />;
   if (checked && !allowed) return <Navigate to="/admin" replace />;
+
+  const savePanelName = async (id: string, name: string) => {
+    const { error } = await (supabase as any)
+      .from("pipeline_panels")
+      .update({ name })
+      .eq("id", id);
+    if (error) toast.error("Erro ao salvar painel");
+    else {
+      toast.success("Painel atualizado");
+      loadPanels();
+    }
+  };
 
   const saveLabel = async (id: string, label: string) => {
     const { error } = await (supabase as any)
@@ -134,7 +162,7 @@ export default function AdminPipelineEdit() {
           Edição de Painel
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Gerencie as colunas dos painéis comerciais e operacionais.
+          Gerencie os painéis e as colunas de cada um.
         </p>
       </div>
 
@@ -142,27 +170,50 @@ export default function AdminPipelineEdit() {
         <CardHeader>
           <CardTitle className="text-base">Selecionar Painel</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
-          <Label className="text-xs text-muted-foreground">Painel</Label>
-          <Select value={selectedPanelId} onValueChange={setSelectedPanelId}>
-            <SelectTrigger className="max-w-md">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PANELS.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">Painel</Label>
+            <Select value={selectedPanelId} onValueChange={setSelectedPanelId}>
+              <SelectTrigger className="max-w-md">
+                <SelectValue placeholder="Selecione" />
+              </SelectTrigger>
+              <SelectContent>
+                {panels.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {currentPanel && isAdmin && (
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">
+                Nome do painel selecionado
+              </Label>
+              <Input
+                key={currentPanel.id}
+                defaultValue={currentPanel.name}
+                maxLength={80}
+                className="max-w-md"
+                onBlur={(e) => {
+                  if (e.target.value.trim() && e.target.value !== currentPanel.name)
+                    savePanelName(currentPanel.id, e.target.value.trim());
+                }}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                ID interno: {currentPanel.id}
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       <Card className="border-border">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Colunas do painel</CardTitle>
-          {isAdmin && (
+          {isAdmin && selectedPanelId && (
             <Button size="sm" onClick={addStage}>
               <Plus className="h-4 w-4 mr-1" /> Nova coluna
             </Button>
