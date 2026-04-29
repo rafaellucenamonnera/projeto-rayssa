@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { Navigate } from "react-router-dom";
 
 interface MonneraUser {
@@ -29,6 +29,9 @@ const AdminUsuarios = () => {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<MonneraUser | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
   const [form, setForm] = useState({
     nome: "",
     email: "",
@@ -45,29 +48,10 @@ const AdminUsuarios = () => {
       setUsers(Array.isArray(data) ? data : []);
     } catch (error: any) {
       const msg = String(error?.message || "");
-      if (msg.includes("Failed to send a request to the Edge Function")) {
-        // Fallback de leitura para manter operação mínima quando a Edge Function estiver indisponível
-        const [{ data: profiles, error: profilesError }, { data: roles, error: rolesError }] = await Promise.all([
-          supabase.from("profiles").select("id, user_id, nome, telefone, ativo, primeiro_acesso, data_criacao"),
-          supabase.from("user_roles").select("user_id, role"),
-        ]);
-
-        if (!profilesError && !rolesError) {
-          const roleMap = new Map((roles || []).map((r: any) => [r.user_id, r.role]));
-          const fallbackUsers = (profiles || []).map((p: any) => ({
-            ...p,
-            email: null,
-            nivel_acesso: roleMap.get(p.user_id) || null,
-          })) as MonneraUser[];
-          setUsers(fallbackUsers);
-          toast.error("Erro ao carregar usuários via função. Exibindo dados locais sem e-mail.");
-        } else {
-          toast.error("Erro ao carregar usuários: backend indisponível.");
-        }
-      } else if (msg.includes("Não autorizado") || msg.includes("Acesso negado")) {
+      if (msg.includes("Não autorizado") || msg.includes("Acesso negado")) {
         toast.error("Erro ao carregar usuários: acesso permitido somente para administrador.");
       } else {
-        toast.error("Erro ao carregar usuários");
+        toast.error("Erro ao carregar usuários. Verifique conexão com backend.");
       }
     } finally {
       setLoading(false);
@@ -137,6 +121,40 @@ const AdminUsuarios = () => {
       loadUsers();
     } catch (error: any) {
       toast.error("Erro: " + error.message);
+    }
+  };
+
+  const openEdit = (user: MonneraUser) => {
+    setEditingUser(user);
+    setEditOpen(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+
+    setSavingEdit(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-create-user", {
+        method: "PATCH",
+        body: {
+          user_id: editingUser.user_id,
+          nome: editingUser.nome,
+          telefone: editingUser.telefone,
+          nivel_acesso: editingUser.nivel_acesso,
+          ativo: editingUser.ativo,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success("Usuário atualizado com sucesso.");
+      setEditOpen(false);
+      setEditingUser(null);
+      loadUsers();
+    } catch (error: any) {
+      toast.error("Erro ao salvar usuário: " + (error?.message || "Tente novamente."));
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -212,9 +230,14 @@ const AdminUsuarios = () => {
                       <p className="font-medium text-sm truncate">{u.nome}</p>
                       <p className="text-xs text-muted-foreground truncate">{u.email}</p>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(u.user_id, u.nome)} className="text-destructive hover:text-destructive shrink-0 h-8 w-8">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(u)} className="shrink-0 h-8 w-8">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(u.user_id, u.nome)} className="text-destructive hover:text-destructive shrink-0 h-8 w-8">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="px-2 py-0.5 rounded text-[10px] bg-primary/10 text-primary">
@@ -282,9 +305,14 @@ const AdminUsuarios = () => {
                           {new Date(u.data_criacao).toLocaleDateString("pt-BR")}
                         </td>
                         <td className="py-3 px-4">
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(u.user_id, u.nome)} className="text-destructive hover:text-destructive">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => openEdit(u)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(u.user_id, u.nome)} className="text-destructive hover:text-destructive">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -298,6 +326,58 @@ const AdminUsuarios = () => {
           </Card>
         </>
       )}
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-display">Editar usuário</DialogTitle>
+          </DialogHeader>
+          {editingUser && (
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              <div>
+                <Label>Nome *</Label>
+                <Input value={editingUser.nome} onChange={(e) => setEditingUser({ ...editingUser, nome: e.target.value })} />
+              </div>
+              <div>
+                <Label>Email</Label>
+                <Input value={editingUser.email || ""} disabled />
+              </div>
+              <div>
+                <Label>Telefone</Label>
+                <Input value={editingUser.telefone || ""} onChange={(e) => setEditingUser({ ...editingUser, telefone: e.target.value })} />
+              </div>
+              <div>
+                <Label>Nível de Acesso</Label>
+                <Select value={editingUser.nivel_acesso} onValueChange={(v) => setEditingUser({ ...editingUser, nivel_acesso: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Administrador</SelectItem>
+                    <SelectItem value="gestor_conta">Gestor de Conta</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Status</Label>
+                <Select value={editingUser.ativo ? "ativo" : "inativo"} onValueChange={(v) => setEditingUser({ ...editingUser, ativo: v === "ativo" })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ativo">Ativo</SelectItem>
+                    <SelectItem value="inativo">Inativo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button type="submit" className="w-full" disabled={savingEdit}>
+                {savingEdit ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Salvar alterações
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
