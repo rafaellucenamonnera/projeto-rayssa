@@ -51,7 +51,7 @@ const AdminUsuarios = () => {
       if (msg.includes("Não autorizado") || msg.includes("Acesso negado")) {
         toast.error("Erro ao carregar usuários: acesso permitido somente para administrador.");
       } else {
-        toast.error("Erro ao carregar usuários. Verifique conexão com backend.");
+        toast.error(`Falha ao conectar com backend: ${msg || "Edge Function não respondeu"}`);
       }
     } finally {
       setLoading(false);
