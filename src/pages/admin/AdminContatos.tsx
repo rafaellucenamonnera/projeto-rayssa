@@ -127,7 +127,7 @@ const AdminContatos = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl sm:text-3xl font-display font-bold glow-text">Contatos</h1>
+      <h1 className="text-2xl sm:text-3xl font-display font-bold glow-text text-[#32b89b] shadow-none">Contatos</h1>
       <Card className="border-border">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
