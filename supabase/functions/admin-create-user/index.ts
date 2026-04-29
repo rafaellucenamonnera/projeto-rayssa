@@ -76,14 +76,32 @@ Deno.serve(async (req) => {
 
       const { data: { users: authUsers } } = await supabaseAdmin.auth.admin.listUsers()
 
-      const result = (profiles || []).map((p: any) => {
-        const authUser = authUsers.find((u: any) => u.id === p.user_id)
-        const userRole = (allRoles || []).find((r: any) => r.user_id === p.user_id)
+      const profileByUserId = new Map((profiles || []).map((p: any) => [p.user_id, p]))
+      const roleByUserId = new Map((allRoles || []).map((r: any) => [r.user_id, r.role]))
+
+      const result = (authUsers || []).map((authUser: any) => {
+        const p = profileByUserId.get(authUser.id)
+        const role = roleByUserId.get(authUser.id) || 'usuario'
+        const createdAt = p?.data_criacao || authUser?.created_at || null
+
         return {
-          ...p,
-          email: authUser?.email,
-          nivel_acesso: (userRole as any)?.role
+          id: p?.id || authUser.id,
+          user_id: authUser.id,
+          nome: p?.nome || authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Sem nome',
+          telefone: p?.telefone || null,
+          email: authUser?.email || null,
+          nivel_acesso: role,
+          role,
+          ativo: typeof p?.ativo === 'boolean' ? p.ativo : true,
+          status: typeof p?.ativo === 'boolean' ? (p.ativo ? 'ativo' : 'inativo') : 'ativo',
+          primeiro_acesso: p?.primeiro_acesso ?? false,
+          data_criacao: createdAt,
+          created_at: createdAt,
         }
+      }).sort((a: any, b: any) => {
+        const aDate = a.data_criacao ? new Date(a.data_criacao).getTime() : 0
+        const bDate = b.data_criacao ? new Date(b.data_criacao).getTime() : 0
+        return bDate - aDate
       })
 
       return new Response(JSON.stringify(result), {
