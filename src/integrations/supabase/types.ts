@@ -255,11 +255,13 @@ export type Database = {
       lead_contatos: {
         Row: {
           cargo: string | null
+          comentario: string | null
           created_at: string
           created_by: string | null
           email: string | null
+          empresa: string | null
           id: string
-          lead_id: string
+          lead_id: string | null
           nome: string
           observacao: string | null
           principal: boolean
@@ -268,11 +270,13 @@ export type Database = {
         }
         Insert: {
           cargo?: string | null
+          comentario?: string | null
           created_at?: string
           created_by?: string | null
           email?: string | null
+          empresa?: string | null
           id?: string
-          lead_id: string
+          lead_id?: string | null
           nome: string
           observacao?: string | null
           principal?: boolean
@@ -281,11 +285,13 @@ export type Database = {
         }
         Update: {
           cargo?: string | null
+          comentario?: string | null
           created_at?: string
           created_by?: string | null
           email?: string | null
+          empresa?: string | null
           id?: string
-          lead_id?: string
+          lead_id?: string | null
           nome?: string
           observacao?: string | null
           principal?: boolean
