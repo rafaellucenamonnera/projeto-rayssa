@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
 
     if (req.method === 'POST') {
       const body = await req.json()
-      const { email, nome, telefone, nivel_acesso, setup, password, redirect_url } = body
+      const { email, nome, telefone, nivel_acesso, setup, redirect_url } = body
 
       if (!email || !nome || !nivel_acesso) {
         return new Response(JSON.stringify({ error: 'Campos obrigatórios: email, nome, nivel_acesso' }), {
