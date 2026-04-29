@@ -211,7 +211,7 @@ export default function AdminKitVendas() {
 
         {/* Argumentos */}
         <TabsContent value="argumentos" className="space-y-3">
-          <Button onClick={() => setEditing({ type: "argumento", data: { objecao: "", resposta: "", pilar: "Conexão", pilar_descricao: "", ordem: argumentos.length } })}>
+          <Button onClick={() => setEditing({ type: "argumento", data: { objecao: "", argumentos: [""], resposta: "", pilar: "Conexão", pilar_descricao: "", ordem: argumentos.length } })}>
             <Plus className="w-4 h-4 mr-2" />Novo argumento
           </Button>
           {argumentos.length === 0 && <p className="text-sm text-muted-foreground">Nenhum argumento cadastrado.</p>}
