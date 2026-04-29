@@ -563,6 +563,36 @@ export type Database = {
           },
         ]
       }
+      module_permissions: {
+        Row: {
+          acao: string
+          id: string
+          modulo: string
+          permitido: boolean
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          acao: string
+          id?: string
+          modulo: string
+          permitido?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          acao?: string
+          id?: string
+          modulo?: string
+          permitido?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       pagamentos_consultores: {
         Row: {
           created_at: string
@@ -656,6 +686,36 @@ export type Database = {
           telefone_ddd?: string
           telefone_numero?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      permission_change_logs: {
+        Row: {
+          acao: string
+          changed_at: string
+          changed_by: string | null
+          id: string
+          modulo: string
+          permitido: boolean
+          user_id: string
+        }
+        Insert: {
+          acao: string
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          modulo: string
+          permitido: boolean
+          user_id: string
+        }
+        Update: {
+          acao?: string
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          modulo?: string
+          permitido?: boolean
+          user_id?: string
         }
         Relationships: []
       }
