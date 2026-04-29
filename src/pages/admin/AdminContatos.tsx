@@ -6,10 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Download, Loader2, Plus, Trash2, Upload } from "lucide-react";
 
 type LeadOption = { id: string; nome_fantasia: string };
 type ContatoRow = {
@@ -40,6 +42,8 @@ const AdminContatos = () => {
   const [leads, setLeads] = useState<LeadOption[]>([]);
   const [leadSearch, setLeadSearch] = useState("");
   const [form, setForm] = useState({ ...emptyForm });
+  const [importOpen, setImportOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const leadMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -115,6 +119,54 @@ const AdminContatos = () => {
     setSaving(false);
   };
 
+  const downloadCsvTemplate = () => {
+    const csv = "name,email,phone,company,comment\nJoão Silva,joao@email.com,27999999999,Empresa X,Observação";
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "modelo-contatos.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportContacts = () => {
+    const rows = contatos.map((c) => [c.nome || "", c.email || "", c.telefone || "", c.empresa || "", (c.comentario || "").replace(/\n/g, " ")]);
+    const csv = ["name,email,phone,company,comment", ...rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `contatos-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportFile = async (file?: File | null) => {
+    if (!file) return;
+    setImporting(true);
+    const text = await file.text();
+    const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    if (lines.length <= 1) { toast.error("CSV vazio"); setImporting(false); return; }
+    const existingEmails = new Set(contatos.map((c) => (c.email || "").toLowerCase()).filter(Boolean));
+    const payload: any[] = [];
+    for (const line of lines.slice(1)) {
+      const cols = line.split(",");
+      const [name, email, phone, company, ...rest] = cols.map((c) => c.replace(/^"|"$/g, "").trim());
+      const comment = rest.join(",").trim();
+      if (!name) continue;
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) continue;
+      if (email && existingEmails.has(email.toLowerCase())) continue;
+      payload.push({ nome: name, email: email || null, telefone: phone || null, empresa: company || null, comentario: comment || null, observacao: comment || null });
+      if (email) existingEmails.add(email.toLowerCase());
+    }
+    if (!payload.length) { toast.error("Nenhuma linha válida para importar"); setImporting(false); return; }
+    const { error } = await (supabase as any).from("lead_contatos").insert(payload);
+    if (error) toast.error(error.message || "Erro ao importar");
+    else { toast.success(`${payload.length} contatos importados`); setImportOpen(false); loadData(); }
+    setImporting(false);
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm("Excluir este contato?")) return;
     const { error } = await (supabase as any).from("lead_contatos").delete().eq("id", id);
@@ -127,7 +179,17 @@ const AdminContatos = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl sm:text-3xl font-display font-bold glow-text text-[#32b89b] shadow-none">Contatos</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-2xl sm:text-3xl font-display font-bold glow-text text-[#32b89b] shadow-none">Contatos</h1>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={exportContacts}>
+            <Download className="h-4 w-4 mr-1" /> Exportar contatos
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+            <Upload className="h-4 w-4 mr-1" /> Importar contatos
+          </Button>
+        </div>
+      </div>
       <Card className="border-border">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
