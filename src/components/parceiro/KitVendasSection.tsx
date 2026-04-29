@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { MessageSquare, Video, FileText, MessagesSquare, Copy, Download, ChevronDown, Link as LinkIcon, Share2, ExternalLink } from "lucide-react";
+import { MessageSquare, Video, FileText, MessagesSquare, Copy, Download, ChevronDown, Link as LinkIcon, Share2, ExternalLink, ArrowUpRight } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -129,11 +129,11 @@ export function KitVendasSection() {
             )}
             <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{m.mensagem}</p>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={() => copy(m.mensagem, "Mensagem copiada!")}>
+              <Button size="sm" className="h-9 px-3 rounded-lg inline-flex items-center gap-1.5" onClick={() => copy(m.mensagem, "Mensagem copiada!")}>
                 <Copy className="w-3.5 h-3.5 mr-1.5" />Copiar Mensagem
               </Button>
               {m.imagem_url && (
-                <Button size="sm" variant="outline" onClick={() => downloadFile(m.imagem_url!, `${m.titulo}.jpg`)}>
+                <Button size="sm" variant="outline" className="h-9 px-3 rounded-lg inline-flex items-center gap-1.5" onClick={() => downloadFile(m.imagem_url!, `${m.titulo}.jpg`)}>
                   <Download className="w-3.5 h-3.5 mr-1.5" />Baixar Imagem
                 </Button>
               )}
@@ -174,17 +174,17 @@ export function KitVendasSection() {
             </div>
             {v.descricao && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{v.descricao}</p>}
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={() => copy(v.video_url, "Link copiado!")}>
+              <Button size="sm" className="h-9 px-3 rounded-lg inline-flex items-center gap-1.5" onClick={() => copy(v.video_url, "Link copiado!")}>
                 <LinkIcon className="w-3.5 h-3.5 mr-1.5" />Copiar Link
               </Button>
               {!isExternal ? (
-                <Button size="sm" variant="outline" onClick={() => downloadFile(v.video_url, `${v.titulo}.mp4`)}>
+                <Button size="sm" variant="outline" className="h-9 px-3 rounded-lg inline-flex items-center gap-1.5" onClick={() => downloadFile(v.video_url, `${v.titulo}.mp4`)}>
                   <Download className="w-3.5 h-3.5 mr-1.5" />Baixar Vídeo
                 </Button>
               ) : (
-                <Button size="sm" variant="outline" asChild>
+                <Button size="sm" variant="outline" className="h-9 px-3 rounded-lg inline-flex items-center gap-1.5 border-zinc-700 bg-zinc-950 text-white hover:bg-zinc-900 hover:text-white" asChild>
                   <a href={v.video_url} target="_blank" rel="noreferrer">
-                    <Download className="w-3.5 h-3.5 mr-1.5" />Abrir no {isYoutube(v.video_url) ? "YouTube" : "Vimeo"}
+                    <ArrowUpRight className="w-3.5 h-3.5 mr-1.5" />Abrir
                   </a>
                 </Button>
               )}
@@ -421,15 +421,10 @@ export function KitVendasSection() {
                         )}
                         {r.comentario && <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{r.comentario}</p>}
                         <div className="flex flex-wrap gap-2">
-                          <Button size="sm" onClick={() => copy(r.link, "Link copiado!")}>
+                          <Button size="sm" className="h-9 px-3 rounded-lg inline-flex items-center gap-1.5" onClick={() => copy(r.link, "Link copiado!")}>
                             <LinkIcon className="w-3.5 h-3.5 mr-1.5" />Copiar Link
                           </Button>
-                          {r.imagem_url && (
-                            <Button size="sm" variant="outline" onClick={() => downloadFile(r.imagem_url!, `${r.titulo}.jpg`)}>
-                              <Download className="w-3.5 h-3.5 mr-1.5" />Baixar Imagem
-                            </Button>
-                          )}
-                          <Button size="sm" variant="outline" asChild>
+                          <Button size="sm" variant="outline" className="h-9 px-3 rounded-lg inline-flex items-center gap-1.5 border-zinc-700 bg-zinc-950 text-white hover:bg-zinc-900 hover:text-white" asChild>
                             <a href={r.link} target="_blank" rel="noreferrer">
                               <ExternalLink className="w-3.5 h-3.5 mr-1.5" />Abrir
                             </a>
