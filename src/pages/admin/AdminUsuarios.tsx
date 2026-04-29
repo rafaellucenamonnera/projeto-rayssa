@@ -91,7 +91,14 @@ const AdminUsuarios = () => {
       loadUsers();
     } catch (error: any) {
       console.error("Erro ao criar usuário:", error);
-      toast.error("Erro: " + (error?.message || "Tente novamente."));
+      const msg = String(error?.message || "");
+      if (msg.includes("Failed to send a request to the Edge Function")) {
+        toast.error("Erro ao criar usuário: serviço de criação está indisponível.");
+      } else if (msg.includes("Não autorizado") || msg.includes("Acesso negado")) {
+        toast.error("Erro ao criar usuário: acesso permitido somente para administrador.");
+      } else {
+        toast.error("Erro: " + (error?.message || "Tente novamente."));
+      }
     } finally {
       setCreating(false);
     }
