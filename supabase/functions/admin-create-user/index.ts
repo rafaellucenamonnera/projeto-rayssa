@@ -139,6 +139,12 @@ Deno.serve(async (req) => {
         })
       }
 
+      if (!inviteData?.user?.id) {
+        return new Response(JSON.stringify({ error: 'Edge Function não respondeu com usuário criado.' }), {
+          status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
       const newUserId = inviteData.user.id
 
       const { error: profileError } = await supabaseAdmin.from('profiles').insert({
