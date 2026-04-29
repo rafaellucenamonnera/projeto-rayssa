@@ -25,6 +25,7 @@ const AdminPermissoes = () => {
       { key: "atividades", label: "ATIVIDADES", actions: ["acessar", "criar", "editar", "excluir"] },
       { key: "email", label: "E-MAIL", actions: ["acessar", "enviar", "receber", "configurar_gmail"] },
       { key: "pipeline", label: "PIPELINE", actions: ["criar_etapa", "editar_etapa", "excluir_etapa"] },
+      { key: "configuracao_painel", label: "CONFIGURAÇÃO PAINEL", actions: ["visualizar", "editar", "criar_estagio", "excluir_estagio"] },
       { key: "configuracoes", label: "CONFIGURAÇÕES", actions: ["acessar", "gerenciar_permissoes", "gerenciar_usuarios"] },
     ],
     [],
