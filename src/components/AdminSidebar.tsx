@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, FileText, UserCog, DollarSign, Briefcase, Settings, ShieldCheck, PlugZap } from "lucide-react";
+import { LayoutDashboard, Users, FileText, UserCog, DollarSign, Briefcase, Settings, ShieldCheck, PlugZap, Contact } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,6 +27,7 @@ export function AdminSidebar() {
     { title: "Painel Onboarding / Integração", url: "/admin/painel-onboarding", icon: FileText },
     { title: "Painel Sucesso", url: "/admin/painel-sucesso", icon: FileText },
     { title: "Painel Criação Campanhas", url: "/admin/painel-campanhas", icon: FileText },
+    { title: "Contatos", url: "/admin/contatos", icon: Contact },
     { title: "Atualizar Kit e Redes Sociais", url: "/admin/kit-vendas", icon: Briefcase },
   ];
 
