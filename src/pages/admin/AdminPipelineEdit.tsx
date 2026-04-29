@@ -5,54 +5,86 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 
-type Stage = { id: string; value: string; label: string; sort_order: number };
+type Stage = {
+  id: string;
+  value: string;
+  label: string;
+  sort_order: number;
+  panel_key: string;
+};
+
+const PANELS = [
+  { id: "comercial", label: "Painel Comercial" },
+  { id: "onboarding", label: "Painel Onboarding / Integração" },
+  { id: "sucesso", label: "Painel Sucesso" },
+  { id: "campanhas", label: "Painel Criação Campanhas" },
+];
 
 export default function AdminPipelineEdit() {
   const { isInternalUser, isAdmin } = useAuth();
   const [allowed, setAllowed] = useState(false);
   const [checked, setChecked] = useState(false);
-  const [stages, setStages] = useState<Stage[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [selectedPanelId, setSelectedPanelId] = useState(PANELS[0].id);
+  const [stageCache, setStageCache] = useState<Record<string, Stage[]>>({});
+  const [loading, setLoading] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
+  const stages = stageCache[selectedPanelId] || [];
+
+  const loadPermission = async () => {
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) {
       setChecked(true);
-      setLoading(false);
       return;
     }
-
-    let canAccess = isAdmin;
-    if (!canAccess) {
-      const { data: perms } = await (supabase as any)
-        .from("module_permissions")
-        .select("acao,permitido")
-        .eq("user_id", auth.user.id)
-        .eq("modulo", "configuracao_painel");
-      canAccess = (perms || []).some((p: any) => p.permitido && p.acao === "visualizar");
+    if (isAdmin) {
+      setAllowed(true);
+      setChecked(true);
+      return;
     }
-    setAllowed(canAccess);
+    const { data: perms } = await (supabase as any)
+      .from("module_permissions")
+      .select("acao,permitido")
+      .eq("user_id", auth.user.id)
+      .eq("modulo", "configuracao_painel");
+    const can = (perms || []).some((p: any) => p.permitido && p.acao === "visualizar");
+    setAllowed(can);
     setChecked(true);
+  };
 
-    if (canAccess) {
-      const { data, error } = await (supabase as any)
-        .from("pipeline_stages_config")
-        .select("id, value, label, sort_order")
-        .order("sort_order", { ascending: true });
-      if (error) toast.error("Erro ao carregar etapas");
-      setStages((data as Stage[]) || []);
-    }
+  const loadPanelStages = async (panelId: string, force = false) => {
+    if (!panelId) return;
+    if (!force && stageCache[panelId]) return;
+    setLoading(true);
+    const { data, error } = await (supabase as any)
+      .from("pipeline_stages_config")
+      .select("id, value, label, sort_order, panel_key")
+      .eq("panel_key", panelId)
+      .order("sort_order", { ascending: true });
+    if (error) toast.error("Erro ao carregar estágios");
+    setStageCache((prev) => ({ ...prev, [panelId]: (data as Stage[]) || [] }));
     setLoading(false);
   };
 
   useEffect(() => {
-    if (isInternalUser) load();
+    if (isInternalUser) loadPermission();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInternalUser, isAdmin]);
+
+  useEffect(() => {
+    if (allowed) loadPanelStages(selectedPanelId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allowed, selectedPanelId]);
 
   if (!isInternalUser) return <Navigate to="/admin/login" replace />;
   if (checked && !allowed) return <Navigate to="/admin" replace />;
@@ -61,18 +93,27 @@ export default function AdminPipelineEdit() {
     const { error } = await (supabase as any)
       .from("pipeline_stages_config")
       .update({ label })
-      .eq("id", id);
+      .eq("id", id)
+      .eq("panel_key", selectedPanelId);
     if (error) toast.error("Erro ao salvar");
-    else toast.success("Atualizado");
+    else {
+      toast.success("Atualizado");
+      loadPanelStages(selectedPanelId, true);
+    }
   };
 
   const addStage = async () => {
-    const value = `etapa_${Date.now()}`;
+    const value = `etapa_${selectedPanelId}_${Date.now()}`;
     const { error } = await (supabase as any)
       .from("pipeline_stages_config")
-      .insert({ value, label: "Nova coluna", sort_order: stages.length + 1 });
+      .insert({
+        value,
+        label: "Nova coluna",
+        sort_order: stages.length + 1,
+        panel_key: selectedPanelId,
+      });
     if (error) toast.error("Erro ao criar");
-    else load();
+    else loadPanelStages(selectedPanelId, true);
   };
 
   const removeStage = async (id: string) => {
@@ -80,9 +121,10 @@ export default function AdminPipelineEdit() {
     const { error } = await (supabase as any)
       .from("pipeline_stages_config")
       .delete()
-      .eq("id", id);
+      .eq("id", id)
+      .eq("panel_key", selectedPanelId);
     if (error) toast.error("Erro ao excluir");
-    else load();
+    else loadPanelStages(selectedPanelId, true);
   };
 
   return (
@@ -92,13 +134,34 @@ export default function AdminPipelineEdit() {
           Edição de Painel
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Gerencie as colunas do pipeline comercial.
+          Gerencie as colunas dos painéis comerciais e operacionais.
         </p>
       </div>
 
       <Card className="border-border">
+        <CardHeader>
+          <CardTitle className="text-base">Selecionar Painel</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Label className="text-xs text-muted-foreground">Painel</Label>
+          <Select value={selectedPanelId} onValueChange={setSelectedPanelId}>
+            <SelectTrigger className="max-w-md">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PANELS.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Colunas do pipeline</CardTitle>
+          <CardTitle className="text-base">Colunas do painel</CardTitle>
           {isAdmin && (
             <Button size="sm" onClick={addStage}>
               <Plus className="h-4 w-4 mr-1" /> Nova coluna
