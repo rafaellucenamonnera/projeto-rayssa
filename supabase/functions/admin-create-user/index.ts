@@ -169,26 +169,28 @@ Deno.serve(async (req) => {
     }
 
     if (req.method === 'PATCH') {
-      await verifyAdmin()
-
       const body = await req.json()
-      const { user_id, nome, telefone, nivel_acesso, ativo } = body
+      const { user_id, nome, telefone, nivel_acesso, ativo } = body || {}
+
       if (!user_id) {
         return new Response(JSON.stringify({ error: 'user_id obrigatório' }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
       }
 
-      const profileUpdate: Record<string, any> = {}
-      if (typeof nome === 'string') profileUpdate.nome = nome
-      if (telefone !== undefined) profileUpdate.telefone = telefone || null
-      if (typeof ativo === 'boolean') profileUpdate.ativo = ativo
+      await verifyAdmin()
 
-      if (Object.keys(profileUpdate).length > 0) {
+      const updates: Record<string, unknown> = {}
+      if (typeof nome === 'string' && nome.trim()) updates.nome = nome.trim()
+      if (telefone !== undefined) updates.telefone = telefone ? String(telefone).trim() : null
+      if (typeof ativo === 'boolean') updates.ativo = ativo
+
+      if (Object.keys(updates).length > 0) {
         const { error: profileError } = await supabaseAdmin
           .from('profiles')
-          .update(profileUpdate)
+          .update(updates)
           .eq('user_id', user_id)
+
         if (profileError) {
           return new Response(JSON.stringify({ error: profileError.message }), {
             status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -196,16 +198,22 @@ Deno.serve(async (req) => {
         }
       }
 
-      if (typeof nivel_acesso === 'string' && nivel_acesso.length > 0) {
-        await supabaseAdmin.from('user_roles').delete().eq('user_id', user_id)
+      if (typeof nivel_acesso === 'string' && nivel_acesso.trim()) {
         const { error: roleError } = await supabaseAdmin
           .from('user_roles')
-          .insert({ user_id, role: nivel_acesso })
+          .upsert({ user_id, role: nivel_acesso.trim() }, { onConflict: 'user_id,role' })
+
         if (roleError) {
           return new Response(JSON.stringify({ error: roleError.message }), {
             status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           })
         }
+
+        await supabaseAdmin
+          .from('user_roles')
+          .delete()
+          .eq('user_id', user_id)
+          .neq('role', nivel_acesso.trim())
       }
 
       return new Response(JSON.stringify({ success: true }), {
