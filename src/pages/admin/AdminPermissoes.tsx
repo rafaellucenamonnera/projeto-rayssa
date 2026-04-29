@@ -12,7 +12,7 @@ import { Loader2 } from "lucide-react";
 
 const AdminPermissoes = () => {
   const { isAdmin } = useAuth();
-  const [users, setUsers] = useState<Array<{ user_id: string; nome: string; email: string }>>([]);
+  const [users, setUsers] = useState<Array<{ user_id: string; nome: string; email: string; ativo?: boolean }>>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -38,11 +38,11 @@ const AdminPermissoes = () => {
     setLoading(true);
     const { data, error } = await supabase.functions.invoke("admin-create-user", { method: "GET" });
     if (error) {
-      toast.error("Erro ao carregar usuários");
+      toast.error("Erro ao carregar usuários. Verifique conexão com backend.");
       setLoading(false);
       return;
     }
-    const list = Array.isArray(data) ? data : [];
+    const list = (Array.isArray(data) ? data : []).filter((u: any) => u.ativo !== false);
     setUsers(list);
     if (list.length > 0) setSelectedUserId(list[0].user_id);
     setLoading(false);
