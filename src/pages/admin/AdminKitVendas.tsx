@@ -220,7 +220,7 @@ export default function AdminKitVendas() {
               <CardHeader className="flex flex-row items-center justify-between p-4">
                 <CardTitle className="text-base">{a.objecao}</CardTitle>
                 <div className="flex gap-2">
-                  <Button size="icon" variant="ghost" onClick={() => setEditing({ type: "argumento", data: a })}><Pencil className="w-4 h-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => setEditing({ type: "argumento", data: { ...a, argumentos: [a.objecao] } })}><Pencil className="w-4 h-4" /></Button>
                   <Button size="icon" variant="ghost" onClick={() => handleDelete("argumento", a.id)}><Trash2 className="w-4 h-4" /></Button>
                 </div>
               </CardHeader>
