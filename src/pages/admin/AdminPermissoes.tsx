@@ -157,7 +157,7 @@ const AdminPermissoes = () => {
                               onCheckedChange={(checked) => togglePermission(module.key, action, !!checked)}
                             />
                             <Label htmlFor={id} className="text-sm capitalize cursor-pointer">
-                              {action.replaceAll("_", " ")}
+                              {action.replace(/_/g, " ")}
                             </Label>
                           </div>
                         );
