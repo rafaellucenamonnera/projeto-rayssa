@@ -724,6 +724,7 @@ export type Database = {
           created_at: string
           id: string
           label: string
+          panel_key: string
           sort_order: number
           updated_at: string
           value: string
@@ -732,6 +733,7 @@ export type Database = {
           created_at?: string
           id?: string
           label: string
+          panel_key?: string
           sort_order?: number
           updated_at?: string
           value: string
@@ -740,6 +742,7 @@ export type Database = {
           created_at?: string
           id?: string
           label?: string
+          panel_key?: string
           sort_order?: number
           updated_at?: string
           value?: string
