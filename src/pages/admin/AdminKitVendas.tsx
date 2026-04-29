@@ -71,11 +71,41 @@ export default function AdminKitVendas() {
     if (!editing) return;
     setSaving(true);
     const { type, data } = editing;
+    if (type === "argumento") {
+      const argumentosLista = (data.argumentos as string[] | undefined) || [data.objecao || ""];
+      const argumentosValidos = argumentosLista.map((item: string) => item.trim()).filter(Boolean);
+      if (argumentosValidos.length === 0) {
+        setSaving(false);
+        return toast.error("Informe ao menos 1 argumento.");
+      }
+      if (argumentosValidos.length > 10) {
+        setSaving(false);
+        return toast.error("Máximo de 10 argumentos.");
+      }
+    }
     const table = tableMap[type];
-    const { id, ...payload } = data;
-    const op = id
-      ? supabase.from(table).update(payload).eq("id", id)
-      : supabase.from(table).insert(payload);
+    const { id, argumentos: _argumentos, ...payloadBase } = data;
+    let op;
+    if (type === "argumento") {
+      const argumentosLista = (data.argumentos as string[] | undefined) || [data.objecao || ""];
+      const argumentosValidos = argumentosLista.map((item: string) => item.trim()).filter(Boolean);
+      if (id) {
+        op = supabase.from(table).update({ ...payloadBase, objecao: argumentosValidos[0] }).eq("id", id);
+      } else {
+        op = supabase.from(table).insert(
+          argumentosValidos.map((argumento: string, index: number) => ({
+            ...payloadBase,
+            objecao: argumento,
+            resposta: "",
+            ordem: (payloadBase.ordem || 0) + index,
+          }))
+        );
+      }
+    } else {
+      op = id
+        ? supabase.from(table).update(payloadBase).eq("id", id)
+        : supabase.from(table).insert(payloadBase);
+    }
     const { error } = await op;
     setSaving(false);
     if (error) return toast.error(error.message);
