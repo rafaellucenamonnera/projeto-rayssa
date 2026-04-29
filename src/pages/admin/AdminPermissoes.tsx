@@ -38,11 +38,14 @@ const AdminPermissoes = () => {
     setLoading(true);
     const { data, error } = await supabase.functions.invoke("admin-create-user", { method: "GET" });
     if (error) {
-      toast.error("Erro ao carregar usuários. Verifique conexão com backend.");
+      toast.error(`Falha ao conectar com backend: ${error.message || "Edge Function não respondeu"}`);
       setLoading(false);
       return;
     }
-    const list = (Array.isArray(data) ? data : []).filter((u: any) => u.ativo !== false);
+    const list = (Array.isArray(data) ? data : []).filter((u: any) => u.ativo !== false && u.user_id);
+    if (list.length === 0) {
+      toast.error("Usuário não encontrado na base");
+    }
     setUsers(list);
     if (list.length > 0) setSelectedUserId(list[0].user_id);
     setLoading(false);
