@@ -174,17 +174,17 @@ export function KitVendasSection() {
             </div>
             {v.descricao && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{v.descricao}</p>}
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={() => copy(v.video_url, "Link copiado!")}>
+              <Button size="sm" className="h-9 px-3 rounded-lg inline-flex items-center gap-1.5" onClick={() => copy(v.video_url, "Link copiado!")}>
                 <LinkIcon className="w-3.5 h-3.5 mr-1.5" />Copiar Link
               </Button>
               {!isExternal ? (
-                <Button size="sm" variant="outline" onClick={() => downloadFile(v.video_url, `${v.titulo}.mp4`)}>
+                <Button size="sm" variant="outline" className="h-9 px-3 rounded-lg inline-flex items-center gap-1.5" onClick={() => downloadFile(v.video_url, `${v.titulo}.mp4`)}>
                   <Download className="w-3.5 h-3.5 mr-1.5" />Baixar Vídeo
                 </Button>
               ) : (
-                <Button size="sm" variant="outline" asChild>
+                <Button size="sm" variant="outline" className="h-9 px-3 rounded-lg inline-flex items-center gap-1.5 border-zinc-700 bg-zinc-950 text-white hover:bg-zinc-900 hover:text-white" asChild>
                   <a href={v.video_url} target="_blank" rel="noreferrer">
-                    <Download className="w-3.5 h-3.5 mr-1.5" />Abrir no {isYoutube(v.video_url) ? "YouTube" : "Vimeo"}
+                    <ArrowUpRight className="w-3.5 h-3.5 mr-1.5" />Abrir
                   </a>
                 </Button>
               )}
