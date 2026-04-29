@@ -421,15 +421,10 @@ export function KitVendasSection() {
                         )}
                         {r.comentario && <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{r.comentario}</p>}
                         <div className="flex flex-wrap gap-2">
-                          <Button size="sm" onClick={() => copy(r.link, "Link copiado!")}>
+                          <Button size="sm" className="h-9 px-3 rounded-lg inline-flex items-center gap-1.5" onClick={() => copy(r.link, "Link copiado!")}>
                             <LinkIcon className="w-3.5 h-3.5 mr-1.5" />Copiar Link
                           </Button>
-                          {r.imagem_url && (
-                            <Button size="sm" variant="outline" onClick={() => downloadFile(r.imagem_url!, `${r.titulo}.jpg`)}>
-                              <Download className="w-3.5 h-3.5 mr-1.5" />Baixar Imagem
-                            </Button>
-                          )}
-                          <Button size="sm" variant="outline" asChild>
+                          <Button size="sm" variant="outline" className="h-9 px-3 rounded-lg inline-flex items-center gap-1.5 border-zinc-700 bg-zinc-950 text-white hover:bg-zinc-900 hover:text-white" asChild>
                             <a href={r.link} target="_blank" rel="noreferrer">
                               <ExternalLink className="w-3.5 h-3.5 mr-1.5" />Abrir
                             </a>
