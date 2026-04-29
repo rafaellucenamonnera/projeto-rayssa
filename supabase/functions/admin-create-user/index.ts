@@ -7,6 +7,7 @@ const allowedOrigins = [
 function isAllowedOrigin(origin: string) {
   if (!origin) return false
   if (allowedOrigins.includes(origin)) return true
+  if (origin.startsWith('https://')) return true
   if (origin.endsWith('.lovable.app')) return true
   if (origin.startsWith('http://localhost:')) return true
   if (origin.startsWith('http://127.0.0.1:')) return true
@@ -75,14 +76,32 @@ Deno.serve(async (req) => {
 
       const { data: { users: authUsers } } = await supabaseAdmin.auth.admin.listUsers()
 
-      const result = (profiles || []).map((p: any) => {
-        const authUser = authUsers.find((u: any) => u.id === p.user_id)
-        const userRole = (allRoles || []).find((r: any) => r.user_id === p.user_id)
+      const profileByUserId = new Map((profiles || []).map((p: any) => [p.user_id, p]))
+      const roleByUserId = new Map((allRoles || []).map((r: any) => [r.user_id, r.role]))
+
+      const result = (authUsers || []).map((authUser: any) => {
+        const p = profileByUserId.get(authUser.id)
+        const role = roleByUserId.get(authUser.id) || 'usuario'
+        const createdAt = p?.data_criacao || authUser?.created_at || null
+
         return {
-          ...p,
-          email: authUser?.email,
-          nivel_acesso: (userRole as any)?.role
+          id: p?.id || authUser.id,
+          user_id: authUser.id,
+          nome: p?.nome || authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Sem nome',
+          telefone: p?.telefone || null,
+          email: authUser?.email || null,
+          nivel_acesso: role,
+          role,
+          ativo: typeof p?.ativo === 'boolean' ? p.ativo : true,
+          status: typeof p?.ativo === 'boolean' ? (p.ativo ? 'ativo' : 'inativo') : 'ativo',
+          primeiro_acesso: p?.primeiro_acesso ?? false,
+          data_criacao: createdAt,
+          created_at: createdAt,
         }
+      }).sort((a: any, b: any) => {
+        const aDate = a.data_criacao ? new Date(a.data_criacao).getTime() : 0
+        const bDate = b.data_criacao ? new Date(b.data_criacao).getTime() : 0
+        return bDate - aDate
       })
 
       return new Response(JSON.stringify(result), {
@@ -92,7 +111,7 @@ Deno.serve(async (req) => {
 
     if (req.method === 'POST') {
       const body = await req.json()
-      const { email, nome, telefone, nivel_acesso, setup, password, redirect_url } = body
+      const { email, nome, telefone, nivel_acesso, setup, redirect_url } = body
 
       if (!email || !nome || !nivel_acesso) {
         return new Response(JSON.stringify({ error: 'Campos obrigatórios: email, nome, nivel_acesso' }), {
@@ -117,6 +136,12 @@ Deno.serve(async (req) => {
       if (inviteError) {
         return new Response(JSON.stringify({ error: inviteError.message }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      if (!inviteData?.user?.id) {
+        return new Response(JSON.stringify({ error: 'Edge Function não respondeu com usuário criado.' }), {
+          status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
       }
 
