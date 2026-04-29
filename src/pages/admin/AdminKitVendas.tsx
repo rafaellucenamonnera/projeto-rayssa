@@ -359,8 +359,47 @@ export default function AdminKitVendas() {
                 <Label>Descrição do pilar (opcional, aparece uma vez por pilar)</Label>
                 <Textarea rows={3} value={editing.data.pilar_descricao || ""} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, pilar_descricao: e.target.value } })} />
               </div>
-              <div><Label>Frase / argumento (texto que será copiado)</Label><Textarea rows={3} value={editing.data.objecao} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, objecao: e.target.value } })} /></div>
-              <div><Label>Resposta detalhada (opcional, uso interno)</Label><Textarea rows={3} value={editing.data.resposta || ""} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, resposta: e.target.value } })} /></div>
+              <div className="space-y-2">
+                <Label>Argumentos (mínimo 1, máximo 10)</Label>
+                {((editing.data.argumentos as string[] | undefined) || [editing.data.objecao || ""]).map((arg: string, index: number) => (
+                  <div className="flex gap-2" key={`arg-${index}`}>
+                    <Textarea
+                      rows={2}
+                      value={arg}
+                      onChange={(e) => {
+                        const lista = [...(((editing.data.argumentos as string[] | undefined) || [editing.data.objecao || ""]))];
+                        lista[index] = e.target.value;
+                        setEditing({ ...editing, data: { ...editing.data, argumentos: lista, objecao: lista[0] || "" } });
+                      }}
+                    />
+                    {index > 0 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          const lista = [...(((editing.data.argumentos as string[] | undefined) || [editing.data.objecao || ""]))];
+                          lista.splice(index, 1);
+                          setEditing({ ...editing, data: { ...editing.data, argumentos: lista, objecao: lista[0] || "" } });
+                        }}
+                      >
+                        Remover
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                {((((editing.data.argumentos as string[] | undefined) || [editing.data.objecao || ""])).length < 10) && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      const lista = [...(((editing.data.argumentos as string[] | undefined) || [editing.data.objecao || ""])), ""];
+                      setEditing({ ...editing, data: { ...editing.data, argumentos: lista } });
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />Adicionar argumento
+                  </Button>
+                )}
+              </div>
               <div><Label>Ordem</Label><Input type="number" value={editing.data.ordem} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, ordem: Number(e.target.value) } })} /></div>
             </div>
           )}
