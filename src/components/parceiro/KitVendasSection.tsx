@@ -129,11 +129,11 @@ export function KitVendasSection() {
             )}
             <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{m.mensagem}</p>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={() => copy(m.mensagem, "Mensagem copiada!")}>
+              <Button size="sm" className="h-9 px-3 rounded-lg inline-flex items-center gap-1.5" onClick={() => copy(m.mensagem, "Mensagem copiada!")}>
                 <Copy className="w-3.5 h-3.5 mr-1.5" />Copiar Mensagem
               </Button>
               {m.imagem_url && (
-                <Button size="sm" variant="outline" onClick={() => downloadFile(m.imagem_url!, `${m.titulo}.jpg`)}>
+                <Button size="sm" variant="outline" className="h-9 px-3 rounded-lg inline-flex items-center gap-1.5" onClick={() => downloadFile(m.imagem_url!, `${m.titulo}.jpg`)}>
                   <Download className="w-3.5 h-3.5 mr-1.5" />Baixar Imagem
                 </Button>
               )}
