@@ -46,7 +46,24 @@ const AdminUsuarios = () => {
     } catch (error: any) {
       const msg = String(error?.message || "");
       if (msg.includes("Failed to send a request to the Edge Function")) {
-        toast.error("Erro ao carregar usuários: função de backend indisponível.");
+        // Fallback de leitura para manter operação mínima quando a Edge Function estiver indisponível
+        const [{ data: profiles, error: profilesError }, { data: roles, error: rolesError }] = await Promise.all([
+          supabase.from("profiles").select("id, user_id, nome, telefone, ativo, primeiro_acesso, data_criacao"),
+          supabase.from("user_roles").select("user_id, role"),
+        ]);
+
+        if (!profilesError && !rolesError) {
+          const roleMap = new Map((roles || []).map((r: any) => [r.user_id, r.role]));
+          const fallbackUsers = (profiles || []).map((p: any) => ({
+            ...p,
+            email: null,
+            nivel_acesso: roleMap.get(p.user_id) || null,
+          })) as MonneraUser[];
+          setUsers(fallbackUsers);
+          toast.error("Erro ao carregar usuários via função. Exibindo dados locais sem e-mail.");
+        } else {
+          toast.error("Erro ao carregar usuários: backend indisponível.");
+        }
       } else if (msg.includes("Não autorizado") || msg.includes("Acesso negado")) {
         toast.error("Erro ao carregar usuários: acesso permitido somente para administrador.");
       } else {
