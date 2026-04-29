@@ -44,7 +44,14 @@ const AdminUsuarios = () => {
       if (error) throw error;
       setUsers(Array.isArray(data) ? data : []);
     } catch (error: any) {
-      toast.error("Erro ao carregar usuários");
+      const msg = String(error?.message || "");
+      if (msg.includes("Failed to send a request to the Edge Function")) {
+        toast.error("Erro ao carregar usuários: função de backend indisponível.");
+      } else if (msg.includes("Não autorizado") || msg.includes("Acesso negado")) {
+        toast.error("Erro ao carregar usuários: acesso permitido somente para administrador.");
+      } else {
+        toast.error("Erro ao carregar usuários");
+      }
     } finally {
       setLoading(false);
     }
@@ -84,7 +91,14 @@ const AdminUsuarios = () => {
       loadUsers();
     } catch (error: any) {
       console.error("Erro ao criar usuário:", error);
-      toast.error("Erro: " + (error?.message || "Tente novamente."));
+      const msg = String(error?.message || "");
+      if (msg.includes("Failed to send a request to the Edge Function")) {
+        toast.error("Erro ao criar usuário: serviço de criação está indisponível.");
+      } else if (msg.includes("Não autorizado") || msg.includes("Acesso negado")) {
+        toast.error("Erro ao criar usuário: acesso permitido somente para administrador.");
+      } else {
+        toast.error("Erro: " + (error?.message || "Tente novamente."));
+      }
     } finally {
       setCreating(false);
     }
