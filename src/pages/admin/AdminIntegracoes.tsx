@@ -11,7 +11,7 @@ const AdminIntegracoes = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl sm:text-3xl font-display font-bold glow-text">Integrações</h1>
+      <h1 className="text-2xl sm:text-3xl font-display font-bold glow-text text-[#32b89b] shadow-none">Integrações</h1>
       <Card>
         <CardHeader>
           <CardTitle>Gestão de integrações (em evolução)</CardTitle>

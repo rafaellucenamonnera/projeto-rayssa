@@ -12,7 +12,7 @@ const Index = () => {
         <div className="max-w-2xl text-center space-y-8">
           <img src={logoMonnera} alt="Monnera" className="w-20 h-20 rounded-xl mx-auto" fetchPriority="high" loading="eager" decoding="async" />
           <h1 className="text-4xl md:text-5xl font-display font-bold leading-tight">
-            <span className="glow-text">Monnera</span> Comercial
+            <span className="glow-text text-[#32b89b] shadow-none">Monnera</span> Comercial
           </h1>
           <p className="text-lg text-muted-foreground max-w-xl mx-auto">
             Plataforma de geração de novos negócios através de consultores comerciais. 
