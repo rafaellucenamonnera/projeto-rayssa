@@ -17,7 +17,7 @@ function getCorsHeaders(req: Request) {
   const origin = req.headers.get('Origin') || ''
   return {
     'Access-Control-Allow-Origin': isAllowedOrigin(origin) ? origin : allowedOrigins[0],
-    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
     'Vary': 'Origin',
   }
@@ -161,6 +161,51 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: error.message }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    if (req.method === 'PATCH') {
+      await verifyAdmin()
+
+      const body = await req.json()
+      const { user_id, nome, telefone, nivel_acesso, ativo } = body
+      if (!user_id) {
+        return new Response(JSON.stringify({ error: 'user_id obrigatório' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      const profileUpdate: Record<string, any> = {}
+      if (typeof nome === 'string') profileUpdate.nome = nome
+      if (telefone !== undefined) profileUpdate.telefone = telefone || null
+      if (typeof ativo === 'boolean') profileUpdate.ativo = ativo
+
+      if (Object.keys(profileUpdate).length > 0) {
+        const { error: profileError } = await supabaseAdmin
+          .from('profiles')
+          .update(profileUpdate)
+          .eq('user_id', user_id)
+        if (profileError) {
+          return new Response(JSON.stringify({ error: profileError.message }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          })
+        }
+      }
+
+      if (typeof nivel_acesso === 'string' && nivel_acesso.length > 0) {
+        await supabaseAdmin.from('user_roles').delete().eq('user_id', user_id)
+        const { error: roleError } = await supabaseAdmin
+          .from('user_roles')
+          .insert({ user_id, role: nivel_acesso })
+        if (roleError) {
+          return new Response(JSON.stringify({ error: roleError.message }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          })
+        }
       }
 
       return new Response(JSON.stringify({ success: true }), {
