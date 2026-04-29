@@ -4,7 +4,28 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, type ComponentType } from "react";
+
+const lazyWithRetry = <T extends { default: ComponentType<any> }>(
+  importer: () => Promise<T>,
+  retries = 2,
+  delayMs = 400,
+) =>
+  lazy(async () => {
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+      try {
+        return await importer();
+      } catch (error) {
+        if (attempt === retries) {
+          throw error;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, delayMs * (attempt + 1)));
+      }
+    }
+
+    throw new Error("Falha ao carregar módulo dinâmico");
+  });
 
 // Lazy load pages with prefetch hints
 const Index = lazy(() => import("./pages/Index"));
@@ -20,7 +41,7 @@ const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminFinanceiro = lazy(() => import("./pages/admin/AdminFinanceiro"));
 const AdminParceiros = lazy(() => import("./pages/admin/AdminParceiros"));
-const AdminLeads = lazy(() => import("./pages/admin/AdminLeads"));
+const AdminLeads = lazyWithRetry(() => import("./pages/admin/AdminLeads"));
 const AdminUsuarios = lazy(() => import("./pages/admin/AdminUsuarios"));
 const AdminKitVendas = lazy(() => import("./pages/admin/AdminKitVendas"));
 const AdminPermissoes = lazy(() => import("./pages/admin/AdminPermissoes"));
