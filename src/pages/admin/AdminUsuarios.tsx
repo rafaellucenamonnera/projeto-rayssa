@@ -44,7 +44,14 @@ const AdminUsuarios = () => {
       if (error) throw error;
       setUsers(Array.isArray(data) ? data : []);
     } catch (error: any) {
-      toast.error("Erro ao carregar usuários");
+      const msg = String(error?.message || "");
+      if (msg.includes("Failed to send a request to the Edge Function")) {
+        toast.error("Erro ao carregar usuários: função de backend indisponível.");
+      } else if (msg.includes("Não autorizado") || msg.includes("Acesso negado")) {
+        toast.error("Erro ao carregar usuários: acesso permitido somente para administrador.");
+      } else {
+        toast.error("Erro ao carregar usuários");
+      }
     } finally {
       setLoading(false);
     }
