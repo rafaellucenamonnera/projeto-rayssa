@@ -36,6 +36,7 @@ export function AdminSidebar() {
         { title: "Usuários", url: "/admin/usuarios", icon: UserCog },
         { title: "Permissões", url: "/admin/permissoes", icon: ShieldCheck },
         { title: "Integrações", url: "/admin/integracoes", icon: PlugZap },
+        { title: "Edição de Painel", url: "/admin/edicao-painel", icon: Settings },
       ]
     : [];
 
