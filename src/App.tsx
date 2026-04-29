@@ -25,6 +25,7 @@ const AdminUsuarios = lazy(() => import("./pages/admin/AdminUsuarios"));
 const AdminKitVendas = lazy(() => import("./pages/admin/AdminKitVendas"));
 const AdminPermissoes = lazy(() => import("./pages/admin/AdminPermissoes"));
 const AdminIntegracoes = lazy(() => import("./pages/admin/AdminIntegracoes"));
+const AdminContatos = lazy(() => import("./pages/admin/AdminContatos"));
 const PrimeiroAcesso = lazy(() => import("./pages/PrimeiroAcesso"));
 const ResetarSenha = lazy(() => import("./pages/ResetarSenha"));
 const EsqueciSenha = lazy(() => import("./pages/EsqueciSenha"));
@@ -67,6 +68,7 @@ const App = () => (
                 <Route path="painel-onboarding" element={<AdminLeads />} />
                 <Route path="painel-sucesso" element={<AdminLeads />} />
                 <Route path="painel-campanhas" element={<AdminLeads />} />
+                <Route path="contatos" element={<AdminContatos />} />
                 <Route path="usuarios" element={<AdminUsuarios />} />
                 <Route path="permissoes" element={<AdminPermissoes />} />
                 <Route path="integracoes" element={<AdminIntegracoes />} />
