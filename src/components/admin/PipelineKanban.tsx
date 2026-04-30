@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { PIPELINE_STAGES } from "@/lib/pipelineConstants";
-import { GripVertical } from "lucide-react";
+import { Copy, GripVertical } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface KanbanLeadCardData {
   id: string;
@@ -21,6 +22,8 @@ interface PipelineKanbanProps {
   parceirosMap: Record<string, string>;
   onMoveLead: (leadId: string, newStage: string) => void;
   onOpenLead: (lead: KanbanLeadCardData) => void;
+  canCloneCard?: boolean;
+  onCloneCard?: (lead: KanbanLeadCardData) => void;
 }
 
 const fmt = (v: number) =>
@@ -36,9 +39,10 @@ const leadContractValue = (l: KanbanLeadCardData): number => {
   return setup + mens * (lojas || 1) * (parcelas || 1) + camp;
 };
 
-export const PipelineKanban = ({ leads, parceirosMap, onMoveLead, onOpenLead }: PipelineKanbanProps) => {
+export const PipelineKanban = ({ leads, parceirosMap, onMoveLead, onOpenLead, canCloneCard = false, onCloneCard }: PipelineKanbanProps) => {
   const [dragId, setDragId] = useState<string | null>(null);
   const [overStage, setOverStage] = useState<string | null>(null);
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
 
   const grouped = useMemo(() => {
     const g: Record<string, KanbanLeadCardData[]> = {};
@@ -102,9 +106,27 @@ export const PipelineKanban = ({ leads, parceirosMap, onMoveLead, onOpenLead }: 
                       e.dataTransfer.effectAllowed = "move";
                     }}
                     onDragEnd={() => { setDragId(null); setOverStage(null); }}
-                    onClick={() => onOpenLead(l)}
-                    className={`group rounded-md border border-border bg-background p-2.5 cursor-pointer hover:border-primary/60 transition-colors ${dragId === l.id ? "opacity-50" : ""}`}
+                    onClick={() => {
+                      setSelectedCardId(l.id);
+                      onOpenLead(l);
+                    }}
+                    className={`group rounded-md border border-border bg-background p-2.5 cursor-pointer hover:border-primary/60 transition-colors ${dragId === l.id ? "opacity-50" : ""} ${selectedCardId === l.id ? "ring-1 ring-primary/60" : ""}`}
                   >
+                    {selectedCardId === l.id && canCloneCard && (
+                      <div className="flex justify-end mb-1.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-[10px]"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onCloneCard?.(l);
+                          }}
+                        >
+                          <Copy className="mr-1 h-3 w-3" /> Clonar
+                        </Button>
+                      </div>
+                    )}
                     <div className="flex items-start gap-1.5">
                       <GripVertical className="h-3.5 w-3.5 text-muted-foreground/60 mt-0.5 shrink-0" />
                       <div className="min-w-0 flex-1">
