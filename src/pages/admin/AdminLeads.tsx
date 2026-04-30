@@ -952,11 +952,18 @@ const AdminLeads = () => {
                         )}
                       </div>
                     </td>
-                    {isAdmin && (
+                    {(isAdmin || canCloneCard) && (
                       <td className="py-3 px-4">
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id, l.nome_fantasia)} className="text-destructive hover:text-destructive">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          {canCloneCard && (
+                            <Button variant="ghost" size="icon" onClick={() => openCloneDialog(l)} title="Clonar card">
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id, l.nome_fantasia)} className="text-destructive hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </td>
                     )}
                   </tr>
