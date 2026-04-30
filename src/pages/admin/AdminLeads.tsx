@@ -105,6 +105,11 @@ const AdminLeads = () => {
 
   // User name for comments
   const [currentUserName, setCurrentUserName] = useState("Usuário");
+  const [canCloneCard, setCanCloneCard] = useState(false);
+  const [cloneLead, setCloneLead] = useState<any>(null);
+  const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
+  const [availablePanels, setAvailablePanels] = useState<{ id: string; name: string }[]>([]);
+  const [targetPanelId, setTargetPanelId] = useState("");
 
   useEffect(() => {
     const fetchUserName = async () => {
@@ -116,6 +121,66 @@ const AdminLeads = () => {
     };
     fetchUserName();
   }, []);
+
+  useEffect(() => {
+    const loadClonePermissionAndPanels = async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) return;
+      if (isAdmin) {
+        setCanCloneCard(true);
+      } else {
+        const { data } = await (supabase as any)
+          .from("module_permissions")
+          .select("permitido")
+          .eq("user_id", auth.user.id)
+          .eq("modulo", "pipeline")
+          .eq("acao", "clonar_card")
+          .maybeSingle();
+        setCanCloneCard(!!data?.permitido);
+      }
+      const { data: panels } = await (supabase as any)
+        .from("pipeline_panels")
+        .select("id,name")
+        .order("sort_order", { ascending: true });
+      setAvailablePanels((panels as { id: string; name: string }[]) || []);
+    };
+    loadClonePermissionAndPanels();
+  }, [isAdmin]);
+
+  const openCloneDialog = (lead: any) => {
+    setCloneLead(lead);
+    setTargetPanelId("");
+    setCloneDialogOpen(true);
+  };
+
+  const handleCloneCard = async () => {
+    if (!cloneLead || !targetPanelId) return;
+    const payload = {
+      nome_fantasia: cloneLead.nome_fantasia,
+      nome_responsavel: cloneLead.nome_responsavel,
+      telefone_responsavel: cloneLead.telefone_responsavel,
+      email_responsavel: cloneLead.email_responsavel,
+      cidade: cloneLead.cidade,
+      quantidade_lojas: cloneLead.quantidade_lojas,
+      erp_utilizado: cloneLead.erp_utilizado,
+      parceiro_id: cloneLead.parceiro_id,
+      descricao_necessidade: cloneLead.descricao_necessidade,
+      valor_setup: cloneLead.valor_setup,
+      valor_mensalidade: cloneLead.valor_mensalidade,
+      valor_campanhas: cloneLead.valor_campanhas,
+      status_lead: "novo_lead",
+      origem: `Clonado de ${cloneLead.nome_fantasia}`,
+    };
+    const { error } = await supabase.from("leads").insert(payload as any);
+    if (error) {
+      toast.error("Erro ao clonar card");
+      return;
+    }
+    toast.success("Card clonado com sucesso");
+    setCloneDialogOpen(false);
+    setCloneLead(null);
+    loadData();
+  };
 
   const loadData = async () => {
     const [leadsRes, parceirosRes, stageRes, reunioesRes] = await Promise.all([
@@ -737,6 +802,11 @@ const AdminLeads = () => {
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   )}
+                  {canCloneCard && (
+                    <Button variant="ghost" size="icon" onClick={() => openCloneDialog(l)} title="Clonar card" className="h-8 w-8">
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -839,7 +909,7 @@ const AdminLeads = () => {
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Telefone</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Pipeline</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Docs</th>
-                  {isAdmin && <th className="text-left py-3 px-4 text-muted-foreground font-medium"></th>}
+                  {(isAdmin || canCloneCard) && <th className="text-left py-3 px-4 text-muted-foreground font-medium"></th>}
                 </tr>
               </thead>
               <tbody>
@@ -882,11 +952,18 @@ const AdminLeads = () => {
                         )}
                       </div>
                     </td>
-                    {isAdmin && (
+                    {(isAdmin || canCloneCard) && (
                       <td className="py-3 px-4">
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id, l.nome_fantasia)} className="text-destructive hover:text-destructive">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          {canCloneCard && (
+                            <Button variant="ghost" size="icon" onClick={() => openCloneDialog(l)} title="Clonar card">
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id, l.nome_fantasia)} className="text-destructive hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -1233,6 +1310,27 @@ const AdminLeads = () => {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={cloneDialogOpen} onOpenChange={setCloneDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Clonar card</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Select value={targetPanelId} onValueChange={setTargetPanelId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o painel de destino" />
+              </SelectTrigger>
+              <SelectContent>
+                {availablePanels.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button onClick={handleCloneCard} disabled={!targetPanelId} className="w-full">Confirmar</Button>
+          </div>
         </DialogContent>
       </Dialog>
 
