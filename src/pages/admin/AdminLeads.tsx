@@ -91,6 +91,14 @@ const AdminLeads = () => {
   const [conversionLinkOpen, setConversionLinkOpen] = useState(false);
   const [conversionLink, setConversionLink] = useState("");
   const [conversionLeadName, setConversionLeadName] = useState("");
+  const [isEditingCard, setIsEditingCard] = useState(false);
+  const [savingCard, setSavingCard] = useState(false);
+  const [editFormData, setEditFormData] = useState<{
+    nome_fantasia: string;
+    descricao_necessidade: string;
+    status_lead: string;
+    cidade: string;
+  }>({ nome_fantasia: "", descricao_necessidade: "", status_lead: "novo_lead", cidade: "" });
 
   // Reunião dialog
   const [reuniaoDialogOpen, setReuniaoDialogOpen] = useState(false);
@@ -588,7 +596,69 @@ const AdminLeads = () => {
   const openLeadDetail = (lead: any) => {
     setDetailLead(lead);
     setEditingNumProposta(lead.numero_proposta || "");
+    setIsEditingCard(false);
+    setEditFormData({
+      nome_fantasia: lead.nome_fantasia || "",
+      descricao_necessidade: lead.descricao_necessidade || "",
+      status_lead: lead.status_lead || lead.status || "novo_lead",
+      cidade: lead.cidade || "",
+    });
     setDetailOpen(true);
+  };
+
+  const startEditCard = (lead: any) => {
+    if (!canEditCard && !isAdmin) return;
+    setDetailLead(lead);
+    setEditFormData({
+      nome_fantasia: lead.nome_fantasia || "",
+      descricao_necessidade: lead.descricao_necessidade || "",
+      status_lead: lead.status_lead || lead.status || "novo_lead",
+      cidade: lead.cidade || "",
+    });
+    setIsEditingCard(true);
+    setDetailOpen(true);
+  };
+
+  const cancelEditCard = () => {
+    if (!detailLead) return;
+    setEditFormData({
+      nome_fantasia: detailLead.nome_fantasia || "",
+      descricao_necessidade: detailLead.descricao_necessidade || "",
+      status_lead: detailLead.status_lead || detailLead.status || "novo_lead",
+      cidade: detailLead.cidade || "",
+    });
+    setIsEditingCard(false);
+  };
+
+  const saveEditedCard = async () => {
+    if (!detailLead) return;
+    if (!canEditCard && !isAdmin) {
+      toast.error("Sem permissão para editar");
+      return;
+    }
+    const nome = editFormData.nome_fantasia.trim();
+    if (!nome) {
+      toast.error("Título é obrigatório");
+      return;
+    }
+    setSavingCard(true);
+    const payload = {
+      nome_fantasia: nome,
+      descricao_necessidade: editFormData.descricao_necessidade.trim(),
+      status_lead: editFormData.status_lead as any,
+      cidade: editFormData.cidade.trim(),
+    };
+    const { error } = await supabase.from("leads").update(payload).eq("id", detailLead.id);
+    setSavingCard(false);
+    if (error) {
+      toast.error("Erro ao salvar card");
+      return;
+    }
+    const merged = { ...detailLead, ...payload };
+    setDetailLead(merged);
+    setLeads((prev) => prev.map((l) => (l.id === detailLead.id ? { ...l, ...payload } : l)));
+    setIsEditingCard(false);
+    toast.success("Card atualizado");
   };
 
   // Apply filters
@@ -901,7 +971,7 @@ const AdminLeads = () => {
             canEditCard={canEditCard}
             canDeleteCard={canDeleteCard}
             onCloneCard={(lead) => openCloneDialog(lead)}
-            onEditCard={(lead) => openLeadDetail(lead)}
+            onEditCard={(lead) => startEditCard(lead)}
             onDeleteCard={(lead) => handleDelete(lead.id, lead.nome_fantasia)}
             onMoveLead={(id, newStage) => {
               const lead = leads.find((l) => l.id === id);
@@ -1053,6 +1123,15 @@ const AdminLeads = () => {
           </DialogHeader>
           {detailLead && (
             <div className="space-y-6">
+              {isEditingCard && (
+                <div className="flex items-center justify-end gap-2">
+                  <Button size="sm" variant="outline" onClick={cancelEditCard} disabled={savingCard}>Cancelar</Button>
+                  <Button size="sm" onClick={saveEditedCard} disabled={savingCard}>
+                    {savingCard ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                    Salvar
+                  </Button>
+                </div>
+              )}
               {/* Lead Data */}
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
@@ -1065,7 +1144,11 @@ const AdminLeads = () => {
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">Cidade</p>
-                  <p>{detailLead.cidade || "—"}</p>
+                  {isEditingCard ? (
+                    <Input value={editFormData.cidade} onChange={(e) => setEditFormData((prev) => ({ ...prev, cidade: e.target.value }))} />
+                  ) : (
+                    <p>{detailLead.cidade || "—"}</p>
+                  )}
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">Qtd Lojas</p>
@@ -1109,26 +1192,51 @@ const AdminLeads = () => {
               {/* Pipeline Status */}
               <div className="border-t border-border pt-4">
                 <h3 className="text-sm font-semibold mb-3">Pipeline</h3>
-                <div className="flex flex-wrap gap-2">
-                  {PIPELINE_STAGES.map((s) => {
-                    const currentStatus = detailLead.status_lead || "novo_lead";
-                    const currentIdx = PIPELINE_STAGES.findIndex((st) => st.value === currentStatus);
-                    const thisIdx = PIPELINE_STAGES.findIndex((st) => st.value === s.value);
-                    const isActive = thisIdx <= currentIdx;
-                    return (
-                      <div
-                        key={s.value}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                          isActive
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-secondary text-muted-foreground"
-                        }`}
-                      >
-                        {s.label}
-                      </div>
-                    );
-                  })}
-                </div>
+                {isEditingCard ? (
+                  <Select value={editFormData.status_lead} onValueChange={(val) => setEditFormData((prev) => ({ ...prev, status_lead: val }))}>
+                    <SelectTrigger className="max-w-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {PIPELINE_STAGES.map((s) => (<SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {PIPELINE_STAGES.map((s) => {
+                      const currentStatus = detailLead.status_lead || "novo_lead";
+                      const currentIdx = PIPELINE_STAGES.findIndex((st) => st.value === currentStatus);
+                      const thisIdx = PIPELINE_STAGES.findIndex((st) => st.value === s.value);
+                      const isActive = thisIdx <= currentIdx;
+                      return (
+                        <div
+                          key={s.value}
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                            isActive
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-secondary text-muted-foreground"
+                          }`}
+                        >
+                          {s.label}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-border pt-4">
+                <h3 className="text-sm font-semibold mb-2">Título e descrição</h3>
+                {isEditingCard ? (
+                  <div className="space-y-2">
+                    <Input value={editFormData.nome_fantasia} onChange={(e) => setEditFormData((prev) => ({ ...prev, nome_fantasia: e.target.value }))} />
+                    <textarea
+                      value={editFormData.descricao_necessidade}
+                      onChange={(e) => setEditFormData((prev) => ({ ...prev, descricao_necessidade: e.target.value }))}
+                      className="w-full min-h-[110px] rounded-md border border-border bg-background px-3 py-2 text-sm"
+                    />
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">{detailLead.descricao_necessidade || "—"}</p>
+                )}
               </div>
 
               {/* Valor Campanhas */}
