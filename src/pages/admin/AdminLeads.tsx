@@ -898,7 +898,11 @@ const AdminLeads = () => {
             leads={filtered}
             parceirosMap={parceiros}
             canCloneCard={canCloneCard}
+            canEditCard={canEditCard}
+            canDeleteCard={canDeleteCard}
             onCloneCard={(lead) => openCloneDialog(lead)}
+            onEditCard={(lead) => openLeadDetail(lead)}
+            onDeleteCard={(lead) => handleDelete(lead.id, lead.nome_fantasia)}
             onMoveLead={(id, newStage) => {
               const lead = leads.find((l) => l.id === id);
               if (lead) handleStatusChange(id, lead.nome_fantasia, newStage);
