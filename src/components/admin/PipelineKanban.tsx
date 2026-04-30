@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { PIPELINE_STAGES } from "@/lib/pipelineConstants";
-import { Copy, GripVertical } from "lucide-react";
+import { Copy, GripVertical, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface KanbanLeadCardData {
@@ -23,7 +23,11 @@ interface PipelineKanbanProps {
   onMoveLead: (leadId: string, newStage: string) => void;
   onOpenLead: (lead: KanbanLeadCardData) => void;
   canCloneCard?: boolean;
+  canEditCard?: boolean;
+  canDeleteCard?: boolean;
   onCloneCard?: (lead: KanbanLeadCardData) => void;
+  onEditCard?: (lead: KanbanLeadCardData) => void;
+  onDeleteCard?: (lead: KanbanLeadCardData) => void;
 }
 
 const fmt = (v: number) =>
@@ -39,7 +43,18 @@ const leadContractValue = (l: KanbanLeadCardData): number => {
   return setup + mens * (lojas || 1) * (parcelas || 1) + camp;
 };
 
-export const PipelineKanban = ({ leads, parceirosMap, onMoveLead, onOpenLead, canCloneCard = false, onCloneCard }: PipelineKanbanProps) => {
+export const PipelineKanban = ({
+  leads,
+  parceirosMap,
+  onMoveLead,
+  onOpenLead,
+  canCloneCard = false,
+  canEditCard = false,
+  canDeleteCard = false,
+  onCloneCard,
+  onEditCard,
+  onDeleteCard,
+}: PipelineKanbanProps) => {
   const [dragId, setDragId] = useState<string | null>(null);
   const [overStage, setOverStage] = useState<string | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
@@ -108,23 +123,45 @@ export const PipelineKanban = ({ leads, parceirosMap, onMoveLead, onOpenLead, ca
                     onDragEnd={() => { setDragId(null); setOverStage(null); }}
                     onClick={() => {
                       setSelectedCardId(l.id);
-                      onOpenLead(l);
                     }}
+                    onDoubleClick={() => onOpenLead(l)}
                     className={`group rounded-md border border-border bg-background p-2.5 cursor-pointer hover:border-primary/60 transition-colors ${dragId === l.id ? "opacity-50" : ""} ${selectedCardId === l.id ? "ring-1 ring-primary/60" : ""}`}
                   >
-                    {selectedCardId === l.id && canCloneCard && (
-                      <div className="flex justify-end mb-1.5">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-6 px-2 text-[10px]"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onCloneCard?.(l);
-                          }}
-                        >
-                          <Copy className="mr-1 h-3 w-3" /> Clonar
-                        </Button>
+                    {selectedCardId === l.id && (canEditCard || canDeleteCard || canCloneCard) && (
+                      <div className="flex justify-end gap-1 mb-1.5 flex-wrap">
+                        {canEditCard && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-[10px]"
+                            onClick={(e) => { e.stopPropagation(); onEditCard?.(l); }}
+                          >
+                            <Pencil className="mr-1 h-3 w-3" /> Editar
+                          </Button>
+                        )}
+                        {canDeleteCard && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-[10px]"
+                            onClick={(e) => { e.stopPropagation(); onDeleteCard?.(l); }}
+                          >
+                            <Trash2 className="mr-1 h-3 w-3" /> Excluir
+                          </Button>
+                        )}
+                        {canCloneCard && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-[10px]"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onCloneCard?.(l);
+                            }}
+                          >
+                            <Copy className="mr-1 h-3 w-3" /> Clonar
+                          </Button>
+                        )}
                       </div>
                     )}
                     <div className="flex items-start gap-1.5">
