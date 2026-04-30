@@ -219,7 +219,19 @@ export default function AdminPipelineEdit() {
 
       <Card className="border-border">
         <CardHeader>
-          <CardTitle className="text-base">Selecionar Painel</CardTitle>
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="text-base">Selecionar Painel</CardTitle>
+            {isAdmin && (
+              <div className="flex items-center gap-2">
+                <Button size="sm" onClick={createPanel}>
+                  <Plus className="h-4 w-4 mr-1" /> Novo Painel
+                </Button>
+                <Button size="sm" variant="destructive" onClick={deletePanel} disabled={!selectedPanelId}>
+                  <Trash2 className="h-4 w-4 mr-1" /> Excluir Painel
+                </Button>
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
