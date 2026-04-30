@@ -117,6 +117,57 @@ export default function AdminPipelineEdit() {
     }
   };
 
+  const createPanel = async () => {
+    if (!isAdmin) return;
+    const { data, error } = await (supabase as any)
+      .from("pipeline_panels")
+      .insert({
+        name: "Novo Painel",
+        sort_order: panels.length + 1,
+      })
+      .select("id")
+      .single();
+    if (error || !data?.id) {
+      toast.error("Erro ao criar painel");
+      return;
+    }
+    toast.success("Painel criado");
+    await loadPanels();
+    setSelectedPanelId(data.id);
+  };
+
+  const deletePanel = async () => {
+    if (!isAdmin || !selectedPanelId) return;
+    if (!confirm("Excluir painel e todas as colunas relacionadas?")) return;
+
+    const { error: stageError } = await (supabase as any)
+      .from("pipeline_stages_config")
+      .delete()
+      .eq("panel_key", selectedPanelId);
+    if (stageError) {
+      toast.error("Erro ao excluir colunas do painel");
+      return;
+    }
+
+    const { error: panelError } = await (supabase as any)
+      .from("pipeline_panels")
+      .delete()
+      .eq("id", selectedPanelId);
+    if (panelError) {
+      toast.error("Erro ao excluir painel");
+      return;
+    }
+
+    toast.success("Painel excluído");
+    setStageCache((prev) => {
+      const next = { ...prev };
+      delete next[selectedPanelId];
+      return next;
+    });
+    setSelectedPanelId("");
+    loadPanels();
+  };
+
   const saveLabel = async (id: string, label: string) => {
     const { error } = await (supabase as any)
       .from("pipeline_stages_config")
@@ -168,7 +219,19 @@ export default function AdminPipelineEdit() {
 
       <Card className="border-border">
         <CardHeader>
-          <CardTitle className="text-base">Selecionar Painel</CardTitle>
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="text-base">Selecionar Painel</CardTitle>
+            {isAdmin && (
+              <div className="flex items-center gap-2">
+                <Button size="sm" onClick={createPanel}>
+                  <Plus className="h-4 w-4 mr-1" /> Novo Painel
+                </Button>
+                <Button size="sm" variant="destructive" onClick={deletePanel} disabled={!selectedPanelId}>
+                  <Trash2 className="h-4 w-4 mr-1" /> Excluir Painel
+                </Button>
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
