@@ -106,6 +106,8 @@ const AdminLeads = () => {
   // User name for comments
   const [currentUserName, setCurrentUserName] = useState("Usuário");
   const [canCloneCard, setCanCloneCard] = useState(false);
+  const [canEditCard, setCanEditCard] = useState(false);
+  const [canDeleteCard, setCanDeleteCard] = useState(false);
   const [cloneLead, setCloneLead] = useState<any>(null);
   const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
   const [availablePanels, setAvailablePanels] = useState<{ id: string; name: string }[]>([]);
