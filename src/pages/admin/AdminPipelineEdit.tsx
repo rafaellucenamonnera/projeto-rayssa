@@ -117,6 +117,57 @@ export default function AdminPipelineEdit() {
     }
   };
 
+  const createPanel = async () => {
+    if (!isAdmin) return;
+    const { data, error } = await (supabase as any)
+      .from("pipeline_panels")
+      .insert({
+        name: "Novo Painel",
+        sort_order: panels.length + 1,
+      })
+      .select("id")
+      .single();
+    if (error || !data?.id) {
+      toast.error("Erro ao criar painel");
+      return;
+    }
+    toast.success("Painel criado");
+    await loadPanels();
+    setSelectedPanelId(data.id);
+  };
+
+  const deletePanel = async () => {
+    if (!isAdmin || !selectedPanelId) return;
+    if (!confirm("Excluir painel e todas as colunas relacionadas?")) return;
+
+    const { error: stageError } = await (supabase as any)
+      .from("pipeline_stages_config")
+      .delete()
+      .eq("panel_key", selectedPanelId);
+    if (stageError) {
+      toast.error("Erro ao excluir colunas do painel");
+      return;
+    }
+
+    const { error: panelError } = await (supabase as any)
+      .from("pipeline_panels")
+      .delete()
+      .eq("id", selectedPanelId);
+    if (panelError) {
+      toast.error("Erro ao excluir painel");
+      return;
+    }
+
+    toast.success("Painel excluído");
+    setStageCache((prev) => {
+      const next = { ...prev };
+      delete next[selectedPanelId];
+      return next;
+    });
+    setSelectedPanelId("");
+    loadPanels();
+  };
+
   const saveLabel = async (id: string, label: string) => {
     const { error } = await (supabase as any)
       .from("pipeline_stages_config")
