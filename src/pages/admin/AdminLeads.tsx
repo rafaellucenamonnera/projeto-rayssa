@@ -105,6 +105,11 @@ const AdminLeads = () => {
 
   // User name for comments
   const [currentUserName, setCurrentUserName] = useState("Usuário");
+  const [canCloneCard, setCanCloneCard] = useState(false);
+  const [cloneLead, setCloneLead] = useState<any>(null);
+  const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
+  const [availablePanels, setAvailablePanels] = useState<{ id: string; name: string }[]>([]);
+  const [targetPanelId, setTargetPanelId] = useState("");
 
   useEffect(() => {
     const fetchUserName = async () => {
@@ -116,6 +121,66 @@ const AdminLeads = () => {
     };
     fetchUserName();
   }, []);
+
+  useEffect(() => {
+    const loadClonePermissionAndPanels = async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) return;
+      if (isAdmin) {
+        setCanCloneCard(true);
+      } else {
+        const { data } = await (supabase as any)
+          .from("module_permissions")
+          .select("permitido")
+          .eq("user_id", auth.user.id)
+          .eq("modulo", "pipeline")
+          .eq("acao", "clonar_card")
+          .maybeSingle();
+        setCanCloneCard(!!data?.permitido);
+      }
+      const { data: panels } = await (supabase as any)
+        .from("pipeline_panels")
+        .select("id,name")
+        .order("sort_order", { ascending: true });
+      setAvailablePanels((panels as { id: string; name: string }[]) || []);
+    };
+    loadClonePermissionAndPanels();
+  }, [isAdmin]);
+
+  const openCloneDialog = (lead: any) => {
+    setCloneLead(lead);
+    setTargetPanelId("");
+    setCloneDialogOpen(true);
+  };
+
+  const handleCloneCard = async () => {
+    if (!cloneLead || !targetPanelId) return;
+    const payload = {
+      nome_fantasia: cloneLead.nome_fantasia,
+      nome_responsavel: cloneLead.nome_responsavel,
+      telefone_responsavel: cloneLead.telefone_responsavel,
+      email_responsavel: cloneLead.email_responsavel,
+      cidade: cloneLead.cidade,
+      quantidade_lojas: cloneLead.quantidade_lojas,
+      erp_utilizado: cloneLead.erp_utilizado,
+      parceiro_id: cloneLead.parceiro_id,
+      descricao_necessidade: cloneLead.descricao_necessidade,
+      valor_setup: cloneLead.valor_setup,
+      valor_mensalidade: cloneLead.valor_mensalidade,
+      valor_campanhas: cloneLead.valor_campanhas,
+      status_lead: "novo_lead",
+      origem: `Clonado de ${cloneLead.nome_fantasia}`,
+    };
+    const { error } = await supabase.from("leads").insert(payload as any);
+    if (error) {
+      toast.error("Erro ao clonar card");
+      return;
+    }
+    toast.success("Card clonado com sucesso");
+    setCloneDialogOpen(false);
+    setCloneLead(null);
+    loadData();
+  };
 
   const loadData = async () => {
     const [leadsRes, parceirosRes, stageRes, reunioesRes] = await Promise.all([
