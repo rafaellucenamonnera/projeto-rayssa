@@ -130,15 +130,25 @@ const AdminLeads = () => {
       if (!auth.user) return;
       if (isAdmin) {
         setCanCloneCard(true);
+        setCanEditCard(true);
+        setCanDeleteCard(true);
       } else {
-        const { data } = await (supabase as any)
+        const { data: clonePermission } = await (supabase as any)
           .from("module_permissions")
           .select("permitido")
           .eq("user_id", auth.user.id)
           .eq("modulo", "pipeline")
           .eq("acao", "clonar_card")
           .maybeSingle();
-        setCanCloneCard(!!data?.permitido);
+        const { data: leadPermissions } = await (supabase as any)
+          .from("module_permissions")
+          .select("acao,permitido")
+          .eq("user_id", auth.user.id)
+          .eq("modulo", "leads")
+          .in("acao", ["editar", "excluir"]);
+        setCanCloneCard(!!clonePermission?.permitido);
+        setCanEditCard(!!(leadPermissions || []).find((p: any) => p.acao === "editar" && p.permitido));
+        setCanDeleteCard(!!(leadPermissions || []).find((p: any) => p.acao === "excluir" && p.permitido));
       }
       const { data: panels } = await (supabase as any)
         .from("pipeline_panels")
