@@ -1313,6 +1313,27 @@ const AdminLeads = () => {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={cloneDialogOpen} onOpenChange={setCloneDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Clonar card</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Select value={targetPanelId} onValueChange={setTargetPanelId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o painel de destino" />
+              </SelectTrigger>
+              <SelectContent>
+                {availablePanels.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button onClick={handleCloneCard} disabled={!targetPanelId} className="w-full">Confirmar</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Conversion Link Dialog */}
       <Dialog open={conversionLinkOpen} onOpenChange={setConversionLinkOpen}>
         <DialogContent className="max-w-md">
