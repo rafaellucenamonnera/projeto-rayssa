@@ -885,6 +885,8 @@ const AdminLeads = () => {
           <PipelineKanban
             leads={filtered}
             parceirosMap={parceiros}
+            canCloneCard={canCloneCard}
+            onCloneCard={(lead) => openCloneDialog(lead)}
             onMoveLead={(id, newStage) => {
               const lead = leads.find((l) => l.id === id);
               if (lead) handleStatusChange(id, lead.nome_fantasia, newStage);
