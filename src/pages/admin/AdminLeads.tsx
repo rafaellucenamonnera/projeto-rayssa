@@ -122,6 +122,16 @@ const AdminLeads = () => {
   const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
   const [availablePanels, setAvailablePanels] = useState<{ id: string; name: string }[]>([]);
   const [targetPanelId, setTargetPanelId] = useState("");
+  const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>(PIPELINE_STAGES.map((s, i) => ({ ...s, sort_order: i + 1 })));
+
+  const panelIdByPath: Record<string, string> = {
+    "/admin/painel-comercial": "comercial",
+    "/admin/painel-onboarding": "onboarding",
+    "/admin/painel-sucesso": "sucesso",
+    "/admin/painel-campanhas": "campanhas",
+    "/admin/leads": "comercial",
+  };
+  const currentPanelId = panelIdByPath[location.pathname] || "comercial";
 
   useEffect(() => {
     const fetchUserName = async () => {
