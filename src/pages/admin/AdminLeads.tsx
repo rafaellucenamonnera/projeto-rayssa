@@ -256,7 +256,7 @@ const AdminLeads = () => {
       if (data && data.length > 0) {
         setPipelineStages(data as PipelineStage[]);
       } else {
-        setPipelineStages(pipelineStages.map((stage, index) => ({ ...stage, sort_order: index + 1 })));
+        setPipelineStages(PIPELINE_STAGES.map((stage, index) => ({ ...stage, sort_order: index + 1 })));
       }
     };
 
