@@ -966,6 +966,7 @@ const AdminLeads = () => {
         <div className="hidden lg:block">
           <PipelineKanban
             leads={filtered}
+            stages={PIPELINE_STAGES as unknown as { value: string; label: string }[]}
             parceirosMap={parceiros}
             canCloneCard={canCloneCard}
             canEditCard={canEditCard}
