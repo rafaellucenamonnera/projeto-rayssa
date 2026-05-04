@@ -27,6 +27,8 @@ import { DaysInStage } from "@/components/admin/DaysInStage";
 import { PipelineKanban } from "@/components/admin/PipelineKanban";
 import { PIPELINE_STAGES, PIPELINE_LABELS } from "@/lib/pipelineConstants";
 
+type PipelineStage = { value: string; label: string; sort_order: number };
+
 // Etapas a partir das quais é obrigatório ter financeiro preenchido
 const FINANCEIRO_REQUIRED_FROM = [
   "proposta_enviada",
@@ -120,6 +122,16 @@ const AdminLeads = () => {
   const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
   const [availablePanels, setAvailablePanels] = useState<{ id: string; name: string }[]>([]);
   const [targetPanelId, setTargetPanelId] = useState("");
+  const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>(PIPELINE_STAGES.map((s, i) => ({ ...s, sort_order: i + 1 })));
+
+  const panelIdByPath: Record<string, string> = {
+    "/admin/painel-comercial": "comercial",
+    "/admin/painel-onboarding": "onboarding",
+    "/admin/painel-sucesso": "sucesso",
+    "/admin/painel-campanhas": "campanhas",
+    "/admin/leads": "comercial",
+  };
+  const currentPanelId = panelIdByPath[location.pathname] || "comercial";
 
   useEffect(() => {
     const fetchUserName = async () => {
@@ -227,6 +239,42 @@ const AdminLeads = () => {
     });
     setReunioesMap(rm);
   };
+
+  useEffect(() => {
+    const loadPipelineStages = async () => {
+      const { data, error } = await (supabase as any)
+        .from("pipeline_stages_config")
+        .select("value,label,sort_order")
+        .eq("panel_key", currentPanelId)
+        .order("sort_order", { ascending: true });
+
+      if (error) {
+        toast.error("Erro ao carregar colunas do painel");
+        return;
+      }
+
+      if (data && data.length > 0) {
+        setPipelineStages(data as PipelineStage[]);
+      } else {
+        setPipelineStages(PIPELINE_STAGES.map((stage, index) => ({ ...stage, sort_order: index + 1 })));
+      }
+    };
+
+    loadPipelineStages();
+
+    const channel = supabase
+      .channel(`pipeline-stages-${currentPanelId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "pipeline_stages_config", filter: `panel_key=eq.${currentPanelId}` },
+        () => loadPipelineStages()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentPanelId]);
 
   useEffect(() => {
     loadData();
@@ -681,7 +729,7 @@ const AdminLeads = () => {
 
   // Status counts
   const statusCounts: Record<string, number> = {};
-  PIPELINE_STAGES.forEach((s) => { statusCounts[s.value] = 0; });
+  pipelineStages.forEach((s) => { statusCounts[s.value] = 0; });
   leads.forEach((l) => {
     const s = l.status_lead || l.status || "novo_lead";
     if (statusCounts[s] !== undefined) statusCounts[s]++;
@@ -706,7 +754,7 @@ const AdminLeads = () => {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {PIPELINE_STAGES.map((s) => (
+            {pipelineStages.map((s) => (
               <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
             ))}
           </SelectContent>
@@ -832,7 +880,7 @@ const AdminLeads = () => {
 
       {/* Status cards */}
       <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 lg:grid-cols-7 sm:overflow-visible">
-        {PIPELINE_STAGES.map((s) => (
+        {pipelineStages.map((s) => (
           <div
             key={s.value}
             className={`stat-card !p-3 sm:!p-4 cursor-pointer transition-all min-w-[120px] sm:min-w-0 shrink-0 sm:shrink ${filterStatus === s.value ? "ring-2 ring-primary" : ""}`}
@@ -915,7 +963,7 @@ const AdminLeads = () => {
                 >
                   <SelectTrigger className="h-8 w-full text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {PIPELINE_STAGES.map((s) => (
+                    {pipelineStages.map((s) => (
                       <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
                     ))}
                   </SelectContent>
@@ -966,7 +1014,7 @@ const AdminLeads = () => {
         <div className="hidden lg:block">
           <PipelineKanban
             leads={filtered}
-            stages={PIPELINE_STAGES as unknown as { value: string; label: string }[]}
+            stages={pipelineStages}
             parceirosMap={parceiros}
             canCloneCard={canCloneCard}
             canEditCard={canEditCard}
@@ -1197,15 +1245,15 @@ const AdminLeads = () => {
                   <Select value={editFormData.status_lead} onValueChange={(val) => setEditFormData((prev) => ({ ...prev, status_lead: val }))}>
                     <SelectTrigger className="max-w-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {PIPELINE_STAGES.map((s) => (<SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>))}
+                      {pipelineStages.map((s) => (<SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>))}
                     </SelectContent>
                   </Select>
                 ) : (
                   <div className="flex flex-wrap gap-2">
-                    {PIPELINE_STAGES.map((s) => {
+                    {pipelineStages.map((s) => {
                       const currentStatus = detailLead.status_lead || "novo_lead";
-                      const currentIdx = PIPELINE_STAGES.findIndex((st) => st.value === currentStatus);
-                      const thisIdx = PIPELINE_STAGES.findIndex((st) => st.value === s.value);
+                      const currentIdx = pipelineStages.findIndex((st) => st.value === currentStatus);
+                      const thisIdx = pipelineStages.findIndex((st) => st.value === s.value);
                       const isActive = thisIdx <= currentIdx;
                       return (
                         <div
