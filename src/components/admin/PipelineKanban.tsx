@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { PIPELINE_STAGES } from "@/lib/pipelineConstants";
 import { Copy, GripVertical, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -17,11 +16,17 @@ interface KanbanLeadCardData {
   parceiro_id?: string;
 }
 
+interface PipelineStage {
+  value: string;
+  label: string;
+}
+
 interface PipelineKanbanProps {
   leads: KanbanLeadCardData[];
   parceirosMap: Record<string, string>;
   onMoveLead: (leadId: string, newStage: string) => void;
   onOpenLead: (lead: KanbanLeadCardData) => void;
+  stages: PipelineStage[];
   canCloneCard?: boolean;
   canEditCard?: boolean;
   canDeleteCard?: boolean;
