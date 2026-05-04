@@ -59,6 +59,7 @@ export const PipelineKanban = ({
   onCloneCard,
   onEditCard,
   onDeleteCard,
+  stages,
 }: PipelineKanbanProps) => {
   const [dragId, setDragId] = useState<string | null>(null);
   const [overStage, setOverStage] = useState<string | null>(null);
@@ -66,25 +67,25 @@ export const PipelineKanban = ({
 
   const grouped = useMemo(() => {
     const g: Record<string, KanbanLeadCardData[]> = {};
-    PIPELINE_STAGES.forEach((s) => { g[s.value] = []; });
+    stages.forEach((s) => { g[s.value] = []; });
     leads.forEach((l) => {
       const s = l.status_lead || l.status || "novo_lead";
       if (g[s]) g[s].push(l);
     });
     return g;
-  }, [leads]);
+  }, [leads, stages]);
 
   const totals = useMemo(() => {
     const t: Record<string, number> = {};
-    PIPELINE_STAGES.forEach((s) => {
+    stages.forEach((s) => {
       t[s.value] = (grouped[s.value] || []).reduce((sum, l) => sum + leadContractValue(l), 0);
     });
     return t;
-  }, [grouped]);
+  }, [grouped, stages]);
 
   return (
     <div className="flex gap-3 overflow-x-auto pb-3">
-      {PIPELINE_STAGES.map((s) => {
+      {stages.map((s) => {
         const items = grouped[s.value] || [];
         const isOver = overStage === s.value;
         return (
