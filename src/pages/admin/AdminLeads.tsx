@@ -241,6 +241,42 @@ const AdminLeads = () => {
   };
 
   useEffect(() => {
+    const loadPipelineStages = async () => {
+      const { data, error } = await (supabase as any)
+        .from("pipeline_stages_config")
+        .select("value,label,sort_order")
+        .eq("panel_key", currentPanelId)
+        .order("sort_order", { ascending: true });
+
+      if (error) {
+        toast.error("Erro ao carregar colunas do painel");
+        return;
+      }
+
+      if (data && data.length > 0) {
+        setPipelineStages(data as PipelineStage[]);
+      } else {
+        setPipelineStages(PIPELINE_STAGES.map((stage, index) => ({ ...stage, sort_order: index + 1 })));
+      }
+    };
+
+    loadPipelineStages();
+
+    const channel = supabase
+      .channel(`pipeline-stages-${currentPanelId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "pipeline_stages_config", filter: `panel_key=eq.${currentPanelId}` },
+        () => loadPipelineStages()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentPanelId]);
+
+  useEffect(() => {
     loadData();
   }, []);
 
