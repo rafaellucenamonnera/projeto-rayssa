@@ -27,6 +27,8 @@ import { DaysInStage } from "@/components/admin/DaysInStage";
 import { PipelineKanban } from "@/components/admin/PipelineKanban";
 import { PIPELINE_STAGES, PIPELINE_LABELS } from "@/lib/pipelineConstants";
 
+type PipelineStage = { value: string; label: string; sort_order: number };
+
 // Etapas a partir das quais é obrigatório ter financeiro preenchido
 const FINANCEIRO_REQUIRED_FROM = [
   "proposta_enviada",
