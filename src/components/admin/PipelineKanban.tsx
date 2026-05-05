@@ -130,7 +130,10 @@ export const PipelineKanban = ({
   const totals = useMemo(() => {
     const t: Record<string, number> = {};
     stages.forEach((s) => {
-      t[s.value] = (grouped[s.value] || []).reduce((sum, l) => sum + leadContractValue(l), 0);
+      t[s.value] = (grouped[s.value] || []).reduce(
+        (sum, l) => sum + Number(l.revenue_total ?? leadContractValue(l)),
+        0,
+      );
     });
     return t;
   }, [grouped, stages]);
