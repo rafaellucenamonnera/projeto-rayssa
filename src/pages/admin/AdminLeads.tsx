@@ -100,7 +100,8 @@ const AdminLeads = () => {
     descricao_necessidade: string;
     status_lead: string;
     cidade: string;
-  }>({ nome_fantasia: "", descricao_necessidade: "", status_lead: "novo_lead", cidade: "" });
+    nome_responsavel: string;
+  }>({ nome_fantasia: "", descricao_necessidade: "", status_lead: "novo_lead", cidade: "", nome_responsavel: "" });
 
   // Reunião dialog
   const [reuniaoDialogOpen, setReuniaoDialogOpen] = useState(false);
@@ -121,6 +122,10 @@ const AdminLeads = () => {
   const [cloneLead, setCloneLead] = useState<any>(null);
   const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
   const [cloning, setCloning] = useState(false);
+  const [availablePanels, setAvailablePanels] = useState<{ id: string; name: string }[]>([]);
+  const [targetPanelId, setTargetPanelId] = useState("");
+  const [availableTargetStages, setAvailableTargetStages] = useState<{ value: string; label: string }[]>([]);
+  const [targetStageId, setTargetStageId] = useState("");
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>(PIPELINE_STAGES.map((s, i) => ({ ...s, sort_order: i + 1 })));
 
   const panelIdByPath: Record<string, string> = {
@@ -169,23 +174,59 @@ const AdminLeads = () => {
         setCanEditCard(!!(leadPermissions || []).find((p: any) => p.acao === "editar" && p.permitido));
         setCanDeleteCard(!!(leadPermissions || []).find((p: any) => p.acao === "excluir" && p.permitido));
       }
+      const { data: panels } = await (supabase as any)
+        .from("pipeline_panels")
+        .select("id,name")
+        .order("sort_order", { ascending: true });
+      setAvailablePanels((panels as { id: string; name: string }[]) || []);
     };
     loadClonePermissionAndPanels();
   }, [isAdmin]);
 
   const openCloneDialog = (lead: any) => {
     setCloneLead(lead);
+    setTargetPanelId("");
+    setTargetStageId("");
+    setAvailableTargetStages([]);
     setCloneDialogOpen(true);
   };
 
+  const loadTargetStages = async (panelId: string) => {
+    if (!panelId) {
+      setAvailableTargetStages([]);
+      setTargetStageId("");
+      return;
+    }
+    const { data } = await (supabase as any)
+      .from("pipeline_stages_config")
+      .select("value,label,sort_order")
+      .eq("panel_key", panelId)
+      .order("sort_order", { ascending: true });
+    const stages = (data as { value: string; label: string }[]) || [];
+    setAvailableTargetStages(stages);
+    setTargetStageId(stages[0]?.value || "");
+  };
+
   const handleCloneCard = async () => {
-    if (!cloneLead) return;
+    if (!cloneLead || !targetPanelId || !targetStageId) return;
     setCloning(true);
-    const stage = cloneLead.status_lead || cloneLead.status || "novo_lead";
-    const { error } = await (supabase as any).rpc("duplicate_card", {
-      card_id: cloneLead.id,
-      target_stage_id: stage,
-    });
+    const payload = {
+      nome_fantasia: cloneLead.nome_fantasia,
+      nome_responsavel: cloneLead.nome_responsavel,
+      telefone_responsavel: cloneLead.telefone_responsavel,
+      email_responsavel: cloneLead.email_responsavel,
+      cidade: cloneLead.cidade,
+      quantidade_lojas: cloneLead.quantidade_lojas,
+      erp_utilizado: cloneLead.erp_utilizado,
+      parceiro_id: cloneLead.parceiro_id,
+      descricao_necessidade: cloneLead.descricao_necessidade,
+      valor_setup: cloneLead.valor_setup,
+      valor_mensalidade: cloneLead.valor_mensalidade,
+      valor_campanhas: cloneLead.valor_campanhas,
+      status_lead: targetStageId,
+      origem: `Clonado de ${cloneLead.nome_fantasia}`,
+    };
+    const { error } = await supabase.from("leads").insert(payload as any);
     setCloning(false);
     if (error) {
       toast.error("Erro ao clonar card: " + error.message);
@@ -193,6 +234,7 @@ const AdminLeads = () => {
     }
     toast.success("Card clonado com sucesso");
     setCloneDialogOpen(false);
+    setCloneLead(null);
     setCloneLead(null);
     loadData();
   };
@@ -633,6 +675,7 @@ const AdminLeads = () => {
       descricao_necessidade: lead.descricao_necessidade || "",
       status_lead: lead.status_lead || lead.status || "novo_lead",
       cidade: lead.cidade || "",
+      nome_responsavel: lead.nome_responsavel || "",
     });
     setDetailOpen(true);
   };
@@ -645,6 +688,7 @@ const AdminLeads = () => {
       descricao_necessidade: lead.descricao_necessidade || "",
       status_lead: lead.status_lead || lead.status || "novo_lead",
       cidade: lead.cidade || "",
+      nome_responsavel: lead.nome_responsavel || "",
     });
     setIsEditingCard(true);
     setDetailOpen(true);
@@ -657,6 +701,7 @@ const AdminLeads = () => {
       descricao_necessidade: detailLead.descricao_necessidade || "",
       status_lead: detailLead.status_lead || detailLead.status || "novo_lead",
       cidade: detailLead.cidade || "",
+      nome_responsavel: detailLead.nome_responsavel || "",
     });
     setIsEditingCard(false);
   };
@@ -677,6 +722,7 @@ const AdminLeads = () => {
       nome_fantasia: nome,
       descricao_necessidade: editFormData.descricao_necessidade.trim(),
       cidade: editFormData.cidade.trim(),
+      nome_responsavel: editFormData.nome_responsavel?.trim() || null,
     };
     const { error } = await supabase.from("leads").update(payload).eq("id", detailLead.id);
     setSavingCard(false);
@@ -1004,6 +1050,7 @@ const AdminLeads = () => {
             onCloneCard={(lead) => openCloneDialog(lead)}
             onEditCard={(lead) => startEditCard(lead)}
             onDeleteCard={(lead) => handleDelete(lead.id, lead.nome_fantasia)}
+            onAssignResponsible={(lead) => startEditCard(lead)}
             onMoveLead={(id, newStage) => {
               const lead = leads.find((l) => l.id === id);
               if (lead) handleStatusChange(id, lead.nome_fantasia, newStage);
@@ -1201,7 +1248,15 @@ const AdminLeads = () => {
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="text-muted-foreground text-xs mb-1">Nome</p>
-                    <p>{detailLead.nome_responsavel}</p>
+                    {isEditingCard ? (
+                      <Input
+                        value={editFormData.nome_responsavel}
+                        onChange={(e) => setEditFormData((prev) => ({ ...prev, nome_responsavel: e.target.value }))}
+                        placeholder="Responsável pelo card"
+                      />
+                    ) : (
+                      <p>{detailLead.nome_responsavel || "—"}</p>
+                    )}
                   </div>
                   <div>
                     <p className="text-muted-foreground text-xs mb-1">Telefone</p>
@@ -1473,11 +1528,31 @@ const AdminLeads = () => {
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Uma cópia de <span className="font-medium text-foreground">{cloneLead?.nome_fantasia}</span> será criada na mesma etapa.
+              Uma cópia de <span className="font-medium text-foreground">{cloneLead?.nome_fantasia}</span> será criada no painel/etapa selecionados.
             </p>
+            <Select value={targetPanelId} onValueChange={(value) => { setTargetPanelId(value); loadTargetStages(value); }}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o painel de destino" />
+              </SelectTrigger>
+              <SelectContent>
+                {availablePanels.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={targetStageId} onValueChange={setTargetStageId} disabled={!targetPanelId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione a etapa de destino" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableTargetStages.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setCloneDialogOpen(false)} disabled={cloning}>Cancelar</Button>
-              <Button onClick={handleCloneCard} disabled={cloning}>
+              <Button onClick={handleCloneCard} disabled={cloning || !targetPanelId || !targetStageId}>
                 {cloning ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
                 Confirmar
               </Button>
