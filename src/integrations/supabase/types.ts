@@ -384,6 +384,7 @@ export type Database = {
           telefone_responsavel: string
           valor_campanhas: number | null
           valor_mensalidade: number | null
+          valor_pagamento: number | null
           valor_setup: number | null
         }
         Insert: {
@@ -434,6 +435,7 @@ export type Database = {
           telefone_responsavel: string
           valor_campanhas?: number | null
           valor_mensalidade?: number | null
+          valor_pagamento?: number | null
           valor_setup?: number | null
         }
         Update: {
@@ -484,6 +486,7 @@ export type Database = {
           telefone_responsavel?: string
           valor_campanhas?: number | null
           valor_mensalidade?: number | null
+          valor_pagamento?: number | null
           valor_setup?: number | null
         }
         Relationships: [
