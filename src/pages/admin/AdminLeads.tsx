@@ -174,23 +174,59 @@ const AdminLeads = () => {
         setCanEditCard(!!(leadPermissions || []).find((p: any) => p.acao === "editar" && p.permitido));
         setCanDeleteCard(!!(leadPermissions || []).find((p: any) => p.acao === "excluir" && p.permitido));
       }
+      const { data: panels } = await (supabase as any)
+        .from("pipeline_panels")
+        .select("id,name")
+        .order("sort_order", { ascending: true });
+      setAvailablePanels((panels as { id: string; name: string }[]) || []);
     };
     loadClonePermissionAndPanels();
   }, [isAdmin]);
 
   const openCloneDialog = (lead: any) => {
     setCloneLead(lead);
+    setTargetPanelId("");
+    setTargetStageId("");
+    setAvailableTargetStages([]);
     setCloneDialogOpen(true);
   };
 
+  const loadTargetStages = async (panelId: string) => {
+    if (!panelId) {
+      setAvailableTargetStages([]);
+      setTargetStageId("");
+      return;
+    }
+    const { data } = await (supabase as any)
+      .from("pipeline_stages_config")
+      .select("value,label,sort_order")
+      .eq("panel_key", panelId)
+      .order("sort_order", { ascending: true });
+    const stages = (data as { value: string; label: string }[]) || [];
+    setAvailableTargetStages(stages);
+    setTargetStageId(stages[0]?.value || "");
+  };
+
   const handleCloneCard = async () => {
-    if (!cloneLead) return;
+    if (!cloneLead || !targetPanelId || !targetStageId) return;
     setCloning(true);
-    const stage = cloneLead.status_lead || cloneLead.status || "novo_lead";
-    const { error } = await (supabase as any).rpc("duplicate_card", {
-      card_id: cloneLead.id,
-      target_stage_id: stage,
-    });
+    const payload = {
+      nome_fantasia: cloneLead.nome_fantasia,
+      nome_responsavel: cloneLead.nome_responsavel,
+      telefone_responsavel: cloneLead.telefone_responsavel,
+      email_responsavel: cloneLead.email_responsavel,
+      cidade: cloneLead.cidade,
+      quantidade_lojas: cloneLead.quantidade_lojas,
+      erp_utilizado: cloneLead.erp_utilizado,
+      parceiro_id: cloneLead.parceiro_id,
+      descricao_necessidade: cloneLead.descricao_necessidade,
+      valor_setup: cloneLead.valor_setup,
+      valor_mensalidade: cloneLead.valor_mensalidade,
+      valor_campanhas: cloneLead.valor_campanhas,
+      status_lead: targetStageId,
+      origem: `Clonado de ${cloneLead.nome_fantasia}`,
+    };
+    const { error } = await supabase.from("leads").insert(payload as any);
     setCloning(false);
     if (error) {
       toast.error("Erro ao clonar card: " + error.message);
@@ -198,6 +234,7 @@ const AdminLeads = () => {
     }
     toast.success("Card clonado com sucesso");
     setCloneDialogOpen(false);
+    setCloneLead(null);
     setCloneLead(null);
     loadData();
   };
