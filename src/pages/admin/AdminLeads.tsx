@@ -1477,17 +1477,16 @@ const AdminLeads = () => {
             <DialogTitle>Clonar card</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <Select value={targetPanelId} onValueChange={setTargetPanelId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o painel de destino" />
-              </SelectTrigger>
-              <SelectContent>
-                {availablePanels.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button onClick={handleCloneCard} disabled={!targetPanelId} className="w-full">Confirmar</Button>
+            <p className="text-sm text-muted-foreground">
+              Uma cópia de <span className="font-medium text-foreground">{cloneLead?.nome_fantasia}</span> será criada na mesma etapa.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setCloneDialogOpen(false)} disabled={cloning}>Cancelar</Button>
+              <Button onClick={handleCloneCard} disabled={cloning}>
+                {cloning ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                Confirmar
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
