@@ -120,8 +120,7 @@ const AdminLeads = () => {
   const [canDeleteCard, setCanDeleteCard] = useState(false);
   const [cloneLead, setCloneLead] = useState<any>(null);
   const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
-  const [availablePanels, setAvailablePanels] = useState<{ id: string; name: string }[]>([]);
-  const [targetPanelId, setTargetPanelId] = useState("");
+  const [cloning, setCloning] = useState(false);
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>(PIPELINE_STAGES.map((s, i) => ({ ...s, sort_order: i + 1 })));
 
   const panelIdByPath: Record<string, string> = {
@@ -170,42 +169,26 @@ const AdminLeads = () => {
         setCanEditCard(!!(leadPermissions || []).find((p: any) => p.acao === "editar" && p.permitido));
         setCanDeleteCard(!!(leadPermissions || []).find((p: any) => p.acao === "excluir" && p.permitido));
       }
-      const { data: panels } = await (supabase as any)
-        .from("pipeline_panels")
-        .select("id,name")
-        .order("sort_order", { ascending: true });
-      setAvailablePanels((panels as { id: string; name: string }[]) || []);
     };
     loadClonePermissionAndPanels();
   }, [isAdmin]);
 
   const openCloneDialog = (lead: any) => {
     setCloneLead(lead);
-    setTargetPanelId("");
     setCloneDialogOpen(true);
   };
 
   const handleCloneCard = async () => {
-    if (!cloneLead || !targetPanelId) return;
-    const payload = {
-      nome_fantasia: cloneLead.nome_fantasia,
-      nome_responsavel: cloneLead.nome_responsavel,
-      telefone_responsavel: cloneLead.telefone_responsavel,
-      email_responsavel: cloneLead.email_responsavel,
-      cidade: cloneLead.cidade,
-      quantidade_lojas: cloneLead.quantidade_lojas,
-      erp_utilizado: cloneLead.erp_utilizado,
-      parceiro_id: cloneLead.parceiro_id,
-      descricao_necessidade: cloneLead.descricao_necessidade,
-      valor_setup: cloneLead.valor_setup,
-      valor_mensalidade: cloneLead.valor_mensalidade,
-      valor_campanhas: cloneLead.valor_campanhas,
-      status_lead: "novo_lead",
-      origem: `Clonado de ${cloneLead.nome_fantasia}`,
-    };
-    const { error } = await supabase.from("leads").insert(payload as any);
+    if (!cloneLead) return;
+    setCloning(true);
+    const stage = cloneLead.status_lead || cloneLead.status || "novo_lead";
+    const { error } = await (supabase as any).rpc("duplicate_card", {
+      card_id: cloneLead.id,
+      target_stage_id: stage,
+    });
+    setCloning(false);
     if (error) {
-      toast.error("Erro ao clonar card");
+      toast.error("Erro ao clonar card: " + error.message);
       return;
     }
     toast.success("Card clonado com sucesso");
@@ -693,7 +676,6 @@ const AdminLeads = () => {
     const payload = {
       nome_fantasia: nome,
       descricao_necessidade: editFormData.descricao_necessidade.trim(),
-      status_lead: editFormData.status_lead as any,
       cidade: editFormData.cidade.trim(),
     };
     const { error } = await supabase.from("leads").update(payload).eq("id", detailLead.id);
@@ -1241,34 +1223,30 @@ const AdminLeads = () => {
               {/* Pipeline Status */}
               <div className="border-t border-border pt-4">
                 <h3 className="text-sm font-semibold mb-3">Pipeline</h3>
-                {isEditingCard ? (
-                  <Select value={editFormData.status_lead} onValueChange={(val) => setEditFormData((prev) => ({ ...prev, status_lead: val }))}>
-                    <SelectTrigger className="max-w-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {pipelineStages.map((s) => (<SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {pipelineStages.map((s) => {
-                      const currentStatus = detailLead.status_lead || "novo_lead";
-                      const currentIdx = pipelineStages.findIndex((st) => st.value === currentStatus);
-                      const thisIdx = pipelineStages.findIndex((st) => st.value === s.value);
-                      const isActive = thisIdx <= currentIdx;
-                      return (
-                        <div
-                          key={s.value}
-                          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                            isActive
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-secondary text-muted-foreground"
-                          }`}
-                        >
-                          {s.label}
-                        </div>
-                      );
-                    })}
-                  </div>
+                <div className="flex flex-wrap gap-2">
+                  {pipelineStages.map((s) => {
+                    const currentStatus = detailLead.status_lead || "novo_lead";
+                    const currentIdx = pipelineStages.findIndex((st) => st.value === currentStatus);
+                    const thisIdx = pipelineStages.findIndex((st) => st.value === s.value);
+                    const isActive = thisIdx <= currentIdx;
+                    return (
+                      <div
+                        key={s.value}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                          isActive
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-secondary text-muted-foreground"
+                        }`}
+                      >
+                        {s.label}
+                      </div>
+                    );
+                  })}
+                </div>
+                {isEditingCard && (
+                  <p className="text-[11px] text-muted-foreground mt-2">
+                    Para mover o card de etapa, use o Kanban ou o seletor de status na lista — assim as regras (financeiro, reunião, proposta, perda) são aplicadas.
+                  </p>
                 )}
               </div>
 
@@ -1494,17 +1472,16 @@ const AdminLeads = () => {
             <DialogTitle>Clonar card</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <Select value={targetPanelId} onValueChange={setTargetPanelId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o painel de destino" />
-              </SelectTrigger>
-              <SelectContent>
-                {availablePanels.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button onClick={handleCloneCard} disabled={!targetPanelId} className="w-full">Confirmar</Button>
+            <p className="text-sm text-muted-foreground">
+              Uma cópia de <span className="font-medium text-foreground">{cloneLead?.nome_fantasia}</span> será criada na mesma etapa.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setCloneDialogOpen(false)} disabled={cloning}>Cancelar</Button>
+              <Button onClick={handleCloneCard} disabled={cloning}>
+                {cloning ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                Confirmar
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
