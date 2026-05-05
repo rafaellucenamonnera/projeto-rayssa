@@ -46,15 +46,8 @@ interface PipelineKanbanProps {
 const fmt = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(v);
 
-/** Valor estimado total do contrato do lead (setup + mensalidade*lojas*parcelas + campanhas). */
-const leadContractValue = (l: KanbanLeadCardData): number => {
-  const setup = Number(l.valor_setup || 0);
-  const mens = Number(l.valor_mensalidade || 0);
-  const lojas = Number(l.quantidade_lojas || 0);
-  const parcelas = Number(l.qtd_parcelas || 0);
-  const camp = Number(l.valor_campanhas || 0);
-  return setup + mens * (lojas || 1) * (parcelas || 1) + camp;
-};
+/** Receita total do lead, persistida no backend (mensalidade + campanhas). */
+const leadContractValue = (l: KanbanLeadCardData): number => Number(l.revenue_total || 0);
 
 const EPSILON = 0.0001;
 
