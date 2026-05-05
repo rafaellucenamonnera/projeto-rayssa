@@ -120,8 +120,7 @@ const AdminLeads = () => {
   const [canDeleteCard, setCanDeleteCard] = useState(false);
   const [cloneLead, setCloneLead] = useState<any>(null);
   const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
-  const [availablePanels, setAvailablePanels] = useState<{ id: string; name: string }[]>([]);
-  const [targetPanelId, setTargetPanelId] = useState("");
+  const [cloning, setCloning] = useState(false);
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>(PIPELINE_STAGES.map((s, i) => ({ ...s, sort_order: i + 1 })));
 
   const panelIdByPath: Record<string, string> = {
