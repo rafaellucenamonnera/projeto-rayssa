@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Copy, GripVertical, Pencil, Trash2 } from "lucide-react";
+import { Copy, GripVertical, Pencil, Trash2, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface KanbanLeadCardData {
@@ -33,6 +33,7 @@ interface PipelineKanbanProps {
   onCloneCard?: (lead: KanbanLeadCardData) => void;
   onEditCard?: (lead: KanbanLeadCardData) => void;
   onDeleteCard?: (lead: KanbanLeadCardData) => void;
+  onAssignResponsible?: (lead: KanbanLeadCardData) => void;
 }
 
 const fmt = (v: number) =>
@@ -59,6 +60,7 @@ export const PipelineKanban = ({
   onCloneCard,
   onEditCard,
   onDeleteCard,
+  onAssignResponsible,
   stages,
 }: PipelineKanbanProps) => {
   const [dragId, setDragId] = useState<string | null>(null);
