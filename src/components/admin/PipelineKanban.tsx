@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Copy, GripVertical, Pencil, Trash2, UserRound } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUp, Copy, GripVertical, Pencil, Trash2, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface KanbanLeadCardData {
@@ -14,6 +14,12 @@ interface KanbanLeadCardData {
   qtd_parcelas?: number | null;
   quantidade_lojas?: number | null;
   parceiro_id?: string;
+  data_cadastro?: string;
+  updated_at?: string;
+  valor_mensalidade_anterior?: number | null;
+  valor_campanhas_anterior?: number | null;
+  valor_pagamento?: number | null;
+  valor_pagamento_anterior?: number | null;
 }
 
 interface PipelineStage {
@@ -49,6 +55,46 @@ const leadContractValue = (l: KanbanLeadCardData): number => {
   return setup + mens * (lojas || 1) * (parcelas || 1) + camp;
 };
 
+const EPSILON = 0.0001;
+
+const pct = (value: number) => `${value > 0 ? "+" : ""}${Math.round(value * 100)}%`;
+
+const variation = (current?: number | null, previous?: number | null) => {
+  const cur = Number(current || 0);
+  const prev = Number(previous || 0);
+  if (prev <= 0) {
+    if (cur <= 0) return 0;
+    return 1;
+  }
+  return (cur - prev) / prev;
+};
+
+const trendMeta = (v: number) => {
+  if (v > EPSILON) return { icon: ArrowUp, color: "text-emerald-500", label: "Alta" };
+  if (v < -EPSILON) return { icon: ArrowDown, color: "text-red-500", label: "Queda" };
+  return { icon: ArrowRight, color: "text-muted-foreground", label: "Estável" };
+};
+
+const daysSince = (isoDate?: string) => {
+  if (!isoDate) return 0;
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) return 0;
+  const diff = Date.now() - date.getTime();
+  return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+};
+
+const leadPriorityScore = (l: KanbanLeadCardData): number => {
+  const mensalidadeVar = variation(l.valor_mensalidade, l.valor_mensalidade_anterior);
+  const campanhasVar = variation(l.valor_campanhas, l.valor_campanhas_anterior);
+  const pagamentoVar = variation(l.valor_pagamento, l.valor_pagamento_anterior);
+
+  const receitaDrop = Math.max(0, -(mensalidadeVar + campanhasVar + pagamentoVar));
+  const diasSemInteracao = daysSince(l.updated_at || l.data_cadastro);
+  const valorFinanceiro = leadContractValue(l);
+
+  return receitaDrop * 100 + diasSemInteracao * 1.5 + Math.log10(valorFinanceiro + 1) * 12;
+};
+
 export const PipelineKanban = ({
   leads,
   parceirosMap,
@@ -73,6 +119,9 @@ export const PipelineKanban = ({
     leads.forEach((l) => {
       const s = l.status_lead || l.status || "novo_lead";
       if (g[s]) g[s].push(l);
+    });
+    Object.keys(g).forEach((stageKey) => {
+      g[stageKey] = g[stageKey].sort((a, b) => leadPriorityScore(b) - leadPriorityScore(a));
     });
     return g;
   }, [leads, stages]);
@@ -199,6 +248,25 @@ export const PipelineKanban = ({
                           {valor > 0 && (
                             <span className="text-[10px] font-semibold whitespace-nowrap">{fmt(valor)}</span>
                           )}
+                        </div>
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {[
+                            { key: "Mensalidade", current: l.valor_mensalidade, previous: l.valor_mensalidade_anterior },
+                            { key: "Campanha", current: l.valor_campanhas, previous: l.valor_campanhas_anterior },
+                            { key: "Pagamento", current: l.valor_pagamento, previous: l.valor_pagamento_anterior },
+                          ].map((metric) => {
+                            const v = variation(metric.current, metric.previous);
+                            const trend = trendMeta(v);
+                            const Icon = trend.icon;
+                            return (
+                              <div key={metric.key} className="flex items-center gap-0.5 text-[9px] px-1 py-0.5 rounded bg-secondary/40">
+                                <span className="text-muted-foreground">{metric.key}</span>
+                                <span className={`flex items-center gap-0.5 font-medium ${trend.color}`}>
+                                  <Icon className="h-2.5 w-2.5" /> {pct(v)}
+                                </span>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
