@@ -55,6 +55,46 @@ const leadContractValue = (l: KanbanLeadCardData): number => {
   return setup + mens * (lojas || 1) * (parcelas || 1) + camp;
 };
 
+const EPSILON = 0.0001;
+
+const pct = (value: number) => `${value > 0 ? "+" : ""}${Math.round(value * 100)}%`;
+
+const variation = (current?: number | null, previous?: number | null) => {
+  const cur = Number(current || 0);
+  const prev = Number(previous || 0);
+  if (prev <= 0) {
+    if (cur <= 0) return 0;
+    return 1;
+  }
+  return (cur - prev) / prev;
+};
+
+const trendMeta = (v: number) => {
+  if (v > EPSILON) return { icon: ArrowUp, color: "text-emerald-500", label: "Alta" };
+  if (v < -EPSILON) return { icon: ArrowDown, color: "text-red-500", label: "Queda" };
+  return { icon: ArrowRight, color: "text-muted-foreground", label: "Estável" };
+};
+
+const daysSince = (isoDate?: string) => {
+  if (!isoDate) return 0;
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) return 0;
+  const diff = Date.now() - date.getTime();
+  return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+};
+
+const leadPriorityScore = (l: KanbanLeadCardData): number => {
+  const mensalidadeVar = variation(l.valor_mensalidade, l.valor_mensalidade_anterior);
+  const campanhasVar = variation(l.valor_campanhas, l.valor_campanhas_anterior);
+  const pagamentoVar = variation(l.valor_pagamento, l.valor_pagamento_anterior);
+
+  const receitaDrop = Math.max(0, -(mensalidadeVar + campanhasVar + pagamentoVar));
+  const diasSemInteracao = daysSince(l.updated_at || l.data_cadastro);
+  const valorFinanceiro = leadContractValue(l);
+
+  return receitaDrop * 100 + diasSemInteracao * 1.5 + Math.log10(valorFinanceiro + 1) * 12;
+};
+
 export const PipelineKanban = ({
   leads,
   parceirosMap,
