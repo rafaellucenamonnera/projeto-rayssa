@@ -1224,34 +1224,30 @@ const AdminLeads = () => {
               {/* Pipeline Status */}
               <div className="border-t border-border pt-4">
                 <h3 className="text-sm font-semibold mb-3">Pipeline</h3>
-                {isEditingCard ? (
-                  <Select value={editFormData.status_lead} onValueChange={(val) => setEditFormData((prev) => ({ ...prev, status_lead: val }))}>
-                    <SelectTrigger className="max-w-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {pipelineStages.map((s) => (<SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {pipelineStages.map((s) => {
-                      const currentStatus = detailLead.status_lead || "novo_lead";
-                      const currentIdx = pipelineStages.findIndex((st) => st.value === currentStatus);
-                      const thisIdx = pipelineStages.findIndex((st) => st.value === s.value);
-                      const isActive = thisIdx <= currentIdx;
-                      return (
-                        <div
-                          key={s.value}
-                          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                            isActive
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-secondary text-muted-foreground"
-                          }`}
-                        >
-                          {s.label}
-                        </div>
-                      );
-                    })}
-                  </div>
+                <div className="flex flex-wrap gap-2">
+                  {pipelineStages.map((s) => {
+                    const currentStatus = detailLead.status_lead || "novo_lead";
+                    const currentIdx = pipelineStages.findIndex((st) => st.value === currentStatus);
+                    const thisIdx = pipelineStages.findIndex((st) => st.value === s.value);
+                    const isActive = thisIdx <= currentIdx;
+                    return (
+                      <div
+                        key={s.value}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                          isActive
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-secondary text-muted-foreground"
+                        }`}
+                      >
+                        {s.label}
+                      </div>
+                    );
+                  })}
+                </div>
+                {isEditingCard && (
+                  <p className="text-[11px] text-muted-foreground mt-2">
+                    Para mover o card de etapa, use o Kanban ou o seletor de status na lista — assim as regras (financeiro, reunião, proposta, perda) são aplicadas.
+                  </p>
                 )}
               </div>
 
