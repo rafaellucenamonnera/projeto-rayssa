@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Copy, GripVertical, Pencil, Trash2, UserRound } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUp, Copy, GripVertical, Pencil, Trash2, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface KanbanLeadCardData {
@@ -14,6 +14,12 @@ interface KanbanLeadCardData {
   qtd_parcelas?: number | null;
   quantidade_lojas?: number | null;
   parceiro_id?: string;
+  data_cadastro?: string;
+  updated_at?: string;
+  valor_mensalidade_anterior?: number | null;
+  valor_campanhas_anterior?: number | null;
+  valor_pagamento?: number | null;
+  valor_pagamento_anterior?: number | null;
 }
 
 interface PipelineStage {
