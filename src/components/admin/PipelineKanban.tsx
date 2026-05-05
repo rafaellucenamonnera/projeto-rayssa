@@ -64,8 +64,8 @@ const variation = (current?: number | null, previous?: number | null) => {
 };
 
 const trendMeta = (v: number) => {
-  if (v > EPSILON) return { icon: ArrowUp, color: "text-emerald-500", label: "Alta" };
-  if (v < -EPSILON) return { icon: ArrowDown, color: "text-red-500", label: "Queda" };
+  if (v > EPSILON) return { icon: ArrowUp, color: "text-emerald-600", label: "Alta" };
+  if (v < -EPSILON) return { icon: ArrowDown, color: "text-red-600", label: "Queda" };
   return { icon: ArrowRight, color: "text-muted-foreground", label: "Estável" };
 };
 
