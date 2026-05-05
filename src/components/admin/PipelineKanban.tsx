@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Copy, GripVertical, Pencil, Trash2 } from "lucide-react";
+import { Copy, GripVertical, Pencil, Trash2, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface KanbanLeadCardData {
@@ -33,6 +33,7 @@ interface PipelineKanbanProps {
   onCloneCard?: (lead: KanbanLeadCardData) => void;
   onEditCard?: (lead: KanbanLeadCardData) => void;
   onDeleteCard?: (lead: KanbanLeadCardData) => void;
+  onAssignResponsible?: (lead: KanbanLeadCardData) => void;
 }
 
 const fmt = (v: number) =>
@@ -59,6 +60,7 @@ export const PipelineKanban = ({
   onCloneCard,
   onEditCard,
   onDeleteCard,
+  onAssignResponsible,
   stages,
 }: PipelineKanbanProps) => {
   const [dragId, setDragId] = useState<string | null>(null);
@@ -170,6 +172,17 @@ export const PipelineKanban = ({
                             }}
                           >
                             <Copy className="mr-1 h-3 w-3" /> Clonar
+                          </Button>
+                        )}
+                        {canEditCard && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-[10px]"
+                            onClick={(e) => { e.stopPropagation(); onAssignResponsible?.(l); }}
+                            title="Definir responsável"
+                          >
+                            <UserRound className="mr-1 h-3 w-3" /> Responsável
                           </Button>
                         )}
                       </div>
