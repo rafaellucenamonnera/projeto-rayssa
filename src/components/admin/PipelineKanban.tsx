@@ -120,6 +120,9 @@ export const PipelineKanban = ({
       const s = l.status_lead || l.status || "novo_lead";
       if (g[s]) g[s].push(l);
     });
+    Object.keys(g).forEach((stageKey) => {
+      g[stageKey] = g[stageKey].sort((a, b) => leadPriorityScore(b) - leadPriorityScore(a));
+    });
     return g;
   }, [leads, stages]);
 
