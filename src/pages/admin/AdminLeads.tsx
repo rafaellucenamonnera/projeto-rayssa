@@ -676,7 +676,6 @@ const AdminLeads = () => {
     const payload = {
       nome_fantasia: nome,
       descricao_necessidade: editFormData.descricao_necessidade.trim(),
-      status_lead: editFormData.status_lead as any,
       cidade: editFormData.cidade.trim(),
     };
     const { error } = await supabase.from("leads").update(payload).eq("id", detailLead.id);
