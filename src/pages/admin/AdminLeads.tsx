@@ -100,7 +100,8 @@ const AdminLeads = () => {
     descricao_necessidade: string;
     status_lead: string;
     cidade: string;
-  }>({ nome_fantasia: "", descricao_necessidade: "", status_lead: "novo_lead", cidade: "" });
+    nome_responsavel: string;
+  }>({ nome_fantasia: "", descricao_necessidade: "", status_lead: "novo_lead", cidade: "", nome_responsavel: "" });
 
   // Reunião dialog
   const [reuniaoDialogOpen, setReuniaoDialogOpen] = useState(false);
@@ -121,6 +122,10 @@ const AdminLeads = () => {
   const [cloneLead, setCloneLead] = useState<any>(null);
   const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
   const [cloning, setCloning] = useState(false);
+  const [availablePanels, setAvailablePanels] = useState<{ id: string; name: string }[]>([]);
+  const [targetPanelId, setTargetPanelId] = useState("");
+  const [availableTargetStages, setAvailableTargetStages] = useState<{ value: string; label: string }[]>([]);
+  const [targetStageId, setTargetStageId] = useState("");
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>(PIPELINE_STAGES.map((s, i) => ({ ...s, sort_order: i + 1 })));
 
   const panelIdByPath: Record<string, string> = {
