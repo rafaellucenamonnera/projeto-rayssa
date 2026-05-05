@@ -249,6 +249,25 @@ export const PipelineKanban = ({
                             <span className="text-[10px] font-semibold whitespace-nowrap">{fmt(valor)}</span>
                           )}
                         </div>
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {[
+                            { key: "Mensalidade", current: l.valor_mensalidade, previous: l.valor_mensalidade_anterior },
+                            { key: "Campanha", current: l.valor_campanhas, previous: l.valor_campanhas_anterior },
+                            { key: "Pagamento", current: l.valor_pagamento, previous: l.valor_pagamento_anterior },
+                          ].map((metric) => {
+                            const v = variation(metric.current, metric.previous);
+                            const trend = trendMeta(v);
+                            const Icon = trend.icon;
+                            return (
+                              <div key={metric.key} className="flex items-center gap-0.5 text-[9px] px-1 py-0.5 rounded bg-secondary/40">
+                                <span className="text-muted-foreground">{metric.key}</span>
+                                <span className={`flex items-center gap-0.5 font-medium ${trend.color}`}>
+                                  <Icon className="h-2.5 w-2.5" /> {pct(v)}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
                   </div>
