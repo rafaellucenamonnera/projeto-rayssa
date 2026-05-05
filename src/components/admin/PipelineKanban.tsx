@@ -128,10 +128,14 @@ export const PipelineKanban = ({
                     }}
                     onDragEnd={() => { setDragId(null); setOverStage(null); }}
                     onClick={() => {
+                      if (selectedCardId === l.id) {
+                        onOpenLead(l);
+                        return;
+                      }
                       setSelectedCardId(l.id);
                     }}
-                    onDoubleClick={() => onOpenLead(l)}
                     className={`group rounded-md border border-border bg-background p-2.5 cursor-pointer hover:border-primary/60 transition-colors ${dragId === l.id ? "opacity-50" : ""} ${selectedCardId === l.id ? "ring-1 ring-primary/60" : ""}`}
+                    title={selectedCardId === l.id ? "Clique para abrir" : "Clique para selecionar"}
                   >
                     {selectedCardId === l.id && (canEditCard || canDeleteCard || canCloneCard) && (
                       <div className="flex justify-end gap-1 mb-1.5 flex-wrap">
