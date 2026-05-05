@@ -638,6 +638,7 @@ const AdminLeads = () => {
       descricao_necessidade: lead.descricao_necessidade || "",
       status_lead: lead.status_lead || lead.status || "novo_lead",
       cidade: lead.cidade || "",
+      nome_responsavel: lead.nome_responsavel || "",
     });
     setDetailOpen(true);
   };
@@ -650,6 +651,7 @@ const AdminLeads = () => {
       descricao_necessidade: lead.descricao_necessidade || "",
       status_lead: lead.status_lead || lead.status || "novo_lead",
       cidade: lead.cidade || "",
+      nome_responsavel: lead.nome_responsavel || "",
     });
     setIsEditingCard(true);
     setDetailOpen(true);
@@ -662,6 +664,7 @@ const AdminLeads = () => {
       descricao_necessidade: detailLead.descricao_necessidade || "",
       status_lead: detailLead.status_lead || detailLead.status || "novo_lead",
       cidade: detailLead.cidade || "",
+      nome_responsavel: detailLead.nome_responsavel || "",
     });
     setIsEditingCard(false);
   };
@@ -682,6 +685,7 @@ const AdminLeads = () => {
       nome_fantasia: nome,
       descricao_necessidade: editFormData.descricao_necessidade.trim(),
       cidade: editFormData.cidade.trim(),
+      nome_responsavel: editFormData.nome_responsavel?.trim() || null,
     };
     const { error } = await supabase.from("leads").update(payload).eq("id", detailLead.id);
     setSavingCard(false);
