@@ -174,6 +174,17 @@ export const PipelineKanban = ({
                             <Copy className="mr-1 h-3 w-3" /> Clonar
                           </Button>
                         )}
+                        {canEditCard && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-[10px]"
+                            onClick={(e) => { e.stopPropagation(); onAssignResponsible?.(l); }}
+                            title="Definir responsável"
+                          >
+                            <UserRound className="mr-1 h-3 w-3" /> Responsável
+                          </Button>
+                        )}
                       </div>
                     )}
                     <div className="flex items-start gap-1.5">
