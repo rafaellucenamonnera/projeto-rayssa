@@ -859,6 +859,39 @@ export type Database = {
           },
         ]
       }
+      sync_job_logs: {
+        Row: {
+          created_at: string
+          created_count: number
+          error_count: number
+          error_details: string | null
+          id: string
+          job_name: string
+          processed_count: number
+          updated_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_count?: number
+          error_count?: number
+          error_details?: string | null
+          id?: string
+          job_name: string
+          processed_count?: number
+          updated_count?: number
+        }
+        Update: {
+          created_at?: string
+          created_count?: number
+          error_count?: number
+          error_details?: string | null
+          id?: string
+          job_name?: string
+          processed_count?: number
+          updated_count?: number
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
