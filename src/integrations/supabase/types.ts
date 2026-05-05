@@ -379,7 +379,10 @@ export type Database = {
           responsavel_tecnico_nome: string | null
           responsavel_tecnico_telefone: string | null
           responsible_user_id: string | null
+          revenue_current: number | null
+          revenue_previous: number | null
           revenue_total: number
+          revenue_variation: number | null
           status: string
           status_lead: Database["public"]["Enums"]["lead_status"]
           telefone_responsavel: string
@@ -431,7 +434,10 @@ export type Database = {
           responsavel_tecnico_nome?: string | null
           responsavel_tecnico_telefone?: string | null
           responsible_user_id?: string | null
+          revenue_current?: number | null
+          revenue_previous?: number | null
           revenue_total?: number
+          revenue_variation?: number | null
           status?: string
           status_lead?: Database["public"]["Enums"]["lead_status"]
           telefone_responsavel: string
@@ -483,7 +489,10 @@ export type Database = {
           responsavel_tecnico_nome?: string | null
           responsavel_tecnico_telefone?: string | null
           responsible_user_id?: string | null
+          revenue_current?: number | null
+          revenue_previous?: number | null
           revenue_total?: number
+          revenue_variation?: number | null
           status?: string
           status_lead?: Database["public"]["Enums"]["lead_status"]
           telefone_responsavel?: string
