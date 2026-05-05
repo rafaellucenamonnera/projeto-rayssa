@@ -191,6 +191,49 @@ const AdminDashboard = () => {
     <div className="space-y-6">
       <h1 className="text-2xl font-display font-bold">Dashboard Comercial</h1>
 
+      {/* Filtros */}
+      <Card>
+        <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Painel</p>
+            <Select value={selectedPanel} onValueChange={setSelectedPanel}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {panels.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Consultor</p>
+            <Select value={selectedConsultor} onValueChange={setSelectedConsultor}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {consultores.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Responsável</p>
+            <Select value={selectedResponsavel} onValueChange={setSelectedResponsavel}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {responsaveis.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Data início</p>
+            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Data fim</p>
+            <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Totais gerais */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
         <div className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all" onClick={() => navigate("/admin/parceiros")}>
