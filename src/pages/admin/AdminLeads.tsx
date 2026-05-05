@@ -169,42 +169,26 @@ const AdminLeads = () => {
         setCanEditCard(!!(leadPermissions || []).find((p: any) => p.acao === "editar" && p.permitido));
         setCanDeleteCard(!!(leadPermissions || []).find((p: any) => p.acao === "excluir" && p.permitido));
       }
-      const { data: panels } = await (supabase as any)
-        .from("pipeline_panels")
-        .select("id,name")
-        .order("sort_order", { ascending: true });
-      setAvailablePanels((panels as { id: string; name: string }[]) || []);
     };
     loadClonePermissionAndPanels();
   }, [isAdmin]);
 
   const openCloneDialog = (lead: any) => {
     setCloneLead(lead);
-    setTargetPanelId("");
     setCloneDialogOpen(true);
   };
 
   const handleCloneCard = async () => {
-    if (!cloneLead || !targetPanelId) return;
-    const payload = {
-      nome_fantasia: cloneLead.nome_fantasia,
-      nome_responsavel: cloneLead.nome_responsavel,
-      telefone_responsavel: cloneLead.telefone_responsavel,
-      email_responsavel: cloneLead.email_responsavel,
-      cidade: cloneLead.cidade,
-      quantidade_lojas: cloneLead.quantidade_lojas,
-      erp_utilizado: cloneLead.erp_utilizado,
-      parceiro_id: cloneLead.parceiro_id,
-      descricao_necessidade: cloneLead.descricao_necessidade,
-      valor_setup: cloneLead.valor_setup,
-      valor_mensalidade: cloneLead.valor_mensalidade,
-      valor_campanhas: cloneLead.valor_campanhas,
-      status_lead: "novo_lead",
-      origem: `Clonado de ${cloneLead.nome_fantasia}`,
-    };
-    const { error } = await supabase.from("leads").insert(payload as any);
+    if (!cloneLead) return;
+    setCloning(true);
+    const stage = cloneLead.status_lead || cloneLead.status || "novo_lead";
+    const { error } = await (supabase as any).rpc("duplicate_card", {
+      card_id: cloneLead.id,
+      target_stage_id: stage,
+    });
+    setCloning(false);
     if (error) {
-      toast.error("Erro ao clonar card");
+      toast.error("Erro ao clonar card: " + error.message);
       return;
     }
     toast.success("Card clonado com sucesso");
