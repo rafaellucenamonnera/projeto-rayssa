@@ -1050,6 +1050,7 @@ const AdminLeads = () => {
             onCloneCard={(lead) => openCloneDialog(lead)}
             onEditCard={(lead) => startEditCard(lead)}
             onDeleteCard={(lead) => handleDelete(lead.id, lead.nome_fantasia)}
+            onAssignResponsible={(lead) => startEditCard(lead)}
             onMoveLead={(id, newStage) => {
               const lead = leads.find((l) => l.id === id);
               if (lead) handleStatusChange(id, lead.nome_fantasia, newStage);
@@ -1247,7 +1248,15 @@ const AdminLeads = () => {
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="text-muted-foreground text-xs mb-1">Nome</p>
-                    <p>{detailLead.nome_responsavel}</p>
+                    {isEditingCard ? (
+                      <Input
+                        value={editFormData.nome_responsavel}
+                        onChange={(e) => setEditFormData((prev) => ({ ...prev, nome_responsavel: e.target.value }))}
+                        placeholder="Responsável pelo card"
+                      />
+                    ) : (
+                      <p>{detailLead.nome_responsavel || "—"}</p>
+                    )}
                   </div>
                   <div>
                     <p className="text-muted-foreground text-xs mb-1">Telefone</p>
@@ -1519,11 +1528,31 @@ const AdminLeads = () => {
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Uma cópia de <span className="font-medium text-foreground">{cloneLead?.nome_fantasia}</span> será criada na mesma etapa.
+              Uma cópia de <span className="font-medium text-foreground">{cloneLead?.nome_fantasia}</span> será criada no painel/etapa selecionados.
             </p>
+            <Select value={targetPanelId} onValueChange={(value) => { setTargetPanelId(value); loadTargetStages(value); }}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o painel de destino" />
+              </SelectTrigger>
+              <SelectContent>
+                {availablePanels.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={targetStageId} onValueChange={setTargetStageId} disabled={!targetPanelId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione a etapa de destino" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableTargetStages.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setCloneDialogOpen(false)} disabled={cloning}>Cancelar</Button>
-              <Button onClick={handleCloneCard} disabled={cloning}>
+              <Button onClick={handleCloneCard} disabled={cloning || !targetPanelId || !targetStageId}>
                 {cloning ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
                 Confirmar
               </Button>
