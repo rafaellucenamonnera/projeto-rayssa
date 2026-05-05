@@ -20,6 +20,7 @@ interface KanbanLeadCardData {
   valor_campanhas_anterior?: number | null;
   valor_pagamento?: number | null;
   valor_pagamento_anterior?: number | null;
+  revenue_total?: number | null;
 }
 
 interface PipelineStage {
