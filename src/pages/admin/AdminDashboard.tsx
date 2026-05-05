@@ -41,6 +41,11 @@ interface StalledLead {
   parceiro_nome: string;
 }
 
+interface Panel {
+  id: string;
+  name: string;
+}
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [totalParceiros, setTotalParceiros] = useState(0);
@@ -50,19 +55,61 @@ const AdminDashboard = () => {
   const [stageMetrics, setStageMetrics] = useState<StageMetric[]>([]);
   const [stalledLeads, setStalledLeads] = useState<StalledLead[]>([]);
   const [bottleneck, setBottleneck] = useState<StageMetric | null>(null);
+  const [panels, setPanels] = useState<Panel[]>([]);
+  const [selectedPanel, setSelectedPanel] = useState<string>("comercial");
+  const [selectedConsultor, setSelectedConsultor] = useState<string>("all");
+  const [selectedResponsavel, setSelectedResponsavel] = useState<string>("all");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+  const [consultores, setConsultores] = useState<Array<{ id: string; nome: string }>>([]);
+  const [responsaveis, setResponsaveis] = useState<string[]>([]);
 
   useEffect(() => {
     const load = async () => {
-      const [parceiros, leads, parceirosData, metricsRes, stalledRes] = await Promise.all([
-        supabase.from("parceiros_comerciais").select("id", { count: "exact", head: true }),
-        supabase.from("leads").select("status_lead, parceiro_id"),
+      const [parceirosData, panelsRes] = await Promise.all([
         supabase.from("parceiros_comerciais").select("id, nome"),
+        (supabase as any).from("pipeline_panels").select("id, name").order("sort_order", { ascending: true }),
+      ]);
+      setConsultores((parceirosData.data || []) as any);
+      setPanels((panelsRes.data || []) as Panel[]);
+    };
+    load();
+  }, []);
+
+  const dateFilter = useMemo(() => {
+    if (!startDate && !endDate) return {} as { from?: string; to?: string };
+    if (startDate && endDate) return { from: `${startDate}T00:00:00`, to: `${endDate}T23:59:59` };
+    if (startDate) return { from: `${startDate}T00:00:00` };
+    return { to: `${endDate}T23:59:59` };
+  }, [startDate, endDate]);
+
+  useEffect(() => {
+    const load = async () => {
+      const { data: panelStages } = await (supabase as any)
+        .from("pipeline_stages_config")
+        .select("value")
+        .eq("panel_key", selectedPanel);
+      const stageValues = (panelStages || []).map((s: any) => s.value);
+
+      let leadsQuery: any = supabase.from("leads").select("id, status_lead, parceiro_id, nome_responsavel, data_cadastro");
+      if (stageValues.length > 0) leadsQuery = leadsQuery.in("status_lead", stageValues);
+      if (selectedConsultor !== "all") leadsQuery = leadsQuery.eq("parceiro_id", selectedConsultor);
+      if (selectedResponsavel !== "all") leadsQuery = leadsQuery.eq("nome_responsavel", selectedResponsavel);
+      if (dateFilter.from) leadsQuery = leadsQuery.gte("data_cadastro", dateFilter.from);
+      if (dateFilter.to) leadsQuery = leadsQuery.lte("data_cadastro", dateFilter.to);
+
+      let stalledQuery: any = supabase
+        .from("lead_stage_history")
+        .select("lead_id, etapa, data_entrada")
+        .is("data_saida", null)
+        .order("data_entrada", { ascending: true });
+      if (stageValues.length > 0) stalledQuery = stalledQuery.in("etapa", stageValues);
+
+      const [parceiros, leads, metricsRes, stalledRes] = await Promise.all([
+        supabase.from("parceiros_comerciais").select("id", { count: "exact", head: true }),
+        leadsQuery,
         supabase.rpc("get_pipeline_stage_metrics"),
-        supabase
-          .from("lead_stage_history")
-          .select("lead_id, etapa, data_entrada")
-          .is("data_saida", null)
-          .order("data_entrada", { ascending: true }),
+        stalledQuery,
       ]);
       setTotalParceiros(parceiros.count || 0);
 
@@ -85,24 +132,24 @@ const AdminDashboard = () => {
       });
       setStatusCounts(counts);
 
-      const nomeMap = new Map((parceirosData.data || []).map((p: any) => [p.id, p.nome]));
+      const nomeMap = new Map(consultores.map((p) => [p.id, p.nome]));
+      setResponsaveis(Array.from(new Set(leadsData.map((l: any) => l.nome_responsavel).filter(Boolean))).sort() as string[]);
       const rankingList: RankingItem[] = Array.from(parceiroMap.entries())
         .map(([id, data]) => ({ parceiro_id: id, nome: nomeMap.get(id) || "—", ...data }))
         .sort((a, b) => b.total - a.total)
         .slice(0, 10);
       setRanking(rankingList);
 
-      // Stage metrics
       const metrics: StageMetric[] = (metricsRes.data as any) || [];
       setStageMetrics(metrics);
       if (metrics.length > 0) {
         const bn = metrics.reduce((max, m) => m.tempo_medio > max.tempo_medio ? m : max, metrics[0]);
         setBottleneck(bn);
+      } else {
+        setBottleneck(null);
       }
 
-      // Stalled leads - calculate days and build list
       const stalledData = (stalledRes.data || []) as any[];
-      // Get lead names
       const leadIds = stalledData.map((s: any) => s.lead_id);
       if (leadIds.length > 0) {
         const { data: leadDetails } = await supabase
@@ -124,10 +171,12 @@ const AdminDashboard = () => {
           .sort((a: StalledLead, b: StalledLead) => b.dias - a.dias)
           .slice(0, 10);
         setStalledLeads(stalled);
+      } else {
+        setStalledLeads([]);
       }
     };
     load();
-  }, []);
+  }, [selectedPanel, selectedConsultor, selectedResponsavel, dateFilter, consultores]);
 
   const medals = ["🥇", "🥈", "🥉"];
 
