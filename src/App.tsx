@@ -40,7 +40,7 @@ const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
 const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminFinanceiro = lazy(() => import("./pages/admin/AdminFinanceiro"));
-const AdminParceiros = lazy(() => import("./pages/admin/AdminParceiros"));
+const AdminParceiros = lazyWithRetry(() => import("./pages/admin/AdminParceiros"));
 const AdminLeads = lazyWithRetry(() => import("./pages/admin/AdminLeads"));
 const AdminUsuarios = lazy(() => import("./pages/admin/AdminUsuarios"));
 const AdminKitVendas = lazy(() => import("./pages/admin/AdminKitVendas"));
