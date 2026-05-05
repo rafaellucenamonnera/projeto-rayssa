@@ -138,8 +138,9 @@ const CadastroParceiro = () => {
 
       const parceiro = parceiroData as any;
 
-      // Link is constructed dynamically in PainelParceiro from slug/codigo_parceiro
+      toast.success("Cadastro realizado com sucesso! Seu perfil foi enviado para aprovação.");
 
+      // Link is constructed dynamically in PainelParceiro from slug/codigo_parceiro
       navigate("/confirmacao", { state: { parceiro } });
     } catch (error: any) {
       toast.error("Erro ao cadastrar. Tente novamente.");
