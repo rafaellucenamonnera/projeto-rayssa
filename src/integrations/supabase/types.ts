@@ -378,6 +378,7 @@ export type Database = {
           responsavel_tecnico_email: string | null
           responsavel_tecnico_nome: string | null
           responsavel_tecnico_telefone: string | null
+          responsible_user_id: string | null
           revenue_total: number
           status: string
           status_lead: Database["public"]["Enums"]["lead_status"]
@@ -429,6 +430,7 @@ export type Database = {
           responsavel_tecnico_email?: string | null
           responsavel_tecnico_nome?: string | null
           responsavel_tecnico_telefone?: string | null
+          responsible_user_id?: string | null
           revenue_total?: number
           status?: string
           status_lead?: Database["public"]["Enums"]["lead_status"]
@@ -480,6 +482,7 @@ export type Database = {
           responsavel_tecnico_email?: string | null
           responsavel_tecnico_nome?: string | null
           responsavel_tecnico_telefone?: string | null
+          responsible_user_id?: string | null
           revenue_total?: number
           status?: string
           status_lead?: Database["public"]["Enums"]["lead_status"]
