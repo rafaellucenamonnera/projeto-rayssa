@@ -119,9 +119,11 @@ export default function AdminPipelineEdit() {
 
   const createPanel = async () => {
     if (!isAdmin) return;
+    const newId = `painel_${Date.now().toString(36)}`;
     const { data, error } = await (supabase as any)
       .from("pipeline_panels")
       .insert({
+        id: newId,
         name: "Novo Painel",
         sort_order: panels.length + 1,
       })
