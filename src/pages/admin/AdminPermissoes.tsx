@@ -39,7 +39,27 @@ const AdminPermissoes = () => {
     setLoading(true);
     const { data, error } = await supabase.functions.invoke("admin-create-user", { method: "GET" });
     if (error) {
-      toast.error(`Falha ao conectar com backend: ${error.message || "Edge Function não respondeu"}`);
+      console.error("[AdminPermissoes] Falha ao listar usuários via Edge Function", error);
+
+      // Fallback resiliente: lê profiles direto quando a Edge Function estiver indisponível.
+      const { data: profiles, error: profilesError } = await (supabase as any)
+        .from("profiles")
+        .select("user_id, nome, ativo")
+        .eq("ativo", true)
+        .order("nome", { ascending: true });
+
+      if (profilesError) {
+        toast.error(`Falha ao conectar com backend: ${error.message || "Edge Function não respondeu"}`);
+        setLoading(false);
+        return;
+      }
+
+      const fallbackList = (profiles || [])
+        .filter((u: any) => u.user_id)
+        .map((u: any) => ({ user_id: u.user_id, nome: u.nome, email: "", ativo: u.ativo }));
+      setUsers(fallbackList);
+      if (fallbackList.length > 0) setSelectedUserId(fallbackList[0].user_id);
+      toast.warning("Conexão com backend instável. Carregamos os usuários em modo alternativo.");
       setLoading(false);
       return;
     }
