@@ -31,18 +31,30 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    if (!supabaseUrl || !serviceRoleKey) {
+      return new Response(JSON.stringify({
+        error: 'Configuração ausente: SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY são obrigatórias.',
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      supabaseUrl,
+      serviceRoleKey
     )
 
     const verifyAdmin = async () => {
       const authHeader = req.headers.get('Authorization')
       if (!authHeader) throw new Error('Não autorizado')
 
-      const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY')!
+      const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY')
+      if (!anonKey) throw new Error('Configuração ausente: SUPABASE_ANON_KEY ou SUPABASE_PUBLISHABLE_KEY')
       const supabaseUser = createClient(
-        Deno.env.get('SUPABASE_URL')!,
+        supabaseUrl,
         anonKey,
         { global: { headers: { Authorization: authHeader } } }
       )
