@@ -2,6 +2,7 @@ import { LayoutDashboard, Users, FileText, UserCog, DollarSign, Briefcase, Setti
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
+import { usePanelPermissions } from "@/hooks/usePanelPermissions";
 import logoMonnera from "@/assets/logo-monnera.jpg";
 import {
   Sidebar,
@@ -17,9 +18,10 @@ import {
 export function AdminSidebar() {
   const { state } = useSidebar();
   const { isAdmin } = useAuth();
+  const { canAccessPanel } = usePanelPermissions();
   const collapsed = state === "collapsed";
 
-  const items = [
+  const allItems = [
     { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
     { title: "Financeiro", url: "/admin/financeiro", icon: DollarSign },
     { title: "Consultores", url: "/admin/parceiros", icon: Users },
@@ -30,6 +32,14 @@ export function AdminSidebar() {
     { title: "Contatos", url: "/admin/contatos", icon: Contact },
     { title: "Atualizar Kit e Redes Sociais", url: "/admin/kit-vendas", icon: Briefcase },
   ];
+  const items = allItems.filter((item) => {
+    if (isAdmin) return true;
+    if (item.url === "/admin/painel-comercial") return canAccessPanel("comercial");
+    if (item.url === "/admin/painel-onboarding") return canAccessPanel("onboarding");
+    if (item.url === "/admin/painel-sucesso") return canAccessPanel("sucesso");
+    if (item.url === "/admin/painel-campanhas") return canAccessPanel("campanhas");
+    return true;
+  });
 
   const configItems = isAdmin
     ? [
