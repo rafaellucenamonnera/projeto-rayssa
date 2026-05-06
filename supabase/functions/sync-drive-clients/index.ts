@@ -41,13 +41,22 @@ const parseCsv = (raw: string) => {
     return headers.reduce<Record<string, string>>((acc, h, idx) => { acc[h] = cols[idx] || ""; return acc; }, {});
   });
 };
-Deno.serve(async () => {
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
   const sheetCsvUrl = Deno.env.get("GOOGLE_SHEETS_CSV_URL");
-  if (!sheetCsvUrl) return new Response(JSON.stringify({ ok: false, error: "Missing GOOGLE_SHEETS_CSV_URL" }), { status: 500 });
+  if (!sheetCsvUrl) return new Response(JSON.stringify({ ok: false, error: "Missing GOOGLE_SHEETS_CSV_URL" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   const counters = { processed: 0, created: 0, updated: 0, errors: 0 };
   const csvResponse = await fetch(sheetCsvUrl, { headers: { "Cache-Control": "no-cache" } });
-  if (!csvResponse.ok) return new Response(JSON.stringify({ ok: false, error: `Erro ao ler planilha: ${csvResponse.status}` }), { status: 502 });
+  if (!csvResponse.ok) return new Response(JSON.stringify({ ok: false, error: `Erro ao ler planilha: ${csvResponse.status}` }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   const rows = parseCsv(await csvResponse.text());
   const parsedRows: DriveClientRow[] = rows.map((r) => ({
     cnpj: cleanCnpj(r.cnpj || r.documento || ""), nome_fantasia: r.nome_fantasia || r.empresa || "Cliente sem nome", nome_responsavel: r.nome_responsavel || r.responsavel || "Responsável",
@@ -57,10 +66,10 @@ Deno.serve(async () => {
     valor_pagamento: toNumber(r.receita_pagamento || r.valor_pagamento || ""),
   })).filter((r) => r.cnpj.length === 14);
   const { data: defaultPartner } = await supabase.from("parceiros_comerciais").select("id").eq("ativo", true).limit(1).maybeSingle();
-  if (!defaultPartner?.id) return new Response(JSON.stringify({ ok: false, error: "Nenhum parceiro ativo disponível" }), { status: 500 });
+  if (!defaultPartner?.id) return new Response(JSON.stringify({ ok: false, error: "Nenhum parceiro ativo disponível" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   const cnpjs = [...new Set(parsedRows.map((r) => r.cnpj))];
   const { data: existingLeads, error: existingError } = await supabase.from("leads").select("id,cnpj,nome_fantasia,nome_responsavel,email_responsavel,telefone_responsavel,cidade,erp_utilizado,quantidade_lojas,quantidade_funcionarios,valor_mensalidade,valor_campanhas,valor_pagamento,revenue_total").in("cnpj", cnpjs).eq("status", "sucesso");
-  if (existingError) return new Response(JSON.stringify({ ok: false, error: existingError.message }), { status: 500 });
+  if (existingError) return new Response(JSON.stringify({ ok: false, error: existingError.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   const existingByCnpj = new Map((existingLeads || []).map((lead) => [cleanCnpj(lead.cnpj || ""), lead]));
   for (const row of parsedRows) {
     counters.processed++;
@@ -80,5 +89,5 @@ Deno.serve(async () => {
     } catch { counters.errors++; }
   }
   await supabase.from("sync_job_logs").insert({ job_name: "sync_drive_clients", processed_count: counters.processed, created_count: counters.created, updated_count: counters.updated, error_count: counters.errors } as never);
-  return new Response(JSON.stringify({ ok: true, ...counters }), { headers: { "Content-Type": "application/json" } });
+  return new Response(JSON.stringify({ ok: true, ...counters }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 });
