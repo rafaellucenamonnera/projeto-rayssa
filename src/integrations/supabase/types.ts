@@ -910,6 +910,33 @@ export type Database = {
         }
         Relationships: []
       }
+      user_panel_permissions: {
+        Row: {
+          can_access: boolean
+          id: string
+          panel_id: string
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          can_access?: boolean
+          id?: string
+          panel_id: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          can_access?: boolean
+          id?: string
+          panel_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
