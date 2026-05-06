@@ -1,133 +1,204 @@
-# Prompt para Lovable — Evolução CRM Comercial Monnera
+# Prompt para Codex — Painel de Sucesso (Monnera)
 
-Implemente a evolução abaixo **sem refatorar o que já existe**; faça apenas inserções e ajustes mínimos necessários para entregar valor com performance e foco no usuário final (não técnico, sem acesso ao banco).
+ID: `success-panel-architecture-audit-rebuild`
 
-## Contexto do produto
-Estamos evoluindo o CRM comercial do Monnera para ganhar previsibilidade de receita, disciplina comercial e integração operacional.
+## IMPORTANTE
+- Auditar integralmente o repositório **antes** de modificar qualquer código.
+- Não implementar novas redundâncias.
+- Não aplicar regras globais de outros painéis ao Painel de Sucesso.
+- Reaproveitar o que estiver correto.
+- Remover apenas o que conflita com o escopo.
+- Toda regra de negócio deve estar no backend.
+- Frontend deve apenas consumir e exibir.
+- Foco em performance e clareza para usuário não técnico (sem acesso ao banco).
 
-## Diretrizes obrigatórias
-- Não refatorar estrutura existente.
-- Priorizar UX clara, objetiva e com linguagem simples.
-- Garantir performance (consultas enxutas, paginação/filtros, evitar renderizações desnecessárias).
-- Não depender de inserções manuais no banco.
-- Entregar fluxos guiados na interface para usuários não técnicos.
-- Manter rastreabilidade completa (logs/auditoria).
+## OBJETIVO
+Reconstruir o Painel de Sucesso como central operacional de saúde de clientes, baseado no Google Drive e em dados internos de interação.
 
-## Escopo funcional
+---
 
-### 1) Pipeline de Leads
-- Visões: **Kanban (principal)** e Lista.
-- Etapas padrão:
-  1. Lead
-  2. Contato Realizado
-  3. Reunião Agendada
-  4. Reunião Realizada
-  5. Proposta Enviada
-  6. Lead Convertido
-  7. Contrato Enviado
-- Permitir: criar/editar/reordenar etapas e drag-and-drop entre colunas.
-- Exibir total financeiro consolidado por coluna no Kanban.
+## FASE 1 — AUDITORIA E DIAGNÓSTICO
+Mapear e classificar em **Reaproveitar / Corrigir / Remover**:
+1. Estrutura atual do Painel de Sucesso
+2. Componentes existentes
+3. Integrações com Drive
+4. Cálculos no frontend
+5. Regras herdadas de outros painéis
+6. Permissões
+7. Estrutura de cards
+8. Clonagem
+9. Filtros
 
-### 2) Regra crítica financeira (obrigatória no estágio Lead)
-Campos obrigatórios:
-- Valor Setup
-- Valor Mensalidade
-- Quantidade de lojas
-- Receita de Campanhas
+---
 
-Cálculos automáticos:
-- Mensalidade total = quantidade de lojas × valor mensalidade
-- Valor total = setup + mensalidade total + campanhas
+## FASE 2 — ISOLAMENTO
+Garantir:
+- `panel_type = sucesso`
 
-Bloqueio de avanço:
-- Ao mover lead de etapa, abrir modal obrigatório de financeiro quando faltar dado.
-- Impedir avanço sem preenchimento válido.
+Isolar:
+- lógica
+- indicadores
+- automações
+- permissões
 
-Auditoria financeira:
-- Registrar quem preencheu e quando.
-- Registrar quem editou e quando.
+---
 
-### 3) Módulo de E-mail (Gmail)
-- Menu lateral: **E-mail**.
-- Integração via OAuth Google por usuário.
-- Funcionalidades: Caixa de entrada, Enviados, Rascunhos, Lixeira e envio de e-mails.
-- Retaguarda: conectar, reconectar, desconectar e gerenciar conta conectada.
-- Preparar base para automações futuras.
-
-### 4) Módulo de Atividades (Google Agenda)
-- Menu lateral: **Atividades**.
-- CRUD de atividades com vínculo opcional/obrigatório a lead (conforme regra vigente do sistema).
-- Integração Google Agenda por usuário:
-  - Conectar conta
-  - Vincular agenda
-  - Ao criar atividade, enviar evento e salvar `google_event_id`
-- Listagens: do dia, futuras e atrasadas.
-- Alertas visuais para atividades atrasadas.
-
-### 5) Módulo de Contatos
-- Entidades: Pessoas e Empresas.
-- Campos obrigatórios: Nome, Telefone, Email, Empresa.
-- Vínculos: Pessoa→Empresa e Pessoa→Lead.
-- Contato vinculado deve aparecer no detalhe do lead.
-- Funcionalidades: criar, editar, excluir e filtrar por nome/email/empresa/telefone.
-
-### 6) RBAC (Permissões por perfil)
-Perfis:
-- Usuário (operacional)
-- Consultor
-- Gestor Monnera
+## FASE 3 — DRIVE
+Implementar `syncDriveClients()` com:
+- Carga inicial
+- Rotina diária às **02:00**
+- Chave única: **CNPJ**
 
 Regras:
-- Usuário: atua no próprio escopo; sem financeiro e sem configurações.
-- Consultor: gestão comercial do dia a dia; configurações bloqueadas.
-- Gestor Monnera: acesso total, inclusive pipeline, financeiro e configurações.
+- Se CNPJ existe: atualizar
+- Se CNPJ não existe: criar
 
-### 7) Configurações
-- Gerenciar perfis com checkboxes de permissões.
-- Integrações: Gmail e Google Agenda.
-- Gestão de usuários: criar usuário e definir perfil.
+Fonte (Drive):
+- Empresa
+- CNPJ
+- Responsável CS
+- CSAT
+- Impacto
+- Receita Mensalidade
+- Receita Campanha
+- Receita Ordem de Pagamento
 
-### 8) Logs e auditoria
-Registrar eventos de:
-- Alterações em leads
-- Alterações financeiras
-- Alterações em contatos
-- Atividades criadas/editadas
-- Alterações de permissões
+---
 
-## Banco de dados (alto nível)
-Garantir compatibilidade/expansão para as tabelas:
-`users`, `leads`, `pipelines`, `contatos`, `lead_contatos`, `atividades`, `email_config`, `logs`.
+## FASE 4 — RECEITA
+Ler aba **Receita / Contratante** e calcular:
+- receita mês atual
+- receita mês anterior
+- variação percentual: `((atual - anterior) / anterior) * 100` (quando anterior existir)
+- `revenue_total = mensalidade + campanha + ordem_pagamento`
 
-## UX esperada
-- Pipeline com Kanban fluido e valores por coluna.
-- Tela de lead com blocos: Dados gerais, Financeiro, Contatos, Atividades.
-- E-mail com experiência parecida com cliente de e-mail padrão.
-- Atividades com visão de lista e agenda.
-- Contatos em tabela com filtros rápidos.
+Exibir no card:
+- valor atual
+- percentual
+- tendência (↑ verde / ↓ vermelho)
 
-## Regras de negócio críticas
-- Lead não avança sem financeiro válido.
-- Financeiro só pode ser alterado por perfil autorizado (gestor, conforme regra final do produto).
-- Integrações são por usuário (credenciais individuais).
-- Tudo auditado.
+Somatório por coluna:
+- `SUM(revenue_total)`
 
-## Critérios de aceite (objetivos)
-1. Usuário sem conhecimento técnico consegue criar e mover lead com feedback claro.
-2. Sistema bloqueia avanço de etapa quando faltam dados financeiros obrigatórios.
-3. Totais financeiros por coluna aparecem no Kanban sem degradação perceptível.
-4. Gmail e Google Agenda conectam por OAuth e funcionam por usuário.
-5. Perfis RBAC respeitam restrições em UI e backend.
-6. Logs registram autoria e data/hora das ações críticas.
+---
 
-## Entrega incremental sugerida
-1. Regra financeira + bloqueio + auditoria + total no Kanban.
-2. Atividades + Google Agenda.
-3. E-mail Gmail.
-4. Contatos + vínculos com lead.
-5. Configurações + RBAC completo + hardening de logs.
+## FASE 5 — INTERAÇÃO
+Origem: comentários e logs internos.
 
-Ao final, apresente:
-- Resumo do que foi implementado.
-- Lista de pendências técnicas.
-- Riscos e próximos passos (WhatsApp, automações, forecast, relatórios, ERP).
+Calcular:
+- última interação
+- quantidade de interações
+- dias sem interação
+- consultor
+- responsável atual
+
+---
+
+## FASE 6 — SCORE DE PRIORIZAÇÃO
+Criar score com base em:
+- impacto financeiro
+- queda de receita
+- dias sem interação
+- risco vindo do Drive
+
+Fórmula base:
+
+```txt
+score =
+(peso_impacto_financeiro) +
+(peso_queda_receita) +
+(peso_dias_sem_interacao) +
+(peso_risco_drive)
+```
+
+Resultado:
+- Ordenação automática no topo do Kanban
+
+---
+
+## FASE 7 — FILTROS
+Implementar filtros obrigatórios:
+- Empresa
+- Consultor
+- Responsável
+- Status campanha
+- Impacto
+
+Regra:
+- Todos os filtros devem afetar cards, indicadores e somatórios.
+
+---
+
+## FASE 8 — PERMISSÕES
+Implementar:
+- acesso por painel
+- acesso por todos os cards
+- acesso por responsabilidade
+
+Regras:
+- Usuário comum: vê cards sob sua responsabilidade, ou todos se tiver permissão de “ver todos”
+- Admin: acesso irrestrito
+
+---
+
+## FASE 9 — CLONAGEM
+Regras:
+- Painel de Sucesso **não pode receber clones**
+- Painel de Sucesso **pode originar clones** para outros painéis
+
+UX:
+- Painel Sucesso não aparece como destino
+
+---
+
+## FASE 10 — UX
+Garantir leitura em segundos:
+- quem está em risco
+- quanto vale
+- há quanto tempo está sem interação
+- quem é o responsável
+
+Exibir no card:
+- nome
+- risco
+- receita total
+- tendência
+- dias sem interação
+- responsável
+
+---
+
+## FASE 11 — LIMPEZA
+Remover apenas o que estiver fora do escopo:
+- duplicidade
+- lógica de negócio no frontend
+- dados redundantes
+- regras herdadas de outros painéis
+
+---
+
+## FASE 12 — VALIDAÇÃO
+Testar:
+- importação inicial
+- atualização diária
+- filtros
+- score
+- receita
+- permissões
+- UX
+
+---
+
+## ESTRUTURA FUNCIONAL MÍNIMA
+- Tipo de painel: `sucesso`
+- Coluna inicial obrigatória: `Onboarding Sucesso`
+- Todo cliente novo entra obrigatoriamente nessa coluna
+
+---
+
+## ENTREGA FINAL
+- painel funcional
+- sem redundância
+- orientado à retenção
+- escalável
+- com informações claras, objetivas e acionáveis para usuário não técnico
