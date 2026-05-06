@@ -17,6 +17,8 @@ const AdminPermissoes = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [permissions, setPermissions] = useState<Record<string, boolean>>({});
+  const [panels, setPanels] = useState<Array<{ id: string; name: string }>>([]);
+  const [panelPermissions, setPanelPermissions] = useState<Record<string, boolean>>({});
 
   const modules = useMemo(
     () => [
@@ -89,13 +91,46 @@ const AdminPermissoes = () => {
     setPermissions(map);
   };
 
+  const loadPanels = async () => {
+    const { data, error } = await (supabase as any)
+      .from("pipeline_panels")
+      .select("id,name")
+      .order("sort_order", { ascending: true });
+    if (error) return;
+    setPanels(data || []);
+  };
+
+  const loadPanelPermissions = async (userId: string) => {
+    if (!userId) return;
+    const selectedUser = users.find((u) => u.user_id === userId);
+    if (selectedUser?.email === "admin@monnera.com") {
+      const fullMap = panels.reduce<Record<string, boolean>>((acc, p) => ({ ...acc, [p.id]: true }), {});
+      setPanelPermissions(fullMap);
+      return;
+    }
+    const { data } = await (supabase as any)
+      .from("user_panel_permissions")
+      .select("panel_id, can_access")
+      .eq("user_id", userId);
+    const map: Record<string, boolean> = {};
+    (data || []).forEach((row: any) => {
+      map[row.panel_id] = !!row.can_access;
+    });
+    setPanelPermissions(map);
+  };
+
   useEffect(() => {
     loadUsers();
+    loadPanels();
   }, []);
 
   useEffect(() => {
-    if (selectedUserId) loadPermissions(selectedUserId);
-  }, [selectedUserId]);
+    if (selectedUserId) {
+      loadPermissions(selectedUserId);
+      loadPanelPermissions(selectedUserId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedUserId, users, panels.length]);
 
   const togglePermission = (modulo: string, acao: string, checked: boolean) => {
     setPermissions((prev) => ({ ...prev, [`${modulo}.${acao}`]: checked }));
@@ -122,6 +157,20 @@ const AdminPermissoes = () => {
       .upsert(updates, { onConflict: "user_id,modulo,acao" });
     if (error) {
       toast.error("Erro ao salvar permissões");
+      setSaving(false);
+      return;
+    }
+    const panelRows = panels.map((p) => ({
+      user_id: selectedUserId,
+      panel_id: p.id,
+      can_access: !!panelPermissions[p.id],
+      updated_by: authUser.user?.id || null,
+    }));
+    const { error: panelError } = await (supabase as any)
+      .from("user_panel_permissions")
+      .upsert(panelRows, { onConflict: "user_id,panel_id" });
+    if (panelError) {
+      toast.error("Erro ao salvar permissões por painel");
       setSaving(false);
       return;
     }
@@ -189,6 +238,26 @@ const AdminPermissoes = () => {
                     </div>
                   </div>
                 ))}
+              </div>
+
+              <div className="border border-border rounded-lg p-4 space-y-3">
+                <h3 className="font-semibold text-sm text-primary">Permissões por Painel</h3>
+                <div className="grid gap-2 md:grid-cols-2">
+                  {panels.map((panel) => (
+                    <div key={panel.id} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`panel-${panel.id}`}
+                        checked={!!panelPermissions[panel.id]}
+                        onCheckedChange={(checked) =>
+                          setPanelPermissions((prev) => ({ ...prev, [panel.id]: !!checked }))
+                        }
+                      />
+                      <Label htmlFor={`panel-${panel.id}`} className="text-sm cursor-pointer">
+                        {panel.name}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <Button onClick={handleSave} disabled={saving}>
