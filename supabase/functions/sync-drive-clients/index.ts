@@ -79,6 +79,7 @@ Deno.serve(async (req) => {
   const parsedRows: DriveClientRow[] = rows.map((r) => ({
     cnpj: cleanCnpj(pick(r, "cnpj", "documento")),
     nome_fantasia: pick(r, "nome_fantasia", "empresa", "contratante") || "Cliente sem nome",
+    razao_social: pick(r, "razao_social"),
     nome_responsavel: pick(r, "nome_responsavel", "responsavel", "cs", "responsavel_cs") || "Responsável",
     email_responsavel: pick(r, "email_responsavel", "email") || "drive@monnera.local",
     telefone_responsavel: pick(r, "telefone_responsavel", "telefone"),
