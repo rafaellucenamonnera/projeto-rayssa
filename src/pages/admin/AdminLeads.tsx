@@ -925,6 +925,16 @@ const AdminLeads = () => {
           </div>
           <LeadExportButton leads={filtered} parceiros={parceiros} />
           <LeadImportDialog parceiros={parceirosAll} onImported={loadData} />
+          {currentPanelId === "sucesso" && (
+            <Button
+              onClick={handleSyncDriveClients}
+              disabled={syncingDrive}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {syncingDrive ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+              Atualizar
+            </Button>
+          )}
         </div>
       </div>
 
