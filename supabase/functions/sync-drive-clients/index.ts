@@ -77,7 +77,9 @@ Deno.serve(async (req) => {
   if (!csvResponse.ok) return new Response(JSON.stringify({ ok: false, error: `Erro ao ler planilha: ${csvResponse.status}` }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   const rows = parseCsv(await csvResponse.text());
   console.log(`[sync-drive-clients] Total lido da planilha: ${rows.length}`);
-  const parsedRows: DriveClientRow[] = rows.map((r) => ({
+  const normalizeText = (value: string) => (value || "").trim().toLowerCase();
+  const parsedRows: DriveClientRow[] = rows.map((r, index) => ({
+    source_row: index + 2,
     cnpj: cleanCnpj(pick(r, "cnpj", "documento")),
     nome_fantasia: pick(r, "nome_fantasia", "empresa", "contratante") || "Cliente sem nome",
     razao_social: pick(r, "razao_social"),
@@ -96,18 +98,25 @@ Deno.serve(async (req) => {
     consultor: pick(r, "consultor"),
     csat: toNumber(pick(r, "csat")),
   }));
-  const validRows = parsedRows.filter((r, index) => {
+  const validRows = parsedRows.filter((r) => {
     if (r.cnpj.length === 14) return true;
     counters.skipped++;
-    errors.push({ row: index + 2, cnpj: r.cnpj, message: "CNPJ inválido ou vazio" });
+    errors.push({ row: r.source_row, cnpj: r.cnpj, message: "CNPJ inválido ou vazio" });
     return false;
   });
   const { data: defaultPartner } = await supabase.from("parceiros_comerciais").select("id").eq("ativo", true).limit(1).maybeSingle();
   if (!defaultPartner?.id) return new Response(JSON.stringify({ ok: false, error: "Nenhum parceiro ativo disponível" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  const cnpjs = [...new Set(validRows.map((r) => r.cnpj))];
-  const { data: existingLeads, error: existingError } = await supabase.from("leads").select("id,cnpj,nome_fantasia,razao_social,nome_responsavel,email_responsavel,telefone_responsavel,cidade,erp_utilizado,quantidade_lojas,quantidade_funcionarios,valor_mensalidade,valor_campanhas,valor_pagamento,consultor,impacto,risco,csat,revenue_total").in("cnpj", cnpjs).eq("status", "sucesso");
+  const { data: existingLeads, error: existingError } = await supabase.from("leads").select("id,cnpj,nome_fantasia,razao_social,nome_responsavel,email_responsavel,telefone_responsavel,cidade,erp_utilizado,quantidade_lojas,quantidade_funcionarios,valor_mensalidade,valor_campanhas,valor_pagamento,consultor,impacto,risco,csat,revenue_total,status").eq("status", "sucesso");
   if (existingError) return new Response(JSON.stringify({ ok: false, error: existingError.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  const existingByCnpj = new Map((existingLeads || []).map((lead) => [cleanCnpj(lead.cnpj || ""), lead]));
+  const existingByCnpj = new Map((existingLeads || [])
+    .map((lead) => [cleanCnpj(lead.cnpj || ""), lead] as const)
+    .filter(([cnpj]) => cnpj.length === 14));
+  const existingByNamePhone = new Map((existingLeads || [])
+    .filter((lead) => lead.nome_fantasia && lead.telefone_responsavel)
+    .map((lead) => [`${normalizeText(lead.nome_fantasia)}::${(lead.telefone_responsavel || "").replace(/\D/g, "")}`, lead] as const));
+  const existingByNameEmail = new Map((existingLeads || [])
+    .filter((lead) => lead.nome_fantasia && lead.email_responsavel)
+    .map((lead) => [`${normalizeText(lead.nome_fantasia)}::${normalizeText(lead.email_responsavel || "")}`, lead] as const));
   const { data: sucessoStage } = await supabase
     .from("pipeline_stages_config")
     .select("value")
@@ -116,12 +125,15 @@ Deno.serve(async (req) => {
     .maybeSingle();
   const successStageValue = sucessoStage?.value || "novo_lead";
 
-  for (const [index, row] of validRows.entries()) {
+  for (const row of validRows) {
     counters.processed++;
     try {
-      const existing = existingByCnpj.get(row.cnpj);
+      const existing = existingByCnpj.get(row.cnpj)
+        || existingByNamePhone.get(`${normalizeText(row.nome_fantasia)}::${(row.telefone_responsavel || "").replace(/\D/g, "")}`)
+        || existingByNameEmail.get(`${normalizeText(row.nome_fantasia)}::${normalizeText(row.email_responsavel)}`);
       if (!existing) {
-        const { error } = await supabase.from("leads").insert({ ...row, status: "sucesso", status_lead: successStageValue, origem: "google_drive", parceiro_id: defaultPartner.id } as never);
+        const { source_row: _sr, ...insertRow } = row;
+        const { error } = await supabase.from("leads").insert({ ...insertRow, status: "sucesso", status_lead: successStageValue, origem: "google_drive", parceiro_id: defaultPartner.id } as never);
         if (error) throw error; counters.created++; continue;
       }
       const updatePayload: Record<string, string | number | null> = {};
@@ -134,7 +146,7 @@ Deno.serve(async (req) => {
       if (Object.keys(updatePayload).length > 0) { const { error } = await supabase.from("leads").update(updatePayload as never).eq("id", existing.id); if (error) throw error; counters.updated++; }
     } catch (error) {
       counters.skipped++;
-      errors.push({ row: index + 2, cnpj: row.cnpj, message: error instanceof Error ? error.message : "Erro desconhecido" });
+      errors.push({ row: row.source_row, cnpj: row.cnpj, message: error instanceof Error ? error.message : "Erro desconhecido" });
     }
   }
   console.log(`[sync-drive-clients] Resultado: processados=${counters.processed}, criados=${counters.created}, atualizados=${counters.updated}, ignorados=${counters.skipped}, erros=${errors.length}`);
