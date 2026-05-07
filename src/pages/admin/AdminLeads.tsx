@@ -127,6 +127,7 @@ const AdminLeads = () => {
   const [availableTargetStages, setAvailableTargetStages] = useState<{ value: string; label: string }[]>([]);
   const [targetStageId, setTargetStageId] = useState("");
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>(PIPELINE_STAGES.map((s, i) => ({ ...s, sort_order: i + 1 })));
+  const [syncingDrive, setSyncingDrive] = useState(false);
 
   const panelIdByPath: Record<string, string> = {
     "/admin/painel-comercial": "comercial",
