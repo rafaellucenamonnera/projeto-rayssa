@@ -3,6 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 type DriveClientRow = {
   cnpj: string;
   nome_fantasia: string;
+  razao_social: string;
   nome_responsavel: string;
   email_responsavel: string;
   telefone_responsavel: string;
