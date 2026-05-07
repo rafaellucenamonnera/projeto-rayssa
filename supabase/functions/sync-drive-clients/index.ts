@@ -3,6 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 type DriveClientRow = {
   cnpj: string;
   nome_fantasia: string;
+  razao_social: string;
   nome_responsavel: string;
   email_responsavel: string;
   telefone_responsavel: string;
@@ -78,6 +79,7 @@ Deno.serve(async (req) => {
   const parsedRows: DriveClientRow[] = rows.map((r) => ({
     cnpj: cleanCnpj(pick(r, "cnpj", "documento")),
     nome_fantasia: pick(r, "nome_fantasia", "empresa", "contratante") || "Cliente sem nome",
+    razao_social: pick(r, "razao_social"),
     nome_responsavel: pick(r, "nome_responsavel", "responsavel", "cs", "responsavel_cs") || "Responsável",
     email_responsavel: pick(r, "email_responsavel", "email") || "drive@monnera.local",
     telefone_responsavel: pick(r, "telefone_responsavel", "telefone"),
@@ -102,7 +104,7 @@ Deno.serve(async (req) => {
   const { data: defaultPartner } = await supabase.from("parceiros_comerciais").select("id").eq("ativo", true).limit(1).maybeSingle();
   if (!defaultPartner?.id) return new Response(JSON.stringify({ ok: false, error: "Nenhum parceiro ativo disponível" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   const cnpjs = [...new Set(validRows.map((r) => r.cnpj))];
-  const { data: existingLeads, error: existingError } = await supabase.from("leads").select("id,cnpj,nome_fantasia,nome_responsavel,email_responsavel,telefone_responsavel,cidade,erp_utilizado,quantidade_lojas,quantidade_funcionarios,valor_mensalidade,valor_campanhas,valor_pagamento,consultor,impacto,risco,csat,revenue_total").in("cnpj", cnpjs).eq("status", "sucesso");
+  const { data: existingLeads, error: existingError } = await supabase.from("leads").select("id,cnpj,nome_fantasia,razao_social,nome_responsavel,email_responsavel,telefone_responsavel,cidade,erp_utilizado,quantidade_lojas,quantidade_funcionarios,valor_mensalidade,valor_campanhas,valor_pagamento,consultor,impacto,risco,csat,revenue_total").in("cnpj", cnpjs).eq("status", "sucesso");
   if (existingError) return new Response(JSON.stringify({ ok: false, error: existingError.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   const existingByCnpj = new Map((existingLeads || []).map((lead) => [cleanCnpj(lead.cnpj || ""), lead]));
   const { data: sucessoStage } = await supabase
@@ -124,6 +126,7 @@ Deno.serve(async (req) => {
       const updatePayload: Record<string, string | number | null> = {};
       ([
         ["nome_fantasia", existing.nome_fantasia, row.nome_fantasia], ["nome_responsavel", existing.nome_responsavel, row.nome_responsavel], ["email_responsavel", existing.email_responsavel, row.email_responsavel],
+        ["razao_social", (existing as { razao_social?: string | null }).razao_social ?? null, row.razao_social || null],
         ["telefone_responsavel", existing.telefone_responsavel, row.telefone_responsavel], ["cidade", existing.cidade, row.cidade], ["erp_utilizado", existing.erp_utilizado, row.erp_utilizado],
         ["quantidade_lojas", existing.quantidade_lojas, row.quantidade_lojas], ["quantidade_funcionarios", existing.quantidade_funcionarios, row.quantidade_funcionarios], ["valor_mensalidade", existing.valor_mensalidade, row.valor_mensalidade], ["valor_campanhas", existing.valor_campanhas, row.valor_campanhas], ["valor_pagamento", (existing as { valor_pagamento?: number | null }).valor_pagamento, row.valor_pagamento], ["consultor", (existing as { consultor?: string | null }).consultor ?? null, row.consultor || null], ["impacto", (existing as { impacto?: string | null }).impacto ?? null, row.impacto || null], ["risco", (existing as { risco?: string | null }).risco ?? null, row.risco || null], ["csat", (existing as { csat?: number | null }).csat ?? null, row.csat],
       ] as Array<[string, string | number | null, string | number | null]>).forEach(([key, oldValue, newValue]) => { if ((oldValue ?? null) !== (newValue ?? null)) updatePayload[key] = newValue; });
