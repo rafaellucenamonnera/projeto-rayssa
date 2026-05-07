@@ -340,7 +340,9 @@ export type Database = {
           cidade: string | null
           cnpj: string | null
           completion_token: string | null
+          consultor: string | null
           contrato_url: string | null
+          csat: number | null
           dados_completos: boolean
           data_cadastro: string
           data_contrato_assinado: string | null
@@ -356,6 +358,7 @@ export type Database = {
           financeiro_preenchido_em: string | null
           financeiro_preenchido_por: string | null
           id: string
+          impacto: string | null
           motivo_perda: string | null
           nome_fantasia: string
           nome_responsavel: string
@@ -383,6 +386,7 @@ export type Database = {
           revenue_previous: number | null
           revenue_total: number
           revenue_variation: number | null
+          risco: string | null
           status: string
           status_lead: Database["public"]["Enums"]["lead_status"]
           telefone_responsavel: string
@@ -395,7 +399,9 @@ export type Database = {
           cidade?: string | null
           cnpj?: string | null
           completion_token?: string | null
+          consultor?: string | null
           contrato_url?: string | null
+          csat?: number | null
           dados_completos?: boolean
           data_cadastro?: string
           data_contrato_assinado?: string | null
@@ -411,6 +417,7 @@ export type Database = {
           financeiro_preenchido_em?: string | null
           financeiro_preenchido_por?: string | null
           id?: string
+          impacto?: string | null
           motivo_perda?: string | null
           nome_fantasia: string
           nome_responsavel: string
@@ -438,6 +445,7 @@ export type Database = {
           revenue_previous?: number | null
           revenue_total?: number
           revenue_variation?: number | null
+          risco?: string | null
           status?: string
           status_lead?: Database["public"]["Enums"]["lead_status"]
           telefone_responsavel: string
@@ -450,7 +458,9 @@ export type Database = {
           cidade?: string | null
           cnpj?: string | null
           completion_token?: string | null
+          consultor?: string | null
           contrato_url?: string | null
+          csat?: number | null
           dados_completos?: boolean
           data_cadastro?: string
           data_contrato_assinado?: string | null
@@ -466,6 +476,7 @@ export type Database = {
           financeiro_preenchido_em?: string | null
           financeiro_preenchido_por?: string | null
           id?: string
+          impacto?: string | null
           motivo_perda?: string | null
           nome_fantasia?: string
           nome_responsavel?: string
@@ -493,6 +504,7 @@ export type Database = {
           revenue_previous?: number | null
           revenue_total?: number
           revenue_variation?: number | null
+          risco?: string | null
           status?: string
           status_lead?: Database["public"]["Enums"]["lead_status"]
           telefone_responsavel?: string
