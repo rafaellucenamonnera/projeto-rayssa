@@ -127,6 +127,7 @@ const AdminLeads = () => {
   const [availableTargetStages, setAvailableTargetStages] = useState<{ value: string; label: string }[]>([]);
   const [targetStageId, setTargetStageId] = useState("");
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>(PIPELINE_STAGES.map((s, i) => ({ ...s, sort_order: i + 1 })));
+  const [syncingDrive, setSyncingDrive] = useState(false);
 
   const panelIdByPath: Record<string, string> = {
     "/admin/painel-comercial": "comercial",
@@ -237,6 +238,27 @@ const AdminLeads = () => {
     setCloneLead(null);
     setCloneLead(null);
     loadData();
+  };
+
+  const handleSyncDriveClients = async () => {
+    setSyncingDrive(true);
+    toast.loading("Atualizando dados do Drive...", { id: "sync-drive-clients" });
+    try {
+      const { data, error } = await supabase.functions.invoke("sync-drive-clients", { method: "POST" });
+      if (error) throw error;
+      const summary = `Criados: ${data?.created ?? 0} | Atualizados: ${data?.updated ?? 0} | Ignorados: ${data?.skipped ?? 0}`;
+      if (Array.isArray(data?.errors) && data.errors.length > 0) {
+        toast.warning(`${summary} | Erros: ${data.errors.length}`, { id: "sync-drive-clients" });
+      } else {
+        toast.success(summary, { id: "sync-drive-clients" });
+      }
+      await loadData();
+    } catch (error) {
+      console.error("Erro técnico ao sincronizar Drive:", error);
+      toast.error("Não foi possível atualizar os dados do Drive. Verifique a conexão e tente novamente.", { id: "sync-drive-clients" });
+    } finally {
+      setSyncingDrive(false);
+    }
   };
 
   const loadData = async () => {
@@ -903,6 +925,16 @@ const AdminLeads = () => {
           </div>
           <LeadExportButton leads={filtered} parceiros={parceiros} />
           <LeadImportDialog parceiros={parceirosAll} onImported={loadData} />
+          {currentPanelId === "sucesso" && (
+            <Button
+              onClick={handleSyncDriveClients}
+              disabled={syncingDrive}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {syncingDrive ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+              Atualizar
+            </Button>
+          )}
         </div>
       </div>
 
