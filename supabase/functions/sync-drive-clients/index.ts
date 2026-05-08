@@ -400,7 +400,7 @@ Deno.serve(async (req) => {
       errors.push({ row: row.source_row, cnpj: row.cnpj, message: error instanceof Error ? error.message : "Erro desconhecido" });
     }
   }
-  console.log(`[sync-drive-clients] Resultado: processados=${counters.processed}, criados=${counters.created}, atualizados=${counters.updated}, ignorados=${counters.skipped}, erros=${errors.length}`);
+  console.log(`[sync-drive-clients] Resultado: linhas_lidas=${rows.length}, clientes_validos=${validRows.length}, financeiras_ignoradas=${counters.financial_ignored}, processados=${counters.processed}, criados=${counters.created}, atualizados=${counters.updated}, ignorados=${counters.skipped}, erros=${errors.length}`);
   await supabase.from("sync_job_logs").insert({ job_name: "sync_drive_clients", processed_count: counters.processed, created_count: counters.created, updated_count: counters.updated, error_count: errors.length } as never);
-  return new Response(JSON.stringify({ success: true, ...counters, total_rows_read: rows.length, valid_clients: validRows.length, source: sourceMeta, errors }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  return new Response(JSON.stringify({ success: true, ...counters, total_rows_read: rows.length, valid_clients: validRows.length, financial_rows_ignored: counters.financial_ignored, source: sourceMeta, errors }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 });
