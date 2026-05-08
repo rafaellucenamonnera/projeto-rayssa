@@ -164,9 +164,14 @@ Deno.serve(async (req) => {
       return fetch(healthUrl, { headers: { "Cache-Control": "no-cache" } });
     })(),
   ]);
-  if (!csvResponse.ok) return new Response(JSON.stringify({ ok: false, error: `Erro ao ler planilha: ${csvResponse.status}` }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  if (!csvResponse.ok) return new Response(JSON.stringify({ ok: false, error: `Falha ao ler planilha Google Sheets (status ${csvResponse.status}). Verifique permissões da planilha/aba e credenciais de acesso público.` }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   const rows = parseCsv(await csvResponse.text());
-  console.log(`[sync-drive-clients] Total lido da planilha: ${rows.length}`);
+  const sourceMeta = {
+    spreadsheet_id: SUCCESS_PANEL_SPREADSHEET_ID,
+    sheet_gid: Deno.env.get("GOOGLE_SHEETS_GID")?.trim() || "0",
+    sheet_name: Deno.env.get("GOOGLE_SHEETS_SHEET_NAME")?.trim() || "Receita / Contratante",
+  };
+  console.log(`[sync-drive-clients] Origem ${sourceMeta.sheet_name} (gid=${sourceMeta.sheet_gid}) | Total lido: ${rows.length}`);
   const statusRows = statusCsvResponse?.ok ? parseCsv(await statusCsvResponse.text()) : [];
   const csatRows = csatCsvResponse?.ok ? parseCsv(await csatCsvResponse.text()) : [];
   const painelSaudeRows = painelSaudeCsvResponse?.ok ? parseCsv(await painelSaudeCsvResponse.text()) : [];
