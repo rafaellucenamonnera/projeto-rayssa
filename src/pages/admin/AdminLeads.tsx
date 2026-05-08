@@ -249,7 +249,13 @@ const AdminLeads = () => {
     try {
       const { data, error } = await supabase.functions.invoke("sync-drive-clients", { method: "POST" });
       if (error) throw error;
-      const summary = `Criados: ${data?.created ?? 0} | Atualizados: ${data?.updated ?? 0} | Ignorados: ${data?.skipped ?? 0}`;
+      const summary = [
+        `Linhas lidas: ${data?.total_rows_read ?? 0}`,
+        `Clientes válidos: ${data?.valid_clients ?? 0}`,
+        `Criados: ${data?.created ?? 0}`,
+        `Atualizados: ${data?.updated ?? 0}`,
+        `Ignorados: ${data?.skipped ?? 0}`,
+      ].join(" | ");
       if (Array.isArray(data?.errors) && data.errors.length > 0) {
         toast.warning(`${summary} | Erros: ${data.errors.length}`, { id: "sync-drive-clients" });
       } else {
@@ -258,7 +264,8 @@ const AdminLeads = () => {
       await loadData();
     } catch (error) {
       console.error("Erro técnico ao sincronizar Drive:", error);
-      toast.error("Não foi possível atualizar os dados do Drive. Verifique a conexão e tente novamente.", { id: "sync-drive-clients" });
+      const message = error instanceof Error ? error.message : "Erro desconhecido";
+      toast.error(`Falha ao sincronizar Drive: ${message}`, { id: "sync-drive-clients" });
     } finally {
       setSyncingDrive(false);
     }
