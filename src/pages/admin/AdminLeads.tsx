@@ -68,6 +68,9 @@ const AdminLeads = () => {
   const [filterStatus, setFilterStatus] = useState<string>(searchParams.get("status") || "all");
   const [filterConsultor, setFilterConsultor] = useState<string>("all");
   const [filterEmpresa, setFilterEmpresa] = useState("");
+  const [filterCampaignStatus, setFilterCampaignStatus] = useState<string>("all");
+  const [filterImpactLevel, setFilterImpactLevel] = useState<string>("all");
+  const [filterHealthStatus, setFilterHealthStatus] = useState<string>("all");
   const [filterDataInicio, setFilterDataInicio] = useState("");
   const [filterDataFim, setFilterDataFim] = useState("");
 
@@ -764,6 +767,9 @@ const AdminLeads = () => {
     if (filterStatus !== "all" && (l.status_lead || l.status) !== filterStatus) return false;
     if (filterConsultor !== "all" && l.parceiro_id !== filterConsultor) return false;
     if (filterEmpresa && !l.nome_fantasia.toLowerCase().includes(filterEmpresa.toLowerCase())) return false;
+    if (currentPanelId === "sucesso" && filterCampaignStatus !== "all" && (l.campaign_status_current || "SEM_STATUS") !== filterCampaignStatus) return false;
+    if (currentPanelId === "sucesso" && filterImpactLevel !== "all" && (l.impact_level || "SEM_IMPACTO") !== filterImpactLevel) return false;
+    if (currentPanelId === "sucesso" && filterHealthStatus !== "all" && (l.health_status || "SEM_STATUS_CLIENTE") !== filterHealthStatus) return false;
     if (filterDataInicio) {
       const d = new Date(l.data_cadastro);
       if (d < new Date(filterDataInicio)) return false;
@@ -955,7 +961,7 @@ const AdminLeads = () => {
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2 sm:gap-3">
         <Input placeholder="Filtrar por empresa..." value={filterEmpresa} onChange={(e) => setFilterEmpresa(e.target.value)} />
         <Select value={filterConsultor} onValueChange={setFilterConsultor}>
           <SelectTrigger><SelectValue placeholder="Consultor" /></SelectTrigger>
@@ -966,6 +972,39 @@ const AdminLeads = () => {
             ))}
           </SelectContent>
         </Select>
+        {currentPanelId === "sucesso" && (
+          <Select value={filterCampaignStatus} onValueChange={setFilterCampaignStatus}>
+            <SelectTrigger><SelectValue placeholder="Status Campanha" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Status Campanha (Todos)</SelectItem>
+              {Array.from(new Set(leads.map((l) => l.campaign_status_current || "SEM_STATUS"))).map((status) => (
+                <SelectItem key={status} value={status}>{status === "SEM_STATUS" ? "Sem status" : status}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {currentPanelId === "sucesso" && (
+          <Select value={filterImpactLevel} onValueChange={setFilterImpactLevel}>
+            <SelectTrigger><SelectValue placeholder="Impacto" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Impacto (Todos)</SelectItem>
+              {Array.from(new Set(leads.map((l) => l.impact_level || "SEM_IMPACTO"))).map((impact) => (
+                <SelectItem key={impact} value={impact}>{impact === "SEM_IMPACTO" ? "Sem impacto" : impact}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {currentPanelId === "sucesso" && (
+          <Select value={filterHealthStatus} onValueChange={setFilterHealthStatus}>
+            <SelectTrigger><SelectValue placeholder="Status Cliente" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Status Cliente (Todos)</SelectItem>
+              {Array.from(new Set(leads.map((l) => l.health_status || "SEM_STATUS_CLIENTE"))).map((status) => (
+                <SelectItem key={status} value={status}>{status === "SEM_STATUS_CLIENTE" ? "Sem status" : status}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Input type="date" value={filterDataInicio} onChange={(e) => setFilterDataInicio(e.target.value)} placeholder="Data início" />
         <Input type="date" value={filterDataFim} onChange={(e) => setFilterDataFim(e.target.value)} placeholder="Data fim" />
       </div>
@@ -1076,6 +1115,7 @@ const AdminLeads = () => {
             leads={filtered}
             stages={pipelineStages}
             parceirosMap={parceiros}
+            showCampaignStatus={currentPanelId === "sucesso"}
             canCloneCard={canCloneCard}
             canEditCard={canEditCard}
             canDeleteCard={canDeleteCard}
