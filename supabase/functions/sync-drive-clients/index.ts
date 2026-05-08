@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
   }
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
   const sheetCsvUrl = buildGoogleSheetsCsvUrl();
-  const counters = { processed: 0, created: 0, updated: 0, skipped: 0 };
+  const counters = { processed: 0, created: 0, updated: 0, skipped: 0, financial_ignored: 0 };
   const errors: Array<{ row?: number; cnpj?: string; message: string }> = [];
   console.log("[sync-drive-clients] Início da sincronização");
   const [csvResponse, statusCsvResponse, csatCsvResponse, painelSaudeCsvResponse] = await Promise.all([
@@ -232,20 +232,22 @@ Deno.serve(async (req) => {
     healthByCompany.set(normalizedName, { status, impact, similarity: false });
   }
   const normalizeText = (value: string) => (value || "").trim().toLowerCase();
+  const isFinancialLabel = (value: string) => Boolean(FINANCIAL_CATEGORY_MAP[normalizeCategoryLabel(value)]);
   const parsedRows: DriveClientRow[] = [];
   let currentClient: DriveClientRow | null = null;
   rows.forEach((r, index) => {
     const sourceRow = index + 2;
-    const cnpj = normalizeCNPJ(pick(r, "cnpj", "documento"));
-    const rowLabel = pick(r, "contratante", "empresa", "nome_fantasia", "categoria");
-    if (isValidClientRow(cnpj, rowLabel)) {
+    const cnpj = normalizeCNPJ(pick(r, "cnpj", "documento", "__1"));
+    const rowLabel = pick(r, "contratante", "empresa", "nome_fantasia", "categoria", "", "__3");
+    const isFinancial = isFinancialLabel(rowLabel);
+    if (isValidClientRow(cnpj, rowLabel) && !isFinancial) {
       if (currentClient) parsedRows.push(currentClient);
       currentClient = {
         source_row: sourceRow,
         cnpj,
-        nome_fantasia: pick(r, "nome_fantasia", "empresa", "contratante") || "Cliente sem nome",
+        nome_fantasia: pick(r, "nome_fantasia", "empresa", "contratante", "") || "Cliente sem nome",
         razao_social: pick(r, "razao_social"),
-        nome_responsavel: pick(r, "nome_responsavel", "responsavel", "cs", "responsavel_cs") || "Responsável",
+        nome_responsavel: pick(r, "nome_responsavel", "responsavel", "cs", "responsavel_cs", "__2") || "Responsável",
         email_responsavel: pick(r, "email_responsavel", "email") || "drive@monnera.local",
         telefone_responsavel: pick(r, "telefone_responsavel", "telefone"),
         cidade: pick(r, "cidade"),
@@ -259,7 +261,7 @@ Deno.serve(async (req) => {
         risco: pick(r, "risco", "saude"),
         consultor: pick(r, "consultor"),
         csat: toNumber(pick(r, "csat")),
-        categoria: pick(r, "categoria"),
+        categoria: pick(r, "categoria", "__3"),
         juros_recebidos: toNumber(pick(r, "juros_recebidos")),
         multas_recebidas: toNumber(pick(r, "multas_recebidas")),
         receita_taxa_boleto: toNumber(pick(r, "receita_taxa_boleto")),
@@ -270,6 +272,11 @@ Deno.serve(async (req) => {
     const mappedField = FINANCIAL_CATEGORY_MAP[normalizedCategory];
     if (currentClient && mappedField) {
       currentClient[mappedField] = extractPrimaryNumericValue(r);
+      counters.financial_ignored++;
+      return;
+    }
+    if (isFinancial) {
+      counters.financial_ignored++;
       return;
     }
     if (!currentClient && rowLabel) {
@@ -393,7 +400,7 @@ Deno.serve(async (req) => {
       errors.push({ row: row.source_row, cnpj: row.cnpj, message: error instanceof Error ? error.message : "Erro desconhecido" });
     }
   }
-  console.log(`[sync-drive-clients] Resultado: processados=${counters.processed}, criados=${counters.created}, atualizados=${counters.updated}, ignorados=${counters.skipped}, erros=${errors.length}`);
+  console.log(`[sync-drive-clients] Resultado: linhas_lidas=${rows.length}, clientes_validos=${validRows.length}, financeiras_ignoradas=${counters.financial_ignored}, processados=${counters.processed}, criados=${counters.created}, atualizados=${counters.updated}, ignorados=${counters.skipped}, erros=${errors.length}`);
   await supabase.from("sync_job_logs").insert({ job_name: "sync_drive_clients", processed_count: counters.processed, created_count: counters.created, updated_count: counters.updated, error_count: errors.length } as never);
-  return new Response(JSON.stringify({ success: true, ...counters, total_rows_read: rows.length, valid_clients: validRows.length, source: sourceMeta, errors }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  return new Response(JSON.stringify({ success: true, ...counters, total_rows_read: rows.length, valid_clients: validRows.length, financial_rows_ignored: counters.financial_ignored, source: sourceMeta, errors }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 });
