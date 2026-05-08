@@ -362,6 +362,9 @@ Deno.serve(async (req) => {
     .eq("label", "Onboarding Sucesso")
     .maybeSingle();
   const successStageValue = sucessoStage?.value || "novo_lead";
+  if (!sucessoStage?.value) {
+    errors.push({ message: "Etapa 'Onboarding Sucesso' não encontrada para painel 'sucesso'; fallback para 'novo_lead'" });
+  }
 
   for (const row of validRows) {
     counters.processed++;
