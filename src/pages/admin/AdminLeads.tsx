@@ -961,7 +961,7 @@ const AdminLeads = () => {
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2 sm:gap-3">
         <Input placeholder="Filtrar por empresa..." value={filterEmpresa} onChange={(e) => setFilterEmpresa(e.target.value)} />
         <Select value={filterConsultor} onValueChange={setFilterConsultor}>
           <SelectTrigger><SelectValue placeholder="Consultor" /></SelectTrigger>
@@ -972,6 +972,39 @@ const AdminLeads = () => {
             ))}
           </SelectContent>
         </Select>
+        {currentPanelId === "sucesso" && (
+          <Select value={filterCampaignStatus} onValueChange={setFilterCampaignStatus}>
+            <SelectTrigger><SelectValue placeholder="Status Campanha" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Status Campanha (Todos)</SelectItem>
+              {Array.from(new Set(leads.map((l) => l.campaign_status_current || "SEM_STATUS"))).map((status) => (
+                <SelectItem key={status} value={status}>{status === "SEM_STATUS" ? "Sem status" : status}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {currentPanelId === "sucesso" && (
+          <Select value={filterImpactLevel} onValueChange={setFilterImpactLevel}>
+            <SelectTrigger><SelectValue placeholder="Impacto" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Impacto (Todos)</SelectItem>
+              {Array.from(new Set(leads.map((l) => l.impact_level || "SEM_IMPACTO"))).map((impact) => (
+                <SelectItem key={impact} value={impact}>{impact === "SEM_IMPACTO" ? "Sem impacto" : impact}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {currentPanelId === "sucesso" && (
+          <Select value={filterHealthStatus} onValueChange={setFilterHealthStatus}>
+            <SelectTrigger><SelectValue placeholder="Status Cliente" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Status Cliente (Todos)</SelectItem>
+              {Array.from(new Set(leads.map((l) => l.health_status || "SEM_STATUS_CLIENTE"))).map((status) => (
+                <SelectItem key={status} value={status}>{status === "SEM_STATUS_CLIENTE" ? "Sem status" : status}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Input type="date" value={filterDataInicio} onChange={(e) => setFilterDataInicio(e.target.value)} placeholder="Data início" />
         <Input type="date" value={filterDataFim} onChange={(e) => setFilterDataFim(e.target.value)} placeholder="Data fim" />
       </div>
