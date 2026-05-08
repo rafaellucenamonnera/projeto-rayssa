@@ -24,7 +24,7 @@ type DriveClientRow = {
   multas_recebidas: number | null;
   receita_taxa_boleto: number | null;
 };
-const cleanCnpj = (value: string) => (value || "").replace(/\D/g, "").slice(0, 14);
+const normalizeCNPJ = (value: string) => (value || "").replace(/\D/g, "").slice(0, 14);
 const toNumber = (value: string) => {
   if (!value?.trim()) return null;
   const normalized = value.replace(/\./g, "").replace(",", ".");
