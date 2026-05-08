@@ -232,20 +232,22 @@ Deno.serve(async (req) => {
     healthByCompany.set(normalizedName, { status, impact, similarity: false });
   }
   const normalizeText = (value: string) => (value || "").trim().toLowerCase();
+  const isFinancialLabel = (value: string) => Boolean(FINANCIAL_CATEGORY_MAP[normalizeCategoryLabel(value)]);
   const parsedRows: DriveClientRow[] = [];
   let currentClient: DriveClientRow | null = null;
   rows.forEach((r, index) => {
     const sourceRow = index + 2;
-    const cnpj = normalizeCNPJ(pick(r, "cnpj", "documento"));
-    const rowLabel = pick(r, "contratante", "empresa", "nome_fantasia", "categoria");
-    if (isValidClientRow(cnpj, rowLabel)) {
+    const cnpj = normalizeCNPJ(pick(r, "cnpj", "documento", "__1"));
+    const rowLabel = pick(r, "contratante", "empresa", "nome_fantasia", "categoria", "", "__3");
+    const isFinancial = isFinancialLabel(rowLabel);
+    if (isValidClientRow(cnpj, rowLabel) && !isFinancial) {
       if (currentClient) parsedRows.push(currentClient);
       currentClient = {
         source_row: sourceRow,
         cnpj,
-        nome_fantasia: pick(r, "nome_fantasia", "empresa", "contratante") || "Cliente sem nome",
+        nome_fantasia: pick(r, "nome_fantasia", "empresa", "contratante", "") || "Cliente sem nome",
         razao_social: pick(r, "razao_social"),
-        nome_responsavel: pick(r, "nome_responsavel", "responsavel", "cs", "responsavel_cs") || "Responsável",
+        nome_responsavel: pick(r, "nome_responsavel", "responsavel", "cs", "responsavel_cs", "__2") || "Responsável",
         email_responsavel: pick(r, "email_responsavel", "email") || "drive@monnera.local",
         telefone_responsavel: pick(r, "telefone_responsavel", "telefone"),
         cidade: pick(r, "cidade"),
@@ -259,7 +261,7 @@ Deno.serve(async (req) => {
         risco: pick(r, "risco", "saude"),
         consultor: pick(r, "consultor"),
         csat: toNumber(pick(r, "csat")),
-        categoria: pick(r, "categoria"),
+        categoria: pick(r, "categoria", "__3"),
         juros_recebidos: toNumber(pick(r, "juros_recebidos")),
         multas_recebidas: toNumber(pick(r, "multas_recebidas")),
         receita_taxa_boleto: toNumber(pick(r, "receita_taxa_boleto")),
@@ -270,6 +272,11 @@ Deno.serve(async (req) => {
     const mappedField = FINANCIAL_CATEGORY_MAP[normalizedCategory];
     if (currentClient && mappedField) {
       currentClient[mappedField] = extractPrimaryNumericValue(r);
+      counters.financial_ignored++;
+      return;
+    }
+    if (isFinancial) {
+      counters.financial_ignored++;
       return;
     }
     if (!currentClient && rowLabel) {
