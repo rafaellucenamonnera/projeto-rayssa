@@ -24,7 +24,7 @@ type DriveClientRow = {
   multas_recebidas: number | null;
   receita_taxa_boleto: number | null;
 };
-const cleanCnpj = (value: string) => (value || "").replace(/\D/g, "").slice(0, 14);
+const normalizeCNPJ = (value: string) => (value || "").replace(/\D/g, "").slice(0, 14);
 const toNumber = (value: string) => {
   if (!value?.trim()) return null;
   const normalized = value.replace(/\./g, "").replace(",", ".");
@@ -77,13 +77,14 @@ const parseCsv = (raw: string) => {
     return headers.reduce<Record<string, string>>((acc, h, idx) => { acc[h] = cols[idx] || ""; return acc; }, {});
   });
 };
-const SUCCESS_PANEL_SPREADSHEET_ID = "1Ao69-CKVhwmTxzRAhpHotw3Ny_3kU7Id34k4qLTAyo8";
+const SUCCESS_PANEL_SPREADSHEET_ID = Deno.env.get("GOOGLE_SHEETS_SPREADSHEET_ID")?.trim() || "1Ao69-CKVhwmTxzRAhpHotw3Ny_3kU7Id34k4qLTAyo8";
 const PT_MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
 const buildGoogleSheetsCsvUrl = () => {
   const gid = Deno.env.get("GOOGLE_SHEETS_GID")?.trim() || "0";
   return `https://docs.google.com/spreadsheets/d/${SUCCESS_PANEL_SPREADSHEET_ID}/export?format=csv&gid=${encodeURIComponent(gid)}`;
 };
+const isValidClientRow = (cnpj: string, name: string) => normalizeCNPJ(cnpj).length === 14 && normalizeCompanyName(name).length > 0;
 const buildStatusCampanhaCsvUrl = () => {
   const gid = Deno.env.get("GOOGLE_SHEETS_STATUS_CAMPANHA_GID")?.trim();
   if (!gid) return null;
@@ -163,9 +164,14 @@ Deno.serve(async (req) => {
       return fetch(healthUrl, { headers: { "Cache-Control": "no-cache" } });
     })(),
   ]);
-  if (!csvResponse.ok) return new Response(JSON.stringify({ ok: false, error: `Erro ao ler planilha: ${csvResponse.status}` }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  if (!csvResponse.ok) return new Response(JSON.stringify({ ok: false, error: `Falha ao ler planilha Google Sheets (status ${csvResponse.status}). Verifique permissões da planilha/aba e credenciais de acesso público.` }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   const rows = parseCsv(await csvResponse.text());
-  console.log(`[sync-drive-clients] Total lido da planilha: ${rows.length}`);
+  const sourceMeta = {
+    spreadsheet_id: SUCCESS_PANEL_SPREADSHEET_ID,
+    sheet_gid: Deno.env.get("GOOGLE_SHEETS_GID")?.trim() || "0",
+    sheet_name: Deno.env.get("GOOGLE_SHEETS_SHEET_NAME")?.trim() || "Receita / Contratante",
+  };
+  console.log(`[sync-drive-clients] Origem ${sourceMeta.sheet_name} (gid=${sourceMeta.sheet_gid}) | Total lido: ${rows.length}`);
   const statusRows = statusCsvResponse?.ok ? parseCsv(await statusCsvResponse.text()) : [];
   const csatRows = csatCsvResponse?.ok ? parseCsv(await csatCsvResponse.text()) : [];
   const painelSaudeRows = painelSaudeCsvResponse?.ok ? parseCsv(await painelSaudeCsvResponse.text()) : [];
@@ -230,9 +236,9 @@ Deno.serve(async (req) => {
   let currentClient: DriveClientRow | null = null;
   rows.forEach((r, index) => {
     const sourceRow = index + 2;
-    const cnpj = cleanCnpj(pick(r, "cnpj", "documento"));
+    const cnpj = normalizeCNPJ(pick(r, "cnpj", "documento"));
     const rowLabel = pick(r, "contratante", "empresa", "nome_fantasia", "categoria");
-    if (cnpj.length === 14) {
+    if (isValidClientRow(cnpj, rowLabel)) {
       if (currentClient) parsedRows.push(currentClient);
       currentClient = {
         source_row: sourceRow,
@@ -331,7 +337,7 @@ Deno.serve(async (req) => {
       health_similarity_match: health?.similarity || false,
     };
   }).filter((r) => {
-    if (r.cnpj.length === 14) return true;
+    if (isValidClientRow(r.cnpj, r.razao_social || r.nome_fantasia)) return true;
     counters.skipped++;
     errors.push({ row: r.source_row, cnpj: r.cnpj, message: "CNPJ inválido ou vazio" });
     return false;
@@ -341,7 +347,7 @@ Deno.serve(async (req) => {
   const { data: existingLeads, error: existingError } = await supabase.from("leads").select("id,cnpj,nome_fantasia,razao_social,nome_responsavel,email_responsavel,telefone_responsavel,cidade,erp_utilizado,quantidade_lojas,quantidade_funcionarios,valor_mensalidade,valor_campanhas,valor_pagamento,consultor,impacto,risco,csat,revenue_total,status,categoria,juros_recebidos,multas_recebidas,receita_taxa_boleto,valor_mensalidade_anterior,valor_campanhas_anterior,valor_pagamento_anterior,campaign_status_current,campaign_status_previous,campaign_status_current_month,campaign_status_previous_month,csat_current,csat_previous,csat_variation,csat_direction,csat_current_month,csat_previous_month,health_status,impact_level").eq("status", "sucesso");
   if (existingError) return new Response(JSON.stringify({ ok: false, error: existingError.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   const existingByCnpj = new Map((existingLeads || [])
-    .map((lead) => [cleanCnpj(lead.cnpj || ""), lead] as const)
+    .map((lead) => [normalizeCNPJ(lead.cnpj || ""), lead] as const)
     .filter(([cnpj]) => cnpj.length === 14));
   const existingByNamePhone = new Map((existingLeads || [])
     .filter((lead) => lead.nome_fantasia && lead.telefone_responsavel)
@@ -356,6 +362,9 @@ Deno.serve(async (req) => {
     .eq("label", "Onboarding Sucesso")
     .maybeSingle();
   const successStageValue = sucessoStage?.value || "novo_lead";
+  if (!sucessoStage?.value) {
+    errors.push({ message: "Etapa 'Onboarding Sucesso' não encontrada para painel 'sucesso'; fallback para 'novo_lead'" });
+  }
 
   for (const row of validRows) {
     counters.processed++;
@@ -386,5 +395,5 @@ Deno.serve(async (req) => {
   }
   console.log(`[sync-drive-clients] Resultado: processados=${counters.processed}, criados=${counters.created}, atualizados=${counters.updated}, ignorados=${counters.skipped}, erros=${errors.length}`);
   await supabase.from("sync_job_logs").insert({ job_name: "sync_drive_clients", processed_count: counters.processed, created_count: counters.created, updated_count: counters.updated, error_count: errors.length } as never);
-  return new Response(JSON.stringify({ success: true, ...counters, errors }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  return new Response(JSON.stringify({ success: true, ...counters, total_rows_read: rows.length, valid_clients: validRows.length, source: sourceMeta, errors }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 });
