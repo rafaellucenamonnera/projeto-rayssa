@@ -337,12 +337,23 @@ export type Database = {
       }
       leads: {
         Row: {
+          campaign_status_current: string | null
+          campaign_status_current_month: string | null
+          campaign_status_previous: string | null
+          campaign_status_previous_month: string | null
+          categoria: string | null
           cidade: string | null
           cnpj: string | null
           completion_token: string | null
           consultor: string | null
           contrato_url: string | null
           csat: number | null
+          csat_current: number | null
+          csat_current_month: string | null
+          csat_direction: string | null
+          csat_previous: number | null
+          csat_previous_month: string | null
+          csat_variation: number | null
           dados_completos: boolean
           data_cadastro: string
           data_contrato_assinado: string | null
@@ -357,9 +368,13 @@ export type Database = {
           financeiro_editado_por: string | null
           financeiro_preenchido_em: string | null
           financeiro_preenchido_por: string | null
+          health_status: string | null
           id: string
+          impact_level: string | null
           impacto: string | null
+          juros_recebidos: number | null
           motivo_perda: string | null
+          multas_recebidas: number | null
           nome_fantasia: string
           nome_responsavel: string
           numero_proposta: string | null
@@ -372,6 +387,7 @@ export type Database = {
           quantidade_funcionarios: number | null
           quantidade_lojas: number
           razao_social: string | null
+          receita_taxa_boleto: number | null
           responsavel_comercial_email: string | null
           responsavel_comercial_nome: string | null
           responsavel_comercial_telefone: string | null
@@ -391,17 +407,31 @@ export type Database = {
           status_lead: Database["public"]["Enums"]["lead_status"]
           telefone_responsavel: string
           valor_campanhas: number | null
+          valor_campanhas_anterior: number | null
           valor_mensalidade: number | null
+          valor_mensalidade_anterior: number | null
           valor_pagamento: number | null
+          valor_pagamento_anterior: number | null
           valor_setup: number | null
         }
         Insert: {
+          campaign_status_current?: string | null
+          campaign_status_current_month?: string | null
+          campaign_status_previous?: string | null
+          campaign_status_previous_month?: string | null
+          categoria?: string | null
           cidade?: string | null
           cnpj?: string | null
           completion_token?: string | null
           consultor?: string | null
           contrato_url?: string | null
           csat?: number | null
+          csat_current?: number | null
+          csat_current_month?: string | null
+          csat_direction?: string | null
+          csat_previous?: number | null
+          csat_previous_month?: string | null
+          csat_variation?: number | null
           dados_completos?: boolean
           data_cadastro?: string
           data_contrato_assinado?: string | null
@@ -416,9 +446,13 @@ export type Database = {
           financeiro_editado_por?: string | null
           financeiro_preenchido_em?: string | null
           financeiro_preenchido_por?: string | null
+          health_status?: string | null
           id?: string
+          impact_level?: string | null
           impacto?: string | null
+          juros_recebidos?: number | null
           motivo_perda?: string | null
+          multas_recebidas?: number | null
           nome_fantasia: string
           nome_responsavel: string
           numero_proposta?: string | null
@@ -431,6 +465,7 @@ export type Database = {
           quantidade_funcionarios?: number | null
           quantidade_lojas: number
           razao_social?: string | null
+          receita_taxa_boleto?: number | null
           responsavel_comercial_email?: string | null
           responsavel_comercial_nome?: string | null
           responsavel_comercial_telefone?: string | null
@@ -450,17 +485,31 @@ export type Database = {
           status_lead?: Database["public"]["Enums"]["lead_status"]
           telefone_responsavel: string
           valor_campanhas?: number | null
+          valor_campanhas_anterior?: number | null
           valor_mensalidade?: number | null
+          valor_mensalidade_anterior?: number | null
           valor_pagamento?: number | null
+          valor_pagamento_anterior?: number | null
           valor_setup?: number | null
         }
         Update: {
+          campaign_status_current?: string | null
+          campaign_status_current_month?: string | null
+          campaign_status_previous?: string | null
+          campaign_status_previous_month?: string | null
+          categoria?: string | null
           cidade?: string | null
           cnpj?: string | null
           completion_token?: string | null
           consultor?: string | null
           contrato_url?: string | null
           csat?: number | null
+          csat_current?: number | null
+          csat_current_month?: string | null
+          csat_direction?: string | null
+          csat_previous?: number | null
+          csat_previous_month?: string | null
+          csat_variation?: number | null
           dados_completos?: boolean
           data_cadastro?: string
           data_contrato_assinado?: string | null
@@ -475,9 +524,13 @@ export type Database = {
           financeiro_editado_por?: string | null
           financeiro_preenchido_em?: string | null
           financeiro_preenchido_por?: string | null
+          health_status?: string | null
           id?: string
+          impact_level?: string | null
           impacto?: string | null
+          juros_recebidos?: number | null
           motivo_perda?: string | null
+          multas_recebidas?: number | null
           nome_fantasia?: string
           nome_responsavel?: string
           numero_proposta?: string | null
@@ -490,6 +543,7 @@ export type Database = {
           quantidade_funcionarios?: number | null
           quantidade_lojas?: number
           razao_social?: string | null
+          receita_taxa_boleto?: number | null
           responsavel_comercial_email?: string | null
           responsavel_comercial_nome?: string | null
           responsavel_comercial_telefone?: string | null
@@ -509,8 +563,11 @@ export type Database = {
           status_lead?: Database["public"]["Enums"]["lead_status"]
           telefone_responsavel?: string
           valor_campanhas?: number | null
+          valor_campanhas_anterior?: number | null
           valor_mensalidade?: number | null
+          valor_mensalidade_anterior?: number | null
           valor_pagamento?: number | null
+          valor_pagamento_anterior?: number | null
           valor_setup?: number | null
         }
         Relationships: [
