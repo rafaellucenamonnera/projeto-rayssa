@@ -347,7 +347,7 @@ Deno.serve(async (req) => {
   const { data: existingLeads, error: existingError } = await supabase.from("leads").select("id,cnpj,nome_fantasia,razao_social,nome_responsavel,email_responsavel,telefone_responsavel,cidade,erp_utilizado,quantidade_lojas,quantidade_funcionarios,valor_mensalidade,valor_campanhas,valor_pagamento,consultor,impacto,risco,csat,revenue_total,status,categoria,juros_recebidos,multas_recebidas,receita_taxa_boleto,valor_mensalidade_anterior,valor_campanhas_anterior,valor_pagamento_anterior,campaign_status_current,campaign_status_previous,campaign_status_current_month,campaign_status_previous_month,csat_current,csat_previous,csat_variation,csat_direction,csat_current_month,csat_previous_month,health_status,impact_level").eq("status", "sucesso");
   if (existingError) return new Response(JSON.stringify({ ok: false, error: existingError.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   const existingByCnpj = new Map((existingLeads || [])
-    .map((lead) => [cleanCnpj(lead.cnpj || ""), lead] as const)
+    .map((lead) => [normalizeCNPJ(lead.cnpj || ""), lead] as const)
     .filter(([cnpj]) => cnpj.length === 14));
   const existingByNamePhone = new Map((existingLeads || [])
     .filter((lead) => lead.nome_fantasia && lead.telefone_responsavel)
