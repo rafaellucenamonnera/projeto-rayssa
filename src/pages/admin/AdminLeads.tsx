@@ -1115,6 +1115,7 @@ const AdminLeads = () => {
             leads={filtered}
             stages={pipelineStages}
             parceirosMap={parceiros}
+            showCampaignStatus={currentPanelId === "sucesso"}
             canCloneCard={canCloneCard}
             canEditCard={canEditCard}
             canDeleteCard={canDeleteCard}
