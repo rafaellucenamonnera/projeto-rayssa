@@ -236,9 +236,9 @@ Deno.serve(async (req) => {
   let currentClient: DriveClientRow | null = null;
   rows.forEach((r, index) => {
     const sourceRow = index + 2;
-    const cnpj = cleanCnpj(pick(r, "cnpj", "documento"));
+    const cnpj = normalizeCNPJ(pick(r, "cnpj", "documento"));
     const rowLabel = pick(r, "contratante", "empresa", "nome_fantasia", "categoria");
-    if (cnpj.length === 14) {
+    if (isValidClientRow(cnpj, rowLabel)) {
       if (currentClient) parsedRows.push(currentClient);
       currentClient = {
         source_row: sourceRow,
