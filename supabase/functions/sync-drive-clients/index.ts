@@ -54,6 +54,13 @@ const parseCsv = (raw: string) => {
     return headers.reduce<Record<string, string>>((acc, h, idx) => { acc[h] = cols[idx] || ""; return acc; }, {});
   });
 };
+const SUCCESS_PANEL_SPREADSHEET_ID = "1Ao69-CKVhwmTxzRAhpHotw3Ny_3kU7Id34k4qLTAyo8";
+
+const buildGoogleSheetsCsvUrl = () => {
+  const gid = Deno.env.get("GOOGLE_SHEETS_GID")?.trim() || "0";
+  return `https://docs.google.com/spreadsheets/d/${SUCCESS_PANEL_SPREADSHEET_ID}/export?format=csv&gid=${encodeURIComponent(gid)}`;
+};
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -68,8 +75,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ success: false, error: "Method not allowed" }), { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
-  const sheetCsvUrl = Deno.env.get("GOOGLE_SHEETS_CSV_URL");
-  if (!sheetCsvUrl) return new Response(JSON.stringify({ ok: false, error: "Missing GOOGLE_SHEETS_CSV_URL" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  const sheetCsvUrl = buildGoogleSheetsCsvUrl();
   const counters = { processed: 0, created: 0, updated: 0, skipped: 0 };
   const errors: Array<{ row?: number; cnpj?: string; message: string }> = [];
   console.log("[sync-drive-clients] Início da sincronização");
