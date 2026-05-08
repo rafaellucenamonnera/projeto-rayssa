@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
   }
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
   const sheetCsvUrl = buildGoogleSheetsCsvUrl();
-  const counters = { processed: 0, created: 0, updated: 0, skipped: 0 };
+  const counters = { processed: 0, created: 0, updated: 0, skipped: 0, financial_ignored: 0 };
   const errors: Array<{ row?: number; cnpj?: string; message: string }> = [];
   console.log("[sync-drive-clients] Início da sincronização");
   const [csvResponse, statusCsvResponse, csatCsvResponse, painelSaudeCsvResponse] = await Promise.all([
