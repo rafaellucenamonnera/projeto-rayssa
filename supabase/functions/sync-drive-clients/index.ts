@@ -337,7 +337,7 @@ Deno.serve(async (req) => {
       health_similarity_match: health?.similarity || false,
     };
   }).filter((r) => {
-    if (r.cnpj.length === 14) return true;
+    if (isValidClientRow(r.cnpj, r.razao_social || r.nome_fantasia)) return true;
     counters.skipped++;
     errors.push({ row: r.source_row, cnpj: r.cnpj, message: "CNPJ inválido ou vazio" });
     return false;
