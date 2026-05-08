@@ -77,13 +77,14 @@ const parseCsv = (raw: string) => {
     return headers.reduce<Record<string, string>>((acc, h, idx) => { acc[h] = cols[idx] || ""; return acc; }, {});
   });
 };
-const SUCCESS_PANEL_SPREADSHEET_ID = "1Ao69-CKVhwmTxzRAhpHotw3Ny_3kU7Id34k4qLTAyo8";
+const SUCCESS_PANEL_SPREADSHEET_ID = Deno.env.get("GOOGLE_SHEETS_SPREADSHEET_ID")?.trim() || "1Ao69-CKVhwmTxzRAhpHotw3Ny_3kU7Id34k4qLTAyo8";
 const PT_MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
 const buildGoogleSheetsCsvUrl = () => {
   const gid = Deno.env.get("GOOGLE_SHEETS_GID")?.trim() || "0";
   return `https://docs.google.com/spreadsheets/d/${SUCCESS_PANEL_SPREADSHEET_ID}/export?format=csv&gid=${encodeURIComponent(gid)}`;
 };
+const isValidClientRow = (cnpj: string, name: string) => normalizeCNPJ(cnpj).length === 14 && normalizeCompanyName(name).length > 0;
 const buildStatusCampanhaCsvUrl = () => {
   const gid = Deno.env.get("GOOGLE_SHEETS_STATUS_CAMPANHA_GID")?.trim();
   if (!gid) return null;
