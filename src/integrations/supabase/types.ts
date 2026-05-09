@@ -404,7 +404,7 @@ export type Database = {
           revenue_variation: number | null
           risco: string | null
           status: string
-          status_lead: Database["public"]["Enums"]["lead_status"]
+          status_lead: string
           telefone_responsavel: string
           valor_campanhas: number | null
           valor_campanhas_anterior: number | null
@@ -482,7 +482,7 @@ export type Database = {
           revenue_variation?: number | null
           risco?: string | null
           status?: string
-          status_lead?: Database["public"]["Enums"]["lead_status"]
+          status_lead?: string
           telefone_responsavel: string
           valor_campanhas?: number | null
           valor_campanhas_anterior?: number | null
@@ -560,7 +560,7 @@ export type Database = {
           revenue_variation?: number | null
           risco?: string | null
           status?: string
-          status_lead?: Database["public"]["Enums"]["lead_status"]
+          status_lead?: string
           telefone_responsavel?: string
           valor_campanhas?: number | null
           valor_campanhas_anterior?: number | null
