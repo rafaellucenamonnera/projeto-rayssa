@@ -1,132 +1,12 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-type DriveClientRow = {
-  source_row: number;
-  cnpj: string;
-  nome_fantasia: string;
-  razao_social: string;
-  nome_responsavel: string;
-  email_responsavel: string;
-  telefone_responsavel: string;
-  cidade: string;
-  erp_utilizado: string;
-  quantidade_lojas: number;
-  quantidade_funcionarios: number | null;
-  valor_mensalidade: number | null;
-  valor_campanhas: number | null;
-  valor_pagamento: number | null;
-  impacto: string;
-  risco: string;
-  consultor: string;
-  csat: number | null;
-  categoria: string;
-  juros_recebidos: number | null;
-  multas_recebidas: number | null;
-  receita_taxa_boleto: number | null;
-};
-const normalizeCNPJ = (value: string) => (value || "").replace(/\D/g, "").slice(0, 14);
-const toNumber = (value: string) => {
-  if (!value?.trim()) return null;
-  const normalized = value.replace(/\./g, "").replace(",", ".");
-  const n = Number(normalized);
-  return Number.isFinite(n) ? n : null;
-};
-const normalizeHeader = (header: string) => header.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
-const pick = (source: Record<string, string>, ...keys: string[]) => {
-  for (const key of keys) {
-    const value = source[key];
-    if (typeof value === "string" && value.trim()) return value.trim();
-  }
-  return "";
-};
-const FINANCIAL_CATEGORY_MAP: Record<string, keyof Pick<DriveClientRow, "juros_recebidos" | "multas_recebidas" | "valor_campanhas" | "valor_pagamento" | "receita_taxa_boleto" | "valor_mensalidade">> = {
-  juros_recebidos: "juros_recebidos",
-  multas_recebidas: "multas_recebidas",
-  receita_campanha: "valor_campanhas",
-  receita_ordem_pagamento: "valor_pagamento",
-  receita_taxa_boleto: "receita_taxa_boleto",
-  receitas_mensalidades: "valor_mensalidade",
-};
-const normalizeCategoryLabel = (value: string) => normalizeHeader(value).replace(/^receitas?_/, "receita_");
-const extractPrimaryNumericValue = (row: Record<string, string>) => {
-  const direct = toNumber(pick(row, "valor", "valor_total", "total", "mes_atual", "atual"));
-  if (direct !== null) return direct;
-  const keys = Object.keys(row).filter((k) => !["contratante", "empresa", "nome_fantasia", "cnpj", "categoria", "cs", "responsavel", "responsavel_cs"].includes(k));
-  for (let i = keys.length - 1; i >= 0; i--) {
-    const parsed = toNumber(row[keys[i]] || "");
-    if (parsed !== null) return parsed;
-  }
-  return null;
-};
-const parseCsv = (raw: string) => {
-  const lines = raw.split(/\r?\n/).filter((line) => line.trim().length > 0);
-  if (lines.length < 2) return [] as Record<string, string>[];
-  const parseLine = (line: string) => {
-    const values: string[] = []; let current = ""; let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"') { if (inQuotes && line[i + 1] === '"') { current += '"'; i++; } else inQuotes = !inQuotes; }
-      else if (char === "," && !inQuotes) { values.push(current.trim()); current = ""; }
-      else current += char;
-    }
-    values.push(current.trim()); return values;
-  };
-  const headers = parseLine(lines[0]).map(normalizeHeader);
-  return lines.slice(1).map((line) => {
-    const cols = parseLine(line);
-    return headers.reduce<Record<string, string>>((acc, h, idx) => { acc[h] = cols[idx] || ""; return acc; }, {});
-  });
-};
-const SUCCESS_PANEL_SPREADSHEET_ID = Deno.env.get("GOOGLE_SHEETS_SPREADSHEET_ID")?.trim() || "1Ao69-CKVhwmTxzRAhpHotw3Ny_3kU7Id34k4qLTAyo8";
-const PT_MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
-
-const buildGoogleSheetsCsvUrl = () => {
-  const gid = Deno.env.get("GOOGLE_SHEETS_GID")?.trim() || "0";
-  return `https://docs.google.com/spreadsheets/d/${SUCCESS_PANEL_SPREADSHEET_ID}/export?format=csv&gid=${encodeURIComponent(gid)}`;
-};
-const isValidClientRow = (cnpj: string, name: string) => normalizeCNPJ(cnpj).length === 14 && normalizeCompanyName(name).length > 0;
-const buildStatusCampanhaCsvUrl = () => {
-  const gid = Deno.env.get("GOOGLE_SHEETS_STATUS_CAMPANHA_GID")?.trim();
-  if (!gid) return null;
-  return `https://docs.google.com/spreadsheets/d/${SUCCESS_PANEL_SPREADSHEET_ID}/export?format=csv&gid=${encodeURIComponent(gid)}`;
-};
-const buildCsatCsvUrl = () => {
-  const gid = Deno.env.get("GOOGLE_SHEETS_CSAT_GID")?.trim();
-  if (!gid) return null;
-  return `https://docs.google.com/spreadsheets/d/${SUCCESS_PANEL_SPREADSHEET_ID}/export?format=csv&gid=${encodeURIComponent(gid)}`;
-};
-const buildPainelSaudeCsvUrl = () => {
-  const gid = Deno.env.get("GOOGLE_SHEETS_PAINEL_SAUDE_GID")?.trim();
-  if (!gid) return null;
-  return `https://docs.google.com/spreadsheets/d/${SUCCESS_PANEL_SPREADSHEET_ID}/export?format=csv&gid=${encodeURIComponent(gid)}`;
-};
-const normalizeCompanyName = (value: string) => (value || "")
-  .normalize("NFD")
-  .replace(/[\u0300-\u036f]/g, "")
-  .replace(/\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/g, " ")
-  .replace(/[^\w\s]/g, " ")
-  .replace(/_/g, " ")
-  .replace(/\s+/g, " ")
-  .trim()
-  .toUpperCase();
-const scoreNameSimilarity = (a: string, b: string) => {
-  if (!a || !b) return 0;
-  if (a === b) return 1;
-  const sa = new Set(a.split(" "));
-  const sb = new Set(b.split(" "));
-  let intersect = 0;
-  sa.forEach((token) => { if (sb.has(token)) intersect++; });
-  return intersect / Math.max(sa.size, sb.size, 1);
-};
-const parseMonthHeader = (key: string) => {
-  const k = normalizeHeader(key);
-  const mmyyyy = k.match(/(0?[1-9]|1[0-2])[_/-](20\d{2})/);
-  if (mmyyyy) return { month: Number(mmyyyy[1]), year: Number(mmyyyy[2]) };
-  const monthText = PT_MONTHS.findIndex((m) => k.includes(m));
-  const yearMatch = k.match(/(20\d{2})/);
-  if (monthText >= 0 && yearMatch) return { month: monthText + 1, year: Number(yearMatch[1]) };
-  return null;
-};
+// ============================================================================
+// Sync Drive Clients
+// Fonte primária: aba "Clientes" (gid configurável, default 1252292837) com
+// colunas NOME FANTASIA, RAZAO SOCIAL, Carteira (CS Responsável).
+// As demais abas (Receita / Contratante, Status Campanha, CSAT, Painel Saúde)
+// apenas enriquecem cada cliente por similaridade da razão social.
+// ============================================================================
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -134,273 +14,463 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+const SPREADSHEET_ID = Deno.env.get("GOOGLE_SHEETS_SPREADSHEET_ID")?.trim() || "1Ao69-CKVhwmTxzRAhpHotw3Ny_3kU7Id34k4qLTAyo8";
+const CLIENTS_GID = Deno.env.get("GOOGLE_SHEETS_CLIENTS_GID")?.trim() || "1252292837";
+const REVENUE_GID = Deno.env.get("GOOGLE_SHEETS_GID")?.trim() || "0";
+const STATUS_GID = Deno.env.get("GOOGLE_SHEETS_STATUS_CAMPANHA_GID")?.trim() || "";
+const CSAT_GID = Deno.env.get("GOOGLE_SHEETS_CSAT_GID")?.trim() || "";
+const HEALTH_GID = Deno.env.get("GOOGLE_SHEETS_PAINEL_SAUDE_GID")?.trim() || "";
+
+const csvUrl = (gid: string) => `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${encodeURIComponent(gid)}`;
+
+const PT_MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+const normalizeHeader = (h: string) =>
+  h.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+
+const normalizeCNPJ = (v: string) => (v || "").replace(/\D/g, "").slice(0, 14);
+
+const normalizeCompanyName = (v: string) =>
+  (v || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/g, " ")
+    .replace(/[^\w\s]/g, " ")
+    .replace(/_/g, " ")
+    .replace(/\s+/g, " ")
+    .trim().toUpperCase();
+
+const scoreNameSimilarity = (a: string, b: string) => {
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  const sa = new Set(a.split(" ").filter(Boolean));
+  const sb = new Set(b.split(" ").filter(Boolean));
+  let inter = 0;
+  sa.forEach((t) => { if (sb.has(t)) inter++; });
+  return inter / Math.max(sa.size, sb.size, 1);
+};
+
+const toNumber = (v: string) => {
+  if (!v?.trim()) return null;
+  const n = Number(v.replace(/[^\d,.\-]/g, "").replace(/\./g, "").replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+};
+
+const pick = (row: Record<string, string>, ...keys: string[]) => {
+  for (const k of keys) {
+    const v = row[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
   }
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ success: false, error: "Method not allowed" }), { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  }
-  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
-  const sheetCsvUrl = buildGoogleSheetsCsvUrl();
-  const counters = { processed: 0, created: 0, updated: 0, skipped: 0, financial_ignored: 0 };
-  const errors: Array<{ row?: number; cnpj?: string; message: string }> = [];
-  console.log("[sync-drive-clients] Início da sincronização");
-  const [csvResponse, statusCsvResponse, csatCsvResponse, painelSaudeCsvResponse] = await Promise.all([
-    fetch(sheetCsvUrl, { headers: { "Cache-Control": "no-cache" } }),
-    (() => {
-      const statusUrl = buildStatusCampanhaCsvUrl();
-      if (!statusUrl) return Promise.resolve(null);
-      return fetch(statusUrl, { headers: { "Cache-Control": "no-cache" } });
-    })(),
-    (() => {
-      const csatUrl = buildCsatCsvUrl();
-      if (!csatUrl) return Promise.resolve(null);
-      return fetch(csatUrl, { headers: { "Cache-Control": "no-cache" } });
-    })(),
-    (() => {
-      const healthUrl = buildPainelSaudeCsvUrl();
-      if (!healthUrl) return Promise.resolve(null);
-      return fetch(healthUrl, { headers: { "Cache-Control": "no-cache" } });
-    })(),
-  ]);
-  if (!csvResponse.ok) return new Response(JSON.stringify({ ok: false, error: `Falha ao ler planilha Google Sheets (status ${csvResponse.status}). Verifique permissões da planilha/aba e credenciais de acesso público.` }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  const rows = parseCsv(await csvResponse.text());
-  const sourceMeta = {
-    spreadsheet_id: SUCCESS_PANEL_SPREADSHEET_ID,
-    sheet_gid: Deno.env.get("GOOGLE_SHEETS_GID")?.trim() || "0",
-    sheet_name: Deno.env.get("GOOGLE_SHEETS_SHEET_NAME")?.trim() || "Receita / Contratante",
+  return "";
+};
+
+const parseCsv = (raw: string): Record<string, string>[] => {
+  const lines = raw.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  if (lines.length < 2) return [];
+  const parseLine = (line: string) => {
+    const out: string[] = []; let cur = ""; let q = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { if (q && line[i + 1] === '"') { cur += '"'; i++; } else q = !q; }
+      else if (c === "," && !q) { out.push(cur.trim()); cur = ""; }
+      else cur += c;
+    }
+    out.push(cur.trim()); return out;
   };
-  console.log(`[sync-drive-clients] Origem ${sourceMeta.sheet_name} (gid=${sourceMeta.sheet_gid}) | Total lido: ${rows.length}`);
-  const statusRows = statusCsvResponse?.ok ? parseCsv(await statusCsvResponse.text()) : [];
-  const csatRows = csatCsvResponse?.ok ? parseCsv(await csatCsvResponse.text()) : [];
-  const painelSaudeRows = painelSaudeCsvResponse?.ok ? parseCsv(await painelSaudeCsvResponse.text()) : [];
+  const headers = parseLine(lines[0]).map(normalizeHeader);
+  return lines.slice(1).map((line) => {
+    const cols = parseLine(line);
+    return headers.reduce<Record<string, string>>((a, h, i) => { a[h] = cols[i] || ""; return a; }, {});
+  });
+};
+
+const parseMonthHeader = (key: string) => {
+  const k = normalizeHeader(key);
+  const mmyyyy = k.match(/(0?[1-9]|1[0-2])[_/-](20\d{2})/);
+  if (mmyyyy) return { month: Number(mmyyyy[1]), year: Number(mmyyyy[2]) };
+  const idx = PT_MONTHS.findIndex((m) => k.includes(m));
+  const y = k.match(/(20\d{2})/);
+  if (idx >= 0 && y) return { month: idx + 1, year: Number(y[1]) };
+  return null;
+};
+
+// Matching utilitário: dado um nome normalizado, busca no map o melhor candidato.
+const lookupBySimilarity = <T,>(map: Map<string, T>, normalized: string, threshold = 0.85): { value: T; similarity: boolean } | null => {
+  if (!normalized) return null;
+  const exact = map.get(normalized);
+  if (exact) return { value: exact, similarity: false };
+  let bestScore = 0;
+  let best: T | undefined;
+  for (const [name, candidate] of map.entries()) {
+    const s = scoreNameSimilarity(normalized, name);
+    if (s > bestScore) { bestScore = s; best = candidate; }
+  }
+  if (bestScore >= threshold && best) return { value: best, similarity: true };
+  return null;
+};
+
+type ClientRow = {
+  source_row: number;
+  cnpj: string;
+  nome_fantasia: string;
+  razao_social: string;
+  consultor: string;
+};
+
+type RevenueData = {
+  valor_mensalidade: number | null;
+  valor_campanhas: number | null;
+  valor_pagamento: number | null;
+  juros_recebidos: number | null;
+  multas_recebidas: number | null;
+  receita_taxa_boleto: number | null;
+};
+
+const FINANCIAL_CATEGORY_MAP: Record<string, keyof RevenueData> = {
+  juros_recebidos: "juros_recebidos",
+  multas_recebidas: "multas_recebidas",
+  receita_campanha: "valor_campanhas",
+  receita_ordem_pagamento: "valor_pagamento",
+  receita_taxa_boleto: "receita_taxa_boleto",
+  receitas_mensalidades: "valor_mensalidade",
+};
+const normalizeCategoryLabel = (v: string) => normalizeHeader(v).replace(/^receitas?_/, "receita_");
+
+const extractPrimaryNumericValue = (row: Record<string, string>) => {
+  const direct = toNumber(pick(row, "valor", "valor_total", "total", "mes_atual", "atual"));
+  if (direct !== null) return direct;
+  const reserved = new Set(["contratante", "empresa", "nome_fantasia", "cnpj", "categoria", "cs", "responsavel", "responsavel_cs"]);
+  const keys = Object.keys(row).filter((k) => !reserved.has(k));
+  for (let i = keys.length - 1; i >= 0; i--) {
+    const p = toNumber(row[keys[i]] || "");
+    if (p !== null) return p;
+  }
+  return null;
+};
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ success: false, error: "Method not allowed" }), {
+      status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    { auth: { persistSession: false } },
+  );
+
+  console.log("[sync-drive-clients] Início (fonte: aba Clientes gid=", CLIENTS_GID, ")");
+
+  const counters = {
+    processed: 0,
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    matched_revenue: 0,
+    matched_status: 0,
+    matched_csat: 0,
+    matched_health: 0,
+  };
+  const errors: Array<{ row?: number; razao_social?: string; message: string }> = [];
+
+  // -------- Fetch all sheets in parallel --------
+  const [clientsRes, revenueRes, statusRes, csatRes, healthRes] = await Promise.all([
+    fetch(csvUrl(CLIENTS_GID), { headers: { "Cache-Control": "no-cache" } }),
+    fetch(csvUrl(REVENUE_GID), { headers: { "Cache-Control": "no-cache" } }),
+    STATUS_GID ? fetch(csvUrl(STATUS_GID), { headers: { "Cache-Control": "no-cache" } }) : Promise.resolve(null),
+    CSAT_GID ? fetch(csvUrl(CSAT_GID), { headers: { "Cache-Control": "no-cache" } }) : Promise.resolve(null),
+    HEALTH_GID ? fetch(csvUrl(HEALTH_GID), { headers: { "Cache-Control": "no-cache" } }) : Promise.resolve(null),
+  ]);
+
+  if (!clientsRes.ok) {
+    return new Response(JSON.stringify({
+      success: false,
+      error: `Falha ao ler aba Clientes (status ${clientsRes.status}). Verifique permissões da planilha.`,
+    }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
+  const clientsRaw = parseCsv(await clientsRes.text());
+  const revenueRaw = revenueRes.ok ? parseCsv(await revenueRes.text()) : [];
+  const statusRaw = statusRes?.ok ? parseCsv(await statusRes.text()) : [];
+  const csatRaw = csatRes?.ok ? parseCsv(await csatRes.text()) : [];
+  const healthRaw = healthRes?.ok ? parseCsv(await healthRes.text()) : [];
+
+  console.log(`[sync-drive-clients] Linhas lidas: clientes=${clientsRaw.length}, receita=${revenueRaw.length}, status=${statusRaw.length}, csat=${csatRaw.length}, saude=${healthRaw.length}`);
+
+  // -------- 1) Parse aba Clientes --------
+  const clients: ClientRow[] = [];
+  clientsRaw.forEach((r, i) => {
+    const razao = pick(r, "razao_social", "razao", "razaosocial");
+    const fantasiaRaw = pick(r, "nome_fantasia", "nomefantasia", "fantasia");
+    if (!razao && !fantasiaRaw) return;
+
+    // Extrai CNPJ se aparecer no nome fantasia (formato "NOME - 12345678901234")
+    const cnpjMatch = fantasiaRaw.match(/\b(\d{14})\b/) || razao.match(/\b(\d{14})\b/);
+    const cnpj = cnpjMatch ? cnpjMatch[1] : "";
+    // Remove sufixo "- CNPJ" do nome fantasia
+    const nome_fantasia = fantasiaRaw.replace(/\s*-\s*\d{14}\s*$/, "").trim();
+
+    clients.push({
+      source_row: i + 2,
+      cnpj,
+      nome_fantasia: nome_fantasia || razao,
+      razao_social: razao || nome_fantasia,
+      consultor: pick(r, "carteira", "cs", "consultor", "responsavel", "responsavel_cs"),
+    });
+  });
+
+  if (clients.length === 0) {
+    return new Response(JSON.stringify({
+      success: false,
+      error: "Nenhum cliente encontrado na aba Clientes (verifique colunas RAZAO SOCIAL / NOME FANTASIA / Carteira).",
+    }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
+  // -------- 2) Build revenueByCompany a partir da aba Receita / Contratante --------
+  // Lógica: cada vez que encontramos uma linha "cliente" (com nome em Contratante/Empresa
+  // e sem categoria financeira), iniciamos um bucket. Linhas seguintes com categoria
+  // financeira mapeada alimentam o bucket atual.
+  const revenueByCompany = new Map<string, RevenueData>();
+  let currentBucket: { name: string; data: RevenueData } | null = null;
+  for (const r of revenueRaw) {
+    const label = pick(r, "contratante", "empresa", "nome_fantasia", "razao_social", "categoria", "");
+    if (!label) continue;
+    const isFinancial = Boolean(FINANCIAL_CATEGORY_MAP[normalizeCategoryLabel(label)]);
+
+    if (!isFinancial) {
+      // Provável linha-cabeçalho de cliente
+      const norm = normalizeCompanyName(label);
+      if (!norm) continue;
+      currentBucket = {
+        name: norm,
+        data: {
+          valor_mensalidade: toNumber(pick(r, "mensalidade", "valor_mensalidade")),
+          valor_campanhas: toNumber(pick(r, "receita_campanha", "valor_campanhas")),
+          valor_pagamento: toNumber(pick(r, "receita_pagamento", "valor_pagamento", "receita_ordem_pagamento")),
+          juros_recebidos: toNumber(pick(r, "juros_recebidos")),
+          multas_recebidas: toNumber(pick(r, "multas_recebidas")),
+          receita_taxa_boleto: toNumber(pick(r, "receita_taxa_boleto")),
+        },
+      };
+      revenueByCompany.set(norm, currentBucket.data);
+    } else if (currentBucket) {
+      const field = FINANCIAL_CATEGORY_MAP[normalizeCategoryLabel(label)];
+      currentBucket.data[field] = extractPrimaryNumericValue(r);
+    }
+  }
+
+  // -------- 3) Build mapas das demais abas (status, csat, saude) --------
   const now = new Date();
   const currentMonth = { month: now.getUTCMonth() + 1, year: now.getUTCFullYear() };
   const previousMonth = currentMonth.month === 1
     ? { month: 12, year: currentMonth.year - 1 }
     : { month: currentMonth.month - 1, year: currentMonth.year };
-  const statusByCompany = new Map<string, { current: string; previous: string; currentMonth: string; previousMonth: string; similarity: boolean }>();
-  const csatByCompany = new Map<string, { current: number | null; previous: number | null; currentMonth: string; previousMonth: string; similarity: boolean }>();
-  const healthByCompany = new Map<string, { status: string; impact: string; similarity: boolean }>();
-  for (const row of statusRows) {
-    const rawName = pick(row, "razao_social", "contratante", "empresa", "nome_fantasia");
-    const normalizedName = normalizeCompanyName(rawName);
-    if (!normalizedName) continue;
-    let statusCurrent = "";
-    let statusPrevious = "";
-    for (const [key, value] of Object.entries(row)) {
-      const parsed = parseMonthHeader(key);
-      if (!parsed) continue;
-      if (parsed.month === currentMonth.month && parsed.year === currentMonth.year) statusCurrent = value.trim();
-      if (parsed.month === previousMonth.month && parsed.year === previousMonth.year) statusPrevious = value.trim();
+  const fmtMonth = (m: { month: number; year: number }) => `${String(m.month).padStart(2, "0")}/${m.year}`;
+
+  const statusByCompany = new Map<string, { current: string; previous: string }>();
+  for (const r of statusRaw) {
+    const norm = normalizeCompanyName(pick(r, "razao_social", "contratante", "empresa", "nome_fantasia"));
+    if (!norm) continue;
+    let cur = "", prev = "";
+    for (const [key, value] of Object.entries(r)) {
+      const p = parseMonthHeader(key);
+      if (!p) continue;
+      if (p.month === currentMonth.month && p.year === currentMonth.year) cur = value.trim();
+      if (p.month === previousMonth.month && p.year === previousMonth.year) prev = value.trim();
     }
-    statusByCompany.set(normalizedName, {
-      current: statusCurrent,
-      previous: statusPrevious,
-      currentMonth: `${String(currentMonth.month).padStart(2, "0")}/${currentMonth.year}`,
-      previousMonth: `${String(previousMonth.month).padStart(2, "0")}/${previousMonth.year}`,
-      similarity: false,
-    });
-  }
-  for (const row of csatRows) {
-    const rawName = pick(row, "razao_social", "contratante", "empresa", "nome_fantasia");
-    const normalizedName = normalizeCompanyName(rawName);
-    if (!normalizedName) continue;
-    let csatCurrent: number | null = null;
-    let csatPrevious: number | null = null;
-    for (const [key, value] of Object.entries(row)) {
-      const parsed = parseMonthHeader(key);
-      if (!parsed) continue;
-      if (parsed.month === currentMonth.month && parsed.year === currentMonth.year) csatCurrent = toNumber(value);
-      if (parsed.month === previousMonth.month && parsed.year === previousMonth.year) csatPrevious = toNumber(value);
-    }
-    csatByCompany.set(normalizedName, {
-      current: csatCurrent,
-      previous: csatPrevious,
-      currentMonth: `${String(currentMonth.month).padStart(2, "0")}/${currentMonth.year}`,
-      previousMonth: `${String(previousMonth.month).padStart(2, "0")}/${previousMonth.year}`,
-      similarity: false,
-    });
-  }
-  for (const row of painelSaudeRows) {
-    const rawName = pick(row, "contratante", "razao_social", "empresa", "nome_fantasia");
-    const status = pick(row, "status", "saude");
-    const impact = pick(row, "impacto", "impact");
-    const normalizedName = normalizeCompanyName(rawName);
-    if (!normalizedName || (!status && !impact)) continue;
-    healthByCompany.set(normalizedName, { status, impact, similarity: false });
-  }
-  const normalizeText = (value: string) => (value || "").trim().toLowerCase();
-  const isFinancialLabel = (value: string) => Boolean(FINANCIAL_CATEGORY_MAP[normalizeCategoryLabel(value)]);
-  const parsedRows: DriveClientRow[] = [];
-  let currentClient: DriveClientRow | null = null;
-  rows.forEach((r, index) => {
-    const sourceRow = index + 2;
-    const cnpj = normalizeCNPJ(pick(r, "cnpj", "documento", "__1"));
-    const rowLabel = pick(r, "contratante", "empresa", "nome_fantasia", "categoria", "", "__3");
-    const isFinancial = isFinancialLabel(rowLabel);
-    if (isValidClientRow(cnpj, rowLabel) && !isFinancial) {
-      if (currentClient) parsedRows.push(currentClient);
-      currentClient = {
-        source_row: sourceRow,
-        cnpj,
-        nome_fantasia: pick(r, "nome_fantasia", "empresa", "contratante", "") || "Cliente sem nome",
-        razao_social: pick(r, "razao_social"),
-        nome_responsavel: pick(r, "nome_responsavel", "responsavel", "cs", "responsavel_cs", "__2") || "Responsável",
-        email_responsavel: pick(r, "email_responsavel", "email") || "drive@monnera.local",
-        telefone_responsavel: pick(r, "telefone_responsavel", "telefone"),
-        cidade: pick(r, "cidade"),
-        erp_utilizado: pick(r, "erp_utilizado", "erp", "sistema") || "Não informado",
-        quantidade_lojas: Number(pick(r, "quantidade_lojas", "qtd_lojas", "lojas") || 1) || 1,
-        quantidade_funcionarios: toNumber(pick(r, "quantidade_funcionarios", "qtd_funcionarios", "funcionarios")),
-        valor_mensalidade: toNumber(pick(r, "mensalidade", "valor_mensalidade")),
-        valor_campanhas: toNumber(pick(r, "receita_campanha", "valor_campanhas")),
-        valor_pagamento: toNumber(pick(r, "receita_pagamento", "valor_pagamento", "receita_ordem_pagamento")),
-        impacto: pick(r, "impacto"),
-        risco: pick(r, "risco", "saude"),
-        consultor: pick(r, "consultor"),
-        csat: toNumber(pick(r, "csat")),
-        categoria: pick(r, "categoria", "__3"),
-        juros_recebidos: toNumber(pick(r, "juros_recebidos")),
-        multas_recebidas: toNumber(pick(r, "multas_recebidas")),
-        receita_taxa_boleto: toNumber(pick(r, "receita_taxa_boleto")),
-      };
-      return;
-    }
-    const normalizedCategory = normalizeCategoryLabel(rowLabel);
-    const mappedField = FINANCIAL_CATEGORY_MAP[normalizedCategory];
-    if (currentClient && mappedField) {
-      currentClient[mappedField] = extractPrimaryNumericValue(r);
-      counters.financial_ignored++;
-      return;
-    }
-    if (isFinancial) {
-      counters.financial_ignored++;
-      return;
-    }
-    if (!currentClient && rowLabel) {
-      counters.skipped++;
-      errors.push({ row: sourceRow, message: "Linha sem cliente associado" });
-    }
-  });
-  if (currentClient) parsedRows.push(currentClient);
-  const validRows = parsedRows.map((r) => ({
-    ...r,
-    valor_mensalidade: r.valor_mensalidade ?? 0,
-    valor_campanhas: r.valor_campanhas ?? 0,
-    valor_pagamento: r.valor_pagamento ?? 0,
-    revenue_total: (r.valor_mensalidade ?? 0) + (r.valor_campanhas ?? 0) + (r.valor_pagamento ?? 0) + (r.juros_recebidos ?? 0) + (r.multas_recebidas ?? 0) + (r.receita_taxa_boleto ?? 0),
-  })).map((r) => {
-    const normalized = normalizeCompanyName(r.razao_social || r.nome_fantasia);
-    let status = statusByCompany.get(normalized);
-    if (!status && normalized) {
-      let bestScore = 0;
-      let best: typeof status | undefined;
-      for (const [name, candidate] of statusByCompany.entries()) {
-        const score = scoreNameSimilarity(normalized, name);
-        if (score > bestScore) { bestScore = score; best = candidate; }
-      }
-      if (bestScore >= 0.72 && best) status = { ...best, similarity: true };
-    }
-    let csat = csatByCompany.get(normalized);
-    if (!csat && normalized) {
-      let bestScore = 0;
-      let best: typeof csat | undefined;
-      for (const [name, candidate] of csatByCompany.entries()) {
-        const score = scoreNameSimilarity(normalized, name);
-        if (score > bestScore) { bestScore = score; best = candidate; }
-      }
-      if (bestScore >= 0.72 && best) csat = { ...best, similarity: true };
-    }
-    const csatVariation = csat?.current != null && csat?.previous != null ? (csat.current - csat.previous) : null;
-    const csatDirection = csatVariation == null ? null : csatVariation > 0 ? "up" : csatVariation < 0 ? "down" : "neutral";
-    let health = healthByCompany.get(normalized);
-    if (!health && normalized) {
-      let bestScore = 0;
-      let best: typeof health | undefined;
-      for (const [name, candidate] of healthByCompany.entries()) {
-        const score = scoreNameSimilarity(normalized, name);
-        if (score > bestScore) { bestScore = score; best = candidate; }
-      }
-      if (bestScore >= 0.72 && best) health = { ...best, similarity: true };
-    }
-    return {
-      ...r,
-      campaign_status_current: status?.current || null,
-      campaign_status_previous: status?.previous || null,
-      campaign_status_current_month: status?.currentMonth || null,
-      campaign_status_previous_month: status?.previousMonth || null,
-      campaign_status_similarity_match: status?.similarity || false,
-      csat_current: csat?.current ?? null,
-      csat_previous: csat?.previous ?? null,
-      csat_variation: csatVariation,
-      csat_direction: csatDirection,
-      csat_current_month: csat?.currentMonth ?? null,
-      csat_previous_month: csat?.previousMonth ?? null,
-      csat_similarity_match: csat?.similarity || false,
-      health_status: health?.status || null,
-      impact_level: health?.impact || null,
-      health_similarity_match: health?.similarity || false,
-    };
-  }).filter((r) => {
-    if (isValidClientRow(r.cnpj, r.razao_social || r.nome_fantasia)) return true;
-    counters.skipped++;
-    errors.push({ row: r.source_row, cnpj: r.cnpj, message: "CNPJ inválido ou vazio" });
-    return false;
-  });
-  const { data: defaultPartner } = await supabase.from("parceiros_comerciais").select("id").eq("ativo", true).limit(1).maybeSingle();
-  if (!defaultPartner?.id) return new Response(JSON.stringify({ ok: false, error: "Nenhum parceiro ativo disponível" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  const { data: existingLeads, error: existingError } = await supabase.from("leads").select("id,cnpj,nome_fantasia,razao_social,nome_responsavel,email_responsavel,telefone_responsavel,cidade,erp_utilizado,quantidade_lojas,quantidade_funcionarios,valor_mensalidade,valor_campanhas,valor_pagamento,consultor,impacto,risco,csat,revenue_total,status,categoria,juros_recebidos,multas_recebidas,receita_taxa_boleto,valor_mensalidade_anterior,valor_campanhas_anterior,valor_pagamento_anterior,campaign_status_current,campaign_status_previous,campaign_status_current_month,campaign_status_previous_month,csat_current,csat_previous,csat_variation,csat_direction,csat_current_month,csat_previous_month,health_status,impact_level").eq("status", "sucesso");
-  if (existingError) return new Response(JSON.stringify({ ok: false, error: existingError.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  const existingByCnpj = new Map((existingLeads || [])
-    .map((lead) => [normalizeCNPJ(lead.cnpj || ""), lead] as const)
-    .filter(([cnpj]) => cnpj.length === 14));
-  const existingByNamePhone = new Map((existingLeads || [])
-    .filter((lead) => lead.nome_fantasia && lead.telefone_responsavel)
-    .map((lead) => [`${normalizeText(lead.nome_fantasia)}::${(lead.telefone_responsavel || "").replace(/\D/g, "")}`, lead] as const));
-  const existingByNameEmail = new Map((existingLeads || [])
-    .filter((lead) => lead.nome_fantasia && lead.email_responsavel)
-    .map((lead) => [`${normalizeText(lead.nome_fantasia)}::${normalizeText(lead.email_responsavel || "")}`, lead] as const));
-  const { data: sucessoStage } = await supabase
-    .from("pipeline_stages_config")
-    .select("value")
-    .eq("panel_key", "sucesso")
-    .eq("label", "Onboarding Sucesso")
-    .maybeSingle();
-  const successStageValue = sucessoStage?.value || "novo_lead";
-  if (!sucessoStage?.value) {
-    errors.push({ message: "Etapa 'Onboarding Sucesso' não encontrada para painel 'sucesso'; fallback para 'novo_lead'" });
+    statusByCompany.set(norm, { current: cur, previous: prev });
   }
 
-  for (const row of validRows) {
+  const csatByCompany = new Map<string, { current: number | null; previous: number | null }>();
+  for (const r of csatRaw) {
+    const norm = normalizeCompanyName(pick(r, "razao_social", "contratante", "empresa", "nome_fantasia"));
+    if (!norm) continue;
+    let cur: number | null = null, prev: number | null = null;
+    for (const [key, value] of Object.entries(r)) {
+      const p = parseMonthHeader(key);
+      if (!p) continue;
+      if (p.month === currentMonth.month && p.year === currentMonth.year) cur = toNumber(value);
+      if (p.month === previousMonth.month && p.year === previousMonth.year) prev = toNumber(value);
+    }
+    csatByCompany.set(norm, { current: cur, previous: prev });
+  }
+
+  const healthByCompany = new Map<string, { status: string; impact: string }>();
+  for (const r of healthRaw) {
+    const norm = normalizeCompanyName(pick(r, "contratante", "razao_social", "empresa", "nome_fantasia"));
+    const status = pick(r, "status", "saude");
+    const impact = pick(r, "impacto", "impact");
+    if (!norm || (!status && !impact)) continue;
+    healthByCompany.set(norm, { status, impact });
+  }
+
+  // -------- 4) Etapa-alvo no painel Sucesso --------
+  const { data: successStages, error: stagesErr } = await supabase
+    .from("pipeline_stages_config")
+    .select("value,label,sort_order")
+    .eq("panel_key", "sucesso")
+    .order("sort_order", { ascending: true })
+    .limit(1);
+  if (stagesErr) {
+    return new Response(JSON.stringify({ success: false, error: `Erro lendo etapas: ${stagesErr.message}` }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  const successStageValue = successStages?.[0]?.value;
+  if (!successStageValue) {
+    return new Response(JSON.stringify({
+      success: false,
+      error: "Nenhuma etapa configurada para o painel 'sucesso'. Cadastre ao menos uma etapa em pipeline_stages_config.",
+    }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
+  // -------- 5) Parceiro padrão para origem google_drive --------
+  const { data: defaultPartner } = await supabase
+    .from("parceiros_comerciais").select("id").eq("ativo", true).limit(1).maybeSingle();
+  if (!defaultPartner?.id) {
+    return new Response(JSON.stringify({ success: false, error: "Nenhum parceiro ativo disponível" }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // -------- 6) Carrega leads existentes (status sucesso) --------
+  const { data: existingLeads, error: existingErr } = await supabase
+    .from("leads")
+    .select("id,cnpj,razao_social,nome_fantasia,consultor,valor_mensalidade,valor_campanhas,valor_pagamento")
+    .eq("status", "sucesso");
+  if (existingErr) {
+    return new Response(JSON.stringify({ success: false, error: existingErr.message }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  const existingByCnpj = new Map<string, typeof existingLeads[number]>();
+  const existingByName = new Map<string, typeof existingLeads[number]>();
+  (existingLeads || []).forEach((l) => {
+    const c = normalizeCNPJ(l.cnpj || "");
+    if (c.length === 14) existingByCnpj.set(c, l);
+    const n = normalizeCompanyName(l.razao_social || l.nome_fantasia || "");
+    if (n) existingByName.set(n, l);
+  });
+
+  // -------- 7) Processa cada cliente --------
+  for (const c of clients) {
     counters.processed++;
     try {
-      const existing = existingByCnpj.get(row.cnpj)
-        || existingByNamePhone.get(`${normalizeText(row.nome_fantasia)}::${(row.telefone_responsavel || "").replace(/\D/g, "")}`)
-        || existingByNameEmail.get(`${normalizeText(row.nome_fantasia)}::${normalizeText(row.email_responsavel)}`);
-      if (!existing) {
-        const { source_row: _sr, campaign_status_similarity_match: _csm, csat_similarity_match: _csim, health_similarity_match: _hsm, ...insertRow } = row;
-        const { error } = await supabase.from("leads").insert({ ...insertRow, status: "sucesso", status_lead: successStageValue, origem: "google_drive", parceiro_id: defaultPartner.id } as never);
-        if (error) throw error; counters.created++; continue;
+      const normName = normalizeCompanyName(c.razao_social || c.nome_fantasia);
+
+      // --- enriquecimento ---
+      const revenueHit = lookupBySimilarity(revenueByCompany, normName);
+      if (revenueHit) counters.matched_revenue++;
+      const statusHit = lookupBySimilarity(statusByCompany, normName);
+      if (statusHit) counters.matched_status++;
+      const csatHit = lookupBySimilarity(csatByCompany, normName);
+      if (csatHit) counters.matched_csat++;
+      const healthHit = lookupBySimilarity(healthByCompany, normName);
+      if (healthHit) counters.matched_health++;
+
+      const revenue = revenueHit?.value ?? {
+        valor_mensalidade: null, valor_campanhas: null, valor_pagamento: null,
+        juros_recebidos: null, multas_recebidas: null, receita_taxa_boleto: null,
+      };
+      const csatVar = csatHit?.value.current != null && csatHit.value.previous != null
+        ? csatHit.value.current - csatHit.value.previous : null;
+
+      const payload = {
+        nome_fantasia: c.nome_fantasia || c.razao_social,
+        razao_social: c.razao_social,
+        cnpj: c.cnpj,
+        consultor: c.consultor || null,
+        nome_responsavel: "Responsável",
+        email_responsavel: "drive@monnera.local",
+        telefone_responsavel: "",
+        cidade: "",
+        erp_utilizado: "Não informado",
+        quantidade_lojas: 1,
+        valor_mensalidade: revenue.valor_mensalidade ?? 0,
+        valor_campanhas: revenue.valor_campanhas ?? 0,
+        valor_pagamento: revenue.valor_pagamento ?? 0,
+        juros_recebidos: revenue.juros_recebidos,
+        multas_recebidas: revenue.multas_recebidas,
+        receita_taxa_boleto: revenue.receita_taxa_boleto,
+        campaign_status_current: statusHit?.value.current || null,
+        campaign_status_previous: statusHit?.value.previous || null,
+        campaign_status_current_month: statusHit ? fmtMonth(currentMonth) : null,
+        campaign_status_previous_month: statusHit ? fmtMonth(previousMonth) : null,
+        csat_current: csatHit?.value.current ?? null,
+        csat_previous: csatHit?.value.previous ?? null,
+        csat_variation: csatVar,
+        csat_direction: csatVar == null ? null : csatVar > 0 ? "up" : csatVar < 0 ? "down" : "neutral",
+        csat_current_month: csatHit ? fmtMonth(currentMonth) : null,
+        csat_previous_month: csatHit ? fmtMonth(previousMonth) : null,
+        health_status: healthHit?.value.status || null,
+        impact_level: healthHit?.value.impact || null,
+      };
+
+      // --- busca lead existente ---
+      let existing = (c.cnpj.length === 14 ? existingByCnpj.get(c.cnpj) : undefined)
+        || existingByName.get(normName);
+      if (!existing && normName) {
+        let bestScore = 0;
+        let best: typeof existing | undefined;
+        for (const [name, lead] of existingByName.entries()) {
+          const s = scoreNameSimilarity(normName, name);
+          if (s > bestScore) { bestScore = s; best = lead; }
+        }
+        if (bestScore >= 0.85) existing = best;
       }
-      const updatePayload: Record<string, string | number | null> = {};
-      ([
-        ["nome_fantasia", existing.nome_fantasia, row.nome_fantasia], ["nome_responsavel", existing.nome_responsavel, row.nome_responsavel], ["email_responsavel", existing.email_responsavel, row.email_responsavel],
-        ["razao_social", (existing as { razao_social?: string | null }).razao_social ?? null, row.razao_social || null],
-        ["telefone_responsavel", existing.telefone_responsavel, row.telefone_responsavel], ["cidade", existing.cidade, row.cidade], ["erp_utilizado", existing.erp_utilizado, row.erp_utilizado],
-        ["quantidade_lojas", existing.quantidade_lojas, row.quantidade_lojas], ["quantidade_funcionarios", existing.quantidade_funcionarios, row.quantidade_funcionarios], ["valor_mensalidade", existing.valor_mensalidade, row.valor_mensalidade], ["valor_campanhas", existing.valor_campanhas, row.valor_campanhas], ["valor_pagamento", (existing as { valor_pagamento?: number | null }).valor_pagamento, row.valor_pagamento], ["consultor", (existing as { consultor?: string | null }).consultor ?? null, row.consultor || null], ["impacto", (existing as { impacto?: string | null }).impacto ?? null, row.impacto || null], ["risco", (existing as { risco?: string | null }).risco ?? null, row.risco || null], ["csat", (existing as { csat?: number | null }).csat ?? null, row.csat], ["categoria", (existing as { categoria?: string | null }).categoria ?? null, row.categoria || null], ["juros_recebidos", (existing as { juros_recebidos?: number | null }).juros_recebidos ?? null, row.juros_recebidos], ["multas_recebidas", (existing as { multas_recebidas?: number | null }).multas_recebidas ?? null, row.multas_recebidas], ["receita_taxa_boleto", (existing as { receita_taxa_boleto?: number | null }).receita_taxa_boleto ?? null, row.receita_taxa_boleto], ["revenue_total", (existing as { revenue_total?: number | null }).revenue_total ?? null, (row as { revenue_total: number }).revenue_total], ["campaign_status_current", (existing as { campaign_status_current?: string | null }).campaign_status_current ?? null, (row as { campaign_status_current?: string | null }).campaign_status_current ?? null], ["campaign_status_previous", (existing as { campaign_status_previous?: string | null }).campaign_status_previous ?? null, (row as { campaign_status_previous?: string | null }).campaign_status_previous ?? null], ["campaign_status_current_month", (existing as { campaign_status_current_month?: string | null }).campaign_status_current_month ?? null, (row as { campaign_status_current_month?: string | null }).campaign_status_current_month ?? null], ["campaign_status_previous_month", (existing as { campaign_status_previous_month?: string | null }).campaign_status_previous_month ?? null, (row as { campaign_status_previous_month?: string | null }).campaign_status_previous_month ?? null], ["csat_current", (existing as { csat_current?: number | null }).csat_current ?? null, (row as { csat_current?: number | null }).csat_current ?? null], ["csat_previous", (existing as { csat_previous?: number | null }).csat_previous ?? null, (row as { csat_previous?: number | null }).csat_previous ?? null], ["csat_variation", (existing as { csat_variation?: number | null }).csat_variation ?? null, (row as { csat_variation?: number | null }).csat_variation ?? null], ["csat_direction", (existing as { csat_direction?: string | null }).csat_direction ?? null, (row as { csat_direction?: string | null }).csat_direction ?? null], ["csat_current_month", (existing as { csat_current_month?: string | null }).csat_current_month ?? null, (row as { csat_current_month?: string | null }).csat_current_month ?? null], ["csat_previous_month", (existing as { csat_previous_month?: string | null }).csat_previous_month ?? null, (row as { csat_previous_month?: string | null }).csat_previous_month ?? null], ["health_status", (existing as { health_status?: string | null }).health_status ?? null, (row as { health_status?: string | null }).health_status ?? null], ["impact_level", (existing as { impact_level?: string | null }).impact_level ?? null, (row as { impact_level?: string | null }).impact_level ?? null],
-      ] as Array<[string, string | number | null, string | number | null]>).forEach(([key, oldValue, newValue]) => { if ((oldValue ?? null) !== (newValue ?? null)) updatePayload[key] = newValue; });
-      if ((existing as { valor_mensalidade_anterior?: number | null }).valor_mensalidade_anterior == null && existing.valor_mensalidade !== row.valor_mensalidade) updatePayload.valor_mensalidade_anterior = existing.valor_mensalidade;
-      if ((existing as { valor_campanhas_anterior?: number | null }).valor_campanhas_anterior == null && existing.valor_campanhas !== row.valor_campanhas) updatePayload.valor_campanhas_anterior = existing.valor_campanhas;
-      if ((existing as { valor_pagamento_anterior?: number | null }).valor_pagamento_anterior == null && (existing as { valor_pagamento?: number | null }).valor_pagamento !== row.valor_pagamento) updatePayload.valor_pagamento_anterior = (existing as { valor_pagamento?: number | null }).valor_pagamento ?? null;
-      if (Object.keys(updatePayload).length > 0) { const { error } = await supabase.from("leads").update(updatePayload as never).eq("id", existing.id); if (error) throw error; counters.updated++; }
-    } catch (error) {
+
+      if (!existing) {
+        const { error } = await supabase.from("leads").insert({
+          ...payload,
+          status: "sucesso",
+          status_lead: successStageValue,
+          origem: "google_drive",
+          parceiro_id: defaultPartner.id,
+        } as never);
+        if (error) throw error;
+        counters.created++;
+        continue;
+      }
+
+      // Update apenas campos que mudaram
+      const updateRow: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(payload)) {
+        const oldV = (existing as Record<string, unknown>)[k];
+        if ((oldV ?? null) !== (v ?? null)) updateRow[k] = v;
+      }
+      if (Object.keys(updateRow).length > 0) {
+        const { error } = await supabase.from("leads").update(updateRow as never).eq("id", existing.id);
+        if (error) throw error;
+        counters.updated++;
+      }
+    } catch (err) {
       counters.skipped++;
-      errors.push({ row: row.source_row, cnpj: row.cnpj, message: error instanceof Error ? error.message : "Erro desconhecido" });
+      errors.push({
+        row: c.source_row,
+        razao_social: c.razao_social,
+        message: err instanceof Error ? err.message : "Erro desconhecido",
+      });
     }
   }
-  console.log(`[sync-drive-clients] Resultado: linhas_lidas=${rows.length}, clientes_validos=${validRows.length}, financeiras_ignoradas=${counters.financial_ignored}, processados=${counters.processed}, criados=${counters.created}, atualizados=${counters.updated}, ignorados=${counters.skipped}, erros=${errors.length}`);
-  await supabase.from("sync_job_logs").insert({ job_name: "sync_drive_clients", processed_count: counters.processed, created_count: counters.created, updated_count: counters.updated, error_count: errors.length } as never);
-  return new Response(JSON.stringify({ success: true, ...counters, total_rows_read: rows.length, valid_clients: validRows.length, financial_rows_ignored: counters.financial_ignored, source: sourceMeta, errors }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+  console.log(`[sync-drive-clients] Resultado: clientes_na_aba=${clients.length}, processados=${counters.processed}, criados=${counters.created}, atualizados=${counters.updated}, ignorados=${counters.skipped}, receita_match=${counters.matched_revenue}, status_match=${counters.matched_status}, csat_match=${counters.matched_csat}, saude_match=${counters.matched_health}, erros=${errors.length}`);
+
+  await supabase.from("sync_job_logs").insert({
+    job_name: "sync_drive_clients",
+    processed_count: counters.processed,
+    created_count: counters.created,
+    updated_count: counters.updated,
+    error_count: errors.length,
+  } as never);
+
+  return new Response(JSON.stringify({
+    success: true,
+    clients_in_sheet: clients.length,
+    ...counters,
+    stage_used: successStageValue,
+    source: { spreadsheet_id: SPREADSHEET_ID, clients_gid: CLIENTS_GID, revenue_gid: REVENUE_GID },
+    errors,
+  }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 });
