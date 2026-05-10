@@ -792,10 +792,29 @@ const AdminLeads = () => {
     return true;
   });
 
-  // Status counts
+  // Status counts (refletem todos os filtros, exceto o próprio filterStatus)
+  const filteredExceptStatus = leads.filter((l) => {
+    if (currentPanelId !== "sucesso" && filterConsultor !== "all" && l.parceiro_id !== filterConsultor) return false;
+    if (currentPanelId === "sucesso" && filterCs !== "all" && (l.consultor || "") !== filterCs) return false;
+    if (filterEmpresa && !l.nome_fantasia.toLowerCase().includes(filterEmpresa.toLowerCase())) return false;
+    if (currentPanelId === "sucesso" && filterCampaignStatus !== "all" && (l.campaign_status_current || "SEM_STATUS") !== filterCampaignStatus) return false;
+    if (currentPanelId === "sucesso" && filterImpactLevel !== "all" && (l.impact_level || "SEM_IMPACTO") !== filterImpactLevel) return false;
+    if (currentPanelId === "sucesso" && filterHealthStatus !== "all" && (l.health_status || "SEM_STATUS_CLIENTE") !== filterHealthStatus) return false;
+    if (filterDataInicio) {
+      const d = new Date(l.data_cadastro);
+      if (d < new Date(filterDataInicio)) return false;
+    }
+    if (filterDataFim) {
+      const d = new Date(l.data_cadastro);
+      const fim = new Date(filterDataFim);
+      fim.setHours(23, 59, 59);
+      if (d > fim) return false;
+    }
+    return true;
+  });
   const statusCounts: Record<string, number> = {};
   pipelineStages.forEach((s) => { statusCounts[s.value] = 0; });
-  leads.forEach((l) => {
+  filteredExceptStatus.forEach((l) => {
     const s = l.status_lead || l.status || "novo_lead";
     if (statusCounts[s] !== undefined) statusCounts[s]++;
   });
