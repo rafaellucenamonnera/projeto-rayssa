@@ -111,7 +111,7 @@ export const AddLeadDialog = ({ open, onOpenChange, parceiroId, parceiroNome, on
         <DialogHeader>
           <DialogTitle className="font-display">Adicionar Lead</DialogTitle>
           <DialogDescription>
-            Consultor: {parceiroNome}. Preencha os dados para cadastrar o lead.
+            Embaixador Monnera: {parceiroNome}. Preencha os dados para cadastrar o lead.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -160,7 +160,7 @@ export const AddLeadDialog = ({ open, onOpenChange, parceiroId, parceiroNome, on
 
           <div className="flex items-center gap-2 justify-center text-xs text-muted-foreground">
             <Shield className="h-3.5 w-3.5" />
-            <p>O lead será associado automaticamente ao seu perfil de consultor.</p>
+            <p>O lead será associado automaticamente ao seu perfil de embaixador Monnera.</p>
           </div>
         </form>
       </DialogContent>

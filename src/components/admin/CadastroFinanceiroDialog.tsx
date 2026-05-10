@@ -155,7 +155,7 @@ export const CadastroFinanceiroDialog = ({
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Consultor responsável</Label>
+            <Label>Embaixador Monnera responsável</Label>
             <Select value={form.consultor_id} onValueChange={(v) => setForm({ ...form, consultor_id: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>

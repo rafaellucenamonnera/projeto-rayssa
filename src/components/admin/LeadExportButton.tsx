@@ -29,7 +29,7 @@ interface LeadExportButtonProps {
 
 const CSV_HEADERS = [
   "Data Cadastro",
-  "Consultor",
+  "Embaixador Monnera",
   "Nome Fantasia",
   "Razão Social",
   "CNPJ",

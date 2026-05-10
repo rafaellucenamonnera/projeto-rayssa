@@ -31,7 +31,7 @@ const ConfirmacaoCadastro = () => {
           </div>
 
           <div className="bg-secondary rounded-lg p-4 space-y-2">
-            <p className="text-sm font-medium">Código do consultor:</p>
+            <p className="text-sm font-medium">Código do embaixador Monnera:</p>
             <p className="text-sm font-mono text-primary">{parceiro.codigo_parceiro}</p>
           </div>
 

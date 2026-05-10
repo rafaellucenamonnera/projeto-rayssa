@@ -24,7 +24,7 @@ export function AdminSidebar() {
   const allItems = [
     { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
     { title: "Financeiro", url: "/admin/financeiro", icon: DollarSign },
-    { title: "Consultores", url: "/admin/parceiros", icon: Users },
+    { title: "Embaixadores Monnera", url: "/admin/parceiros", icon: Users },
     { title: "Painel Comercial", url: "/admin/painel-comercial", icon: FileText },
     { title: "Painel Onboarding / Integração", url: "/admin/painel-onboarding", icon: FileText },
     { title: "Painel Sucesso", url: "/admin/painel-sucesso", icon: FileText },

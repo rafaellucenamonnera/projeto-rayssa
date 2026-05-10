@@ -32,13 +32,13 @@ const AdminParceiros = () => {
   }, []);
 
   const handleDelete = async (id: string, nome: string) => {
-    if (!confirm(`Excluir o consultor ${nome}? Todos os leads vinculados também serão afetados.`)) return;
+    if (!confirm(`Excluir o embaixador Monnera ${nome}? Todos os leads vinculados também serão afetados.`)) return;
     const { error } = await supabase.from("parceiros_comerciais").delete().eq("id", id);
     if (error) {
-      toast.error("Erro ao excluir consultor: " + error.message);
+      toast.error("Erro ao excluir embaixador Monnera: " + error.message);
       return;
     }
-    toast.success("Consultor excluído");
+    toast.success("Embaixador Monnera excluído");
     load();
   };
 
@@ -51,13 +51,13 @@ const AdminParceiros = () => {
       toast.error("Erro ao atualizar status: " + error.message);
       return;
     }
-    toast.success(currentValue ? "Consultor desaprovado" : "Consultor aprovado!");
+    toast.success(currentValue ? "Embaixador Monnera desaprovado" : "Embaixador Monnera aprovado!");
     load();
   };
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <h1 className="text-xl sm:text-2xl font-display font-bold">Consultores Comerciais</h1>
+      <h1 className="text-xl sm:text-2xl font-display font-bold">Embaixadores Monnera</h1>
 
       {/* Mobile card view */}
       <div className="space-y-3 lg:hidden">
@@ -118,7 +118,7 @@ const AdminParceiros = () => {
           </Card>
         ))}
         {parceiros.length === 0 && (
-          <p className="text-center py-8 text-muted-foreground text-sm">Nenhum consultor cadastrado.</p>
+          <p className="text-center py-8 text-muted-foreground text-sm">Nenhum embaixador Monnera cadastrado.</p>
         )}
       </div>
 
@@ -180,7 +180,7 @@ const AdminParceiros = () => {
               </tbody>
             </table>
             {parceiros.length === 0 && (
-              <p className="text-center py-8 text-muted-foreground">Nenhum consultor cadastrado.</p>
+              <p className="text-center py-8 text-muted-foreground">Nenhum embaixador Monnera cadastrado.</p>
               )}
           </div>
         </CardContent>

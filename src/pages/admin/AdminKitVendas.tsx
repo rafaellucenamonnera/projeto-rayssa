@@ -336,7 +336,7 @@ export default function AdminKitVendas() {
               </div>
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="ativo" checked={editing.data.ativo} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, ativo: e.target.checked } })} />
-                <Label htmlFor="ativo">Ativo (exibido aos consultores)</Label>
+                <Label htmlFor="ativo">Ativo (exibido aos embaixadores Monnera)</Label>
               </div>
             </div>
           )}
