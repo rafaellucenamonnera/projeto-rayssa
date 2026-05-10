@@ -31,6 +31,7 @@ interface KanbanLeadCardData {
   csat_direction?: "up" | "down" | "neutral" | null;
   health_status?: string | null;
   impact_level?: string | null;
+  consultor?: string | null;
 }
 
 interface PipelineStage {
