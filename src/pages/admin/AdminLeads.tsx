@@ -773,7 +773,8 @@ const AdminLeads = () => {
   // Apply filters
   const filtered = leads.filter((l) => {
     if (filterStatus !== "all" && (l.status_lead || l.status) !== filterStatus) return false;
-    if (filterConsultor !== "all" && l.parceiro_id !== filterConsultor) return false;
+    if (currentPanelId !== "sucesso" && filterConsultor !== "all" && l.parceiro_id !== filterConsultor) return false;
+    if (currentPanelId === "sucesso" && filterCs !== "all" && (l.consultor || "") !== filterCs) return false;
     if (filterEmpresa && !l.nome_fantasia.toLowerCase().includes(filterEmpresa.toLowerCase())) return false;
     if (currentPanelId === "sucesso" && filterCampaignStatus !== "all" && (l.campaign_status_current || "SEM_STATUS") !== filterCampaignStatus) return false;
     if (currentPanelId === "sucesso" && filterImpactLevel !== "all" && (l.impact_level || "SEM_IMPACTO") !== filterImpactLevel) return false;
