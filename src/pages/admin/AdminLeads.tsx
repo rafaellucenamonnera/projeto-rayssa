@@ -67,6 +67,7 @@ const AdminLeads = () => {
   // Filters
   const [filterStatus, setFilterStatus] = useState<string>(searchParams.get("status") || "all");
   const [filterConsultor, setFilterConsultor] = useState<string>("all");
+  const [filterCs, setFilterCs] = useState<string>("all");
   const [filterEmpresa, setFilterEmpresa] = useState("");
   const [filterCampaignStatus, setFilterCampaignStatus] = useState<string>("all");
   const [filterImpactLevel, setFilterImpactLevel] = useState<string>("all");
@@ -772,7 +773,8 @@ const AdminLeads = () => {
   // Apply filters
   const filtered = leads.filter((l) => {
     if (filterStatus !== "all" && (l.status_lead || l.status) !== filterStatus) return false;
-    if (filterConsultor !== "all" && l.parceiro_id !== filterConsultor) return false;
+    if (currentPanelId !== "sucesso" && filterConsultor !== "all" && l.parceiro_id !== filterConsultor) return false;
+    if (currentPanelId === "sucesso" && filterCs !== "all" && (l.consultor || "") !== filterCs) return false;
     if (filterEmpresa && !l.nome_fantasia.toLowerCase().includes(filterEmpresa.toLowerCase())) return false;
     if (currentPanelId === "sucesso" && filterCampaignStatus !== "all" && (l.campaign_status_current || "SEM_STATUS") !== filterCampaignStatus) return false;
     if (currentPanelId === "sucesso" && filterImpactLevel !== "all" && (l.impact_level || "SEM_IMPACTO") !== filterImpactLevel) return false;
@@ -970,15 +972,29 @@ const AdminLeads = () => {
       {/* Filters */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2 sm:gap-3">
         <Input placeholder="Filtrar por empresa..." value={filterEmpresa} onChange={(e) => setFilterEmpresa(e.target.value)} />
-        <Select value={filterConsultor} onValueChange={setFilterConsultor}>
-          <SelectTrigger><SelectValue placeholder="Consultor" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos Consultores</SelectItem>
-            {parceirosAll.map((p) => (
-              <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {currentPanelId === "sucesso" ? (
+          <Select value={filterCs} onValueChange={setFilterCs}>
+            <SelectTrigger><SelectValue placeholder="CS" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos CS</SelectItem>
+              {Array.from(new Set(leads.map((l) => (l.consultor || "").trim()).filter(Boolean)))
+                .sort((a, b) => a.localeCompare(b, "pt-BR"))
+                .map((cs) => (
+                  <SelectItem key={cs} value={cs}>{cs}</SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <Select value={filterConsultor} onValueChange={setFilterConsultor}>
+            <SelectTrigger><SelectValue placeholder="Consultor" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos Consultores</SelectItem>
+              {parceirosAll.map((p) => (
+                <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         {currentPanelId === "sucesso" && (
           <Select value={filterCampaignStatus} onValueChange={setFilterCampaignStatus}>
             <SelectTrigger><SelectValue placeholder="Status Campanha" /></SelectTrigger>
@@ -1123,6 +1139,7 @@ const AdminLeads = () => {
             stages={pipelineStages}
             parceirosMap={parceiros}
             showCampaignStatus={currentPanelId === "sucesso"}
+            showCsInsteadOfPartner={currentPanelId === "sucesso"}
             canCloneCard={canCloneCard}
             canEditCard={canEditCard}
             canDeleteCard={canDeleteCard}

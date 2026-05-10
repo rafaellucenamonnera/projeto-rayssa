@@ -31,6 +31,7 @@ interface KanbanLeadCardData {
   csat_direction?: "up" | "down" | "neutral" | null;
   health_status?: string | null;
   impact_level?: string | null;
+  consultor?: string | null;
 }
 
 interface PipelineStage {
@@ -52,6 +53,7 @@ interface PipelineKanbanProps {
   onDeleteCard?: (lead: KanbanLeadCardData) => void;
   onAssignResponsible?: (lead: KanbanLeadCardData) => void;
   showCampaignStatus?: boolean;
+  showCsInsteadOfPartner?: boolean;
 }
 
 const campaignStatusClass = (status?: string | null) => {
@@ -151,6 +153,7 @@ export const PipelineKanban = ({
   onAssignResponsible,
   stages,
   showCampaignStatus = false,
+  showCsInsteadOfPartner = false,
 }: PipelineKanbanProps) => {
   const [dragId, setDragId] = useState<string | null>(null);
   const [overStage, setOverStage] = useState<string | null>(null);
@@ -286,11 +289,21 @@ export const PipelineKanban = ({
                       <GripVertical className="h-3.5 w-3.5 text-muted-foreground/60 mt-0.5 shrink-0" />
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-medium truncate">{l.nome_fantasia}</p>
-                        {l.nome_responsavel && (
-                          <p className="text-[10px] text-muted-foreground truncate">{l.nome_responsavel}</p>
+                        {showCsInsteadOfPartner ? (
+                          l.nome_responsavel && (
+                            <p className="text-[10px] text-muted-foreground truncate">Ação: {l.nome_responsavel}</p>
+                          )
+                        ) : (
+                          l.nome_responsavel && (
+                            <p className="text-[10px] text-muted-foreground truncate">{l.nome_responsavel}</p>
+                          )
                         )}
                         <div className="flex items-center justify-between gap-2 mt-1">
-                          <span className="text-[10px] text-primary truncate">{parceirosMap[l.parceiro_id || ""] || "—"}</span>
+                          <span className="text-[10px] text-primary truncate">
+                            {showCsInsteadOfPartner
+                              ? `CS: ${l.consultor || "—"}`
+                              : (parceirosMap[l.parceiro_id || ""] || "—")}
+                          </span>
                           {valor > 0 && (
                             <span className="text-[10px] font-semibold whitespace-nowrap">{fmt(valor)}</span>
                           )}
