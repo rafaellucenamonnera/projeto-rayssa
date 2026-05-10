@@ -67,6 +67,7 @@ const AdminLeads = () => {
   // Filters
   const [filterStatus, setFilterStatus] = useState<string>(searchParams.get("status") || "all");
   const [filterConsultor, setFilterConsultor] = useState<string>("all");
+  const [filterCs, setFilterCs] = useState<string>("all");
   const [filterEmpresa, setFilterEmpresa] = useState("");
   const [filterCampaignStatus, setFilterCampaignStatus] = useState<string>("all");
   const [filterImpactLevel, setFilterImpactLevel] = useState<string>("all");
