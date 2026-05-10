@@ -1139,6 +1139,7 @@ const AdminLeads = () => {
             stages={pipelineStages}
             parceirosMap={parceiros}
             showCampaignStatus={currentPanelId === "sucesso"}
+            showCsInsteadOfPartner={currentPanelId === "sucesso"}
             canCloneCard={canCloneCard}
             canEditCard={canEditCard}
             canDeleteCard={canDeleteCard}
