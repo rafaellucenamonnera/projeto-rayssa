@@ -53,6 +53,7 @@ interface PipelineKanbanProps {
   onDeleteCard?: (lead: KanbanLeadCardData) => void;
   onAssignResponsible?: (lead: KanbanLeadCardData) => void;
   showCampaignStatus?: boolean;
+  showCsInsteadOfPartner?: boolean;
 }
 
 const campaignStatusClass = (status?: string | null) => {
