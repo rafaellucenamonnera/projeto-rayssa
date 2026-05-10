@@ -163,7 +163,7 @@ const PainelParceiro = () => {
         {/* Header */}
         <div className="flex items-start sm:items-center justify-between gap-2">
           <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-display font-bold truncate">Painel do Consultor</h1>
+            <h1 className="text-xl sm:text-2xl font-display font-bold truncate">Painel do Embaixador Monnera</h1>
             <p className="text-sm text-muted-foreground truncate">Olá, {parceiro.nome}!</p>
           </div>
           <div className="flex items-center gap-2 shrink-0">

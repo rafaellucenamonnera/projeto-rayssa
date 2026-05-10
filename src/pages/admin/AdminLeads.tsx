@@ -1005,9 +1005,9 @@ const AdminLeads = () => {
           </Select>
         ) : (
           <Select value={filterConsultor} onValueChange={setFilterConsultor}>
-            <SelectTrigger><SelectValue placeholder="Consultor" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Embaixador Monnera" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos Consultores</SelectItem>
+              <SelectItem value="all">Todos Embaixadores Monnera</SelectItem>
               {parceirosAll.map((p) => (
                 <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
               ))}
@@ -1183,7 +1183,7 @@ const AdminLeads = () => {
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Data</th>
-                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Consultor</th>
+                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Embaixador Monnera</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Empresa</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Cidade</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Responsável</th>
@@ -1384,9 +1384,9 @@ const AdminLeads = () => {
                 </div>
               </div>
 
-              {/* Consultor */}
+              {/* Embaixador Monnera */}
               <div className="border-t border-border pt-4">
-                <h3 className="text-sm font-semibold mb-3">Consultor</h3>
+                <h3 className="text-sm font-semibold mb-3">Embaixador Monnera</h3>
                 <p className="text-sm">{parceiros[detailLead.parceiro_id] || "—"}</p>
               </div>
 
@@ -1462,7 +1462,7 @@ const AdminLeads = () => {
                       <p className="font-bold">{fmt((detailLead.valor_mensalidade || 0) * (detailLead.percentual_consultor || 0) * (detailLead.qtd_parcelas || 0))}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground text-xs mb-1">👤 Consultor responsável</p>
+                      <p className="text-muted-foreground text-xs mb-1">👤 Embaixador Monnera responsável</p>
                       <p className="font-medium">{parceiros[detailLead.parceiro_id] || "—"}</p>
                     </div>
                   </div>

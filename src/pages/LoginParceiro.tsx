@@ -62,7 +62,7 @@ const LoginParceiro = () => {
 
       if (!parceiro) {
         await supabase.auth.signOut();
-        toast.error("Consultor não encontrado ou inativo");
+        toast.error("Embaixador Monnera não encontrado ou inativo");
         return;
       }
 
@@ -85,7 +85,7 @@ const LoginParceiro = () => {
       <Card className="w-full max-w-sm border-border">
         <CardHeader className="text-center space-y-2">
           <img src={logoMonnera} alt="Monnera" className="w-12 h-12 rounded-xl mx-auto mb-2" />
-          <CardTitle className="text-2xl font-display">Acesso do Consultor</CardTitle>
+          <CardTitle className="text-2xl font-display">Acesso do Embaixador Monnera</CardTitle>
           <CardDescription>Informe seu email e senha para acessar o painel</CardDescription>
         </CardHeader>
         <CardContent>
@@ -145,7 +145,7 @@ const LoginParceiro = () => {
                 <Link to="/esqueci-senha" className="text-primary hover:underline">Esqueci minha senha</Link>
               </p>
               <p className="text-muted-foreground">
-                Não é consultor ainda?{" "}
+                Não é embaixador Monnera ainda?{" "}
                 <Link to="/cadastro" className="text-primary hover:underline">Cadastre-se</Link>
               </p>
             </div>

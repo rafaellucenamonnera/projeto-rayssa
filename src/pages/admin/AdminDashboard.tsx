@@ -204,7 +204,7 @@ const AdminDashboard = () => {
             </Select>
           </div>
           <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Consultor</p>
+            <p className="text-xs text-muted-foreground">Embaixador Monnera</p>
             <Select value={selectedConsultor} onValueChange={setSelectedConsultor}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -242,7 +242,7 @@ const AdminDashboard = () => {
               <Users className="w-7 h-7 text-primary" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Consultores</p>
+              <p className="text-sm text-muted-foreground">Embaixadores Monnera</p>
               <p className="text-3xl font-display font-bold">{totalParceiros}</p>
             </div>
           </div>
@@ -411,12 +411,12 @@ const AdminDashboard = () => {
         </Card>
       </div>
 
-      {/* Ranking de consultores */}
+      {/* Ranking de embaixadores Monnera */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg font-display flex items-center gap-2">
             <Trophy className="w-5 h-5 text-amber-500" />
-            Ranking de Consultores
+            Ranking de Embaixadores Monnera
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -427,7 +427,7 @@ const AdminDashboard = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12">#</TableHead>
-                  <TableHead>Consultor</TableHead>
+                  <TableHead>Embaixador Monnera</TableHead>
                   <TableHead className="text-right">Leads</TableHead>
                   <TableHead className="text-right">Convertidos</TableHead>
                   <TableHead className="text-right">Assinados</TableHead>

@@ -142,10 +142,10 @@ export default function AdminFinanceiro() {
           <div className="w-full sm:w-[250px]">
             <Select value={selectedConsultor} onValueChange={setSelectedConsultor}>
               <SelectTrigger>
-                <SelectValue placeholder="Filtrar por Consultor" />
+                <SelectValue placeholder="Filtrar por Embaixador Monnera" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos os Consultores</SelectItem>
+                <SelectItem value="all">Todos os Embaixadores Monnera</SelectItem>
                 {consultoresData?.map((c) => (
                   <SelectItem key={c.parceiro_id} value={c.parceiro_id}>
                     {c.consultor}
@@ -209,7 +209,7 @@ export default function AdminFinanceiro() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg font-display">Comissões por Consultor (Top 10)</CardTitle>
+          <CardTitle className="text-lg font-display">Comissões por Embaixador Monnera (Top 10)</CardTitle>
         </CardHeader>
         <CardContent>
           {chartData.length === 0 ? (
@@ -252,13 +252,13 @@ export default function AdminFinanceiro() {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg font-display">Previsão por Consultor</CardTitle>
+          <CardTitle className="text-lg font-display">Previsão por Embaixador Monnera</CardTitle>
           <Button
             variant="outline"
             size="sm"
             disabled={filteredConsultores.length === 0}
             onClick={() => {
-              const header = "Consultor;Clientes Ativos;Valor Pago;Valor Pendente;Previsão Futura\n";
+              const header = "Embaixador Monnera;Clientes Ativos;Valor Pago;Valor Pendente;Previsão Futura\n";
               const rows = filteredConsultores.map((c) =>
                 `${c.consultor};${c.clientes_ativos};${(c.valor_pago || 0).toFixed(2).replace(".", ",")};${(c.valor_pendente || 0).toFixed(2).replace(".", ",")};${(c.previsao_futura || 0).toFixed(2).replace(".", ",")}`
               ).join("\n");
@@ -280,7 +280,7 @@ export default function AdminFinanceiro() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Consultor</TableHead>
+                <TableHead>Embaixador Monnera</TableHead>
                 <TableHead className="text-center">Clientes Ativos</TableHead>
                 <TableHead className="text-right">Valor Pago</TableHead>
                 <TableHead className="text-right">Valor Pendente</TableHead>
@@ -291,7 +291,7 @@ export default function AdminFinanceiro() {
               {filteredConsultores.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
-                    Nenhum consultor encontrado.
+                    Nenhum embaixador Monnera encontrado.
                   </TableCell>
                 </TableRow>
               ) : (

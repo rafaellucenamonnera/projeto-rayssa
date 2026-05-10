@@ -52,7 +52,7 @@ const CadastroLead = () => {
           setParceiroValid(false);
         }
       } catch (error) {
-        console.error("Erro ao verificar consultor:", error);
+        console.error("Erro ao verificar embaixador Monnera:", error);
         setParceiroValid(false);
       }
     };
@@ -103,7 +103,7 @@ const CadastroLead = () => {
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="w-full max-w-md border-border text-center">
           <CardContent className="py-12">
-            <p className="text-destructive text-lg">Link inválido ou consultor inativo.</p>
+            <p className="text-destructive text-lg">Link inválido ou embaixador Monnera inativo.</p>
           </CardContent>
         </Card>
       </div>
@@ -144,7 +144,7 @@ const CadastroLead = () => {
           <CardTitle className="text-xl sm:text-2xl font-display">Conheça o Monnera</CardTitle>
           <CardDescription className="text-sm">
             {parceiroNome
-              ? `Indicação do consultor ${parceiroNome}. Preencha os dados abaixo para receber uma apresentação.`
+              ? `Indicação do embaixador Monnera ${parceiroNome}. Preencha os dados abaixo para receber uma apresentação.`
               : "Preencha os dados abaixo para receber uma apresentação."}
           </CardDescription>
         </CardHeader>
