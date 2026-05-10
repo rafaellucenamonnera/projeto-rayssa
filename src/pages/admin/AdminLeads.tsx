@@ -972,15 +972,29 @@ const AdminLeads = () => {
       {/* Filters */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2 sm:gap-3">
         <Input placeholder="Filtrar por empresa..." value={filterEmpresa} onChange={(e) => setFilterEmpresa(e.target.value)} />
-        <Select value={filterConsultor} onValueChange={setFilterConsultor}>
-          <SelectTrigger><SelectValue placeholder="Consultor" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos Consultores</SelectItem>
-            {parceirosAll.map((p) => (
-              <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {currentPanelId === "sucesso" ? (
+          <Select value={filterCs} onValueChange={setFilterCs}>
+            <SelectTrigger><SelectValue placeholder="CS" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos CS</SelectItem>
+              {Array.from(new Set(leads.map((l) => (l.consultor || "").trim()).filter(Boolean)))
+                .sort((a, b) => a.localeCompare(b, "pt-BR"))
+                .map((cs) => (
+                  <SelectItem key={cs} value={cs}>{cs}</SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <Select value={filterConsultor} onValueChange={setFilterConsultor}>
+            <SelectTrigger><SelectValue placeholder="Consultor" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos Consultores</SelectItem>
+              {parceirosAll.map((p) => (
+                <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         {currentPanelId === "sucesso" && (
           <Select value={filterCampaignStatus} onValueChange={setFilterCampaignStatus}>
             <SelectTrigger><SelectValue placeholder="Status Campanha" /></SelectTrigger>
