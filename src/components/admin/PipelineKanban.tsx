@@ -153,6 +153,7 @@ export const PipelineKanban = ({
   onAssignResponsible,
   stages,
   showCampaignStatus = false,
+  showCsInsteadOfPartner = false,
 }: PipelineKanbanProps) => {
   const [dragId, setDragId] = useState<string | null>(null);
   const [overStage, setOverStage] = useState<string | null>(null);
