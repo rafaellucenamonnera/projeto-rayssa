@@ -1,51 +1,49 @@
-## Objetivo
+# Renomear "Consultor" → "Embaixador Monnera"
 
-No painel **Sucesso** (`/admin/painel-sucesso`), o "Consultor Comercial / Parceiro" não representa o dono do cliente — quem cuida da conta é o **CS** (coluna *Carteira* da planilha de Clientes, já salva em `leads.consultor`). O nome do parceiro deve sair do card e o filtro deve passar a operar sobre o CS. O campo "responsável" continua existindo, mas como figura **transitória** (ação atual) — não como dono.
+## Escopo
 
-## Escopo (apenas painel Sucesso)
+Substituir, em **todos os textos visíveis ao usuário**, o termo "Consultor" / "Consultor Comercial" / "Consultores" pelo equivalente "Embaixador Monnera" / "Embaixadores Monnera".
 
-Nada muda nos demais painéis (Comercial etc.), que continuam usando parceiro/consultor comercial normalmente.
+Sem alterações em lógica, banco de dados, rotas, identificadores de código ou variáveis.
 
-## 1. Card do Kanban (`PipelineKanban.tsx`)
+## Mapa de substituições (apenas strings de UI)
 
-- Adicionar prop opcional `showCsInsteadOfPartner?: boolean` (default `false`) e nova prop `consultor?: string` no tipo do lead.
-- Quando `showCsInsteadOfPartner` for `true`:
-  - **Trocar** o texto azul que hoje mostra `parceirosMap[parceiro_id]` pelo valor de `l.consultor` (CS da Carteira), com label "CS:" antes do nome.
-  - Se o lead tiver `nome_responsavel` preenchido (responsável transitório), exibi-lo como uma **badge discreta** ("Ação: <nome>") logo abaixo, deixando claro que é temporário. Se vazio, simplesmente não aparece.
+| Original | Novo |
+|---|---|
+| Consultor / Consultor Comercial | Embaixador Monnera |
+| Consultores | Embaixadores Monnera |
+| consultor (minúsculo em frase) | embaixador Monnera |
+| consultores (minúsculo) | embaixadores Monnera |
 
-## 2. Filtros (`AdminLeads.tsx`, linhas 970-981)
+## Arquivos afetados (somente strings de interface)
 
-Quando `currentPanelId === "sucesso"`:
+- `src/components/AdminSidebar.tsx` — item "Consultores" do menu
+- `src/pages/Index.tsx` — "consultores comerciais", "Quero ser Consultor", "Já sou Consultor"
+- `src/pages/LoginParceiro.tsx` — título "Acesso do Consultor", textos e toast
+- `src/pages/CadastroParceiro.tsx` — título "Cadastro de Consultor Comercial", descrição e mensagens de erro
+- `src/pages/ConfirmacaoCadastro.tsx` — "Código do consultor"
+- `src/pages/CadastroLead.tsx` — mensagens "Link inválido ou consultor inativo", "Indicação do consultor ..."
+- `src/pages/PainelParceiro.tsx` — título "Painel do Consultor"
+- `src/pages/admin/AdminParceiros.tsx` — confirms e toasts ("Excluir o consultor ...", "Consultor excluído", "Consultor aprovado/desaprovado")
+- `src/pages/admin/AdminDashboard.tsx` — labels "Consultor", "Consultores", "Ranking de Consultores"
+- `src/pages/admin/AdminFinanceiro.tsx` — placeholder "Filtrar por Consultor", "Todos os Consultores", títulos "Comissões por Consultor", "Previsão por Consultor", header CSV "Consultor", coluna "Consultor", "Nenhum consultor encontrado"
+- `src/pages/admin/AdminLeads.tsx` — placeholder "Consultor", "Todos Consultores", coluna "Consultor", labels "Consultor", "Consultor responsável"
+- `src/components/admin/LeadExportButton.tsx` — header CSV "Consultor"
+- `src/components/admin/LeadImportDialog.tsx` — labels visíveis
+- `src/components/admin/CadastroFinanceiroDialog.tsx` — labels visíveis
+- `src/components/admin/PipelineKanban.tsx` — labels visíveis
+- `src/components/parceiro/AddLeadDialog.tsx` — textos visíveis
+- `src/pages/admin/AdminKitVendas.tsx` — texto visível
 
-- Substituir o `<Select>` "Todos Consultores" por um novo **"Todos CS"**:
-  - Opções geradas a partir de `Array.from(new Set(leads.map(l => l.consultor).filter(Boolean)))`, ordenadas alfabeticamente.
-  - Estado novo `filterCs` (string, default `"all"`).
-  - Filtro: `if (currentPanelId === "sucesso" && filterCs !== "all" && (l.consultor || "") !== filterCs) return false;` — substitui o filtro `filterConsultor` apenas neste painel.
-- Nos demais painéis o filtro "Consultor" original continua intacto.
+## NÃO será alterado
 
-## 3. Passagem do CS para o Kanban
+- Nomes de variáveis, props, interfaces (`ConsultorData`, `selectedConsultor`, `filterConsultor`, `slugConsultor`, etc.)
+- Coluna/campo de banco `consultor` (representa o CS importado da planilha — conceito diferente, mantido como está)
+- Funções RPC (`get_financeiro_consultores`, `lookup_parceiro_by_slug`, `register_parceiro`, etc.)
+- Rotas (`/admin/parceiros`, `/parceiro`, etc.) e parâmetros de URL (`slugConsultor`)
+- Arquivo `src/integrations/supabase/types.ts` (auto-gerado)
+- Lógica de negócio, RLS, edge functions
 
-- No `<PipelineKanban …>` (linha ~1125) passar `showCsInsteadOfPartner={currentPanelId === "sucesso"}`.
-- Garantir que `consultor` está sendo selecionado no `loadData` dos leads (já consta na tabela; apenas conferir o `select` da query).
+## Observação sobre memória do projeto
 
-## 4. Cabeçalhos / labels visíveis
-
-- Substituir o termo "Parceiro" / "Consultor Comercial" por "CS" apenas em rótulos visuais do painel Sucesso (cards de stat, filtros, headers de coluna do modo Lista quando aplicável). Nada de renomear tabelas ou colunas no banco.
-
-## 5. Sem alterações de schema
-
-- `leads.consultor` já existe e o sync `sync-drive-clients` já popula com o valor da coluna *Carteira*. Nada a migrar.
-- `parceiro_id` continua sendo o "parceiro do sistema" (Rafael Lucena por padrão para origem `google_drive`) — apenas deixa de ser exibido no painel Sucesso.
-
-## Detalhes técnicos
-
-- `PipelineKanban.tsx`: ajustar interface `KanbanLeadCardData` adicionando `consultor?: string | null;` e renderizar condicionalmente o trecho da linha 293.
-- `AdminLeads.tsx`:
-  - Novo state `const [filterCs, setFilterCs] = useState<string>("all");`
-  - No bloco de filtros, render condicional: `currentPanelId === "sucesso"` → mostra "Todos CS"; caso contrário mantém o select "Consultor" atual.
-  - Adicionar `consultor: l.consultor` no objeto passado para `<PipelineKanban leads={…}>` se ainda não estiver incluso no spread.
-
-## Fora de escopo
-
-- Não vamos criar novos parceiros para cada CS nem mexer em `parceiro_id` — o pedido é exibição/filtro, não atribuição.
-- Não vamos alterar painéis Comercial/Pipeline.
+A regra atual em memory diz "Usar 'Consultor Comercial', NUNCA 'Parceiro' ou 'Agente'". Após a aprovação, atualizarei essa regra para refletir a nova nomenclatura "Embaixador Monnera".
