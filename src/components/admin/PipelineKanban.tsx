@@ -373,7 +373,7 @@ export const PipelineKanban = ({
                             )}
                           </div>
                         )}
-                        {showCampaignStatus && (l.health_status || l.impact_level) && (
+                        {showCampaignStatus && !showCsInsteadOfPartner && (l.health_status || l.impact_level) && (
                           <div className="mt-2 grid grid-cols-2 gap-1">
                             <div>
                               <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Status</p>
@@ -386,6 +386,7 @@ export const PipelineKanban = ({
                           </div>
                         )}
                       </div>
+                    </div>
                     </div>
                   </div>
                 );
