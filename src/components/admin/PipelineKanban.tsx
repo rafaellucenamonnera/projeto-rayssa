@@ -301,7 +301,9 @@ export const PipelineKanban = ({
                     <div className="flex items-start gap-1.5">
                       <GripVertical className="h-3.5 w-3.5 text-muted-foreground/60 mt-0.5 shrink-0" />
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium truncate">{l.nome_fantasia}</p>
+                        {!showCsInsteadOfPartner && (
+                          <p className="text-xs font-medium truncate">{l.nome_fantasia}</p>
+                        )}
                         {showCsInsteadOfPartner ? (
                           l.nome_responsavel && (
                             <p className="text-[10px] text-muted-foreground truncate">Ação: {l.nome_responsavel}</p>
