@@ -19,7 +19,7 @@ const CLIENTS_GID = Deno.env.get("GOOGLE_SHEETS_CLIENTS_GID")?.trim() || "125229
 const REVENUE_GID = Deno.env.get("GOOGLE_SHEETS_GID")?.trim() || "0";
 const STATUS_GID = Deno.env.get("GOOGLE_SHEETS_STATUS_CAMPANHA_GID")?.trim() || "";
 const CSAT_GID = Deno.env.get("GOOGLE_SHEETS_CSAT_GID")?.trim() || "";
-const HEALTH_GID = Deno.env.get("GOOGLE_SHEETS_PAINEL_SAUDE_GID")?.trim() || "";
+const HEALTH_GID = Deno.env.get("GOOGLE_SHEETS_PAINEL_SAUDE_GID")?.trim() || "409080197";
 
 const csvUrl = (gid: string) => `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${encodeURIComponent(gid)}`;
 
@@ -63,7 +63,7 @@ const pick = (row: Record<string, string>, ...keys: string[]) => {
   return "";
 };
 
-const parseCsv = (raw: string): Record<string, string>[] => {
+const parseCsv = (raw: string, headerHint?: string): Record<string, string>[] => {
   const lines = raw.split(/\r?\n/).filter((l) => l.trim().length > 0);
   if (lines.length < 2) return [];
   const parseLine = (line: string) => {
@@ -76,8 +76,15 @@ const parseCsv = (raw: string): Record<string, string>[] => {
     }
     out.push(cur.trim()); return out;
   };
-  const headers = parseLine(lines[0]).map(normalizeHeader);
-  return lines.slice(1).map((line) => {
+  // Detecta linha de cabeçalho real (planilhas com legenda têm linhas-banner antes).
+  let headerIdx = 0;
+  if (headerHint) {
+    const hint = normalizeHeader(headerHint);
+    const found = lines.findIndex((l) => parseLine(l).map(normalizeHeader).includes(hint));
+    if (found >= 0) headerIdx = found;
+  }
+  const headers = parseLine(lines[headerIdx]).map(normalizeHeader);
+  return lines.slice(headerIdx + 1).map((line) => {
     const cols = parseLine(line);
     return headers.reduce<Record<string, string>>((a, h, i) => { a[h] = cols[i] || ""; return a; }, {});
   });
@@ -195,7 +202,7 @@ Deno.serve(async (req) => {
   const revenueRaw = revenueRes.ok ? parseCsv(await revenueRes.text()) : [];
   const statusRaw = statusRes?.ok ? parseCsv(await statusRes.text()) : [];
   const csatRaw = csatRes?.ok ? parseCsv(await csatRes.text()) : [];
-  const healthRaw = healthRes?.ok ? parseCsv(await healthRes.text()) : [];
+  const healthRaw = healthRes?.ok ? parseCsv(await healthRes.text(), "contratante") : [];
 
   console.log(`[sync-drive-clients] Linhas lidas: clientes=${clientsRaw.length}, receita=${revenueRaw.length}, status=${statusRaw.length}, csat=${csatRaw.length}, saude=${healthRaw.length}`);
 
@@ -297,11 +304,38 @@ Deno.serve(async (req) => {
     csatByCompany.set(norm, { current: cur, previous: prev });
   }
 
+  // Normaliza valores brutos (remove emojis e acentos) para chaves canônicas.
+  const stripDiacritics = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const cleanLabel = (s: string) =>
+    stripDiacritics(s).replace(/[^A-Za-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim().toUpperCase();
+  const canonHealth = (raw: string) => {
+    const v = cleanLabel(raw);
+    if (!v) return "";
+    if (v.includes("CHURN")) return "CHURN";
+    if (v.includes("EVENTUAL")) return "EVENTUAL";
+    if (v.includes("CRIT")) return "CRITICO";
+    if (v.includes("RISCO")) return "RISCO";
+    if (v.includes("ATEN")) return "ATENCAO";
+    if (v.includes("MONITOR")) return "MONITORAR";
+    if (v.includes("SAUD")) return "SAUDAVEL";
+    if (v.includes("RECENT")) return "RECENTE";
+    return v;
+  };
+  const canonImpact = (raw: string) => {
+    const v = cleanLabel(raw);
+    if (!v) return "";
+    if (v.includes("ALTO")) return "ALTO";
+    if (v.includes("MED")) return "MEDIO";
+    if (v.includes("BAIX")) return "BAIXO";
+    if (v.includes("MINIM")) return "MINIMO";
+    return v;
+  };
+
   const healthByCompany = new Map<string, { status: string; impact: string }>();
   for (const r of healthRaw) {
     const norm = normalizeCompanyName(pick(r, "contratante", "razao_social", "empresa", "nome_fantasia"));
-    const status = pick(r, "status", "saude");
-    const impact = pick(r, "impacto", "impact");
+    const status = canonHealth(pick(r, "status", "saude"));
+    const impact = canonImpact(pick(r, "impacto", "impact"));
     if (!norm || (!status && !impact)) continue;
     healthByCompany.set(norm, { status, impact });
   }

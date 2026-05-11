@@ -1,49 +1,79 @@
-# Renomear "Consultor" → "Embaixador Monnera"
+## Objetivo
 
-## Escopo
+Compor os indicadores dos cards do Painel Sucesso a partir da aba **Painel de Saúde** da planilha (`gid=409080197`), trazendo:
 
-Substituir, em **todos os textos visíveis ao usuário**, o termo "Consultor" / "Consultor Comercial" / "Consultores" pelo equivalente "Embaixador Monnera" / "Embaixadores Monnera".
+- **Coluna A — Razão Social** → chave de vínculo (já existe na lógica `lookupBySimilarity`).
+- **Coluna B — Status do cliente** → alimenta filtro existente "Status Cliente" + **tarja superior colorida no card** com nome do cliente sobre ela.
+- **Coluna C — Impacto** → alimenta filtro existente "Impacto" + **faixa de fundo colorida atrás dos indicadores Mensalidade/Campanha/Pagamento**.
 
-Sem alterações em lógica, banco de dados, rotas, identificadores de código ou variáveis.
+A infraestrutura já existe parcialmente: o backend (`sync-drive-clients`) e o front (`AdminLeads.tsx` + `PipelineKanban.tsx`) já têm campos `health_status` e `impact_level`, filtros e variável `HEALTH_GID`. Faltam: configurar o GID correto, ajustar parser para o cabeçalho real da aba, definir paleta padronizada de cores e renderizar os elementos visuais nos cards.
 
-## Mapa de substituições (apenas strings de UI)
+## Mudanças
 
-| Original | Novo |
-|---|---|
-| Consultor / Consultor Comercial | Embaixador Monnera |
-| Consultores | Embaixadores Monnera |
-| consultor (minúsculo em frase) | embaixador Monnera |
-| consultores (minúsculo) | embaixadores Monnera |
+### 1. Sincronização (backend)
 
-## Arquivos afetados (somente strings de interface)
+**`supabase/functions/sync-drive-clients/index.ts`**
+- Setar default `HEALTH_GID = "409080197"` (hoje vazio, exige variável de ambiente).
+- Ajustar o parser da aba Painel de Saúde:
+  - As linhas 1–3 do CSV são metadados/legenda; a linha real de cabeçalho é a 4 (`Contratante | Status | Impacto | …`).
+  - Saltar linhas até encontrar a primeira que contenha "contratante" como header (ou usar `findIndex` no CSV cru antes do `parseCsv`).
+- No `pick(...)`, garantir leitura de `contratante`, `status`, `impacto` (já compatível, basta o cabeçalho correto).
+- Normalizar valores: remover emojis/acentos antes de gravar (`status`: CHURN, EVENTUAL, CRITICO, RISCO, ATENCAO, MONITORAR, SAUDAVEL, RECENTE; `impacto`: ALTO, MEDIO, BAIXO, MINIMO).
 
-- `src/components/AdminSidebar.tsx` — item "Consultores" do menu
-- `src/pages/Index.tsx` — "consultores comerciais", "Quero ser Consultor", "Já sou Consultor"
-- `src/pages/LoginParceiro.tsx` — título "Acesso do Consultor", textos e toast
-- `src/pages/CadastroParceiro.tsx` — título "Cadastro de Consultor Comercial", descrição e mensagens de erro
-- `src/pages/ConfirmacaoCadastro.tsx` — "Código do consultor"
-- `src/pages/CadastroLead.tsx` — mensagens "Link inválido ou consultor inativo", "Indicação do consultor ..."
-- `src/pages/PainelParceiro.tsx` — título "Painel do Consultor"
-- `src/pages/admin/AdminParceiros.tsx` — confirms e toasts ("Excluir o consultor ...", "Consultor excluído", "Consultor aprovado/desaprovado")
-- `src/pages/admin/AdminDashboard.tsx` — labels "Consultor", "Consultores", "Ranking de Consultores"
-- `src/pages/admin/AdminFinanceiro.tsx` — placeholder "Filtrar por Consultor", "Todos os Consultores", títulos "Comissões por Consultor", "Previsão por Consultor", header CSV "Consultor", coluna "Consultor", "Nenhum consultor encontrado"
-- `src/pages/admin/AdminLeads.tsx` — placeholder "Consultor", "Todos Consultores", coluna "Consultor", labels "Consultor", "Consultor responsável"
-- `src/components/admin/LeadExportButton.tsx` — header CSV "Consultor"
-- `src/components/admin/LeadImportDialog.tsx` — labels visíveis
-- `src/components/admin/CadastroFinanceiroDialog.tsx` — labels visíveis
-- `src/components/admin/PipelineKanban.tsx` — labels visíveis
-- `src/components/parceiro/AddLeadDialog.tsx` — textos visíveis
-- `src/pages/admin/AdminKitVendas.tsx` — texto visível
+> Sem mudanças de schema — colunas `health_status` e `impact_level` já existem em `leads`.
 
-## NÃO será alterado
+### 2. Paleta padronizada (frontend)
 
-- Nomes de variáveis, props, interfaces (`ConsultorData`, `selectedConsultor`, `filterConsultor`, `slugConsultor`, etc.)
-- Coluna/campo de banco `consultor` (representa o CS importado da planilha — conceito diferente, mantido como está)
-- Funções RPC (`get_financeiro_consultores`, `lookup_parceiro_by_slug`, `register_parceiro`, etc.)
-- Rotas (`/admin/parceiros`, `/parceiro`, etc.) e parâmetros de URL (`slugConsultor`)
-- Arquivo `src/integrations/supabase/types.ts` (auto-gerado)
-- Lógica de negócio, RLS, edge functions
+Criar arquivo `src/lib/healthStatusColors.ts` (constantes únicas) para evitar divergência entre filtro e card:
 
-## Observação sobre memória do projeto
+```text
+Status:
+  CHURN      → vermelho-escuro
+  EVENTUAL   → laranja
+  CRÍTICO    → vermelho
+  RISCO      → âmbar
+  ATENÇÃO    → amarelo
+  MONITORAR  → azul
+  SAUDÁVEL   → verde
+  RECENTE    → ciano
 
-A regra atual em memory diz "Usar 'Consultor Comercial', NUNCA 'Parceiro' ou 'Agente'". Após a aprovação, atualizarei essa regra para refletir a nova nomenclatura "Embaixador Monnera".
+Impacto:
+  ALTO    → vermelho
+  MÉDIO   → laranja
+  BAIXO   → amarelo
+  MÍNIMO  → cinza
+```
+
+Funções `healthStatusColor(status)` e `impactColor(impact)` retornando `{ bg, text, border, hex }` em tokens HSL semânticos.
+
+### 3. Card no Kanban
+
+**`src/components/admin/PipelineKanban.tsx`** (apenas painel Sucesso, ativado por `showCampaignStatus`):
+
+- **Tarja superior (status)**: faixa horizontal de ~22px no topo do card, fundo na cor do status, com `nome_fantasia` em cima (texto branco/contraste alto). Substitui o `<p class="truncate">{nome_fantasia}</p>` atual nesse modo.
+- **Faixa de impacto**: ao redor do bloco de badges Mensalidade/Campanha/Pagamento, aplicar `background` suave (cor do impacto com baixa opacidade) + borda lateral mais saturada, com legenda discreta "Impacto: ALTO" no canto.
+- Ajustar funções locais `healthStatusClass` e `impactClass` para usar a paleta central — remover lógica duplicada.
+
+### 4. Filtros (AdminLeads)
+
+**`src/pages/admin/AdminLeads.tsx`** (linhas ~1022–1050):
+
+- Trocar os `<SelectItem>` por versões com bolinha colorida (`<span class="size-2 rounded-full" style={bg}>`) à esquerda do label, usando a mesma paleta central. Os filtros já funcionam — só falta sinalizar visualmente a cor.
+- Garantir ordem fixa dos status (CHURN → EVENTUAL → CRÍTICO → RISCO → ATENÇÃO → MONITORAR → SAUDÁVEL → RECENTE) em vez de `Set` da base.
+
+### 5. Re-sync
+
+Após deploy, rodar `sync-drive-clients` manualmente (botão existente) para popular `health_status` e `impact_level` em todos os cards do painel Sucesso.
+
+## Não inclui
+
+- Nenhuma alteração em outros painéis (Leads/Pipeline/Financeiro).
+- Sem mudanças nos demais campos do card (CS, mensalidade, CSAT, etc.).
+- Sem refator estrutural — apenas adicionar arquivo de paleta e ajustar render condicional.
+
+## Resumo de arquivos
+
+- `supabase/functions/sync-drive-clients/index.ts` — default `HEALTH_GID`, ajuste parser cabeçalho.
+- `src/lib/healthStatusColors.ts` *(novo)* — paleta única.
+- `src/components/admin/PipelineKanban.tsx` — tarja superior + faixa de impacto.
+- `src/pages/admin/AdminLeads.tsx` — bolinhas coloridas nos filtros + ordenação fixa.

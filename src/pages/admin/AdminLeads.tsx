@@ -22,6 +22,11 @@ import { AgendarReuniaoDialog } from "@/components/admin/AgendarReuniaoDialog";
 import { CadastroFinanceiroDialog } from "@/components/admin/CadastroFinanceiroDialog";
 import { LeadComments } from "@/components/admin/LeadComments";
 import { LeadReuniao } from "@/components/admin/LeadReuniao";
+import {
+  HEALTH_STATUS_ORDER, IMPACT_ORDER,
+  healthStatusColor, impactColor,
+  normalizeHealthStatus, normalizeImpact,
+} from "@/lib/healthStatusColors";
 import { LeadContatos } from "@/components/admin/LeadContatos";
 import { DaysInStage } from "@/components/admin/DaysInStage";
 import { PipelineKanban } from "@/components/admin/PipelineKanban";
@@ -777,8 +782,8 @@ const AdminLeads = () => {
     if (currentPanelId === "sucesso" && filterCs !== "all" && (l.consultor || "") !== filterCs) return false;
     if (filterEmpresa && !l.nome_fantasia.toLowerCase().includes(filterEmpresa.toLowerCase())) return false;
     if (currentPanelId === "sucesso" && filterCampaignStatus !== "all" && (l.campaign_status_current || "SEM_STATUS") !== filterCampaignStatus) return false;
-    if (currentPanelId === "sucesso" && filterImpactLevel !== "all" && (l.impact_level || "SEM_IMPACTO") !== filterImpactLevel) return false;
-    if (currentPanelId === "sucesso" && filterHealthStatus !== "all" && (l.health_status || "SEM_STATUS_CLIENTE") !== filterHealthStatus) return false;
+    if (currentPanelId === "sucesso" && filterImpactLevel !== "all" && normalizeImpact(l.impact_level) !== filterImpactLevel) return false;
+    if (currentPanelId === "sucesso" && filterHealthStatus !== "all" && normalizeHealthStatus(l.health_status) !== filterHealthStatus) return false;
     if (filterDataInicio) {
       const d = new Date(l.data_cadastro);
       if (d < new Date(filterDataInicio)) return false;
@@ -798,8 +803,8 @@ const AdminLeads = () => {
     if (currentPanelId === "sucesso" && filterCs !== "all" && (l.consultor || "") !== filterCs) return false;
     if (filterEmpresa && !l.nome_fantasia.toLowerCase().includes(filterEmpresa.toLowerCase())) return false;
     if (currentPanelId === "sucesso" && filterCampaignStatus !== "all" && (l.campaign_status_current || "SEM_STATUS") !== filterCampaignStatus) return false;
-    if (currentPanelId === "sucesso" && filterImpactLevel !== "all" && (l.impact_level || "SEM_IMPACTO") !== filterImpactLevel) return false;
-    if (currentPanelId === "sucesso" && filterHealthStatus !== "all" && (l.health_status || "SEM_STATUS_CLIENTE") !== filterHealthStatus) return false;
+    if (currentPanelId === "sucesso" && filterImpactLevel !== "all" && normalizeImpact(l.impact_level) !== filterImpactLevel) return false;
+    if (currentPanelId === "sucesso" && filterHealthStatus !== "all" && normalizeHealthStatus(l.health_status) !== filterHealthStatus) return false;
     if (filterDataInicio) {
       const d = new Date(l.data_cadastro);
       if (d < new Date(filterDataInicio)) return false;
@@ -1030,9 +1035,17 @@ const AdminLeads = () => {
             <SelectTrigger><SelectValue placeholder="Impacto" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Impacto (Todos)</SelectItem>
-              {Array.from(new Set(leads.map((l) => l.impact_level || "SEM_IMPACTO"))).map((impact) => (
-                <SelectItem key={impact} value={impact}>{impact === "SEM_IMPACTO" ? "Sem impacto" : impact}</SelectItem>
-              ))}
+              {IMPACT_ORDER.filter((k) => leads.some((l) => normalizeImpact(l.impact_level) === k)).map((k) => {
+                const c = impactColor(k);
+                return (
+                  <SelectItem key={k} value={k}>
+                    <span className="inline-flex items-center gap-2">
+                      <span className="inline-block size-2 rounded-full" style={{ backgroundColor: c.hex }} />
+                      {c.label}
+                    </span>
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
         )}
@@ -1041,9 +1054,17 @@ const AdminLeads = () => {
             <SelectTrigger><SelectValue placeholder="Status Cliente" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Status Cliente (Todos)</SelectItem>
-              {Array.from(new Set(leads.map((l) => l.health_status || "SEM_STATUS_CLIENTE"))).map((status) => (
-                <SelectItem key={status} value={status}>{status === "SEM_STATUS_CLIENTE" ? "Sem status" : status}</SelectItem>
-              ))}
+              {HEALTH_STATUS_ORDER.filter((k) => leads.some((l) => normalizeHealthStatus(l.health_status) === k)).map((k) => {
+                const c = healthStatusColor(k);
+                return (
+                  <SelectItem key={k} value={k}>
+                    <span className="inline-flex items-center gap-2">
+                      <span className="inline-block size-2 rounded-full" style={{ backgroundColor: c.hex }} />
+                      {c.label}
+                    </span>
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
         )}

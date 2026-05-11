@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowRight, ArrowUp, Copy, GripVertical, Pencil, Trash2, UserRound, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { healthStatusColor, impactColor, normalizeHealthStatus, normalizeImpact } from "@/lib/healthStatusColors";
 
 interface KanbanLeadCardData {
   id: string;
@@ -217,6 +218,10 @@ export const PipelineKanban = ({
             <div className="p-2 space-y-2 min-h-[120px]">
               {items.map((l) => {
                 const valor = leadContractValue(l);
+                const statusTokens = showCsInsteadOfPartner ? healthStatusColor(l.health_status) : null;
+                const impactTokens = showCsInsteadOfPartner ? impactColor(l.impact_level) : null;
+                const hasStatus = showCsInsteadOfPartner && normalizeHealthStatus(l.health_status) !== "SEM_STATUS_CLIENTE";
+                const hasImpact = showCsInsteadOfPartner && normalizeImpact(l.impact_level) !== "SEM_IMPACTO";
                 return (
                   <div
                     key={l.id}
@@ -234,9 +239,17 @@ export const PipelineKanban = ({
                       }
                       setSelectedCardId(l.id);
                     }}
-                    className={`group rounded-md border border-border bg-background p-2.5 cursor-pointer hover:border-primary/60 transition-colors ${dragId === l.id ? "opacity-50" : ""} ${selectedCardId === l.id ? "ring-1 ring-primary/60" : ""}`}
+                    className={`group rounded-md border border-border bg-background overflow-hidden cursor-pointer hover:border-primary/60 transition-colors ${showCsInsteadOfPartner ? "p-0" : "p-2.5"} ${dragId === l.id ? "opacity-50" : ""} ${selectedCardId === l.id ? "ring-1 ring-primary/60" : ""}`}
                     title={selectedCardId === l.id ? "Clique para abrir" : "Clique para selecionar"}
                   >
+                    {showCsInsteadOfPartner && statusTokens && (
+                      <div className={`px-2.5 py-1 ${statusTokens.bgClass} ${statusTokens.textOnClass}`}>
+                        <p className="text-xs font-semibold truncate" title={l.nome_fantasia}>{l.nome_fantasia}</p>
+                        <p className="text-[9px] uppercase tracking-wide opacity-80">{hasStatus ? statusTokens.label : "Sem status do cliente"}</p>
+                      </div>
+                    )}
+                    <div className={showCsInsteadOfPartner ? "px-2.5 py-2" : ""}>
+
                     {selectedCardId === l.id && (canEditCard || canDeleteCard || canCloneCard) && (
                       <div className="flex justify-end gap-1 mb-1.5 flex-wrap">
                         {canEditCard && (
@@ -288,7 +301,9 @@ export const PipelineKanban = ({
                     <div className="flex items-start gap-1.5">
                       <GripVertical className="h-3.5 w-3.5 text-muted-foreground/60 mt-0.5 shrink-0" />
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium truncate">{l.nome_fantasia}</p>
+                        {!showCsInsteadOfPartner && (
+                          <p className="text-xs font-medium truncate">{l.nome_fantasia}</p>
+                        )}
                         {showCsInsteadOfPartner ? (
                           l.nome_responsavel && (
                             <p className="text-[10px] text-muted-foreground truncate">Ação: {l.nome_responsavel}</p>
@@ -308,24 +323,31 @@ export const PipelineKanban = ({
                             <span className="text-[10px] font-semibold whitespace-nowrap">{fmt(valor)}</span>
                           )}
                         </div>
-                        <div className="mt-1.5 flex flex-wrap gap-1">
-                          {[
-                            { key: "Mensalidade", current: l.valor_mensalidade, previous: l.valor_mensalidade_anterior },
-                            { key: "Campanha", current: l.valor_campanhas, previous: l.valor_campanhas_anterior },
-                            { key: "Pagamento", current: l.valor_pagamento, previous: l.valor_pagamento_anterior },
-                          ].map((metric) => {
-                            const v = variation(metric.current, metric.previous);
-                            const trend = trendMeta(v);
-                            const Icon = trend.icon;
-                            return (
-                              <div key={metric.key} className="flex items-center gap-0.5 text-[9px] px-1 py-0.5 rounded bg-secondary/40">
-                                <span className="text-muted-foreground">{metric.key}</span>
-                                <span className={`flex items-center gap-0.5 font-medium ${trend.color}`}>
-                                  <Icon className="h-2.5 w-2.5" /> {pct(v)}
-                                </span>
-                              </div>
-                            );
-                          })}
+                        <div className={`mt-1.5 ${showCsInsteadOfPartner && impactTokens ? `${impactTokens.softBgClass} border-l-2 ${impactTokens.borderClass} rounded-sm p-1` : ""}`}>
+                          {showCsInsteadOfPartner && impactTokens && (
+                            <p className="text-[9px] uppercase tracking-wide text-muted-foreground mb-0.5">
+                              Impacto: <span className="font-semibold text-foreground">{hasImpact ? impactTokens.label : "—"}</span>
+                            </p>
+                          )}
+                          <div className="flex flex-wrap gap-1">
+                            {[
+                              { key: "Mensalidade", current: l.valor_mensalidade, previous: l.valor_mensalidade_anterior },
+                              { key: "Campanha", current: l.valor_campanhas, previous: l.valor_campanhas_anterior },
+                              { key: "Pagamento", current: l.valor_pagamento, previous: l.valor_pagamento_anterior },
+                            ].map((metric) => {
+                              const v = variation(metric.current, metric.previous);
+                              const trend = trendMeta(v);
+                              const Icon = trend.icon;
+                              return (
+                                <div key={metric.key} className="flex items-center gap-0.5 text-[9px] px-1 py-0.5 rounded bg-secondary/40">
+                                  <span className="text-muted-foreground">{metric.key}</span>
+                                  <span className={`flex items-center gap-0.5 font-medium ${trend.color}`}>
+                                    <Icon className="h-2.5 w-2.5" /> {pct(v)}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                         {showCampaignStatus && (
                           <div className="mt-2 space-y-1">
@@ -351,7 +373,7 @@ export const PipelineKanban = ({
                             )}
                           </div>
                         )}
-                        {showCampaignStatus && (l.health_status || l.impact_level) && (
+                        {showCampaignStatus && !showCsInsteadOfPartner && (l.health_status || l.impact_level) && (
                           <div className="mt-2 grid grid-cols-2 gap-1">
                             <div>
                               <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Status</p>
@@ -364,6 +386,7 @@ export const PipelineKanban = ({
                           </div>
                         )}
                       </div>
+                    </div>
                     </div>
                   </div>
                 );
