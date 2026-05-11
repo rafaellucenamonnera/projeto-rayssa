@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowRight, ArrowUp, Copy, GripVertical, Pencil, Trash2, UserRound, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { healthStatusColor, impactColor, normalizeHealthStatus, normalizeImpact } from "@/lib/healthStatusColors";
 
 interface KanbanLeadCardData {
   id: string;
