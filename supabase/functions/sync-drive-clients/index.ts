@@ -202,7 +202,7 @@ Deno.serve(async (req) => {
   const revenueRaw = revenueRes.ok ? parseCsv(await revenueRes.text()) : [];
   const statusRaw = statusRes?.ok ? parseCsv(await statusRes.text()) : [];
   const csatRaw = csatRes?.ok ? parseCsv(await csatRes.text()) : [];
-  const healthRaw = healthRes?.ok ? parseCsv(await healthRes.text()) : [];
+  const healthRaw = healthRes?.ok ? parseCsv(await healthRes.text(), "contratante") : [];
 
   console.log(`[sync-drive-clients] Linhas lidas: clientes=${clientsRaw.length}, receita=${revenueRaw.length}, status=${statusRaw.length}, csat=${csatRaw.length}, saude=${healthRaw.length}`);
 
