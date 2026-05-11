@@ -782,8 +782,8 @@ const AdminLeads = () => {
     if (currentPanelId === "sucesso" && filterCs !== "all" && (l.consultor || "") !== filterCs) return false;
     if (filterEmpresa && !l.nome_fantasia.toLowerCase().includes(filterEmpresa.toLowerCase())) return false;
     if (currentPanelId === "sucesso" && filterCampaignStatus !== "all" && (l.campaign_status_current || "SEM_STATUS") !== filterCampaignStatus) return false;
-    if (currentPanelId === "sucesso" && filterImpactLevel !== "all" && (l.impact_level || "SEM_IMPACTO") !== filterImpactLevel) return false;
-    if (currentPanelId === "sucesso" && filterHealthStatus !== "all" && (l.health_status || "SEM_STATUS_CLIENTE") !== filterHealthStatus) return false;
+    if (currentPanelId === "sucesso" && filterImpactLevel !== "all" && normalizeImpact(l.impact_level) !== filterImpactLevel) return false;
+    if (currentPanelId === "sucesso" && filterHealthStatus !== "all" && normalizeHealthStatus(l.health_status) !== filterHealthStatus) return false;
     if (filterDataInicio) {
       const d = new Date(l.data_cadastro);
       if (d < new Date(filterDataInicio)) return false;
@@ -803,8 +803,8 @@ const AdminLeads = () => {
     if (currentPanelId === "sucesso" && filterCs !== "all" && (l.consultor || "") !== filterCs) return false;
     if (filterEmpresa && !l.nome_fantasia.toLowerCase().includes(filterEmpresa.toLowerCase())) return false;
     if (currentPanelId === "sucesso" && filterCampaignStatus !== "all" && (l.campaign_status_current || "SEM_STATUS") !== filterCampaignStatus) return false;
-    if (currentPanelId === "sucesso" && filterImpactLevel !== "all" && (l.impact_level || "SEM_IMPACTO") !== filterImpactLevel) return false;
-    if (currentPanelId === "sucesso" && filterHealthStatus !== "all" && (l.health_status || "SEM_STATUS_CLIENTE") !== filterHealthStatus) return false;
+    if (currentPanelId === "sucesso" && filterImpactLevel !== "all" && normalizeImpact(l.impact_level) !== filterImpactLevel) return false;
+    if (currentPanelId === "sucesso" && filterHealthStatus !== "all" && normalizeHealthStatus(l.health_status) !== filterHealthStatus) return false;
     if (filterDataInicio) {
       const d = new Date(l.data_cadastro);
       if (d < new Date(filterDataInicio)) return false;
