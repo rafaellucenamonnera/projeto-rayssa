@@ -239,9 +239,17 @@ export const PipelineKanban = ({
                       }
                       setSelectedCardId(l.id);
                     }}
-                    className={`group rounded-md border border-border bg-background p-2.5 cursor-pointer hover:border-primary/60 transition-colors ${dragId === l.id ? "opacity-50" : ""} ${selectedCardId === l.id ? "ring-1 ring-primary/60" : ""}`}
+                    className={`group rounded-md border border-border bg-background overflow-hidden cursor-pointer hover:border-primary/60 transition-colors ${showCsInsteadOfPartner ? "p-0" : "p-2.5"} ${dragId === l.id ? "opacity-50" : ""} ${selectedCardId === l.id ? "ring-1 ring-primary/60" : ""}`}
                     title={selectedCardId === l.id ? "Clique para abrir" : "Clique para selecionar"}
                   >
+                    {showCsInsteadOfPartner && statusTokens && (
+                      <div className={`px-2.5 py-1 ${statusTokens.bgClass} ${statusTokens.textOnClass}`}>
+                        <p className="text-xs font-semibold truncate" title={l.nome_fantasia}>{l.nome_fantasia}</p>
+                        <p className="text-[9px] uppercase tracking-wide opacity-80">{hasStatus ? statusTokens.label : "Sem status do cliente"}</p>
+                      </div>
+                    )}
+                    <div className={showCsInsteadOfPartner ? "px-2.5 py-2" : ""}>
+
                     {selectedCardId === l.id && (canEditCard || canDeleteCard || canCloneCard) && (
                       <div className="flex justify-end gap-1 mb-1.5 flex-wrap">
                         {canEditCard && (
