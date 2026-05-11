@@ -19,7 +19,7 @@ const CLIENTS_GID = Deno.env.get("GOOGLE_SHEETS_CLIENTS_GID")?.trim() || "125229
 const REVENUE_GID = Deno.env.get("GOOGLE_SHEETS_GID")?.trim() || "0";
 const STATUS_GID = Deno.env.get("GOOGLE_SHEETS_STATUS_CAMPANHA_GID")?.trim() || "";
 const CSAT_GID = Deno.env.get("GOOGLE_SHEETS_CSAT_GID")?.trim() || "";
-const HEALTH_GID = Deno.env.get("GOOGLE_SHEETS_PAINEL_SAUDE_GID")?.trim() || "";
+const HEALTH_GID = Deno.env.get("GOOGLE_SHEETS_PAINEL_SAUDE_GID")?.trim() || "409080197";
 
 const csvUrl = (gid: string) => `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${encodeURIComponent(gid)}`;
 
