@@ -304,11 +304,38 @@ Deno.serve(async (req) => {
     csatByCompany.set(norm, { current: cur, previous: prev });
   }
 
+  // Normaliza valores brutos (remove emojis e acentos) para chaves canônicas.
+  const stripDiacritics = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const cleanLabel = (s: string) =>
+    stripDiacritics(s).replace(/[^A-Za-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim().toUpperCase();
+  const canonHealth = (raw: string) => {
+    const v = cleanLabel(raw);
+    if (!v) return "";
+    if (v.includes("CHURN")) return "CHURN";
+    if (v.includes("EVENTUAL")) return "EVENTUAL";
+    if (v.includes("CRIT")) return "CRITICO";
+    if (v.includes("RISCO")) return "RISCO";
+    if (v.includes("ATEN")) return "ATENCAO";
+    if (v.includes("MONITOR")) return "MONITORAR";
+    if (v.includes("SAUD")) return "SAUDAVEL";
+    if (v.includes("RECENT")) return "RECENTE";
+    return v;
+  };
+  const canonImpact = (raw: string) => {
+    const v = cleanLabel(raw);
+    if (!v) return "";
+    if (v.includes("ALTO")) return "ALTO";
+    if (v.includes("MED")) return "MEDIO";
+    if (v.includes("BAIX")) return "BAIXO";
+    if (v.includes("MINIM")) return "MINIMO";
+    return v;
+  };
+
   const healthByCompany = new Map<string, { status: string; impact: string }>();
   for (const r of healthRaw) {
     const norm = normalizeCompanyName(pick(r, "contratante", "razao_social", "empresa", "nome_fantasia"));
-    const status = pick(r, "status", "saude");
-    const impact = pick(r, "impacto", "impact");
+    const status = canonHealth(pick(r, "status", "saude"));
+    const impact = canonImpact(pick(r, "impacto", "impact"));
     if (!norm || (!status && !impact)) continue;
     healthByCompany.set(norm, { status, impact });
   }
