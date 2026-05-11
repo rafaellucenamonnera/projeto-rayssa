@@ -218,6 +218,10 @@ export const PipelineKanban = ({
             <div className="p-2 space-y-2 min-h-[120px]">
               {items.map((l) => {
                 const valor = leadContractValue(l);
+                const statusTokens = showCsInsteadOfPartner ? healthStatusColor(l.health_status) : null;
+                const impactTokens = showCsInsteadOfPartner ? impactColor(l.impact_level) : null;
+                const hasStatus = showCsInsteadOfPartner && normalizeHealthStatus(l.health_status) !== "SEM_STATUS_CLIENTE";
+                const hasImpact = showCsInsteadOfPartner && normalizeImpact(l.impact_level) !== "SEM_IMPACTO";
                 return (
                   <div
                     key={l.id}
