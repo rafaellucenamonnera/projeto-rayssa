@@ -63,7 +63,7 @@ const pick = (row: Record<string, string>, ...keys: string[]) => {
   return "";
 };
 
-const parseCsv = (raw: string): Record<string, string>[] => {
+const parseCsv = (raw: string, headerHint?: string): Record<string, string>[] => {
   const lines = raw.split(/\r?\n/).filter((l) => l.trim().length > 0);
   if (lines.length < 2) return [];
   const parseLine = (line: string) => {
@@ -76,8 +76,15 @@ const parseCsv = (raw: string): Record<string, string>[] => {
     }
     out.push(cur.trim()); return out;
   };
-  const headers = parseLine(lines[0]).map(normalizeHeader);
-  return lines.slice(1).map((line) => {
+  // Detecta linha de cabeçalho real (planilhas com legenda têm linhas-banner antes).
+  let headerIdx = 0;
+  if (headerHint) {
+    const hint = normalizeHeader(headerHint);
+    const found = lines.findIndex((l) => parseLine(l).map(normalizeHeader).includes(hint));
+    if (found >= 0) headerIdx = found;
+  }
+  const headers = parseLine(lines[headerIdx]).map(normalizeHeader);
+  return lines.slice(headerIdx + 1).map((line) => {
     const cols = parseLine(line);
     return headers.reduce<Record<string, string>>((a, h, i) => { a[h] = cols[i] || ""; return a; }, {});
   });
