@@ -33,6 +33,11 @@ interface KanbanLeadCardData {
   health_status?: string | null;
   impact_level?: string | null;
   consultor?: string | null;
+  revenue_current?: number | null;
+  revenue_previous?: number | null;
+  revenue_variation?: number | null;
+  revenue_current_month?: string | null;
+  revenue_previous_month?: string | null;
 }
 
 interface PipelineStage {
