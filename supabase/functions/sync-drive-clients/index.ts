@@ -464,6 +464,16 @@ Deno.serve(async (req) => {
         csat_previous_month: csatHit ? fmtMonth(previousMonth) : null,
         health_status: healthHit?.value.status || null,
         impact_level: healthHit?.value.impact || null,
+        revenue_current: healthHit?.value.revenue_current ?? null,
+        revenue_previous: healthHit?.value.revenue_previous ?? null,
+        revenue_variation: (() => {
+          const cur = healthHit?.value.revenue_current ?? null;
+          const prev = healthHit?.value.revenue_previous ?? null;
+          if (cur == null || prev == null || prev === 0) return null;
+          return (cur - prev) / prev;
+        })(),
+        revenue_current_month: healthHit && healthHit.value.revenue_current != null ? lastMonthLabel : null,
+        revenue_previous_month: healthHit && healthHit.value.revenue_previous != null ? prevMonthLabel : null,
       };
 
       // --- busca lead existente ---
