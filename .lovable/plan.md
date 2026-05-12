@@ -1,79 +1,78 @@
-## Objetivo
 
-Compor os indicadores dos cards do Painel Sucesso a partir da aba **Painel de Saúde** da planilha (`gid=409080197`), trazendo:
+# Plano — Card Sucesso com expandir/recolher e receita dinâmica
 
-- **Coluna A — Razão Social** → chave de vínculo (já existe na lógica `lookupBySimilarity`).
-- **Coluna B — Status do cliente** → alimenta filtro existente "Status Cliente" + **tarja superior colorida no card** com nome do cliente sobre ela.
-- **Coluna C — Impacto** → alimenta filtro existente "Impacto" + **faixa de fundo colorida atrás dos indicadores Mensalidade/Campanha/Pagamento**.
+Sem refatoração estrutural. Apenas extensões em arquivos já existentes.
 
-A infraestrutura já existe parcialmente: o backend (`sync-drive-clients`) e o front (`AdminLeads.tsx` + `PipelineKanban.tsx`) já têm campos `health_status` e `impact_level`, filtros e variável `HEALTH_GID`. Faltam: configurar o GID correto, ajustar parser para o cabeçalho real da aba, definir paleta padronizada de cores e renderizar os elementos visuais nos cards.
+## 1. Sync (`supabase/functions/sync-drive-clients/index.ts`)
 
-## Mudanças
+A planilha de Saúde tem colunas mensais a partir da coluna **O** (jun/25) até a última (hoje **X** = mar/26). A regra é sempre: **última coluna mensal = receita atual**, **penúltima coluna mensal = receita anterior**.
 
-### 1. Sincronização (backend)
+- Detectar dinamicamente o intervalo de colunas mensais no header (a partir da coluna `O`, header com formato `mmm./aa`, ex.: `mar./26`).
+- Pegar as **duas últimas** colunas válidas dessa faixa (ignorando colunas vazias à direita).
+- Para cada linha (cliente), extrair:
+  - `revenue_current` = valor numérico da última coluna (parse "R$ 6.643" → 6643).
+  - `revenue_previous` = valor da penúltima coluna.
+  - `revenue_variation` = (current − previous) / previous (null se previous = 0).
+  - `revenue_current_month` / `revenue_previous_month` = textos do header (ex.: "mar./26", "fev./26").
+- Persistir em `leads`: já existem `revenue_current`, `revenue_previous`, `revenue_variation`. Adicionar 2 novas colunas: `revenue_current_month` e `revenue_previous_month` (text, nullable).
+- Manter sincronização atual de Status / Impacto / Mensalidade / Campanha intacta.
 
-**`supabase/functions/sync-drive-clients/index.ts`**
-- Setar default `HEALTH_GID = "409080197"` (hoje vazio, exige variável de ambiente).
-- Ajustar o parser da aba Painel de Saúde:
-  - As linhas 1–3 do CSV são metadados/legenda; a linha real de cabeçalho é a 4 (`Contratante | Status | Impacto | …`).
-  - Saltar linhas até encontrar a primeira que contenha "contratante" como header (ou usar `findIndex` no CSV cru antes do `parseCsv`).
-- No `pick(...)`, garantir leitura de `contratante`, `status`, `impacto` (já compatível, basta o cabeçalho correto).
-- Normalizar valores: remover emojis/acentos antes de gravar (`status`: CHURN, EVENTUAL, CRITICO, RISCO, ATENCAO, MONITORAR, SAUDAVEL, RECENTE; `impacto`: ALTO, MEDIO, BAIXO, MINIMO).
+## 2. Migration
 
-> Sem mudanças de schema — colunas `health_status` e `impact_level` já existem em `leads`.
+Adicionar somente:
+- `leads.revenue_current_month text`
+- `leads.revenue_previous_month text`
 
-### 2. Paleta padronizada (frontend)
+(Os campos numéricos `revenue_current`, `revenue_previous`, `revenue_variation` já existem.)
 
-Criar arquivo `src/lib/healthStatusColors.ts` (constantes únicas) para evitar divergência entre filtro e card:
+## 3. Card kanban (`src/components/admin/PipelineKanban.tsx`)
 
-```text
-Status:
-  CHURN      → vermelho-escuro
-  EVENTUAL   → laranja
-  CRÍTICO    → vermelho
-  RISCO      → âmbar
-  ATENÇÃO    → amarelo
-  MONITORAR  → azul
-  SAUDÁVEL   → verde
-  RECENTE    → ciano
+Aplicar somente quando `showCsInsteadOfPartner` (modo Sucesso). Modo comercial fica intacto.
 
-Impacto:
-  ALTO    → vermelho
-  MÉDIO   → laranja
-  BAIXO   → amarelo
-  MÍNIMO  → cinza
-```
+### Estado
+- Adicionar `expandedCardId: string | null` (similar ao `selectedCardId`).
+- Handler `onDoubleClick` no card: alterna `expandedCardId` entre `l.id` e `null`.
+- Clique simples: mantém comportamento atual (selecionar / abrir modal no segundo clique).
 
-Funções `healthStatusColor(status)` e `impactColor(impact)` retornando `{ bg, text, border, hex }` em tokens HSL semânticos.
+### Card fechado (modo Sucesso, padrão)
+Mantido conforme hoje, mas com conteúdo enxuto:
+- Faixa de Status no topo (cor + nome do cliente) — **mantida**.
+- Linha "Ação: <responsável>" — mantida.
+- Linha "CS: <consultor>" — mantida.
+- Faixa de Impacto (fundo + borda) — **mantida**, mas o conteúdo dentro dela passa a ser:
+  - Label "Impacto: <nível>" (como hoje).
+  - **Substituir** as 3 pílulas (Mensalidade / Campanha / Pagamento) por **uma única linha**:
+    - `Receita: R$ X.XXX` em destaque.
+    - Seta ↑ verde se `revenue_variation > 0`, ↓ vermelha se `< 0`, → cinza se 0/sem dado.
+    - `+12%` ao lado da seta (mesma cor).
+    - Tooltip com "Atual: mar/26 vs Anterior: fev/26" usando `revenue_current_month` / `revenue_previous_month`.
+- **Removidos do card fechado**: pílulas Mensalidade/Campanha/Pagamento, blocos "Campanha atual / mês anterior", CSAT, badges Status/Impacto duplicadas.
 
-### 3. Card no Kanban
+### Card expandido (após duplo clique)
+Mostra tudo que existe hoje após a linha de receita:
+- As 3 pílulas Mensalidade / Campanha / Pagamento (com variações ↑↓).
+- Bloco "Campanha atual (mês X)" + "Mês anterior (mês Y)" com badges de status (já implementado por `showCampaignStatus`).
+- CSAT (se existir).
+- Pequeno ícone/botão "Recolher" no canto superior direito da área expandida (reusa o estilo dos botões existentes).
 
-**`src/components/admin/PipelineKanban.tsx`** (apenas painel Sucesso, ativado por `showCampaignStatus`):
+### UX
+- Ao expandir, o card cresce verticalmente dentro da coluna do kanban (sem modal).
+- Duplo clique novamente recolhe.
+- Sem alteração no drag-and-drop, no clique simples ou nos botões Editar/Excluir/Clonar/Responsável.
 
-- **Tarja superior (status)**: faixa horizontal de ~22px no topo do card, fundo na cor do status, com `nome_fantasia` em cima (texto branco/contraste alto). Substitui o `<p class="truncate">{nome_fantasia}</p>` atual nesse modo.
-- **Faixa de impacto**: ao redor do bloco de badges Mensalidade/Campanha/Pagamento, aplicar `background` suave (cor do impacto com baixa opacidade) + borda lateral mais saturada, com legenda discreta "Impacto: ALTO" no canto.
-- Ajustar funções locais `healthStatusClass` e `impactClass` para usar a paleta central — remover lógica duplicada.
+## 4. Tipos / dados
 
-### 4. Filtros (AdminLeads)
+- Adicionar `revenue_current`, `revenue_previous`, `revenue_variation`, `revenue_current_month`, `revenue_previous_month` em `KanbanLeadCardData`.
+- Em `AdminLeads.tsx`, incluir esses campos no `select` do fetch de leads do painel Sucesso (sem mudar filtros nem layout da página).
 
-**`src/pages/admin/AdminLeads.tsx`** (linhas ~1022–1050):
+## 5. Fora de escopo (não mexer)
 
-- Trocar os `<SelectItem>` por versões com bolinha colorida (`<span class="size-2 rounded-full" style={bg}>`) à esquerda do label, usando a mesma paleta central. Os filtros já funcionam — só falta sinalizar visualmente a cor.
-- Garantir ordem fixa dos status (CHURN → EVENTUAL → CRÍTICO → RISCO → ATENÇÃO → MONITORAR → SAUDÁVEL → RECENTE) em vez de `Set` da base.
+- Modo comercial / outros painéis (mantém visual atual).
+- Filtros, lista, exportação, modal de detalhe.
+- Quaisquer outras tabelas, RLS, edge functions além do sync.
 
-### 5. Re-sync
-
-Após deploy, rodar `sync-drive-clients` manualmente (botão existente) para popular `health_status` e `impact_level` em todos os cards do painel Sucesso.
-
-## Não inclui
-
-- Nenhuma alteração em outros painéis (Leads/Pipeline/Financeiro).
-- Sem mudanças nos demais campos do card (CS, mensalidade, CSAT, etc.).
-- Sem refator estrutural — apenas adicionar arquivo de paleta e ajustar render condicional.
-
-## Resumo de arquivos
-
-- `supabase/functions/sync-drive-clients/index.ts` — default `HEALTH_GID`, ajuste parser cabeçalho.
-- `src/lib/healthStatusColors.ts` *(novo)* — paleta única.
-- `src/components/admin/PipelineKanban.tsx` — tarja superior + faixa de impacto.
-- `src/pages/admin/AdminLeads.tsx` — bolinhas coloridas nos filtros + ordenação fixa.
+## Resumo de arquivos tocados
+- `supabase/functions/sync-drive-clients/index.ts` — detecção dinâmica das 2 últimas colunas mensais e gravação dos novos campos.
+- Migration — 2 colunas novas em `leads`.
+- `src/components/admin/PipelineKanban.tsx` — estado de expansão, duplo clique, layout do card fechado/expandido.
+- `src/pages/admin/AdminLeads.tsx` — incluir novos campos no select do painel Sucesso.
