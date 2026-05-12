@@ -331,13 +331,37 @@ Deno.serve(async (req) => {
     return v;
   };
 
-  const healthByCompany = new Map<string, { status: string; impact: string }>();
+  // Identifica colunas mensais da planilha de Saúde (ex.: "jan./26", "fev_26", "mar/2026").
+  // Usa as 2 últimas colunas válidas: a última = receita atual, a penúltima = receita anterior.
+  // Regra dinâmica: ao adicionar um novo mês na planilha, o último vira "atual" automaticamente.
+  const monthKeyRegex = /^(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)_?(\d{2,4})$/;
+  const prettifyMonthKey = (k: string): string => {
+    const m = k.match(monthKeyRegex);
+    if (!m) return k;
+    return `${m[1]}/${m[2].length === 4 ? m[2].slice(2) : m[2]}`;
+  };
+  const allHealthKeys = healthRaw.length > 0 ? Object.keys(healthRaw[0]) : [];
+  const monthKeys = allHealthKeys.filter((k) => monthKeyRegex.test(k));
+  const lastMonthKey = monthKeys.length >= 1 ? monthKeys[monthKeys.length - 1] : null;
+  const prevMonthKey = monthKeys.length >= 2 ? monthKeys[monthKeys.length - 2] : null;
+  const lastMonthLabel = lastMonthKey ? prettifyMonthKey(lastMonthKey) : null;
+  const prevMonthLabel = prevMonthKey ? prettifyMonthKey(prevMonthKey) : null;
+
+  const healthByCompany = new Map<string, {
+    status: string;
+    impact: string;
+    revenue_current: number | null;
+    revenue_previous: number | null;
+  }>();
   for (const r of healthRaw) {
     const norm = normalizeCompanyName(pick(r, "contratante", "razao_social", "empresa", "nome_fantasia"));
     const status = canonHealth(pick(r, "status", "saude"));
     const impact = canonImpact(pick(r, "impacto", "impact"));
-    if (!norm || (!status && !impact)) continue;
-    healthByCompany.set(norm, { status, impact });
+    const revenue_current = lastMonthKey ? toNumber(r[lastMonthKey] || "") : null;
+    const revenue_previous = prevMonthKey ? toNumber(r[prevMonthKey] || "") : null;
+    if (!norm) continue;
+    if (!status && !impact && revenue_current == null && revenue_previous == null) continue;
+    healthByCompany.set(norm, { status, impact, revenue_current, revenue_previous });
   }
 
   // -------- 4) Etapa-alvo no painel Sucesso --------
@@ -440,6 +464,16 @@ Deno.serve(async (req) => {
         csat_previous_month: csatHit ? fmtMonth(previousMonth) : null,
         health_status: healthHit?.value.status || null,
         impact_level: healthHit?.value.impact || null,
+        revenue_current: healthHit?.value.revenue_current ?? null,
+        revenue_previous: healthHit?.value.revenue_previous ?? null,
+        revenue_variation: (() => {
+          const cur = healthHit?.value.revenue_current ?? null;
+          const prev = healthHit?.value.revenue_previous ?? null;
+          if (cur == null || prev == null || prev === 0) return null;
+          return (cur - prev) / prev;
+        })(),
+        revenue_current_month: healthHit && healthHit.value.revenue_current != null ? lastMonthLabel : null,
+        revenue_previous_month: healthHit && healthHit.value.revenue_previous != null ? prevMonthLabel : null,
       };
 
       // --- busca lead existente ---

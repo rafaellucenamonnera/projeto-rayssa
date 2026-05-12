@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowRight, ArrowUp, Copy, GripVertical, Pencil, Trash2, UserRound, Info } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUp, ChevronDown, ChevronUp, Copy, GripVertical, Pencil, Trash2, UserRound, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { healthStatusColor, impactColor, normalizeHealthStatus, normalizeImpact } from "@/lib/healthStatusColors";
 
@@ -33,6 +33,11 @@ interface KanbanLeadCardData {
   health_status?: string | null;
   impact_level?: string | null;
   consultor?: string | null;
+  revenue_current?: number | null;
+  revenue_previous?: number | null;
+  revenue_variation?: number | null;
+  revenue_current_month?: string | null;
+  revenue_previous_month?: string | null;
 }
 
 interface PipelineStage {
@@ -159,6 +164,7 @@ export const PipelineKanban = ({
   const [dragId, setDragId] = useState<string | null>(null);
   const [overStage, setOverStage] = useState<string | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
 
   const grouped = useMemo(() => {
     const g: Record<string, KanbanLeadCardData[]> = {};
@@ -222,6 +228,11 @@ export const PipelineKanban = ({
                 const impactTokens = showCsInsteadOfPartner ? impactColor(l.impact_level) : null;
                 const hasStatus = showCsInsteadOfPartner && normalizeHealthStatus(l.health_status) !== "SEM_STATUS_CLIENTE";
                 const hasImpact = showCsInsteadOfPartner && normalizeImpact(l.impact_level) !== "SEM_IMPACTO";
+                const isExpanded = expandedCardId === l.id;
+                const revVar = typeof l.revenue_variation === "number" ? l.revenue_variation : null;
+                const revTrend = revVar == null ? null : revVar > EPSILON ? "up" : revVar < -EPSILON ? "down" : "neutral";
+                const RevIcon = revTrend === "up" ? ArrowUp : revTrend === "down" ? ArrowDown : ArrowRight;
+                const revColor = revTrend === "up" ? "text-emerald-400" : revTrend === "down" ? "text-red-400" : "text-muted-foreground";
                 return (
                   <div
                     key={l.id}
@@ -239,13 +250,24 @@ export const PipelineKanban = ({
                       }
                       setSelectedCardId(l.id);
                     }}
+                    onDoubleClick={(e) => {
+                      if (!showCsInsteadOfPartner) return;
+                      e.stopPropagation();
+                      e.preventDefault();
+                      setExpandedCardId((prev) => (prev === l.id ? null : l.id));
+                    }}
                     className={`group rounded-md border border-border bg-background overflow-hidden cursor-pointer hover:border-primary/60 transition-colors ${showCsInsteadOfPartner ? "p-0" : "p-2.5"} ${dragId === l.id ? "opacity-50" : ""} ${selectedCardId === l.id ? "ring-1 ring-primary/60" : ""}`}
-                    title={selectedCardId === l.id ? "Clique para abrir" : "Clique para selecionar"}
+                    title={showCsInsteadOfPartner ? (isExpanded ? "Duplo clique para recolher" : "Duplo clique para expandir") : (selectedCardId === l.id ? "Clique para abrir" : "Clique para selecionar")}
                   >
                     {showCsInsteadOfPartner && statusTokens && (
-                      <div className={`px-2.5 py-1 ${statusTokens.bgClass} ${statusTokens.textOnClass}`}>
-                        <p className="text-xs font-semibold truncate" title={l.nome_fantasia}>{l.nome_fantasia}</p>
-                        <p className="text-[9px] uppercase tracking-wide opacity-80">{hasStatus ? statusTokens.label : "Sem status do cliente"}</p>
+                      <div className={`px-2.5 py-1 ${statusTokens.bgClass} ${statusTokens.textOnClass} flex items-center justify-between gap-2`}>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold truncate" title={l.nome_fantasia}>{l.nome_fantasia}</p>
+                          <p className="text-[9px] uppercase tracking-wide opacity-80">{hasStatus ? statusTokens.label : "Sem status do cliente"}</p>
+                        </div>
+                        {isExpanded
+                          ? <ChevronUp className="h-3.5 w-3.5 shrink-0 opacity-80" />
+                          : <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-80" />}
                       </div>
                     )}
                     <div className={showCsInsteadOfPartner ? "px-2.5 py-2" : ""}>
@@ -319,7 +341,7 @@ export const PipelineKanban = ({
                               ? `CS: ${l.consultor || "—"}`
                               : (parceirosMap[l.parceiro_id || ""] || "—")}
                           </span>
-                          {valor > 0 && (
+                          {!showCsInsteadOfPartner && valor > 0 && (
                             <span className="text-[10px] font-semibold whitespace-nowrap">{fmt(valor)}</span>
                           )}
                         </div>
@@ -329,27 +351,44 @@ export const PipelineKanban = ({
                               Impacto: <span className="font-semibold text-foreground">{hasImpact ? impactTokens.label : "—"}</span>
                             </p>
                           )}
-                          <div className="flex flex-wrap gap-1">
-                            {[
-                              { key: "Mensalidade", current: l.valor_mensalidade, previous: l.valor_mensalidade_anterior },
-                              { key: "Campanha", current: l.valor_campanhas, previous: l.valor_campanhas_anterior },
-                              { key: "Pagamento", current: l.valor_pagamento, previous: l.valor_pagamento_anterior },
-                            ].map((metric) => {
-                              const v = variation(metric.current, metric.previous);
-                              const trend = trendMeta(v);
-                              const Icon = trend.icon;
-                              return (
-                                <div key={metric.key} className="flex items-center gap-0.5 text-[9px] px-1 py-0.5 rounded bg-secondary/40">
-                                  <span className="text-muted-foreground">{metric.key}</span>
-                                  <span className={`flex items-center gap-0.5 font-medium ${trend.color}`}>
-                                    <Icon className="h-2.5 w-2.5" /> {pct(v)}
+                          {showCsInsteadOfPartner && !isExpanded ? (
+                            <div
+                              className="flex items-center justify-between gap-2"
+                              title={l.revenue_current_month && l.revenue_previous_month ? `Atual: ${l.revenue_current_month} · Anterior: ${l.revenue_previous_month}` : "Receita do cliente"}
+                            >
+                              <span className="text-[10px] text-muted-foreground">Receita</span>
+                              <span className="flex items-center gap-1">
+                                <span className="text-xs font-semibold">{l.revenue_current != null ? fmt(Number(l.revenue_current)) : "—"}</span>
+                                {revVar != null && (
+                                  <span className={`flex items-center gap-0.5 text-[10px] font-medium ${revColor}`}>
+                                    <RevIcon className="h-3 w-3" /> {pct(revVar)}
                                   </span>
-                                </div>
-                              );
-                            })}
-                          </div>
+                                )}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {[
+                                { key: "Mensalidade", current: l.valor_mensalidade, previous: l.valor_mensalidade_anterior },
+                                { key: "Campanha", current: l.valor_campanhas, previous: l.valor_campanhas_anterior },
+                                { key: "Pagamento", current: l.valor_pagamento, previous: l.valor_pagamento_anterior },
+                              ].map((metric) => {
+                                const v = variation(metric.current, metric.previous);
+                                const trend = trendMeta(v);
+                                const Icon = trend.icon;
+                                return (
+                                  <div key={metric.key} className="flex items-center gap-0.5 text-[9px] px-1 py-0.5 rounded bg-secondary/40">
+                                    <span className="text-muted-foreground">{metric.key}</span>
+                                    <span className={`flex items-center gap-0.5 font-medium ${trend.color}`}>
+                                      <Icon className="h-2.5 w-2.5" /> {pct(v)}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
-                        {showCampaignStatus && (
+                        {showCampaignStatus && (!showCsInsteadOfPartner || isExpanded) && (
                           <div className="mt-2 space-y-1">
                             <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Campanha atual ({l.campaign_status_current_month || "mês atual"})</p>
                             <span className={`inline-block text-[10px] px-1.5 py-0.5 rounded border ${campaignStatusClass(l.campaign_status_current)}`}>{l.campaign_status_current || "Sem status"}</span>
@@ -357,7 +396,7 @@ export const PipelineKanban = ({
                             <span className={`inline-block text-[10px] px-1.5 py-0.5 rounded border ${campaignStatusClass(l.campaign_status_previous)}`}>{l.campaign_status_previous || "Sem status"}</span>
                           </div>
                         )}
-                        {showCampaignStatus && l.csat_current != null && (
+                        {showCampaignStatus && (!showCsInsteadOfPartner || isExpanded) && l.csat_current != null && (
                           <div className="mt-2 flex items-center gap-1 text-[10px]">
                             <Info className="h-3 w-3 text-muted-foreground" />
                             <span className="text-muted-foreground">CSAT:</span>

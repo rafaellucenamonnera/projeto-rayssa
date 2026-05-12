@@ -399,7 +399,9 @@ export type Database = {
           responsavel_tecnico_telefone: string | null
           responsible_user_id: string | null
           revenue_current: number | null
+          revenue_current_month: string | null
           revenue_previous: number | null
+          revenue_previous_month: string | null
           revenue_total: number
           revenue_variation: number | null
           risco: string | null
@@ -477,7 +479,9 @@ export type Database = {
           responsavel_tecnico_telefone?: string | null
           responsible_user_id?: string | null
           revenue_current?: number | null
+          revenue_current_month?: string | null
           revenue_previous?: number | null
+          revenue_previous_month?: string | null
           revenue_total?: number
           revenue_variation?: number | null
           risco?: string | null
@@ -555,7 +559,9 @@ export type Database = {
           responsavel_tecnico_telefone?: string | null
           responsible_user_id?: string | null
           revenue_current?: number | null
+          revenue_current_month?: string | null
           revenue_previous?: number | null
+          revenue_previous_month?: string | null
           revenue_total?: number
           revenue_variation?: number | null
           risco?: string | null
