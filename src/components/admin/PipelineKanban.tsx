@@ -164,6 +164,7 @@ export const PipelineKanban = ({
   const [dragId, setDragId] = useState<string | null>(null);
   const [overStage, setOverStage] = useState<string | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
 
   const grouped = useMemo(() => {
     const g: Record<string, KanbanLeadCardData[]> = {};
