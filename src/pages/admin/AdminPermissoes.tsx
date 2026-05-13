@@ -219,6 +219,16 @@ const AdminPermissoes = () => {
             <Loader2 className="h-6 w-6 animate-spin" />
           ) : (
             <>
+              {loadUsersError ? (
+                <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4 space-y-3">
+                  <p className="text-sm text-destructive">{loadUsersError}</p>
+                  <div className="flex gap-2">
+                    <Button onClick={loadUsers} variant="outline" size="sm">Tentar novamente</Button>
+                    <Button onClick={() => window.location.reload()} size="sm">Recarregar permissões</Button>
+                  </div>
+                </div>
+              ) : null}
+
               <div className="space-y-2 max-w-md">
                 <Label>Usuário</Label>
                 <Select value={selectedUserId} onValueChange={setSelectedUserId}>
