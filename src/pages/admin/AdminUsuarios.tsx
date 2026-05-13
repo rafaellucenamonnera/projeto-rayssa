@@ -226,6 +226,16 @@ const AdminUsuarios = () => {
         </div>
       ) : (
         <>
+          {loadError ? (
+            <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4 space-y-3">
+              <p className="text-sm text-destructive">{loadError}</p>
+              <div className="flex gap-2">
+                <Button onClick={loadUsers} variant="outline" size="sm">Tentar novamente</Button>
+                <Button onClick={() => window.location.reload()} size="sm">Atualizar usuários</Button>
+              </div>
+            </div>
+          ) : null}
+
           {/* Mobile card view */}
           <div className="space-y-3 lg:hidden">
             {users.map((u) => (
