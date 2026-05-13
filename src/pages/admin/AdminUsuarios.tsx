@@ -32,6 +32,7 @@ const AdminUsuarios = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<MonneraUser | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({
     nome: "",
     email: "",
@@ -40,6 +41,7 @@ const AdminUsuarios = () => {
   });
 
   const loadUsers = async () => {
+    setLoadError(null);
     try {
       const { data, error } = await supabase.functions.invoke("admin-create-user", {
         method: "GET",
@@ -49,8 +51,12 @@ const AdminUsuarios = () => {
     } catch (error: any) {
       const msg = String(error?.message || "");
       if (msg.includes("Não autorizado") || msg.includes("Acesso negado")) {
-        toast.error("Erro ao carregar usuários: acesso permitido somente para administrador.");
+        const errorMsg = "Erro ao carregar usuários: acesso permitido somente para administrador.";
+        setLoadError(errorMsg);
+        toast.error(errorMsg);
       } else {
+        const errorMsg = "Não foi possível carregar usuários no momento. Tente novamente ou contate o suporte.";
+        setLoadError(errorMsg);
         toast.error(`Falha ao conectar com backend: ${msg || "Edge Function não respondeu"}`);
       }
     } finally {
