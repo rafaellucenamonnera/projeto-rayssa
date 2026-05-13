@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
 const AdminPermissoes = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, loading: authLoading } = useAuth();
   const [users, setUsers] = useState<Array<{ user_id: string; nome: string; email: string; ativo?: boolean }>>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -19,6 +19,7 @@ const AdminPermissoes = () => {
   const [permissions, setPermissions] = useState<Record<string, boolean>>({});
   const [panels, setPanels] = useState<Array<{ id: string; name: string }>>([]);
   const [panelPermissions, setPanelPermissions] = useState<Record<string, boolean>>({});
+  const [loadUsersError, setLoadUsersError] = useState<string | null>(null);
 
   const modules = useMemo(
     () => [
