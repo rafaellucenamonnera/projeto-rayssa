@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
 const AdminPermissoes = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, loading: authLoading } = useAuth();
   const [users, setUsers] = useState<Array<{ user_id: string; nome: string; email: string; ativo?: boolean }>>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -19,6 +19,7 @@ const AdminPermissoes = () => {
   const [permissions, setPermissions] = useState<Record<string, boolean>>({});
   const [panels, setPanels] = useState<Array<{ id: string; name: string }>>([]);
   const [panelPermissions, setPanelPermissions] = useState<Record<string, boolean>>({});
+  const [loadUsersError, setLoadUsersError] = useState<string | null>(null);
 
   const modules = useMemo(
     () => [
@@ -33,15 +34,33 @@ const AdminPermissoes = () => {
     [],
   );
 
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-6 w-6 animate-spin" />
+      </div>
+    );
+  }
+
   if (!isAdmin) {
     return <Navigate to="/admin" replace />;
   }
 
   const loadUsers = async () => {
     setLoading(true);
+    setLoadUsersError(null);
     const { data, error } = await supabase.functions.invoke("admin-create-user", { method: "GET" });
     if (error) {
       console.error("[AdminPermissoes] Falha ao listar usuários via Edge Function", error);
+      const msg = String(error.message || "");
+      const isAuthError = msg.includes("Não autorizado") || msg.includes("Acesso negado") || msg.includes("401") || msg.includes("403");
+
+      if (isAuthError) {
+        setLoadUsersError("Não foi possível carregar permissões no momento. Tente novamente ou contate o suporte.");
+        toast.error("Não foi possível carregar permissões no momento. Tente novamente ou contate o suporte.");
+        setLoading(false);
+        return;
+      }
 
       // Fallback resiliente: lê profiles direto quando a Edge Function estiver indisponível.
       const { data: profiles, error: profilesError } = await (supabase as any)
@@ -51,6 +70,7 @@ const AdminPermissoes = () => {
         .order("nome", { ascending: true });
 
       if (profilesError) {
+        setLoadUsersError("Não foi possível carregar permissões no momento. Tente novamente ou contate o suporte.");
         toast.error(`Falha ao conectar com backend: ${error.message || "Edge Function não respondeu"}`);
         setLoading(false);
         return;
@@ -199,6 +219,16 @@ const AdminPermissoes = () => {
             <Loader2 className="h-6 w-6 animate-spin" />
           ) : (
             <>
+              {loadUsersError ? (
+                <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4 space-y-3">
+                  <p className="text-sm text-destructive">{loadUsersError}</p>
+                  <div className="flex gap-2">
+                    <Button onClick={loadUsers} variant="outline" size="sm">Tentar novamente</Button>
+                    <Button onClick={() => window.location.reload()} size="sm">Recarregar permissões</Button>
+                  </div>
+                </div>
+              ) : null}
+
               <div className="space-y-2 max-w-md">
                 <Label>Usuário</Label>
                 <Select value={selectedUserId} onValueChange={setSelectedUserId}>
