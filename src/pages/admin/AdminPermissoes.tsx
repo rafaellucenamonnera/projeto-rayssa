@@ -34,15 +34,33 @@ const AdminPermissoes = () => {
     [],
   );
 
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-6 w-6 animate-spin" />
+      </div>
+    );
+  }
+
   if (!isAdmin) {
     return <Navigate to="/admin" replace />;
   }
 
   const loadUsers = async () => {
     setLoading(true);
+    setLoadUsersError(null);
     const { data, error } = await supabase.functions.invoke("admin-create-user", { method: "GET" });
     if (error) {
       console.error("[AdminPermissoes] Falha ao listar usuários via Edge Function", error);
+      const msg = String(error.message || "");
+      const isAuthError = msg.includes("Não autorizado") || msg.includes("Acesso negado") || msg.includes("401") || msg.includes("403");
+
+      if (isAuthError) {
+        setLoadUsersError("Não foi possível carregar permissões no momento. Tente novamente ou contate o suporte.");
+        toast.error("Não foi possível carregar permissões no momento. Tente novamente ou contate o suporte.");
+        setLoading(false);
+        return;
+      }
 
       // Fallback resiliente: lê profiles direto quando a Edge Function estiver indisponível.
       const { data: profiles, error: profilesError } = await (supabase as any)
@@ -52,6 +70,7 @@ const AdminPermissoes = () => {
         .order("nome", { ascending: true });
 
       if (profilesError) {
+        setLoadUsersError("Não foi possível carregar permissões no momento. Tente novamente ou contate o suporte.");
         toast.error(`Falha ao conectar com backend: ${error.message || "Edge Function não respondeu"}`);
         setLoading(false);
         return;
