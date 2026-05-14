@@ -124,16 +124,24 @@ export default function AdminPipelineEdit() {
   };
 
   const createPanel = async () => {
-    if (!isAdmin || creatingPanel) return;
-    const rawName = window.prompt("Nome do novo painel:");
-    if (rawName === null) return;
-    const name = rawName.trim();
-    if (!name) {
-      toast.error("Informe um nome para o painel");
+    if (!isAdmin && !canManagePanels) return;
+    if (creatingPanel) return;
+    const panelName = newPanelName.trim();
+    if (!panelName) {
+      toast.error("Nome do painel é obrigatório");
       return;
     }
-    if (panels.some((p) => p.name.toLowerCase() === name.toLowerCase())) {
+    if (panels.some((p) => p.name.toLowerCase() === panelName.toLowerCase())) {
       toast.error("Já existe um painel com esse nome");
+      return;
+    }
+    const cleanedColumns = newColumns.map((c) => c.trim()).filter(Boolean);
+    if (cleanedColumns.length === 0) {
+      toast.error("Adicione pelo menos uma coluna");
+      return;
+    }
+    if (new Set(cleanedColumns.map((c) => c.toLowerCase())).size !== cleanedColumns.length) {
+      toast.error("Não pode haver colunas duplicadas");
       return;
     }
     setCreatingPanel(true);
@@ -142,34 +150,35 @@ export default function AdminPipelineEdit() {
       .from("pipeline_panels")
       .insert({
         id: newId,
-        name,
+        name: panelName,
         sort_order: panels.length + 1,
       })
       .select("id")
       .single();
     if (error || !data?.id) {
+      setCreatingPanel(false);
       toast.error("Erro ao criar painel");
-      setCreatingPanel(false);
       return;
     }
-    const stageValue = `etapa_${data.id}_novo`;
-    const { error: stageError } = await (supabase as any)
-      .from("pipeline_stages_config")
-      .insert({
-        value: stageValue,
-        label: "Novo",
-        sort_order: 1,
-        panel_key: data.id,
-      });
+    const { error: stageError } = await (supabase as any).from("pipeline_stages_config").insert(
+      cleanedColumns.map((columnName, index) => ({
+        value: `etapa_${newId}_${index + 1}`,
+        label: columnName,
+        sort_order: index + 1,
+        panel_key: newId,
+      })),
+    );
     if (stageError) {
-      await (supabase as any).from("pipeline_panels").delete().eq("id", data.id);
-      toast.error("Erro ao criar coluna padrão. Painel revertido.");
+      await (supabase as any).from("pipeline_panels").delete().eq("id", newId);
       setCreatingPanel(false);
+      toast.error("Não foi possível criar o painel");
       return;
     }
-    toast.success("Painel criado");
+    toast.success("Painel criado com sucesso");
     await loadPanels();
     setSelectedPanelId(data.id);
+    setNewPanelName("");
+    setNewColumns(["Novo"]);
     setCreatingPanel(false);
   };
 
