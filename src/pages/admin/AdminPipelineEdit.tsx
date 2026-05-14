@@ -29,12 +29,15 @@ type Panel = { id: string; name: string; sort_order: number };
 export default function AdminPipelineEdit() {
   const { isInternalUser, isAdmin } = useAuth();
   const [allowed, setAllowed] = useState(false);
+  const [canManagePanels, setCanManagePanels] = useState(false);
   const [checked, setChecked] = useState(false);
   const [panels, setPanels] = useState<Panel[]>([]);
   const [selectedPanelId, setSelectedPanelId] = useState<string>("");
   const [stageCache, setStageCache] = useState<Record<string, Stage[]>>({});
   const [loading, setLoading] = useState(false);
   const [creatingPanel, setCreatingPanel] = useState(false);
+  const [newPanelName, setNewPanelName] = useState("");
+  const [newColumns, setNewColumns] = useState<string[]>(["Novo"]);
 
   const stages = stageCache[selectedPanelId] || [];
   const currentPanel = panels.find((p) => p.id === selectedPanelId);
