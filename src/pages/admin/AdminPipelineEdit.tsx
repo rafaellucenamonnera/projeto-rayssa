@@ -29,12 +29,15 @@ type Panel = { id: string; name: string; sort_order: number };
 export default function AdminPipelineEdit() {
   const { isInternalUser, isAdmin } = useAuth();
   const [allowed, setAllowed] = useState(false);
+  const [canManagePanels, setCanManagePanels] = useState(false);
   const [checked, setChecked] = useState(false);
   const [panels, setPanels] = useState<Panel[]>([]);
   const [selectedPanelId, setSelectedPanelId] = useState<string>("");
   const [stageCache, setStageCache] = useState<Record<string, Stage[]>>({});
   const [loading, setLoading] = useState(false);
   const [creatingPanel, setCreatingPanel] = useState(false);
+  const [newPanelName, setNewPanelName] = useState("");
+  const [newColumns, setNewColumns] = useState<string[]>(["Novo"]);
 
   const stages = stageCache[selectedPanelId] || [];
   const currentPanel = panels.find((p) => p.id === selectedPanelId);
@@ -56,7 +59,9 @@ export default function AdminPipelineEdit() {
       .eq("user_id", auth.user.id)
       .eq("modulo", "configuracao_painel");
     const can = (perms || []).some((p: any) => p.permitido && p.acao === "visualizar");
+    const canManage = (perms || []).some((p: any) => p.permitido && ["editar", "criar_estagio"].includes(p.acao));
     setAllowed(can);
+    setCanManagePanels(canManage);
     setChecked(true);
   };
 
@@ -119,16 +124,24 @@ export default function AdminPipelineEdit() {
   };
 
   const createPanel = async () => {
-    if (!isAdmin || creatingPanel) return;
-    const rawName = window.prompt("Nome do novo painel:");
-    if (rawName === null) return;
-    const name = rawName.trim();
-    if (!name) {
-      toast.error("Informe um nome para o painel");
+    if (!isAdmin && !canManagePanels) return;
+    if (creatingPanel) return;
+    const panelName = newPanelName.trim();
+    if (!panelName) {
+      toast.error("Nome do painel é obrigatório");
       return;
     }
-    if (panels.some((p) => p.name.toLowerCase() === name.toLowerCase())) {
+    if (panels.some((p) => p.name.toLowerCase() === panelName.toLowerCase())) {
       toast.error("Já existe um painel com esse nome");
+      return;
+    }
+    const cleanedColumns = newColumns.map((c) => c.trim()).filter(Boolean);
+    if (cleanedColumns.length === 0) {
+      toast.error("Adicione pelo menos uma coluna");
+      return;
+    }
+    if (new Set(cleanedColumns.map((c) => c.toLowerCase())).size !== cleanedColumns.length) {
+      toast.error("Não pode haver colunas duplicadas");
       return;
     }
     setCreatingPanel(true);
@@ -137,34 +150,35 @@ export default function AdminPipelineEdit() {
       .from("pipeline_panels")
       .insert({
         id: newId,
-        name,
+        name: panelName,
         sort_order: panels.length + 1,
       })
       .select("id")
       .single();
     if (error || !data?.id) {
+      setCreatingPanel(false);
       toast.error("Erro ao criar painel");
-      setCreatingPanel(false);
       return;
     }
-    const stageValue = `etapa_${data.id}_novo`;
-    const { error: stageError } = await (supabase as any)
-      .from("pipeline_stages_config")
-      .insert({
-        value: stageValue,
-        label: "Novo",
-        sort_order: 1,
-        panel_key: data.id,
-      });
+    const { error: stageError } = await (supabase as any).from("pipeline_stages_config").insert(
+      cleanedColumns.map((columnName, index) => ({
+        value: `etapa_${newId}_${index + 1}`,
+        label: columnName,
+        sort_order: index + 1,
+        panel_key: newId,
+      })),
+    );
     if (stageError) {
-      await (supabase as any).from("pipeline_panels").delete().eq("id", data.id);
-      toast.error("Erro ao criar coluna padrão. Painel revertido.");
+      await (supabase as any).from("pipeline_panels").delete().eq("id", newId);
       setCreatingPanel(false);
+      toast.error("Não foi possível criar o painel");
       return;
     }
-    toast.success("Painel criado");
+    toast.success("Painel criado com sucesso");
     await loadPanels();
     setSelectedPanelId(data.id);
+    setNewPanelName("");
+    setNewColumns(["Novo"]);
     setCreatingPanel(false);
   };
 
@@ -253,7 +267,7 @@ export default function AdminPipelineEdit() {
         <CardHeader>
           <div className="flex items-center justify-between gap-2">
             <CardTitle className="text-base">Selecionar Painel</CardTitle>
-            {isAdmin && (
+            {(isAdmin || canManagePanels) && (
               <div className="flex items-center gap-2">
                 <Button size="sm" onClick={createPanel} disabled={creatingPanel}>
                   {creatingPanel ? (
@@ -261,16 +275,71 @@ export default function AdminPipelineEdit() {
                   ) : (
                     <Plus className="h-4 w-4 mr-1" />
                   )}
-                  Novo Painel
+                  Salvar
                 </Button>
-                <Button size="sm" variant="destructive" onClick={deletePanel} disabled={!selectedPanelId}>
-                  <Trash2 className="h-4 w-4 mr-1" /> Excluir Painel
-                </Button>
+                {isAdmin && (
+                  <Button size="sm" variant="destructive" onClick={deletePanel} disabled={!selectedPanelId}>
+                    <Trash2 className="h-4 w-4 mr-1" /> Excluir Painel
+                  </Button>
+                )}
               </div>
             )}
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          {(isAdmin || canManagePanels) && (
+            <>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Nome do novo painel</Label>
+                <Input
+                  value={newPanelName}
+                  onChange={(e) => setNewPanelName(e.target.value)}
+                  maxLength={80}
+                  placeholder="Ex: Painel Expansão"
+                  className="max-w-md"
+                  disabled={!isAdmin && !canManagePanels}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Colunas do novo painel</Label>
+                {newColumns.map((column, index) => (
+                  <div key={index} className="flex items-center gap-2 max-w-md">
+                    <Input
+                      value={column}
+                      onChange={(e) =>
+                        setNewColumns((prev) =>
+                          prev.map((item, idx) => (idx === index ? e.target.value : item)),
+                        )
+                      }
+                      placeholder={`Coluna ${index + 1}`}
+                      disabled={!isAdmin && !canManagePanels}
+                    />
+                    {(isAdmin || canManagePanels) && newColumns.length > 1 && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="text-destructive h-8 w-8 shrink-0"
+                        onClick={() =>
+                          setNewColumns((prev) => prev.filter((_, idx) => idx !== index))
+                        }
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                {(isAdmin || canManagePanels) && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setNewColumns((prev) => [...prev, ""])}
+                  >
+                    <Plus className="h-4 w-4 mr-1" /> Coluna
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
           <div className="space-y-2">
             <Label className="text-xs text-muted-foreground">Painel</Label>
             <Select value={selectedPanelId} onValueChange={setSelectedPanelId}>
