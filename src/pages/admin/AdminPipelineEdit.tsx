@@ -275,16 +275,80 @@ export default function AdminPipelineEdit() {
                   ) : (
                     <Plus className="h-4 w-4 mr-1" />
                   )}
-                  Novo Painel
+            <CardTitle className="text-base">Selecionar Painel</CardTitle>
+            {(isAdmin || canManagePanels) && (
+              <div className="flex items-center gap-2">
+                <Button size="sm" onClick={createPanel} disabled={creatingPanel}>
+                  {creatingPanel ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Plus className="h-4 w-4 mr-1" />
+                  )}
+                  Salvar
                 </Button>
-                <Button size="sm" variant="destructive" onClick={deletePanel} disabled={!selectedPanelId}>
-                  <Trash2 className="h-4 w-4 mr-1" /> Excluir Painel
-                </Button>
+                {isAdmin && (
+                  <Button size="sm" variant="destructive" onClick={deletePanel} disabled={!selectedPanelId}>
+                    <Trash2 className="h-4 w-4 mr-1" /> Excluir Painel
+                  </Button>
+                )}
               </div>
             )}
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          {(isAdmin || canManagePanels) && (
+            <>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Nome do novo painel</Label>
+                <Input
+                  value={newPanelName}
+                  onChange={(e) => setNewPanelName(e.target.value)}
+                  maxLength={80}
+                  placeholder="Ex: Painel Expansão"
+                  className="max-w-md"
+                  disabled={!isAdmin && !canManagePanels}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Colunas do novo painel</Label>
+                {newColumns.map((column, index) => (
+                  <div key={index} className="flex items-center gap-2 max-w-md">
+                    <Input
+                      value={column}
+                      onChange={(e) =>
+                        setNewColumns((prev) =>
+                          prev.map((item, idx) => (idx === index ? e.target.value : item)),
+                        )
+                      }
+                      placeholder={`Coluna ${index + 1}`}
+                      disabled={!isAdmin && !canManagePanels}
+                    />
+                    {(isAdmin || canManagePanels) && newColumns.length > 1 && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="text-destructive h-8 w-8 shrink-0"
+                        onClick={() =>
+                          setNewColumns((prev) => prev.filter((_, idx) => idx !== index))
+                        }
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                {(isAdmin || canManagePanels) && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setNewColumns((prev) => [...prev, ""])}
+                  >
+                    <Plus className="h-4 w-4 mr-1" /> Coluna
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
           <div className="space-y-2">
             <Label className="text-xs text-muted-foreground">Painel</Label>
             <Select value={selectedPanelId} onValueChange={setSelectedPanelId}>
