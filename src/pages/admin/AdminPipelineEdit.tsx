@@ -34,6 +34,7 @@ export default function AdminPipelineEdit() {
   const [selectedPanelId, setSelectedPanelId] = useState<string>("");
   const [stageCache, setStageCache] = useState<Record<string, Stage[]>>({});
   const [loading, setLoading] = useState(false);
+  const [creatingPanel, setCreatingPanel] = useState(false);
 
   const stages = stageCache[selectedPanelId] || [];
   const currentPanel = panels.find((p) => p.id === selectedPanelId);
@@ -118,24 +119,53 @@ export default function AdminPipelineEdit() {
   };
 
   const createPanel = async () => {
-    if (!isAdmin) return;
+    if (!isAdmin || creatingPanel) return;
+    const rawName = window.prompt("Nome do novo painel:");
+    if (rawName === null) return;
+    const name = rawName.trim();
+    if (!name) {
+      toast.error("Informe um nome para o painel");
+      return;
+    }
+    if (panels.some((p) => p.name.toLowerCase() === name.toLowerCase())) {
+      toast.error("Já existe um painel com esse nome");
+      return;
+    }
+    setCreatingPanel(true);
     const newId = `painel_${Date.now().toString(36)}`;
     const { data, error } = await (supabase as any)
       .from("pipeline_panels")
       .insert({
         id: newId,
-        name: "Novo Painel",
+        name,
         sort_order: panels.length + 1,
       })
       .select("id")
       .single();
     if (error || !data?.id) {
       toast.error("Erro ao criar painel");
+      setCreatingPanel(false);
+      return;
+    }
+    const stageValue = `etapa_${data.id}_novo`;
+    const { error: stageError } = await (supabase as any)
+      .from("pipeline_stages_config")
+      .insert({
+        value: stageValue,
+        label: "Novo",
+        sort_order: 1,
+        panel_key: data.id,
+      });
+    if (stageError) {
+      await (supabase as any).from("pipeline_panels").delete().eq("id", data.id);
+      toast.error("Erro ao criar coluna padrão. Painel revertido.");
+      setCreatingPanel(false);
       return;
     }
     toast.success("Painel criado");
     await loadPanels();
     setSelectedPanelId(data.id);
+    setCreatingPanel(false);
   };
 
   const deletePanel = async () => {
@@ -225,8 +255,13 @@ export default function AdminPipelineEdit() {
             <CardTitle className="text-base">Selecionar Painel</CardTitle>
             {isAdmin && (
               <div className="flex items-center gap-2">
-                <Button size="sm" onClick={createPanel}>
-                  <Plus className="h-4 w-4 mr-1" /> Novo Painel
+                <Button size="sm" onClick={createPanel} disabled={creatingPanel}>
+                  {creatingPanel ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Plus className="h-4 w-4 mr-1" />
+                  )}
+                  Novo Painel
                 </Button>
                 <Button size="sm" variant="destructive" onClick={deletePanel} disabled={!selectedPanelId}>
                   <Trash2 className="h-4 w-4 mr-1" /> Excluir Painel
