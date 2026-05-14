@@ -267,15 +267,6 @@ export default function AdminPipelineEdit() {
         <CardHeader>
           <div className="flex items-center justify-between gap-2">
             <CardTitle className="text-base">Selecionar Painel</CardTitle>
-            {isAdmin && (
-              <div className="flex items-center gap-2">
-                <Button size="sm" onClick={createPanel} disabled={creatingPanel}>
-                  {creatingPanel ? (
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                  ) : (
-                    <Plus className="h-4 w-4 mr-1" />
-                  )}
-            <CardTitle className="text-base">Selecionar Painel</CardTitle>
             {(isAdmin || canManagePanels) && (
               <div className="flex items-center gap-2">
                 <Button size="sm" onClick={createPanel} disabled={creatingPanel}>
