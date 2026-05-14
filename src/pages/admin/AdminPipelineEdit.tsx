@@ -34,6 +34,7 @@ export default function AdminPipelineEdit() {
   const [selectedPanelId, setSelectedPanelId] = useState<string>("");
   const [stageCache, setStageCache] = useState<Record<string, Stage[]>>({});
   const [loading, setLoading] = useState(false);
+  const [creatingPanel, setCreatingPanel] = useState(false);
 
   const stages = stageCache[selectedPanelId] || [];
   const currentPanel = panels.find((p) => p.id === selectedPanelId);
