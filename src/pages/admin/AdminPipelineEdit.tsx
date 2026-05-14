@@ -255,8 +255,13 @@ export default function AdminPipelineEdit() {
             <CardTitle className="text-base">Selecionar Painel</CardTitle>
             {isAdmin && (
               <div className="flex items-center gap-2">
-                <Button size="sm" onClick={createPanel}>
-                  <Plus className="h-4 w-4 mr-1" /> Novo Painel
+                <Button size="sm" onClick={createPanel} disabled={creatingPanel}>
+                  {creatingPanel ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Plus className="h-4 w-4 mr-1" />
+                  )}
+                  Novo Painel
                 </Button>
                 <Button size="sm" variant="destructive" onClick={deletePanel} disabled={!selectedPanelId}>
                   <Trash2 className="h-4 w-4 mr-1" /> Excluir Painel
