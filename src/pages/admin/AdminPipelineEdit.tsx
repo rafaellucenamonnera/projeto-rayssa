@@ -59,7 +59,9 @@ export default function AdminPipelineEdit() {
       .eq("user_id", auth.user.id)
       .eq("modulo", "configuracao_painel");
     const can = (perms || []).some((p: any) => p.permitido && p.acao === "visualizar");
+    const canManage = (perms || []).some((p: any) => p.permitido && ["editar", "criar_estagio"].includes(p.acao));
     setAllowed(can);
+    setCanManagePanels(canManage);
     setChecked(true);
   };
 
