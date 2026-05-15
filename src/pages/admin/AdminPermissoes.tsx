@@ -212,7 +212,7 @@ const AdminPermissoes = () => {
       .update({ can_be_responsible: canBeResponsible })
       .eq("user_id", selectedUserId);
     if (panelError || responsibleError) {
-      toast.error("Erro ao salvar permissões complementares");
+      toast.error("Não foi possível salvar as permissões.");
       setSaving(false);
       return;
     }
