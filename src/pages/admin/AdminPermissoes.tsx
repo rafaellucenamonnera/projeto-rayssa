@@ -196,8 +196,13 @@ const AdminPermissoes = () => {
     const { error: panelError } = await (supabase as any)
       .from("user_panel_permissions")
       .upsert(panelRows, { onConflict: "user_id,panel_id" });
-    if (panelError) {
-      toast.error("Erro ao salvar permissões por painel");
+
+    const { error: responsibleError } = await (supabase as any)
+      .from("profiles")
+      .update({ can_be_responsible: canBeResponsible })
+      .eq("user_id", selectedUserId);
+    if (panelError || responsibleError) {
+      toast.error("Erro ao salvar permissões complementares");
       setSaving(false);
       return;
     }
