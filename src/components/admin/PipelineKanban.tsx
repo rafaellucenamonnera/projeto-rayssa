@@ -171,7 +171,7 @@ export const PipelineKanban = ({
     const g: Record<string, KanbanLeadCardData[]> = {};
     stages.forEach((s) => { g[s.value] = []; });
     leads.forEach((l) => {
-      const s = l.status_lead || l.status || "novo_lead";
+      const s = l.stage_id || l.status_lead || l.status || "novo_lead";
       if (g[s]) g[s].push(l);
     });
     Object.keys(g).forEach((stageKey) => {
