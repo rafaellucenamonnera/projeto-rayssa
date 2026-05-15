@@ -803,6 +803,7 @@ const AdminLeads = () => {
     const phone = newCardData.phone.trim();
     const email = newCardData.email.trim().toLowerCase();
     if (!fullName || !phone || !email || !newCardData.responsible_user_id) return toast.error("Nome completo, telefone, e-mail e responsável são obrigatórios.");
+    if (!usersAll.some((u) => u.user_id === newCardData.responsible_user_id)) return toast.error("Usuário selecionado não possui permissão para ser responsável.");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return toast.error("Formato de e-mail inválido.");
 
     const { data: duplicate } = await (supabase as any)
