@@ -342,8 +342,17 @@ export const LeadImportDialog = ({ parceiros, onImported, customCrmMode = false,
           {/* Required columns info */}
           <div className="text-xs text-muted-foreground bg-secondary/50 p-3 rounded">
             <p className="font-medium mb-1">Colunas obrigatórias:</p>
-            <p>nome_fantasia, razao_social, cnpj, cidade, nome_responsavel, telefone_responsavel, email_responsavel, erp_utilizado, quantidade_lojas</p>
-            <p className="mt-1">Opcional: quantidade_funcionarios, valor_campanhas, descricao_necessidade, consultor</p>
+            {customCrmMode ? (
+              <>
+                <p>Nome completo, Telefone, E-mail</p>
+                <p className="mt-1">Opcional: Cidade, Estado, Região de atuação, Empresa, Responsável</p>
+              </>
+            ) : (
+              <>
+                <p>nome_fantasia, razao_social, cnpj, cidade, nome_responsavel, telefone_responsavel, email_responsavel, erp_utilizado, quantidade_lojas</p>
+                <p className="mt-1">Opcional: quantidade_funcionarios, valor_campanhas, descricao_necessidade, consultor</p>
+              </>
+            )}
           </div>
 
           {/* Errors */}
