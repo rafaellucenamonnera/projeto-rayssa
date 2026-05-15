@@ -295,7 +295,9 @@ const AdminLeads = () => {
 
   const loadData = async () => {
     const [leadsRes, parceirosRes, stageRes, reunioesRes, usersRes] = await Promise.all([
-      supabase.from("leads").select("*").order("data_cadastro", { ascending: false }),
+      isCustomCrmPanel
+        ? (supabase as any).from("representative_cards").select("*").eq("panel_id", currentPanelId).order("created_at", { ascending: false })
+        : supabase.from("leads").select("*").order("data_cadastro", { ascending: false }),
       supabase.from("parceiros_comerciais").select("id, nome"),
       supabase.from("lead_stage_history").select("lead_id, data_entrada").is("data_saida", null),
       supabase.from("reunioes").select("*").eq("realizada", false).order("data_reuniao", { ascending: true }),
