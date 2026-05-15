@@ -294,11 +294,12 @@ const AdminLeads = () => {
   };
 
   const loadData = async () => {
-    const [leadsRes, parceirosRes, stageRes, reunioesRes] = await Promise.all([
+    const [leadsRes, parceirosRes, stageRes, reunioesRes, usersRes] = await Promise.all([
       supabase.from("leads").select("*").order("data_cadastro", { ascending: false }),
       supabase.from("parceiros_comerciais").select("id, nome"),
       supabase.from("lead_stage_history").select("lead_id, data_entrada").is("data_saida", null),
       supabase.from("reunioes").select("*").eq("realizada", false).order("data_reuniao", { ascending: true }),
+      supabase.from("profiles").select("user_id,nome").order("nome", { ascending: true }),
     ]);
     setLeads(leadsRes.data || []);
     const map: Record<string, string> = {};
@@ -306,6 +307,7 @@ const AdminLeads = () => {
     list.forEach((p: any) => { map[p.id] = p.nome; });
     setParceiros(map);
     setParceirosAll(list);
+    setUsersAll((usersRes.data as any) || []);
 
     const sm: Record<string, string> = {};
     (stageRes.data || []).forEach((s: any) => { sm[s.lead_id] = s.data_entrada; });
