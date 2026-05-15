@@ -149,7 +149,10 @@ export const LeadImportDialog = ({ parceiros, onImported, customCrmMode = false,
           columnMap[i] = mapped;
         });
 
-        const missingCols = REQUIRED_COLUMNS.filter(
+        const requiredColumns = customCrmMode
+          ? ["nome_completo", "telefone", "e_mail"]
+          : REQUIRED_COLUMNS_DEFAULT;
+        const missingCols = requiredColumns.filter(
           (col) => !Object.values(columnMap).includes(col)
         );
 
