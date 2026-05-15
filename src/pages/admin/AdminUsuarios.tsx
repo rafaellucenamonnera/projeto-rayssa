@@ -136,6 +136,17 @@ const AdminUsuarios = () => {
     }
   };
 
+  const toggleResponsible = async (user: MonneraUser, value: boolean) => {
+    setUsers((prev) => prev.map((x) => (x.user_id === user.user_id ? { ...x, can_be_responsible: value } : x)));
+    const { error } = await supabase.from("profiles").update({ can_be_responsible: value } as any).eq("user_id", user.user_id);
+    if (error) {
+      setUsers((prev) => prev.map((x) => (x.user_id === user.user_id ? { ...x, can_be_responsible: !value } : x)));
+      toast.error("Erro ao atualizar permissão de responsável.");
+    } else {
+      toast.success(value ? "Usuário pode ser responsável por cards." : "Usuário não pode mais ser responsável por cards.");
+    }
+  };
+
   const openEdit = (user: MonneraUser) => {
     setEditingUser(user);
     setEditOpen(true);
