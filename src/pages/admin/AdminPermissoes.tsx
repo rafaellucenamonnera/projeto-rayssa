@@ -283,6 +283,20 @@ const AdminPermissoes = () => {
               </div>
 
               <div className="border border-border rounded-lg p-4 space-y-3">
+                <h3 className="font-semibold text-sm text-primary">Responsabilidade</h3>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="can_be_responsible"
+                    checked={canBeResponsible}
+                    onCheckedChange={(checked) => setCanBeResponsible(!!checked)}
+                  />
+                  <Label htmlFor="can_be_responsible" className="text-sm cursor-pointer">
+                    Pode ser Responsável por Cards
+                  </Label>
+                </div>
+              </div>
+
+              <div className="border border-border rounded-lg p-4 space-y-3">
                 <h3 className="font-semibold text-sm text-primary">Permissões por Painel</h3>
                 <div className="grid gap-2 md:grid-cols-2">
                   {panels.map((panel) => (
