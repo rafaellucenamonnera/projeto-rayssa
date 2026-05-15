@@ -1760,7 +1760,7 @@ const AdminLeads = () => {
             <Input placeholder="Cidade" value={newCardData.city} onChange={(e) => setNewCardData((p) => ({ ...p, city: e.target.value }))} />
             <Input placeholder="Estado" value={newCardData.state} onChange={(e) => setNewCardData((p) => ({ ...p, state: e.target.value }))} />
             <Input placeholder="Região de atuação" value={newCardData.region} onChange={(e) => setNewCardData((p) => ({ ...p, region: e.target.value }))} />
-            <Input placeholder="Empresa" value={newCardData.company} onChange={(e) => setNewCardData((p) => ({ ...p, company: e.target.value }))} />
+            
             <Select value={newCardData.responsible_user_id} onValueChange={(v) => setNewCardData((p) => ({ ...p, responsible_user_id: v }))}>
               <SelectTrigger className="sm:col-span-2"><SelectValue placeholder="Responsável" /></SelectTrigger>
               <SelectContent>
