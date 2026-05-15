@@ -5,6 +5,7 @@ import { healthStatusColor, impactColor, normalizeHealthStatus, normalizeImpact 
 
 interface KanbanLeadCardData {
   id: string;
+  stage_id?: string;
   nome_fantasia: string;
   nome_responsavel?: string;
   status_lead?: string;
@@ -170,7 +171,7 @@ export const PipelineKanban = ({
     const g: Record<string, KanbanLeadCardData[]> = {};
     stages.forEach((s) => { g[s.value] = []; });
     leads.forEach((l) => {
-      const s = l.status_lead || l.status || "novo_lead";
+      const s = l.stage_id || l.status_lead || l.status || "novo_lead";
       if (g[s]) g[s].push(l);
     });
     Object.keys(g).forEach((stageKey) => {
@@ -208,7 +209,7 @@ export const PipelineKanban = ({
               setDragId(null);
               if (!id) return;
               const lead = leads.find((l) => l.id === id);
-              const cur = lead?.status_lead || lead?.status;
+              const cur = lead?.stage_id || lead?.status_lead || lead?.status;
               if (cur === s.value) return;
               onMoveLead(id, s.value);
             }}
