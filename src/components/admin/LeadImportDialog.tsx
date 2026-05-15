@@ -171,6 +171,29 @@ export const LeadImportDialog = ({ parceiros, onImported, customCrmMode = false,
             row[col] = values[Number(idx)] || "";
           });
 
+          if (customCrmMode) {
+            if (!row.nome_completo || !row.e_mail) {
+              parseErrors.push(`Linha ${i + 1}: campos obrigatórios vazios (nome completo ou e-mail)`);
+              continue;
+            }
+            rows.push({
+              nome_fantasia: row.nome_completo,
+              razao_social: row.nome_completo,
+              cnpj: "",
+              cidade: row.cidade || "",
+              nome_responsavel: row.nome_completo,
+              telefone_responsavel: row.telefone || row.telefone_responsavel || "",
+              email_responsavel: row.e_mail || row.email_responsavel || "",
+              erp_utilizado: "Não informado",
+              quantidade_lojas: 1,
+              quantidade_funcionarios: null,
+              valor_campanhas: null,
+              descricao_necessidade: null,
+              parceiro_nome: row.responsavel || "",
+            });
+            continue;
+          }
+
           if (!row.nome_fantasia || !row.cnpj || !row.email_responsavel) {
             parseErrors.push(`Linha ${i + 1}: campos obrigatórios vazios (nome_fantasia, cnpj ou email)`);
             continue;
