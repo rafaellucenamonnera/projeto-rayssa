@@ -12,7 +12,7 @@ import { Loader2 } from "lucide-react";
 
 const AdminPermissoes = () => {
   const { isAdmin, loading: authLoading } = useAuth();
-  const [users, setUsers] = useState<Array<{ user_id: string; nome: string; email: string; ativo?: boolean }>>([]);
+  const [users, setUsers] = useState<Array<{ user_id: string; nome: string; email: string; ativo?: boolean; can_be_responsible?: boolean }>>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -20,6 +20,7 @@ const AdminPermissoes = () => {
   const [panels, setPanels] = useState<Array<{ id: string; name: string }>>([]);
   const [panelPermissions, setPanelPermissions] = useState<Record<string, boolean>>({});
   const [loadUsersError, setLoadUsersError] = useState<string | null>(null);
+  const [canBeResponsible, setCanBeResponsible] = useState<boolean>(false);
 
   const modules = useMemo(
     () => [
@@ -65,7 +66,7 @@ const AdminPermissoes = () => {
       // Fallback resiliente: lê profiles direto quando a Edge Function estiver indisponível.
       const { data: profiles, error: profilesError } = await (supabase as any)
         .from("profiles")
-        .select("user_id, nome, ativo")
+        .select("user_id, nome, ativo, can_be_responsible")
         .eq("ativo", true)
         .order("nome", { ascending: true });
 
@@ -78,14 +79,18 @@ const AdminPermissoes = () => {
 
       const fallbackList = (profiles || [])
         .filter((u: any) => u.user_id)
-        .map((u: any) => ({ user_id: u.user_id, nome: u.nome, email: "", ativo: u.ativo }));
+        .map((u: any) => ({ user_id: u.user_id, nome: u.nome, email: "", ativo: u.ativo, can_be_responsible: !!u.can_be_responsible }));
       setUsers(fallbackList);
       if (fallbackList.length > 0) setSelectedUserId(fallbackList[0].user_id);
       toast.warning("Conexão com backend instável. Carregamos os usuários em modo alternativo.");
       setLoading(false);
       return;
     }
-    const list = (Array.isArray(data) ? data : []).filter((u: any) => u.ativo !== false && u.user_id);
+    const baseList = (Array.isArray(data) ? data : []).filter((u: any) => u.ativo !== false && u.user_id);
+    const { data: flags } = await (supabase as any).from("profiles").select("user_id, can_be_responsible");
+    const flagMap: Record<string, boolean> = {};
+    (flags || []).forEach((f: any) => { flagMap[f.user_id] = !!f.can_be_responsible; });
+    const list = baseList.map((u: any) => ({ ...u, can_be_responsible: flagMap[u.user_id] ?? !!u.can_be_responsible }));
     if (list.length === 0) {
       toast.error("Usuário não encontrado na base");
     }
@@ -148,6 +153,8 @@ const AdminPermissoes = () => {
     if (selectedUserId) {
       loadPermissions(selectedUserId);
       loadPanelPermissions(selectedUserId);
+      const selectedUser = users.find((u) => u.user_id === selectedUserId);
+      setCanBeResponsible(!!selectedUser?.can_be_responsible);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedUserId, users, panels.length]);
@@ -189,8 +196,13 @@ const AdminPermissoes = () => {
     const { error: panelError } = await (supabase as any)
       .from("user_panel_permissions")
       .upsert(panelRows, { onConflict: "user_id,panel_id" });
-    if (panelError) {
-      toast.error("Erro ao salvar permissões por painel");
+
+    const { error: responsibleError } = await (supabase as any)
+      .from("profiles")
+      .update({ can_be_responsible: canBeResponsible })
+      .eq("user_id", selectedUserId);
+    if (panelError || responsibleError) {
+      toast.error("Erro ao salvar permissões complementares");
       setSaving(false);
       return;
     }
@@ -268,6 +280,20 @@ const AdminPermissoes = () => {
                     </div>
                   </div>
                 ))}
+              </div>
+
+              <div className="border border-border rounded-lg p-4 space-y-3">
+                <h3 className="font-semibold text-sm text-primary">Responsabilidade</h3>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="can_be_responsible"
+                    checked={canBeResponsible}
+                    onCheckedChange={(checked) => setCanBeResponsible(!!checked)}
+                  />
+                  <Label htmlFor="can_be_responsible" className="text-sm cursor-pointer">
+                    Pode ser Responsável por Cards
+                  </Label>
+                </div>
               </div>
 
               <div className="border border-border rounded-lg p-4 space-y-3">
