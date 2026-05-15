@@ -22,8 +22,26 @@ export function AdminSidebar() {
   const { isAdmin } = useAuth();
   const { canAccessPanel } = usePanelPermissions();
   const collapsed = state === "collapsed";
+  const [dynamicPanels, setDynamicPanels] = useState<{ id: string; name: string }[]>([]);
 
-  const allItems = [
+  useEffect(() => {
+    (supabase as any)
+      .from("pipeline_panels")
+      .select("id, name, sort_order")
+      .order("sort_order", { ascending: true })
+      .then(({ data }: any) => setDynamicPanels(data || []));
+  }, []);
+
+  const fixedNames = new Set([
+    "painel comercial",
+    "painel onboarding / integração",
+    "painel onboarding",
+    "painel sucesso",
+    "painel sucesso do cliente",
+    "painel criação campanhas",
+  ]);
+
+  const baseItems = [
     { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
     { title: "Financeiro", url: "/admin/financeiro", icon: DollarSign },
     { title: "Embaixadores Monnera", url: "/admin/parceiros", icon: Users },
@@ -31,6 +49,16 @@ export function AdminSidebar() {
     { title: "Painel Onboarding / Integração", url: "/admin/painel-onboarding", icon: FileText },
     { title: "Painel Sucesso", url: "/admin/painel-sucesso", icon: FileText },
     { title: "Painel Criação Campanhas", url: "/admin/painel-campanhas", icon: FileText },
+  ];
+
+  const dynamicItems = dynamicPanels
+    .filter((p) => !fixedNames.has((p.name || "").trim().toLowerCase()))
+    .filter((p) => isAdmin || canAccessPanel(p.id))
+    .map((p) => ({ title: p.name, url: `/admin/painel/${p.id}`, icon: FileText }));
+
+  const allItems = [
+    ...baseItems,
+    ...dynamicItems,
     { title: "Contatos", url: "/admin/contatos", icon: Contact },
     { title: "Atualizar Kit e Redes Sociais", url: "/admin/kit-vendas", icon: Briefcase },
   ];
