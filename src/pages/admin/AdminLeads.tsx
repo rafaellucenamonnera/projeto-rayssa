@@ -799,13 +799,14 @@ const AdminLeads = () => {
     const fullName = newCardData.full_name.trim();
     const phone = newCardData.phone.trim();
     const email = newCardData.email.trim().toLowerCase();
-    if (!fullName || !phone || !email) return toast.error("Nome completo, telefone e e-mail são obrigatórios.");
+    if (!fullName || !phone || !email || !newCardData.responsible_user_id) return toast.error("Nome completo, telefone, e-mail e responsável são obrigatórios.");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return toast.error("Formato de e-mail inválido.");
 
-    const { data: duplicate } = await supabase
-      .from("leads")
+    const { data: duplicate } = await (supabase as any)
+      .from("representative_cards")
       .select("id")
-      .or(`email_responsavel.eq.${email},telefone_responsavel.eq.${phone}`)
+      .eq("panel_id", currentPanelId)
+      .or(`email.eq.${email},phone.eq.${phone}`)
       .limit(1);
     if (duplicate && duplicate.length > 0) return toast.error("Já existe cadastro com este telefone ou e-mail.");
 
@@ -813,30 +814,33 @@ const AdminLeads = () => {
     if (!firstStage) return toast.error("Não há colunas configuradas para este painel.");
 
     setSavingNewCard(true);
+    const auth = await supabase.auth.getUser();
     const payload: any = {
-      nome_fantasia: fullName,
-      razao_social: fullName,
-      cnpj: null,
-      cidade: newCardData.city.trim() || null,
-      nome_responsavel: fullName,
-      telefone_responsavel: phone,
-      email_responsavel: email,
-      erp_utilizado: "Não informado",
-      quantidade_lojas: 1,
-      descricao_necessidade: newCardData.company.trim()
-        ? `Empresa: ${newCardData.company.trim()}${newCardData.state.trim() ? ` | UF: ${newCardData.state.trim()}` : ""}${newCardData.region.trim() ? ` | Região: ${newCardData.region.trim()}` : ""}`
-        : null,
-      status_lead: firstStage,
-      responsible_user_id: newCardData.responsible_user_id || null,
+      panel_id: currentPanelId,
+      stage_id: firstStage,
+      full_name: fullName,
+      phone,
+      email,
+      city: newCardData.city.trim() || null,
+      state: newCardData.state.trim() || null,
+      region: newCardData.region.trim() || null,
+      responsible_user_id: newCardData.responsible_user_id,
+      created_by_user_id: auth.data.user?.id,
     };
-    const { error } = await supabase.from("leads").insert(payload);
+    const { error } = await (supabase as any).from("representative_cards").insert(payload);
     setSavingNewCard(false);
     if (error) return toast.error("Erro ao salvar cadastro: " + error.message);
     toast.success("Cadastro salvo com sucesso.");
     setNewCardOpen(false);
-    setNewCardData({ full_name: "", phone: "", email: "", city: "", state: "", region: "", company: "", responsible_user_id: "" });
+    setNewCardData({ full_name: "", phone: "", email: "", city: "", state: "", region: "", responsible_user_id: "" });
     loadData();
   };
+
+  const updateRepresentativeCard = async (id: string, payload: Record<string, any>) =>
+    (supabase as any).from("representative_cards").update(payload).eq("id", id);
+
+  const moveRepresentativeCard = async (id: string, stageId: string) =>
+    updateRepresentativeCard(id, { stage_id: stageId });
 
   // Apply filters
   const filtered = leads.filter((l) => {
