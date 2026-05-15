@@ -54,6 +54,7 @@ const hasValidFinanceiro = (lead: any) =>
 const AdminLeads = () => {
   const [searchParams] = useSearchParams();
   const location = useLocation();
+  const { panelId: routePanelId } = useParams<{ panelId?: string }>();
   const { isAdmin } = useAuth();
   const painelTitleMap: Record<string, string> = {
     "/admin/painel-comercial": "Painel Comercial",
@@ -62,7 +63,10 @@ const AdminLeads = () => {
     "/admin/painel-campanhas": "Painel Criação Campanhas",
     "/admin/leads": "Painel Comercial",
   };
-  const painelTitle = painelTitleMap[location.pathname] || "Painel Comercial";
+  const [dynamicPanelName, setDynamicPanelName] = useState<string>("");
+  const painelTitle = routePanelId
+    ? (dynamicPanelName || "Painel")
+    : (painelTitleMap[location.pathname] || "Painel Comercial");
   const [leads, setLeads] = useState<any[]>([]);
   const [stageMap, setStageMap] = useState<Record<string, string>>({});
   const [parceiros, setParceiros] = useState<Record<string, string>>({});
