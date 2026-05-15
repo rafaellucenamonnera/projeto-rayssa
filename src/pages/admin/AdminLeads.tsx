@@ -793,12 +793,56 @@ const AdminLeads = () => {
     toast.success("Card atualizado");
   };
 
+  const createRepresentativeCard = async () => {
+    const fullName = newCardData.full_name.trim();
+    const phone = newCardData.phone.trim();
+    const email = newCardData.email.trim().toLowerCase();
+    if (!fullName || !phone || !email) return toast.error("Nome completo, telefone e e-mail são obrigatórios.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return toast.error("Formato de e-mail inválido.");
+
+    const { data: duplicate } = await supabase
+      .from("leads")
+      .select("id")
+      .or(`email_responsavel.eq.${email},telefone_responsavel.eq.${phone}`)
+      .limit(1);
+    if (duplicate && duplicate.length > 0) return toast.error("Já existe cadastro com este telefone ou e-mail.");
+
+    const firstStage = pipelineStages[0]?.value;
+    if (!firstStage) return toast.error("Não há colunas configuradas para este painel.");
+
+    setSavingNewCard(true);
+    const payload: any = {
+      nome_fantasia: fullName,
+      razao_social: fullName,
+      cnpj: null,
+      cidade: newCardData.city.trim() || null,
+      nome_responsavel: fullName,
+      telefone_responsavel: phone,
+      email_responsavel: email,
+      erp_utilizado: "Não informado",
+      quantidade_lojas: 1,
+      descricao_necessidade: newCardData.company.trim()
+        ? `Empresa: ${newCardData.company.trim()}${newCardData.state.trim() ? ` | UF: ${newCardData.state.trim()}` : ""}${newCardData.region.trim() ? ` | Região: ${newCardData.region.trim()}` : ""}`
+        : null,
+      status_lead: firstStage,
+      responsible_user_id: newCardData.responsible_user_id || null,
+    };
+    const { error } = await supabase.from("leads").insert(payload);
+    setSavingNewCard(false);
+    if (error) return toast.error("Erro ao salvar cadastro: " + error.message);
+    toast.success("Cadastro salvo com sucesso.");
+    setNewCardOpen(false);
+    setNewCardData({ full_name: "", phone: "", email: "", city: "", state: "", region: "", company: "", responsible_user_id: "" });
+    loadData();
+  };
+
   // Apply filters
   const filtered = leads.filter((l) => {
     if (filterStatus !== "all" && (l.status_lead || l.status) !== filterStatus) return false;
     if (currentPanelId !== "sucesso" && filterConsultor !== "all" && l.parceiro_id !== filterConsultor) return false;
     if (currentPanelId === "sucesso" && filterCs !== "all" && (l.consultor || "") !== filterCs) return false;
-    if (filterEmpresa && !l.nome_fantasia.toLowerCase().includes(filterEmpresa.toLowerCase())) return false;
+    if (filterEmpresa && !(l.nome_fantasia || "").toLowerCase().includes(filterEmpresa.toLowerCase())) return false;
+    if (isCustomCrmPanel && filterResponsibleUser !== "all" && l.responsible_user_id !== filterResponsibleUser) return false;
     if (currentPanelId === "sucesso" && filterCampaignStatus !== "all" && (l.campaign_status_current || "SEM_STATUS") !== filterCampaignStatus) return false;
     if (currentPanelId === "sucesso" && filterImpactLevel !== "all" && normalizeImpact(l.impact_level) !== filterImpactLevel) return false;
     if (currentPanelId === "sucesso" && filterHealthStatus !== "all" && normalizeHealthStatus(l.health_status) !== filterHealthStatus) return false;
