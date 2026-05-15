@@ -292,6 +292,13 @@ const AdminUsuarios = () => {
                       <span>{new Date(u.data_criacao).toLocaleDateString("pt-BR")}</span>
                     </div>
                   </div>
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-xs text-muted-foreground">Pode ser responsável por cards</span>
+                    <Switch
+                      checked={!!u.can_be_responsible}
+                      onCheckedChange={(v) => toggleResponsible(u, v)}
+                    />
+                  </div>
                 </CardContent>
               </Card>
             ))}
