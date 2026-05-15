@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation, useSearchParams } from "react-router-dom";
+import { useLocation, useParams, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +54,7 @@ const hasValidFinanceiro = (lead: any) =>
 const AdminLeads = () => {
   const [searchParams] = useSearchParams();
   const location = useLocation();
+  const { panelId: routePanelId } = useParams<{ panelId?: string }>();
   const { isAdmin } = useAuth();
   const painelTitleMap: Record<string, string> = {
     "/admin/painel-comercial": "Painel Comercial",
@@ -62,7 +63,10 @@ const AdminLeads = () => {
     "/admin/painel-campanhas": "Painel Criação Campanhas",
     "/admin/leads": "Painel Comercial",
   };
-  const painelTitle = painelTitleMap[location.pathname] || "Painel Comercial";
+  const [dynamicPanelName, setDynamicPanelName] = useState<string>("");
+  const painelTitle = routePanelId
+    ? (dynamicPanelName || "Painel")
+    : (painelTitleMap[location.pathname] || "Painel Comercial");
   const [leads, setLeads] = useState<any[]>([]);
   const [stageMap, setStageMap] = useState<Record<string, string>>({});
   const [parceiros, setParceiros] = useState<Record<string, string>>({});
@@ -145,7 +149,22 @@ const AdminLeads = () => {
     "/admin/painel-campanhas": "campanhas",
     "/admin/leads": "comercial",
   };
-  const currentPanelId = panelIdByPath[location.pathname] || "comercial";
+  const currentPanelId = routePanelId || panelIdByPath[location.pathname] || "comercial";
+
+  useEffect(() => {
+    if (!routePanelId) {
+      setDynamicPanelName("");
+      return;
+    }
+    (supabase as any)
+      .from("pipeline_panels")
+      .select("name")
+      .eq("id", routePanelId)
+      .maybeSingle()
+      .then(({ data }: any) => {
+        if (data?.name) setDynamicPanelName(data.name);
+      });
+  }, [routePanelId]);
 
   useEffect(() => {
     const fetchUserName = async () => {

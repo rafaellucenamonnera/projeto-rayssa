@@ -90,6 +90,7 @@ const App = () => (
                 <Route path="painel-onboarding" element={<AdminLeads />} />
                 <Route path="painel-sucesso" element={<AdminLeads />} />
                 <Route path="painel-campanhas" element={<AdminLeads />} />
+                <Route path="painel/:panelId" element={<AdminLeads />} />
                 <Route path="contatos" element={<AdminContatos />} />
                 <Route path="usuarios" element={<AdminUsuarios />} />
                 <Route path="permissoes" element={<AdminPermissoes />} />
