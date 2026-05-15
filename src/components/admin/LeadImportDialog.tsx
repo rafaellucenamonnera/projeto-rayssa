@@ -243,15 +243,23 @@ export const LeadImportDialog = ({ parceiros, onImported, customCrmMode = false,
       const parceiroId =
         parceiroMap[row.parceiro_nome.toLowerCase()] || defaultParceiroId;
 
-      if (!parceiroId) {
+      let responsible_user_id: string | null = null;
+      if (customCrmMode) {
+        const byName = users.find(
+          (u) => u.nome.toLowerCase() === (row.parceiro_nome || "").toLowerCase()
+        );
+        responsible_user_id = byName?.user_id || null;
+      }
+
+      if (!customCrmMode && !parceiroId) {
         importErrors.push(`${row.nome_fantasia}: nenhum consultor encontrado`);
         continue;
       }
 
-      const { error } = await supabase.from("leads").insert({
+      const payload: Record<string, unknown> = {
         nome_fantasia: row.nome_fantasia,
         razao_social: row.razao_social,
-        cnpj: row.cnpj,
+        cnpj: customCrmMode ? null : row.cnpj,
         cidade: row.cidade,
         nome_responsavel: row.nome_responsavel,
         telefone_responsavel: row.telefone_responsavel,
@@ -261,8 +269,15 @@ export const LeadImportDialog = ({ parceiros, onImported, customCrmMode = false,
         quantidade_funcionarios: row.quantidade_funcionarios,
         valor_campanhas: row.valor_campanhas,
         descricao_necessidade: row.descricao_necessidade,
-        parceiro_id: parceiroId,
-      });
+        parceiro_id: customCrmMode ? null : parceiroId,
+        responsible_user_id,
+      };
+      if (customCrmMode) {
+        payload.panel_id = panelId || null;
+        payload.status_lead = firstStageId || "novo_lead";
+      }
+
+      const { error } = await (supabase as any).from("leads").insert(payload);
 
       if (error) {
         importErrors.push(`${row.nome_fantasia}: ${error.message}`);
