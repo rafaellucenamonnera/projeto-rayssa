@@ -339,6 +339,12 @@ const AdminUsuarios = () => {
                           {new Date(u.data_criacao).toLocaleDateString("pt-BR")}
                         </td>
                         <td className="py-3 px-4">
+                          <Switch
+                            checked={!!u.can_be_responsible}
+                            onCheckedChange={(v) => toggleResponsible(u, v)}
+                          />
+                        </td>
+                        <td className="py-3 px-4">
                           <div className="flex items-center gap-1">
                             <Button variant="ghost" size="icon" onClick={() => openEdit(u)}>
                               <Pencil className="h-4 w-4" />
