@@ -863,7 +863,8 @@ const AdminLeads = () => {
   const filteredExceptStatus = leads.filter((l) => {
     if (currentPanelId !== "sucesso" && filterConsultor !== "all" && l.parceiro_id !== filterConsultor) return false;
     if (currentPanelId === "sucesso" && filterCs !== "all" && (l.consultor || "") !== filterCs) return false;
-    if (filterEmpresa && !l.nome_fantasia.toLowerCase().includes(filterEmpresa.toLowerCase())) return false;
+    if (filterEmpresa && !(l.nome_fantasia || "").toLowerCase().includes(filterEmpresa.toLowerCase())) return false;
+    if (isCustomCrmPanel && filterResponsibleUser !== "all" && l.responsible_user_id !== filterResponsibleUser) return false;
     if (currentPanelId === "sucesso" && filterCampaignStatus !== "all" && (l.campaign_status_current || "SEM_STATUS") !== filterCampaignStatus) return false;
     if (currentPanelId === "sucesso" && filterImpactLevel !== "all" && normalizeImpact(l.impact_level) !== filterImpactLevel) return false;
     if (currentPanelId === "sucesso" && filterHealthStatus !== "all" && normalizeHealthStatus(l.health_status) !== filterHealthStatus) return false;
