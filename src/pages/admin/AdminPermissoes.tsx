@@ -193,7 +193,7 @@ const AdminPermissoes = () => {
       .from("module_permissions")
       .upsert(updates, { onConflict: "user_id,modulo,acao" });
     if (error) {
-      toast.error("Erro ao salvar permissões");
+      toast.error("Não foi possível salvar as permissões.");
       setSaving(false);
       return;
     }
