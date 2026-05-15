@@ -1,8 +1,10 @@
+import { useEffect, useState } from "react";
 import { LayoutDashboard, Users, FileText, UserCog, DollarSign, Briefcase, Settings, ShieldCheck, PlugZap, Contact } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { usePanelPermissions } from "@/hooks/usePanelPermissions";
+import { supabase } from "@/integrations/supabase/client";
 import logoMonnera from "@/assets/logo-monnera.jpg";
 import {
   Sidebar,
