@@ -1083,6 +1083,16 @@ const AdminLeads = () => {
                 ))}
             </SelectContent>
           </Select>
+        ) : isCustomCrmPanel ? (
+          <Select value={filterResponsibleUser} onValueChange={setFilterResponsibleUser}>
+            <SelectTrigger><SelectValue placeholder="Responsável" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos responsáveis</SelectItem>
+              {usersAll.map((u) => (
+                <SelectItem key={u.user_id} value={u.user_id}>{u.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         ) : (
           <Select value={filterConsultor} onValueChange={setFilterConsultor}>
             <SelectTrigger><SelectValue placeholder="Embaixador Monnera" /></SelectTrigger>
