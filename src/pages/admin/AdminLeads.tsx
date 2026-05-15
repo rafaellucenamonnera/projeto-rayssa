@@ -1026,7 +1026,19 @@ const AdminLeads = () => {
             >Lista</button>
           </div>
           <LeadExportButton leads={filtered} parceiros={parceiros} />
-          <LeadImportDialog parceiros={parceirosAll} onImported={loadData} />
+          <LeadImportDialog
+            parceiros={parceirosAll}
+            onImported={loadData}
+            customCrmMode={isCustomCrmPanel}
+            users={usersAll}
+            panelId={currentPanelId}
+            firstStageId={pipelineStages[0]?.value}
+          />
+          {isCustomCrmPanel && (
+            <Button onClick={() => setNewCardOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+              + Card
+            </Button>
+          )}
           {currentPanelId === "sucesso" && (
             <Button
               onClick={handleSyncDriveClients}
