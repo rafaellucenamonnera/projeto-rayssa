@@ -532,7 +532,7 @@ const AdminLeads = () => {
       const lead = leads.find((l) => l.id === leadId);
       const link = `${window.location.origin}/completar-cadastro/${updateData.completion_token}`;
       setConversionLink(link);
-      setConversionLeadName(lead?.nome_responsavel || "");
+      setConversionLeadName(lead?.nome_responsavel || lead?.full_name || "");
       setConversionLinkOpen(true);
       autoGenerateContract(leadId);
     }
