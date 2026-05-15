@@ -12,7 +12,7 @@ import { Loader2 } from "lucide-react";
 
 const AdminPermissoes = () => {
   const { isAdmin, loading: authLoading } = useAuth();
-  const [users, setUsers] = useState<Array<{ user_id: string; nome: string; email: string; ativo?: boolean }>>([]);
+  const [users, setUsers] = useState<Array<{ user_id: string; nome: string; email: string; ativo?: boolean; can_be_responsible?: boolean }>>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -20,6 +20,7 @@ const AdminPermissoes = () => {
   const [panels, setPanels] = useState<Array<{ id: string; name: string }>>([]);
   const [panelPermissions, setPanelPermissions] = useState<Record<string, boolean>>({});
   const [loadUsersError, setLoadUsersError] = useState<string | null>(null);
+  const [canBeResponsible, setCanBeResponsible] = useState<boolean>(false);
 
   const modules = useMemo(
     () => [
