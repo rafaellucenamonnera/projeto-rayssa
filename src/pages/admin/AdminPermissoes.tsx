@@ -207,10 +207,18 @@ const AdminPermissoes = () => {
       .from("user_panel_permissions")
       .upsert(panelRows, { onConflict: "user_id,panel_id" });
 
+    const selected = users.find((u) => u.user_id === selectedUserId);
     const { error: responsibleError } = await (supabase as any)
       .from("profiles")
-      .update({ can_be_responsible: canBeResponsible })
-      .eq("user_id", selectedUserId);
+      .upsert(
+        {
+          user_id: selectedUserId,
+          nome: selected?.nome?.trim() || selected?.email || "Sem nome",
+          can_be_responsible: canBeResponsible,
+          ativo: selected?.ativo ?? true,
+        },
+        { onConflict: "user_id" },
+      );
     if (panelError || responsibleError) {
       toast.error("Não foi possível salvar as permissões.");
       setSaving(false);
