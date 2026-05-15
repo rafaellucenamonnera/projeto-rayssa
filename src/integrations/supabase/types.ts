@@ -896,6 +896,95 @@ export type Database = {
         }
         Relationships: []
       }
+      representative_cards: {
+        Row: {
+          city: string | null
+          created_at: string
+          created_by_user_id: string
+          csv_import_batch_id: string | null
+          email: string
+          full_name: string
+          id: string
+          notes: string | null
+          panel_id: string
+          phone: string
+          region: string | null
+          responsible_user_id: string
+          source: string | null
+          stage_id: string
+          state: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          city?: string | null
+          created_at?: string
+          created_by_user_id: string
+          csv_import_batch_id?: string | null
+          email: string
+          full_name: string
+          id?: string
+          notes?: string | null
+          panel_id: string
+          phone: string
+          region?: string | null
+          responsible_user_id: string
+          source?: string | null
+          stage_id: string
+          state?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          city?: string | null
+          created_at?: string
+          created_by_user_id?: string
+          csv_import_batch_id?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          notes?: string | null
+          panel_id?: string
+          phone?: string
+          region?: string | null
+          responsible_user_id?: string
+          source?: string | null
+          stage_id?: string
+          state?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "representative_cards_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "representative_cards_panel_id_fkey"
+            columns: ["panel_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_panels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "representative_cards_panel_stage_fk"
+            columns: ["panel_id", "stage_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_stages_config"
+            referencedColumns: ["panel_key", "value"]
+          },
+          {
+            foreignKeyName: "representative_cards_responsible_user_id_fkey"
+            columns: ["responsible_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       reunioes: {
         Row: {
           created_at: string
