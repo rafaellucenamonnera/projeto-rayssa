@@ -71,6 +71,7 @@ const AdminLeads = () => {
   const [parceiros, setParceiros] = useState<Record<string, string>>({});
   const [parceirosAll, setParceirosAll] = useState<{ id: string; nome: string }[]>([]);
   const [usersAll, setUsersAll] = useState<{ user_id: string; nome: string }[]>([]);
+  const [allActiveUsers, setAllActiveUsers] = useState<{ user_id: string; nome: string }[]>([]);
   const [newCardOpen, setNewCardOpen] = useState(false);
   const [savingNewCard, setSavingNewCard] = useState(false);
   const [newCardData, setNewCardData] = useState({ full_name: "", phone: "", email: "", city: "", state: "", region: "", responsible_user_id: "" });
