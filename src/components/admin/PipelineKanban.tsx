@@ -5,6 +5,7 @@ import { healthStatusColor, impactColor, normalizeHealthStatus, normalizeImpact 
 
 interface KanbanLeadCardData {
   id: string;
+  stage_id?: string;
   nome_fantasia: string;
   nome_responsavel?: string;
   status_lead?: string;
