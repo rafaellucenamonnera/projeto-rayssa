@@ -1039,7 +1039,7 @@ const AdminLeads = () => {
             leads={filtered}
             parceiros={parceiros}
             customCrmMode={isCustomCrmPanel}
-            users={Object.fromEntries(usersAll.map((u) => [u.user_id, u.nome]))}
+            users={Object.fromEntries(allActiveUsers.map((u) => [u.user_id, u.nome]))}
           />
           <LeadImportDialog
             parceiros={parceirosAll}
