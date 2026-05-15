@@ -209,7 +209,7 @@ export const PipelineKanban = ({
               setDragId(null);
               if (!id) return;
               const lead = leads.find((l) => l.id === id);
-              const cur = lead?.status_lead || lead?.status;
+              const cur = lead?.stage_id || lead?.status_lead || lead?.status;
               if (cur === s.value) return;
               onMoveLead(id, s.value);
             }}
