@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LayoutDashboard, Users, FileText, UserCog, DollarSign, Briefcase, Settings, ShieldCheck, PlugZap, Contact } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -22,54 +22,35 @@ export function AdminSidebar() {
   const { isAdmin } = useAuth();
   const { canAccessPanel } = usePanelPermissions();
   const collapsed = state === "collapsed";
-  const [dynamicPanels, setDynamicPanels] = useState<{ id: string; name: string }[]>([]);
+  const [panels, setPanels] = useState<Array<{ id: string; name: string; sort_order: number }>>([]);
 
   useEffect(() => {
-    (supabase as any)
-      .from("pipeline_panels")
-      .select("id, name, sort_order")
-      .order("sort_order", { ascending: true })
-      .then(({ data }: any) => setDynamicPanels(data || []));
+    const loadPanels = async () => {
+      const { data } = await (supabase as any)
+        .from("pipeline_panels")
+        .select("id,name,sort_order")
+        .order("sort_order", { ascending: true });
+      setPanels((data as Array<{ id: string; name: string; sort_order: number }>) || []);
+    };
+    loadPanels();
   }, []);
 
-  const fixedNames = new Set([
-    "painel comercial",
-    "painel onboarding / integração",
-    "painel onboarding",
-    "painel sucesso",
-    "painel sucesso do cliente",
-    "painel criação campanhas",
-  ]);
-
-  const baseItems = [
+  const fixedItems = [
     { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
     { title: "Financeiro", url: "/admin/financeiro", icon: DollarSign },
     { title: "Embaixadores Monnera", url: "/admin/parceiros", icon: Users },
-    { title: "Painel Comercial", url: "/admin/painel-comercial", icon: FileText },
-    { title: "Painel Onboarding / Integração", url: "/admin/painel-onboarding", icon: FileText },
-    { title: "Painel Sucesso", url: "/admin/painel-sucesso", icon: FileText },
-    { title: "Painel Criação Campanhas", url: "/admin/painel-campanhas", icon: FileText },
-  ];
-
-  const dynamicItems = dynamicPanels
-    .filter((p) => !fixedNames.has((p.name || "").trim().toLowerCase()))
-    .filter((p) => isAdmin || canAccessPanel(p.id))
-    .map((p) => ({ title: p.name, url: `/admin/painel/${p.id}`, icon: FileText }));
-
-  const allItems = [
-    ...baseItems,
-    ...dynamicItems,
     { title: "Contatos", url: "/admin/contatos", icon: Contact },
     { title: "Atualizar Kit e Redes Sociais", url: "/admin/kit-vendas", icon: Briefcase },
   ];
-  const items = allItems.filter((item) => {
-    if (isAdmin) return true;
-    if (item.url === "/admin/painel-comercial") return canAccessPanel("comercial");
-    if (item.url === "/admin/painel-onboarding") return canAccessPanel("onboarding");
-    if (item.url === "/admin/painel-sucesso") return canAccessPanel("sucesso");
-    if (item.url === "/admin/painel-campanhas") return canAccessPanel("campanhas");
-    return true;
-  });
+
+  const dynamicPanelItems = useMemo(
+    () =>
+      panels
+        .filter((panel) => isAdmin || canAccessPanel(panel.id))
+        .map((panel) => ({ title: panel.name, url: `/admin/painel/${panel.id}`, icon: FileText })),
+    [panels, isAdmin, canAccessPanel],
+  );
+  const items = [...fixedItems, ...dynamicPanelItems];
 
   const configItems = isAdmin
     ? [
