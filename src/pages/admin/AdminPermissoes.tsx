@@ -47,7 +47,7 @@ const AdminPermissoes = () => {
     return <Navigate to="/admin" replace />;
   }
 
-  const loadUsers = async () => {
+  const loadUsers = async (keepSelectedUserId?: string) => {
     setLoading(true);
     setLoadUsersError(null);
     const { data, error } = await supabase.functions.invoke("admin-create-user", { method: "GET" });
