@@ -21,6 +21,7 @@ interface MonneraUser {
   ativo: boolean;
   primeiro_acesso: boolean;
   data_criacao: string;
+  can_be_responsible?: boolean;
 }
 
 const AdminUsuarios = () => {
