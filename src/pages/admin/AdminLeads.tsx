@@ -154,7 +154,12 @@ const AdminLeads = () => {
     "/admin/leads": "comercial",
   };
   const currentPanelId = dynamicPanelId || panelIdByPath[location.pathname] || "comercial";
-
+  const painelTitleNormalized = painelTitle.toLowerCase();
+  const isRepresentantesOuEmbaixadoresPanel =
+    painelTitleNormalized.includes("representante") || painelTitleNormalized.includes("embaixador");
+  const isCustomCrmPanel =
+    isRepresentantesOuEmbaixadoresPanel &&
+    !["comercial", "sucesso", "onboarding", "campanhas"].includes(currentPanelId);
 
   useEffect(() => {
     const fetchUserName = async () => {
