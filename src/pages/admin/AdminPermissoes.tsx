@@ -153,6 +153,8 @@ const AdminPermissoes = () => {
     if (selectedUserId) {
       loadPermissions(selectedUserId);
       loadPanelPermissions(selectedUserId);
+      const selectedUser = users.find((u) => u.user_id === selectedUserId);
+      setCanBeResponsible(!!selectedUser?.can_be_responsible);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedUserId, users, panels.length]);
