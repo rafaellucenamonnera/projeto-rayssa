@@ -100,7 +100,12 @@ const AdminPermissoes = () => {
       toast.error("Usuário não encontrado na base");
     }
     setUsers(list);
-    if (list.length > 0) setSelectedUserId(list[0].user_id);
+    if (list.length > 0) {
+      const nextSelected = keepSelectedUserId && list.some((u) => u.user_id === keepSelectedUserId)
+        ? keepSelectedUserId
+        : list[0].user_id;
+      setSelectedUserId(nextSelected);
+    }
     setLoading(false);
   };
 
