@@ -86,7 +86,11 @@ const AdminPermissoes = () => {
       setLoading(false);
       return;
     }
-    const list = (Array.isArray(data) ? data : []).filter((u: any) => u.ativo !== false && u.user_id);
+    const baseList = (Array.isArray(data) ? data : []).filter((u: any) => u.ativo !== false && u.user_id);
+    const { data: flags } = await (supabase as any).from("profiles").select("user_id, can_be_responsible");
+    const flagMap: Record<string, boolean> = {};
+    (flags || []).forEach((f: any) => { flagMap[f.user_id] = !!f.can_be_responsible; });
+    const list = baseList.map((u: any) => ({ ...u, can_be_responsible: flagMap[u.user_id] ?? !!u.can_be_responsible }));
     if (list.length === 0) {
       toast.error("Usuário não encontrado na base");
     }
