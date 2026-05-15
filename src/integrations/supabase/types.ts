@@ -1272,6 +1272,13 @@ export type Database = {
       }
       generate_partner_code: { Args: never; Returns: string }
       generate_slug: { Args: { name_input: string }; Returns: string }
+      get_available_responsible_users: {
+        Args: never
+        Returns: {
+          nome: string
+          user_id: string
+        }[]
+      }
       get_financeiro_consultores:
         | { Args: never; Returns: Json }
         | { Args: { p_ano?: number; p_mes?: number }; Returns: Json }
