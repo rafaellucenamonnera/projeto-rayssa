@@ -361,7 +361,7 @@ const AdminLeads = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [isCustomCrmPanel, currentPanelId]);
 
   const handleStatusChange = (leadId: string, leadName: string, newStatus: string) => {
     const lead = leads.find((l) => l.id === leadId);
