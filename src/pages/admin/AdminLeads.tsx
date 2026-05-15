@@ -71,6 +71,7 @@ const AdminLeads = () => {
   const [parceiros, setParceiros] = useState<Record<string, string>>({});
   const [parceirosAll, setParceirosAll] = useState<{ id: string; nome: string }[]>([]);
   const [usersAll, setUsersAll] = useState<{ user_id: string; nome: string }[]>([]);
+  const [allActiveUsers, setAllActiveUsers] = useState<{ user_id: string; nome: string }[]>([]);
   const [newCardOpen, setNewCardOpen] = useState(false);
   const [savingNewCard, setSavingNewCard] = useState(false);
   const [newCardData, setNewCardData] = useState({ full_name: "", phone: "", email: "", city: "", state: "", region: "", responsible_user_id: "" });
@@ -301,7 +302,7 @@ const AdminLeads = () => {
       supabase.from("parceiros_comerciais").select("id, nome"),
       supabase.from("lead_stage_history").select("lead_id, data_entrada").is("data_saida", null),
       supabase.from("reunioes").select("*").eq("realizada", false).order("data_reuniao", { ascending: true }),
-      supabase.from("profiles").select("user_id,nome").order("nome", { ascending: true }),
+      supabase.from("profiles").select("user_id,nome,ativo,can_be_responsible").eq("ativo", true).order("nome", { ascending: true }),
     ]);
     setLeads(leadsRes.data || []);
     const map: Record<string, string> = {};
@@ -309,7 +310,9 @@ const AdminLeads = () => {
     list.forEach((p: any) => { map[p.id] = p.nome; });
     setParceiros(map);
     setParceirosAll(list);
-    setUsersAll((usersRes.data as any) || []);
+    const allUsers = ((usersRes.data as any) || []).map((u: any) => ({ user_id: u.user_id, nome: u.nome, can_be_responsible: !!u.can_be_responsible }));
+    setAllActiveUsers(allUsers.map((u: any) => ({ user_id: u.user_id, nome: u.nome })));
+    setUsersAll(allUsers.filter((u: any) => u.can_be_responsible).map((u: any) => ({ user_id: u.user_id, nome: u.nome })));
 
     const sm: Record<string, string> = {};
     (stageRes.data || []).forEach((s: any) => { sm[s.lead_id] = s.data_entrada; });
@@ -800,6 +803,7 @@ const AdminLeads = () => {
     const phone = newCardData.phone.trim();
     const email = newCardData.email.trim().toLowerCase();
     if (!fullName || !phone || !email || !newCardData.responsible_user_id) return toast.error("Nome completo, telefone, e-mail e responsável são obrigatórios.");
+    if (!usersAll.some((u) => u.user_id === newCardData.responsible_user_id)) return toast.error("Usuário selecionado não possui permissão para ser responsável.");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return toast.error("Formato de e-mail inválido.");
 
     const { data: duplicate } = await (supabase as any)
@@ -1035,7 +1039,7 @@ const AdminLeads = () => {
             leads={filtered}
             parceiros={parceiros}
             customCrmMode={isCustomCrmPanel}
-            users={Object.fromEntries(usersAll.map((u) => [u.user_id, u.nome]))}
+            users={Object.fromEntries(allActiveUsers.map((u) => [u.user_id, u.nome]))}
           />
           <LeadImportDialog
             parceiros={parceirosAll}

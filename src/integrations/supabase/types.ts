@@ -869,6 +869,7 @@ export type Database = {
       profiles: {
         Row: {
           ativo: boolean
+          can_be_responsible: boolean
           data_criacao: string
           id: string
           nome: string
@@ -878,6 +879,7 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean
+          can_be_responsible?: boolean
           data_criacao?: string
           id?: string
           nome: string
@@ -887,6 +889,7 @@ export type Database = {
         }
         Update: {
           ativo?: boolean
+          can_be_responsible?: boolean
           data_criacao?: string
           id?: string
           nome?: string

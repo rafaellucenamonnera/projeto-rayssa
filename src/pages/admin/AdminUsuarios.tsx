@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -21,6 +22,7 @@ interface MonneraUser {
   ativo: boolean;
   primeiro_acesso: boolean;
   data_criacao: string;
+  can_be_responsible?: boolean;
 }
 
 const AdminUsuarios = () => {
@@ -47,7 +49,11 @@ const AdminUsuarios = () => {
         method: "GET",
       });
       if (error) throw error;
-      setUsers(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      const { data: flags } = await supabase.from("profiles").select("user_id,can_be_responsible");
+      const flagMap: Record<string, boolean> = {};
+      (flags || []).forEach((f: any) => { flagMap[f.user_id] = !!f.can_be_responsible; });
+      setUsers(list.map((u: any) => ({ ...u, can_be_responsible: flagMap[u.user_id] ?? false })));
     } catch (error: any) {
       const msg = String(error?.message || "");
       if (msg.includes("Não autorizado") || msg.includes("Acesso negado")) {
@@ -127,6 +133,17 @@ const AdminUsuarios = () => {
       loadUsers();
     } catch (error: any) {
       toast.error("Erro: " + error.message);
+    }
+  };
+
+  const toggleResponsible = async (user: MonneraUser, value: boolean) => {
+    setUsers((prev) => prev.map((x) => (x.user_id === user.user_id ? { ...x, can_be_responsible: value } : x)));
+    const { error } = await supabase.from("profiles").update({ can_be_responsible: value } as any).eq("user_id", user.user_id);
+    if (error) {
+      setUsers((prev) => prev.map((x) => (x.user_id === user.user_id ? { ...x, can_be_responsible: !value } : x)));
+      toast.error("Erro ao atualizar permissão de responsável.");
+    } else {
+      toast.success(value ? "Usuário pode ser responsável por cards." : "Usuário não pode mais ser responsável por cards.");
     }
   };
 
@@ -275,6 +292,13 @@ const AdminUsuarios = () => {
                       <span>{new Date(u.data_criacao).toLocaleDateString("pt-BR")}</span>
                     </div>
                   </div>
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-xs text-muted-foreground">Pode ser responsável por cards</span>
+                    <Switch
+                      checked={!!u.can_be_responsible}
+                      onCheckedChange={(v) => toggleResponsible(u, v)}
+                    />
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -296,6 +320,7 @@ const AdminUsuarios = () => {
                       <th className="text-left py-3 px-4 text-muted-foreground font-medium">Nível</th>
                       <th className="text-left py-3 px-4 text-muted-foreground font-medium">Status</th>
                       <th className="text-left py-3 px-4 text-muted-foreground font-medium">Data</th>
+                      <th className="text-left py-3 px-4 text-muted-foreground font-medium">Resp. cards</th>
                       <th className="text-left py-3 px-4 text-muted-foreground font-medium"></th>
                     </tr>
                   </thead>
@@ -319,6 +344,12 @@ const AdminUsuarios = () => {
                         </td>
                         <td className="py-3 px-4 text-muted-foreground">
                           {new Date(u.data_criacao).toLocaleDateString("pt-BR")}
+                        </td>
+                        <td className="py-3 px-4">
+                          <Switch
+                            checked={!!u.can_be_responsible}
+                            onCheckedChange={(v) => toggleResponsible(u, v)}
+                          />
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-1">
