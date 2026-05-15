@@ -70,6 +70,10 @@ const AdminLeads = () => {
   const [stageMap, setStageMap] = useState<Record<string, string>>({});
   const [parceiros, setParceiros] = useState<Record<string, string>>({});
   const [parceirosAll, setParceirosAll] = useState<{ id: string; nome: string }[]>([]);
+  const [usersAll, setUsersAll] = useState<{ user_id: string; nome: string }[]>([]);
+  const [newCardOpen, setNewCardOpen] = useState(false);
+  const [savingNewCard, setSavingNewCard] = useState(false);
+  const [newCardData, setNewCardData] = useState({ full_name: "", phone: "", email: "", city: "", state: "", region: "", company: "", responsible_user_id: "" });
   const [reunioesMap, setReunioesMap] = useState<Record<string, any>>({});
 
   // Filters
@@ -77,6 +81,7 @@ const AdminLeads = () => {
   const [filterConsultor, setFilterConsultor] = useState<string>("all");
   const [filterCs, setFilterCs] = useState<string>("all");
   const [filterEmpresa, setFilterEmpresa] = useState("");
+  const [filterResponsibleUser, setFilterResponsibleUser] = useState<string>("all");
   const [filterCampaignStatus, setFilterCampaignStatus] = useState<string>("all");
   const [filterImpactLevel, setFilterImpactLevel] = useState<string>("all");
   const [filterHealthStatus, setFilterHealthStatus] = useState<string>("all");
@@ -149,7 +154,12 @@ const AdminLeads = () => {
     "/admin/leads": "comercial",
   };
   const currentPanelId = dynamicPanelId || panelIdByPath[location.pathname] || "comercial";
-
+  const painelTitleNormalized = painelTitle.toLowerCase();
+  const isRepresentantesOuEmbaixadoresPanel =
+    painelTitleNormalized.includes("representante") || painelTitleNormalized.includes("embaixador");
+  const isCustomCrmPanel =
+    isRepresentantesOuEmbaixadoresPanel &&
+    !["comercial", "sucesso", "onboarding", "campanhas"].includes(currentPanelId);
 
   useEffect(() => {
     const fetchUserName = async () => {
@@ -284,11 +294,12 @@ const AdminLeads = () => {
   };
 
   const loadData = async () => {
-    const [leadsRes, parceirosRes, stageRes, reunioesRes] = await Promise.all([
+    const [leadsRes, parceirosRes, stageRes, reunioesRes, usersRes] = await Promise.all([
       supabase.from("leads").select("*").order("data_cadastro", { ascending: false }),
       supabase.from("parceiros_comerciais").select("id, nome"),
       supabase.from("lead_stage_history").select("lead_id, data_entrada").is("data_saida", null),
       supabase.from("reunioes").select("*").eq("realizada", false).order("data_reuniao", { ascending: true }),
+      supabase.from("profiles").select("user_id,nome").order("nome", { ascending: true }),
     ]);
     setLeads(leadsRes.data || []);
     const map: Record<string, string> = {};
@@ -296,6 +307,7 @@ const AdminLeads = () => {
     list.forEach((p: any) => { map[p.id] = p.nome; });
     setParceiros(map);
     setParceirosAll(list);
+    setUsersAll((usersRes.data as any) || []);
 
     const sm: Record<string, string> = {};
     (stageRes.data || []).forEach((s: any) => { sm[s.lead_id] = s.data_entrada; });
@@ -781,12 +793,56 @@ const AdminLeads = () => {
     toast.success("Card atualizado");
   };
 
+  const createRepresentativeCard = async () => {
+    const fullName = newCardData.full_name.trim();
+    const phone = newCardData.phone.trim();
+    const email = newCardData.email.trim().toLowerCase();
+    if (!fullName || !phone || !email) return toast.error("Nome completo, telefone e e-mail são obrigatórios.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return toast.error("Formato de e-mail inválido.");
+
+    const { data: duplicate } = await supabase
+      .from("leads")
+      .select("id")
+      .or(`email_responsavel.eq.${email},telefone_responsavel.eq.${phone}`)
+      .limit(1);
+    if (duplicate && duplicate.length > 0) return toast.error("Já existe cadastro com este telefone ou e-mail.");
+
+    const firstStage = pipelineStages[0]?.value;
+    if (!firstStage) return toast.error("Não há colunas configuradas para este painel.");
+
+    setSavingNewCard(true);
+    const payload: any = {
+      nome_fantasia: fullName,
+      razao_social: fullName,
+      cnpj: null,
+      cidade: newCardData.city.trim() || null,
+      nome_responsavel: fullName,
+      telefone_responsavel: phone,
+      email_responsavel: email,
+      erp_utilizado: "Não informado",
+      quantidade_lojas: 1,
+      descricao_necessidade: newCardData.company.trim()
+        ? `Empresa: ${newCardData.company.trim()}${newCardData.state.trim() ? ` | UF: ${newCardData.state.trim()}` : ""}${newCardData.region.trim() ? ` | Região: ${newCardData.region.trim()}` : ""}`
+        : null,
+      status_lead: firstStage,
+      responsible_user_id: newCardData.responsible_user_id || null,
+    };
+    const { error } = await supabase.from("leads").insert(payload);
+    setSavingNewCard(false);
+    if (error) return toast.error("Erro ao salvar cadastro: " + error.message);
+    toast.success("Cadastro salvo com sucesso.");
+    setNewCardOpen(false);
+    setNewCardData({ full_name: "", phone: "", email: "", city: "", state: "", region: "", company: "", responsible_user_id: "" });
+    loadData();
+  };
+
   // Apply filters
   const filtered = leads.filter((l) => {
     if (filterStatus !== "all" && (l.status_lead || l.status) !== filterStatus) return false;
     if (currentPanelId !== "sucesso" && filterConsultor !== "all" && l.parceiro_id !== filterConsultor) return false;
     if (currentPanelId === "sucesso" && filterCs !== "all" && (l.consultor || "") !== filterCs) return false;
-    if (filterEmpresa && !l.nome_fantasia.toLowerCase().includes(filterEmpresa.toLowerCase())) return false;
+    if (filterEmpresa && !(l.nome_fantasia || "").toLowerCase().includes(filterEmpresa.toLowerCase())) return false;
+    if (isCustomCrmPanel && filterResponsibleUser !== "all" && l.responsible_user_id !== filterResponsibleUser) return false;
     if (currentPanelId === "sucesso" && filterCampaignStatus !== "all" && (l.campaign_status_current || "SEM_STATUS") !== filterCampaignStatus) return false;
     if (currentPanelId === "sucesso" && filterImpactLevel !== "all" && normalizeImpact(l.impact_level) !== filterImpactLevel) return false;
     if (currentPanelId === "sucesso" && filterHealthStatus !== "all" && normalizeHealthStatus(l.health_status) !== filterHealthStatus) return false;
@@ -807,7 +863,8 @@ const AdminLeads = () => {
   const filteredExceptStatus = leads.filter((l) => {
     if (currentPanelId !== "sucesso" && filterConsultor !== "all" && l.parceiro_id !== filterConsultor) return false;
     if (currentPanelId === "sucesso" && filterCs !== "all" && (l.consultor || "") !== filterCs) return false;
-    if (filterEmpresa && !l.nome_fantasia.toLowerCase().includes(filterEmpresa.toLowerCase())) return false;
+    if (filterEmpresa && !(l.nome_fantasia || "").toLowerCase().includes(filterEmpresa.toLowerCase())) return false;
+    if (isCustomCrmPanel && filterResponsibleUser !== "all" && l.responsible_user_id !== filterResponsibleUser) return false;
     if (currentPanelId === "sucesso" && filterCampaignStatus !== "all" && (l.campaign_status_current || "SEM_STATUS") !== filterCampaignStatus) return false;
     if (currentPanelId === "sucesso" && filterImpactLevel !== "all" && normalizeImpact(l.impact_level) !== filterImpactLevel) return false;
     if (currentPanelId === "sucesso" && filterHealthStatus !== "all" && normalizeHealthStatus(l.health_status) !== filterHealthStatus) return false;
@@ -969,7 +1026,19 @@ const AdminLeads = () => {
             >Lista</button>
           </div>
           <LeadExportButton leads={filtered} parceiros={parceiros} />
-          <LeadImportDialog parceiros={parceirosAll} onImported={loadData} />
+          <LeadImportDialog
+            parceiros={parceirosAll}
+            onImported={loadData}
+            customCrmMode={isCustomCrmPanel}
+            users={usersAll}
+            panelId={currentPanelId}
+            firstStageId={pipelineStages[0]?.value}
+          />
+          {isCustomCrmPanel && (
+            <Button onClick={() => setNewCardOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+              + Card
+            </Button>
+          )}
           {currentPanelId === "sucesso" && (
             <Button
               onClick={handleSyncDriveClients}
@@ -1012,6 +1081,16 @@ const AdminLeads = () => {
                 .map((cs) => (
                   <SelectItem key={cs} value={cs}>{cs}</SelectItem>
                 ))}
+            </SelectContent>
+          </Select>
+        ) : isCustomCrmPanel ? (
+          <Select value={filterResponsibleUser} onValueChange={setFilterResponsibleUser}>
+            <SelectTrigger><SelectValue placeholder="Responsável" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos responsáveis</SelectItem>
+              {usersAll.map((u) => (
+                <SelectItem key={u.user_id} value={u.user_id}>{u.nome}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         ) : (
@@ -1660,6 +1739,35 @@ const AdminLeads = () => {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={newCardOpen} onOpenChange={setNewCardOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Novo cadastro</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <Input className="sm:col-span-2" placeholder="Nome completo *" value={newCardData.full_name} onChange={(e) => setNewCardData((p) => ({ ...p, full_name: e.target.value }))} />
+            <Input placeholder="Telefone *" value={newCardData.phone} onChange={(e) => setNewCardData((p) => ({ ...p, phone: e.target.value }))} />
+            <Input placeholder="E-mail *" value={newCardData.email} onChange={(e) => setNewCardData((p) => ({ ...p, email: e.target.value }))} />
+            <Input placeholder="Cidade" value={newCardData.city} onChange={(e) => setNewCardData((p) => ({ ...p, city: e.target.value }))} />
+            <Input placeholder="Estado" value={newCardData.state} onChange={(e) => setNewCardData((p) => ({ ...p, state: e.target.value }))} />
+            <Input placeholder="Região de atuação" value={newCardData.region} onChange={(e) => setNewCardData((p) => ({ ...p, region: e.target.value }))} />
+            <Input placeholder="Empresa" value={newCardData.company} onChange={(e) => setNewCardData((p) => ({ ...p, company: e.target.value }))} />
+            <Select value={newCardData.responsible_user_id} onValueChange={(v) => setNewCardData((p) => ({ ...p, responsible_user_id: v }))}>
+              <SelectTrigger className="sm:col-span-2"><SelectValue placeholder="Responsável" /></SelectTrigger>
+              <SelectContent>
+                {usersAll.map((u) => (
+                  <SelectItem key={u.user_id} value={u.user_id}>{u.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={createRepresentativeCard} disabled={savingNewCard} className="w-full">
+            {savingNewCard ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+            Salvar
+          </Button>
         </DialogContent>
       </Dialog>
 
