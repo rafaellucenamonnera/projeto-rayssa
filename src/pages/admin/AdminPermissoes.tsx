@@ -47,7 +47,7 @@ const AdminPermissoes = () => {
     return <Navigate to="/admin" replace />;
   }
 
-  const loadUsers = async () => {
+  const loadUsers = async (keepSelectedUserId?: string) => {
     setLoading(true);
     setLoadUsersError(null);
     const { data, error } = await supabase.functions.invoke("admin-create-user", { method: "GET" });
@@ -81,7 +81,12 @@ const AdminPermissoes = () => {
         .filter((u: any) => u.user_id)
         .map((u: any) => ({ user_id: u.user_id, nome: u.nome, email: "", ativo: u.ativo, can_be_responsible: !!u.can_be_responsible }));
       setUsers(fallbackList);
-      if (fallbackList.length > 0) setSelectedUserId(fallbackList[0].user_id);
+      if (fallbackList.length > 0) {
+        const nextSelected = keepSelectedUserId && fallbackList.some((u) => u.user_id === keepSelectedUserId)
+          ? keepSelectedUserId
+          : fallbackList[0].user_id;
+        setSelectedUserId(nextSelected);
+      }
       toast.warning("Conexão com backend instável. Carregamos os usuários em modo alternativo.");
       setLoading(false);
       return;
@@ -95,7 +100,12 @@ const AdminPermissoes = () => {
       toast.error("Usuário não encontrado na base");
     }
     setUsers(list);
-    if (list.length > 0) setSelectedUserId(list[0].user_id);
+    if (list.length > 0) {
+      const nextSelected = keepSelectedUserId && list.some((u) => u.user_id === keepSelectedUserId)
+        ? keepSelectedUserId
+        : list[0].user_id;
+      setSelectedUserId(nextSelected);
+    }
     setLoading(false);
   };
 
@@ -183,7 +193,7 @@ const AdminPermissoes = () => {
       .from("module_permissions")
       .upsert(updates, { onConflict: "user_id,modulo,acao" });
     if (error) {
-      toast.error("Erro ao salvar permissões");
+      toast.error("Não foi possível salvar as permissões.");
       setSaving(false);
       return;
     }
@@ -202,7 +212,7 @@ const AdminPermissoes = () => {
       .update({ can_be_responsible: canBeResponsible })
       .eq("user_id", selectedUserId);
     if (panelError || responsibleError) {
-      toast.error("Erro ao salvar permissões complementares");
+      toast.error("Não foi possível salvar as permissões.");
       setSaving(false);
       return;
     }
@@ -215,7 +225,10 @@ const AdminPermissoes = () => {
         changed_by: u.updated_by,
       })),
     );
-    toast.success("Permissões salvas");
+    await loadUsers(selectedUserId);
+    await loadPermissions(selectedUserId);
+    await loadPanelPermissions(selectedUserId);
+    toast.success("Permissões salvas com sucesso.");
     setSaving(false);
   };
 
@@ -235,7 +248,7 @@ const AdminPermissoes = () => {
                 <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4 space-y-3">
                   <p className="text-sm text-destructive">{loadUsersError}</p>
                   <div className="flex gap-2">
-                    <Button onClick={loadUsers} variant="outline" size="sm">Tentar novamente</Button>
+                    <Button onClick={() => loadUsers()} variant="outline" size="sm">Tentar novamente</Button>
                     <Button onClick={() => window.location.reload()} size="sm">Recarregar permissões</Button>
                   </div>
                 </div>
