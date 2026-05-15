@@ -1742,6 +1742,35 @@ const AdminLeads = () => {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={newCardOpen} onOpenChange={setNewCardOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Novo cadastro</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <Input className="sm:col-span-2" placeholder="Nome completo *" value={newCardData.full_name} onChange={(e) => setNewCardData((p) => ({ ...p, full_name: e.target.value }))} />
+            <Input placeholder="Telefone *" value={newCardData.phone} onChange={(e) => setNewCardData((p) => ({ ...p, phone: e.target.value }))} />
+            <Input placeholder="E-mail *" value={newCardData.email} onChange={(e) => setNewCardData((p) => ({ ...p, email: e.target.value }))} />
+            <Input placeholder="Cidade" value={newCardData.city} onChange={(e) => setNewCardData((p) => ({ ...p, city: e.target.value }))} />
+            <Input placeholder="Estado" value={newCardData.state} onChange={(e) => setNewCardData((p) => ({ ...p, state: e.target.value }))} />
+            <Input placeholder="Região de atuação" value={newCardData.region} onChange={(e) => setNewCardData((p) => ({ ...p, region: e.target.value }))} />
+            <Input placeholder="Empresa" value={newCardData.company} onChange={(e) => setNewCardData((p) => ({ ...p, company: e.target.value }))} />
+            <Select value={newCardData.responsible_user_id} onValueChange={(v) => setNewCardData((p) => ({ ...p, responsible_user_id: v }))}>
+              <SelectTrigger className="sm:col-span-2"><SelectValue placeholder="Responsável" /></SelectTrigger>
+              <SelectContent>
+                {usersAll.map((u) => (
+                  <SelectItem key={u.user_id} value={u.user_id}>{u.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={createRepresentativeCard} disabled={savingNewCard} className="w-full">
+            {savingNewCard ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+            Salvar
+          </Button>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={cloneDialogOpen} onOpenChange={setCloneDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
