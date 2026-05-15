@@ -70,6 +70,10 @@ const AdminLeads = () => {
   const [stageMap, setStageMap] = useState<Record<string, string>>({});
   const [parceiros, setParceiros] = useState<Record<string, string>>({});
   const [parceirosAll, setParceirosAll] = useState<{ id: string; nome: string }[]>([]);
+  const [usersAll, setUsersAll] = useState<{ user_id: string; nome: string }[]>([]);
+  const [newCardOpen, setNewCardOpen] = useState(false);
+  const [savingNewCard, setSavingNewCard] = useState(false);
+  const [newCardData, setNewCardData] = useState({ full_name: "", phone: "", email: "", city: "", state: "", region: "", company: "", responsible_user_id: "" });
   const [reunioesMap, setReunioesMap] = useState<Record<string, any>>({});
 
   // Filters
@@ -77,6 +81,7 @@ const AdminLeads = () => {
   const [filterConsultor, setFilterConsultor] = useState<string>("all");
   const [filterCs, setFilterCs] = useState<string>("all");
   const [filterEmpresa, setFilterEmpresa] = useState("");
+  const [filterResponsibleUser, setFilterResponsibleUser] = useState<string>("all");
   const [filterCampaignStatus, setFilterCampaignStatus] = useState<string>("all");
   const [filterImpactLevel, setFilterImpactLevel] = useState<string>("all");
   const [filterHealthStatus, setFilterHealthStatus] = useState<string>("all");
