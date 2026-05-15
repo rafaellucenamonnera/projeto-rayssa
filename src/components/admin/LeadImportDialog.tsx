@@ -312,7 +312,7 @@ export const LeadImportDialog = ({ parceiros, onImported, customCrmMode = false,
       </DialogTrigger>
       <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-display">Importar Leads via CSV</DialogTitle>
+          <DialogTitle className="font-display">{customCrmMode ? "Importar CSV de Representantes" : "Importar Leads via CSV"}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
