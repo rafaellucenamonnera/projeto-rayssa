@@ -225,7 +225,10 @@ const AdminPermissoes = () => {
         changed_by: u.updated_by,
       })),
     );
-    toast.success("Permissões salvas");
+    await loadUsers(selectedUserId);
+    await loadPermissions(selectedUserId);
+    await loadPanelPermissions(selectedUserId);
+    toast.success("Permissões salvas com sucesso.");
     setSaving(false);
   };
 
