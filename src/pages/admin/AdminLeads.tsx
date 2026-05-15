@@ -148,22 +148,8 @@ const AdminLeads = () => {
     "/admin/painel-campanhas": "campanhas",
     "/admin/leads": "comercial",
   };
-  const currentPanelId = routePanelId || panelIdByPath[location.pathname] || "comercial";
+  const currentPanelId = dynamicPanelId || panelIdByPath[location.pathname] || "comercial";
 
-  useEffect(() => {
-    if (!routePanelId) {
-      setDynamicPanelName("");
-      return;
-    }
-    (supabase as any)
-      .from("pipeline_panels")
-      .select("name")
-      .eq("id", routePanelId)
-      .maybeSingle()
-      .then(({ data }: any) => {
-        if (data?.name) setDynamicPanelName(data.name);
-      });
-  }, [routePanelId]);
 
   useEffect(() => {
     const fetchUserName = async () => {
