@@ -1031,7 +1031,12 @@ const AdminLeads = () => {
               className={`px-3 py-1.5 transition-colors ${view === "lista" ? "bg-primary text-primary-foreground" : "bg-card hover:bg-secondary"}`}
             >Lista</button>
           </div>
-          <LeadExportButton leads={filtered} parceiros={parceiros} />
+          <LeadExportButton
+            leads={filtered}
+            parceiros={parceiros}
+            customCrmMode={isCustomCrmPanel}
+            users={Object.fromEntries(usersAll.map((u) => [u.user_id, u.nome]))}
+          />
           <LeadImportDialog
             parceiros={parceirosAll}
             onImported={loadData}
