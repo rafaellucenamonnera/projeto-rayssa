@@ -73,7 +73,7 @@ const AdminLeads = () => {
   const [usersAll, setUsersAll] = useState<{ user_id: string; nome: string }[]>([]);
   const [newCardOpen, setNewCardOpen] = useState(false);
   const [savingNewCard, setSavingNewCard] = useState(false);
-  const [newCardData, setNewCardData] = useState({ full_name: "", phone: "", email: "", city: "", state: "", region: "", company: "", responsible_user_id: "" });
+  const [newCardData, setNewCardData] = useState({ full_name: "", phone: "", email: "", city: "", state: "", region: "", responsible_user_id: "" });
   const [reunioesMap, setReunioesMap] = useState<Record<string, any>>({});
 
   // Filters
