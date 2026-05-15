@@ -8,6 +8,10 @@ import { Loader2, Upload, FileSpreadsheet, AlertCircle, CheckCircle2 } from "luc
 interface LeadImportDialogProps {
   parceiros: { id: string; nome: string }[];
   onImported: () => void;
+  customCrmMode?: boolean;
+  users?: { user_id: string; nome: string }[];
+  panelId?: string;
+  firstStageId?: string;
 }
 
 interface ParsedRow {
@@ -26,7 +30,7 @@ interface ParsedRow {
   parceiro_nome: string;
 }
 
-const REQUIRED_COLUMNS = [
+const REQUIRED_COLUMNS_DEFAULT = [
   "nome_fantasia",
   "razao_social",
   "cnpj",
@@ -39,6 +43,9 @@ const REQUIRED_COLUMNS = [
 ];
 
 const COLUMN_ALIASES: Record<string, string> = {
+  "nome completo": "nome_completo",
+  "e-mail": "e_mail",
+  "região de atuação": "regiao",
   "nome fantasia": "nome_fantasia",
   "razão social": "razao_social",
   "razao social": "razao_social",
@@ -103,7 +110,7 @@ function parseCsvLine(line: string): string[] {
   return result;
 }
 
-export const LeadImportDialog = ({ parceiros, onImported }: LeadImportDialogProps) => {
+export const LeadImportDialog = ({ parceiros, onImported, customCrmMode = false, users = [], panelId, firstStageId }: LeadImportDialogProps) => {
   const [open, setOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [preview, setPreview] = useState<ParsedRow[]>([]);
@@ -142,7 +149,10 @@ export const LeadImportDialog = ({ parceiros, onImported }: LeadImportDialogProp
           columnMap[i] = mapped;
         });
 
-        const missingCols = REQUIRED_COLUMNS.filter(
+        const requiredColumns = customCrmMode
+          ? ["nome_completo", "telefone", "e_mail"]
+          : REQUIRED_COLUMNS_DEFAULT;
+        const missingCols = requiredColumns.filter(
           (col) => !Object.values(columnMap).includes(col)
         );
 
@@ -160,6 +170,29 @@ export const LeadImportDialog = ({ parceiros, onImported }: LeadImportDialogProp
           Object.entries(columnMap).forEach(([idx, col]) => {
             row[col] = values[Number(idx)] || "";
           });
+
+          if (customCrmMode) {
+            if (!row.nome_completo || !row.e_mail) {
+              parseErrors.push(`Linha ${i + 1}: campos obrigatórios vazios (nome completo ou e-mail)`);
+              continue;
+            }
+            rows.push({
+              nome_fantasia: row.nome_completo,
+              razao_social: row.nome_completo,
+              cnpj: "",
+              cidade: row.cidade || "",
+              nome_responsavel: row.nome_completo,
+              telefone_responsavel: row.telefone || row.telefone_responsavel || "",
+              email_responsavel: row.e_mail || row.email_responsavel || "",
+              erp_utilizado: "Não informado",
+              quantidade_lojas: 1,
+              quantidade_funcionarios: null,
+              valor_campanhas: null,
+              descricao_necessidade: null,
+              parceiro_nome: row.responsavel || "",
+            });
+            continue;
+          }
 
           if (!row.nome_fantasia || !row.cnpj || !row.email_responsavel) {
             parseErrors.push(`Linha ${i + 1}: campos obrigatórios vazios (nome_fantasia, cnpj ou email)`);
@@ -210,15 +243,23 @@ export const LeadImportDialog = ({ parceiros, onImported }: LeadImportDialogProp
       const parceiroId =
         parceiroMap[row.parceiro_nome.toLowerCase()] || defaultParceiroId;
 
-      if (!parceiroId) {
+      let responsible_user_id: string | null = null;
+      if (customCrmMode) {
+        const byName = users.find(
+          (u) => u.nome.toLowerCase() === (row.parceiro_nome || "").toLowerCase()
+        );
+        responsible_user_id = byName?.user_id || null;
+      }
+
+      if (!customCrmMode && !parceiroId) {
         importErrors.push(`${row.nome_fantasia}: nenhum consultor encontrado`);
         continue;
       }
 
-      const { error } = await supabase.from("leads").insert({
+      const payload: Record<string, unknown> = {
         nome_fantasia: row.nome_fantasia,
         razao_social: row.razao_social,
-        cnpj: row.cnpj,
+        cnpj: customCrmMode ? null : row.cnpj,
         cidade: row.cidade,
         nome_responsavel: row.nome_responsavel,
         telefone_responsavel: row.telefone_responsavel,
@@ -228,8 +269,15 @@ export const LeadImportDialog = ({ parceiros, onImported }: LeadImportDialogProp
         quantidade_funcionarios: row.quantidade_funcionarios,
         valor_campanhas: row.valor_campanhas,
         descricao_necessidade: row.descricao_necessidade,
-        parceiro_id: parceiroId,
-      });
+        parceiro_id: customCrmMode ? null : parceiroId,
+        responsible_user_id,
+      };
+      if (customCrmMode) {
+        payload.panel_id = panelId || null;
+        payload.status_lead = firstStageId || "novo_lead";
+      }
+
+      const { error } = await (supabase as any).from("leads").insert(payload);
 
       if (error) {
         importErrors.push(`${row.nome_fantasia}: ${error.message}`);
@@ -264,7 +312,7 @@ export const LeadImportDialog = ({ parceiros, onImported }: LeadImportDialogProp
       </DialogTrigger>
       <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-display">Importar Leads via CSV</DialogTitle>
+          <DialogTitle className="font-display">{customCrmMode ? "Importar CSV de Representantes" : "Importar Leads via CSV"}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -294,8 +342,17 @@ export const LeadImportDialog = ({ parceiros, onImported }: LeadImportDialogProp
           {/* Required columns info */}
           <div className="text-xs text-muted-foreground bg-secondary/50 p-3 rounded">
             <p className="font-medium mb-1">Colunas obrigatórias:</p>
-            <p>nome_fantasia, razao_social, cnpj, cidade, nome_responsavel, telefone_responsavel, email_responsavel, erp_utilizado, quantidade_lojas</p>
-            <p className="mt-1">Opcional: quantidade_funcionarios, valor_campanhas, descricao_necessidade, consultor</p>
+            {customCrmMode ? (
+              <>
+                <p>Nome completo, Telefone, E-mail</p>
+                <p className="mt-1">Opcional: Cidade, Estado, Região de atuação, Empresa, Responsável</p>
+              </>
+            ) : (
+              <>
+                <p>nome_fantasia, razao_social, cnpj, cidade, nome_responsavel, telefone_responsavel, email_responsavel, erp_utilizado, quantidade_lojas</p>
+                <p className="mt-1">Opcional: quantidade_funcionarios, valor_campanhas, descricao_necessidade, consultor</p>
+              </>
+            )}
           </div>
 
           {/* Errors */}
