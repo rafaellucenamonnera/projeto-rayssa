@@ -48,7 +48,11 @@ const AdminUsuarios = () => {
         method: "GET",
       });
       if (error) throw error;
-      setUsers(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      const { data: flags } = await supabase.from("profiles").select("user_id,can_be_responsible");
+      const flagMap: Record<string, boolean> = {};
+      (flags || []).forEach((f: any) => { flagMap[f.user_id] = !!f.can_be_responsible; });
+      setUsers(list.map((u: any) => ({ ...u, can_be_responsible: flagMap[u.user_id] ?? false })));
     } catch (error: any) {
       const msg = String(error?.message || "");
       if (msg.includes("Não autorizado") || msg.includes("Acesso negado")) {
