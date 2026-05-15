@@ -110,7 +110,7 @@ function parseCsvLine(line: string): string[] {
   return result;
 }
 
-export const LeadImportDialog = ({ parceiros, onImported }: LeadImportDialogProps) => {
+export const LeadImportDialog = ({ parceiros, onImported, customCrmMode = false, users = [], panelId, firstStageId }: LeadImportDialogProps) => {
   const [open, setOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [preview, setPreview] = useState<ParsedRow[]>([]);
