@@ -53,8 +53,8 @@ const hasValidFinanceiro = (lead: any) =>
 
 const AdminLeads = () => {
   const [searchParams] = useSearchParams();
+  const { panelId: dynamicPanelId } = useParams();
   const location = useLocation();
-  const { panelId: routePanelId } = useParams<{ panelId?: string }>();
   const { isAdmin } = useAuth();
   const painelTitleMap: Record<string, string> = {
     "/admin/painel-comercial": "Painel Comercial",
@@ -63,10 +63,9 @@ const AdminLeads = () => {
     "/admin/painel-campanhas": "Painel Criação Campanhas",
     "/admin/leads": "Painel Comercial",
   };
-  const [dynamicPanelName, setDynamicPanelName] = useState<string>("");
-  const painelTitle = routePanelId
-    ? (dynamicPanelName || "Painel")
-    : (painelTitleMap[location.pathname] || "Painel Comercial");
+  const [allPanels, setAllPanels] = useState<{ id: string; name: string }[]>([]);
+  const dynamicPanelName = allPanels.find((p) => p.id === dynamicPanelId)?.name;
+  const painelTitle = dynamicPanelName || painelTitleMap[location.pathname] || "Painel Comercial";
   const [leads, setLeads] = useState<any[]>([]);
   const [stageMap, setStageMap] = useState<Record<string, string>>({});
   const [parceiros, setParceiros] = useState<Record<string, string>>({});
@@ -149,22 +148,8 @@ const AdminLeads = () => {
     "/admin/painel-campanhas": "campanhas",
     "/admin/leads": "comercial",
   };
-  const currentPanelId = routePanelId || panelIdByPath[location.pathname] || "comercial";
+  const currentPanelId = dynamicPanelId || panelIdByPath[location.pathname] || "comercial";
 
-  useEffect(() => {
-    if (!routePanelId) {
-      setDynamicPanelName("");
-      return;
-    }
-    (supabase as any)
-      .from("pipeline_panels")
-      .select("name")
-      .eq("id", routePanelId)
-      .maybeSingle()
-      .then(({ data }: any) => {
-        if (data?.name) setDynamicPanelName(data.name);
-      });
-  }, [routePanelId]);
 
   useEffect(() => {
     const fetchUserName = async () => {
@@ -207,7 +192,9 @@ const AdminLeads = () => {
         .from("pipeline_panels")
         .select("id,name")
         .order("sort_order", { ascending: true });
-      setAvailablePanels((panels as { id: string; name: string }[]) || []);
+      const loadedPanels = (panels as { id: string; name: string }[]) || [];
+      setAvailablePanels(loadedPanels);
+      setAllPanels(loadedPanels);
     };
     loadClonePermissionAndPanels();
   }, [isAdmin]);
