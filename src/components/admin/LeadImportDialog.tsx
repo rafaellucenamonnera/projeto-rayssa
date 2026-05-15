@@ -8,6 +8,10 @@ import { Loader2, Upload, FileSpreadsheet, AlertCircle, CheckCircle2 } from "luc
 interface LeadImportDialogProps {
   parceiros: { id: string; nome: string }[];
   onImported: () => void;
+  customCrmMode?: boolean;
+  users?: { user_id: string; nome: string }[];
+  panelId?: string;
+  firstStageId?: string;
 }
 
 interface ParsedRow {
