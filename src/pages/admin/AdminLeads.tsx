@@ -1285,7 +1285,16 @@ const AdminLeads = () => {
             onAssignResponsible={(lead) => startEditCard(lead)}
             onMoveLead={(id, newStage) => {
               const lead = leads.find((l) => l.id === id);
-              if (lead) handleStatusChange(id, lead.nome_fantasia, newStage);
+              if (!lead) return;
+              if (isCustomCrmPanel) {
+                moveRepresentativeCard(id, newStage).then(({ error }: any) => {
+                  if (error) return toast.error("Erro ao mover card: " + error.message);
+                  setLeads((prev) => prev.map((p) => (p.id === id ? { ...p, stage_id: newStage } : p)));
+                  toast.success("Card movido com sucesso");
+                });
+                return;
+              }
+              handleStatusChange(id, lead.nome_fantasia, newStage);
             }}
             onOpenLead={(l) => openLeadDetail(l)}
           />
