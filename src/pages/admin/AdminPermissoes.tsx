@@ -81,7 +81,12 @@ const AdminPermissoes = () => {
         .filter((u: any) => u.user_id)
         .map((u: any) => ({ user_id: u.user_id, nome: u.nome, email: "", ativo: u.ativo, can_be_responsible: !!u.can_be_responsible }));
       setUsers(fallbackList);
-      if (fallbackList.length > 0) setSelectedUserId(fallbackList[0].user_id);
+      if (fallbackList.length > 0) {
+        const nextSelected = keepSelectedUserId && fallbackList.some((u) => u.user_id === keepSelectedUserId)
+          ? keepSelectedUserId
+          : fallbackList[0].user_id;
+        setSelectedUserId(nextSelected);
+      }
       toast.warning("Conexão com backend instável. Carregamos os usuários em modo alternativo.");
       setLoading(false);
       return;
