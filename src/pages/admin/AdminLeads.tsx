@@ -192,7 +192,9 @@ const AdminLeads = () => {
         .from("pipeline_panels")
         .select("id,name")
         .order("sort_order", { ascending: true });
-      setAvailablePanels((panels as { id: string; name: string }[]) || []);
+      const loadedPanels = (panels as { id: string; name: string }[]) || [];
+      setAvailablePanels(loadedPanels);
+      setAllPanels(loadedPanels);
     };
     loadClonePermissionAndPanels();
   }, [isAdmin]);
