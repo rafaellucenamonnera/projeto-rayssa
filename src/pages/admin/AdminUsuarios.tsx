@@ -313,6 +313,7 @@ const AdminUsuarios = () => {
                       <th className="text-left py-3 px-4 text-muted-foreground font-medium">Nível</th>
                       <th className="text-left py-3 px-4 text-muted-foreground font-medium">Status</th>
                       <th className="text-left py-3 px-4 text-muted-foreground font-medium">Data</th>
+                      <th className="text-left py-3 px-4 text-muted-foreground font-medium">Resp. cards</th>
                       <th className="text-left py-3 px-4 text-muted-foreground font-medium"></th>
                     </tr>
                   </thead>
