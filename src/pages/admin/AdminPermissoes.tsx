@@ -66,7 +66,7 @@ const AdminPermissoes = () => {
       // Fallback resiliente: lê profiles direto quando a Edge Function estiver indisponível.
       const { data: profiles, error: profilesError } = await (supabase as any)
         .from("profiles")
-        .select("user_id, nome, ativo")
+        .select("user_id, nome, ativo, can_be_responsible")
         .eq("ativo", true)
         .order("nome", { ascending: true });
 
