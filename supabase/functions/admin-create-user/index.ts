@@ -106,6 +106,7 @@ Deno.serve(async (req) => {
           ativo: typeof p?.ativo === 'boolean' ? p.ativo : true,
           status: typeof p?.ativo === 'boolean' ? (p.ativo ? 'ativo' : 'inativo') : 'ativo',
           primeiro_acesso: p?.primeiro_acesso ?? false,
+          can_be_responsible: !!p?.can_be_responsible,
           data_criacao: createdAt,
           created_at: createdAt,
         }
