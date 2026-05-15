@@ -30,7 +30,7 @@ interface ParsedRow {
   parceiro_nome: string;
 }
 
-const REQUIRED_COLUMNS = [
+const REQUIRED_COLUMNS_DEFAULT = [
   "nome_fantasia",
   "razao_social",
   "cnpj",
@@ -43,6 +43,9 @@ const REQUIRED_COLUMNS = [
 ];
 
 const COLUMN_ALIASES: Record<string, string> = {
+  "nome completo": "nome_completo",
+  "e-mail": "e_mail",
+  "região de atuação": "regiao",
   "nome fantasia": "nome_fantasia",
   "razão social": "razao_social",
   "razao social": "razao_social",
