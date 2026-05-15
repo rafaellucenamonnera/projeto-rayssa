@@ -1,42 +1,32 @@
-## Aplicar diff em AdminPipelineEdit.tsx
+## Objetivo
+Aplicar o diff do `src/App.tsx` adicionando a rota dinâmica `/admin/painel/:panelId` que reaproveita `AdminLeads`, permitindo abrir qualquer painel criado dinamicamente em `AdminPipelineEdit`.
 
-### O que muda
-Substitui o fluxo atual (criação por `prompt()` com coluna "Novo" automática) por um formulário inline na própria página:
+## Mudanças
 
-1. **Formulário inline para novo painel**:
-   - Campo de texto `Nome do novo painel` (state `newPanelName`).
-   - Lista editável de colunas (state `newColumns`, inicia com `["Novo"]`).
-   - Botão `+ Coluna` para adicionar e ícone de lixeira para remover (mínimo 1).
-   - Botão "Salvar" com spinner via `creatingPanel`.
+### 1. `src/App.tsx`
+Adicionar a linha:
+```tsx
+<Route path="painel/:panelId" element={<AdminLeads />} />
+```
+logo após `<Route path="painel-campanhas" element={<AdminLeads />} />`, exatamente como no diff. Nada mais é alterado.
 
-2. **Validações na criação**:
-   - Nome obrigatório (trim).
-   - Nome duplicado bloqueado (case-insensitive).
-   - Pelo menos uma coluna não-vazia.
-   - Sem colunas duplicadas (case-insensitive).
+### 2. `src/pages/admin/AdminLeads.tsx` (mínimo necessário para a rota funcionar)
+- Ler `useParams<{ panelId?: string }>()` além do `useLocation` atual.
+- Quando `panelId` existir:
+  - Buscar `pipeline_panels` pelo `id` para obter o `name` e usá-lo como `painelTitle` (fallback: "Painel").
+  - Carregar `pipeline_stages_config` filtrado por `panel_key = panelId` para popular os estágios/colunas exibidos (em vez do mapeamento fixo de `painelTitleMap`).
+- Quando não houver `panelId`, manter 100% do comportamento atual (rotas estáticas `painel-comercial`, `painel-onboarding`, etc. continuam funcionando como hoje).
 
-3. **Criação em lote + rollback**:
-   - Insere o painel e em seguida insere todas as colunas (`pipeline_stages_config`) com `value = etapa_${newId}_${index+1}`.
-   - Se falhar a inserção das colunas, deleta o painel para evitar órfão.
+### 3. `src/components/AdminSidebar.tsx`
+- Carregar `pipeline_panels` (ordenados por `sort_order`) via `useEffect`.
+- Para cada painel retornado pelo banco que **não** corresponda a um dos 4 painéis fixos já listados (comercial, onboarding, sucesso, campanhas — match por `name` case-insensitive), adicionar item extra apontando para `/admin/painel/{panel.id}`.
+- Aplicar o mesmo filtro de permissão: admin vê tudo; não-admin só vê se `canAccessPanel(panel.id)` retornar true (o hook `usePanelPermissions` já usa `panel_id` como chave, então funciona para painéis dinâmicos).
 
-4. **Nova permissão `canManagePanels`**:
-   - Calculada em `loadPermission` checando `module_permissions` com `acao IN ('editar','criar_estagio')` no módulo `configuracao_painel`.
-   - Substitui a checagem `isAdmin` para criação de painéis: usa `(isAdmin || canManagePanels)` no botão Salvar e nos campos do formulário.
-   - Exclusão de painel continua restrita a `isAdmin`.
+## Fora de escopo
+- Não alterar `usePanelPermissions`, RLS, schema do banco, nem o fluxo de criação de painéis em `AdminPipelineEdit` (já implementado).
+- Não mexer em estilos/layout.
 
-5. **Reset pós-criação**: limpa `newPanelName` e volta `newColumns` para `["Novo"]`.
-
-### Escopo
-- Apenas `src/pages/admin/AdminPipelineEdit.tsx`.
-- Sem mudanças de schema, RLS ou backend. Assume que `module_permissions` já suporta `acao IN ('editar','criar_estagio')` no módulo `configuracao_painel`.
-
-### Pontos de atenção
-- O diff remove o uso de `window.prompt()` introduzido na iteração anterior — o formulário inline o substitui.
-- Não há reordenação de colunas no formulário (ordem = ordem de digitação).
-- Usuários não-admin com `canManagePanels` podem criar painéis mas **não** excluir.
-
-### Como testar
-1. `/admin/pipeline/edit` como admin: digitar nome + colunas → Salvar → painel aparece selecionado com as colunas criadas.
-2. Tentar salvar sem nome / com nome duplicado / sem colunas / com colunas duplicadas → toast de erro.
-3. Adicionar/remover colunas via `+ Coluna` e ícone de lixeira.
-4. Como usuário não-admin com permissão `editar`/`criar_estagio` em `configuracao_painel`: deve conseguir criar, mas botão Excluir Painel some.
+## Detalhes técnicos
+- A rota dinâmica fica **dentro** de `<Route path="/admin" element={<AdminLayout />}>`, então `AdminLayout` (com sidebar) é preservado.
+- `useParams` em `AdminLeads` retorna `undefined` para rotas estáticas, então o branch dinâmico fica isolado.
+- Os estágios dinâmicos vêm de `pipeline_stages_config.panel_key = panelId`. Se a tabela retornar vazia, mostrar mensagem "Nenhuma coluna configurada para este painel".
