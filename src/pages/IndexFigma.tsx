@@ -3,7 +3,10 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, ExternalLink, Shield, Users } from "lucide-react";
 
 const FIGMA_EMBED_URL =
-  "https://embed.figma.com/proto/cUG2qr3iNAVehIJkTtA8f5/Ambiente-Parceiros?node-id=102-854&scaling=min-zoom&content-scaling=fixed&page-id=102%3A153&starting-point-node-id=102%3A854&embed-host=share";
+  "https://embed.figma.com/proto/cUG2qr3iNAVehIJkTtA8f5/Ambiente-Parceiros?node-id=102-854&p=f&scaling=min-zoom&content-scaling=fixed&page-id=102%3A153&starting-point-node-id=102%3A854&embed-host=share";
+
+const FIGMA_FILE_URL =
+  "https://www.figma.com/design/cUG2qr3iNAVehIJkTtA8f5/Ambiente-Parceiros?node-id=102-854&p=f";
 
 const IndexFigma = () => {
   const navigate = useNavigate();
@@ -32,9 +35,9 @@ const IndexFigma = () => {
       <section className="mx-auto max-w-7xl px-4 py-5 md:px-8 md:py-8">
         <div className="overflow-hidden rounded-[28px] border border-white/12 bg-[#0b1815] shadow-2xl">
           <div className="flex flex-col gap-3 border-b border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/70 md:flex-row md:items-center md:justify-between md:px-5">
-            <span>Landing page criada no Figma, incorporada ao ambiente de parceiros.</span>
+            <span>Landing page criada no Figma, incorporada ao ambiente de embaixadores.</span>
             <a
-              href="https://www.figma.com/design/cUG2qr3iNAVehIJkTtA8f5/Ambiente-Parceiros?node-id=102-854"
+              href={FIGMA_FILE_URL}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-2 font-semibold text-[#6BB0A1] hover:text-[#8ad0c1]"
@@ -45,7 +48,7 @@ const IndexFigma = () => {
 
           <div className="relative h-[calc(100vh-190px)] min-h-[620px] w-full bg-[#111820]">
             <iframe
-              title="Landing Page Parceiros Monnera"
+              title="Landing Page Embaixadores Monnera"
               src={FIGMA_EMBED_URL}
               allowFullScreen
               className="h-full w-full border-0"
