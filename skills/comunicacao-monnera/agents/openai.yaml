@@ -1,0 +1,8 @@
+interface:
+  display_name: "Comunicacao Monnera"
+  short_description: "Identidade visual e voz da Monnera"
+  brand_color: "#003729"
+  default_prompt: "Use $comunicacao-monnera para criar uma peca visual, layout ou texto de marketing alinhado a identidade da Monnera."
+
+policy:
+  allow_implicit_invocation: true
