@@ -28,7 +28,7 @@ const lazyWithRetry = <T extends { default: ComponentType<any> }>(
   });
 
 // Lazy load pages with prefetch hints
-const Index = lazy(() => import("./pages/Index"));
+const Index = lazy(() => import("./pages/IndexFigma"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const CadastroParceiro = lazy(() => import("./pages/CadastroParceiro"));
 const ConfirmacaoCadastro = lazy(() => import("./pages/ConfirmacaoCadastro"));
