@@ -154,8 +154,10 @@ const CadastroParceiro = () => {
       <Card className="w-full max-w-lg border-border">
         <CardHeader className="text-center space-y-2 px-4 sm:px-6">
           <img src={logoMonnera} alt="Monnera" className="w-12 h-12 rounded-xl mx-auto mb-2" />
-          <CardTitle className="text-xl sm:text-2xl font-display">Cadastro de Embaixador Monnera</CardTitle>
-          <CardDescription className="text-sm">Preencha seus dados para se tornar um embaixador Monnera</CardDescription>
+          <CardTitle className="text-xl sm:text-2xl font-display">Quero ser um Embaixador Monnera</CardTitle>
+          <CardDescription className="text-sm">
+            Indique a Monnera para amigos e empresas que podem gerar mais valor com a nossa solução.
+          </CardDescription>
         </CardHeader>
         <CardContent className="px-4 sm:px-6">
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -196,8 +198,8 @@ const CadastroParceiro = () => {
               <Input id="confirmar_senha" type="password" value={form.confirmar_senha} onChange={(e) => setForm({ ...form, confirmar_senha: e.target.value })} placeholder="Repita a senha" />
               {errors.confirmar_senha && <p className="text-destructive text-sm mt-1">{errors.confirmar_senha}</p>}
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Cadastrando...</> : "Cadastrar"}
+            <Button type="submit" className="w-full bg-[#0f3d2d] font-bold text-white hover:bg-[#14523d]" disabled={loading}>
+              {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Cadastrando...</> : "Quero ser um Embaixador Monnera"}
             </Button>
           </form>
         </CardContent>
