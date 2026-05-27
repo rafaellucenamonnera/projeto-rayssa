@@ -3,7 +3,21 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { MessageSquare, Video, FileText, MessagesSquare, Copy, Download, ChevronDown, Link as LinkIcon, Share2, ExternalLink, ArrowUpRight } from "lucide-react";
+import {
+  ArrowUpRight,
+  ChevronDown,
+  Copy,
+  Download,
+  ExternalLink,
+  FileText,
+  Link as LinkIcon,
+  MessageSquare,
+  MessagesSquare,
+  PlayCircle,
+  Share2,
+  Sparkles,
+  Video,
+} from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -50,7 +64,7 @@ function ExpandIcon({ open }: { open: boolean }) {
   return (
     <ChevronDown
       className={cn(
-        "w-5 h-5 text-primary transition-transform shrink-0",
+        "h-5 w-5 shrink-0 text-[#6BB0A1] transition-transform",
         open ? "rotate-180" : "rotate-0"
       )}
     />
@@ -84,12 +98,70 @@ export function KitVendasSection() {
   }, []);
 
   const cards = [
-    { key: "whatsapp" as const, icon: MessageSquare, title: "WhatsApp", desc: "Mensagens prontas para facilitar suas conversas com leads no WhatsApp" },
-    { key: "videos" as const, icon: Video, title: "Vídeos", desc: "Vídeos prontos para apoiar suas abordagens e tornar a conversa com leads mais clara e envolvente." },
-    { key: "portfolio" as const, icon: FileText, title: "Portfólio", desc: "Portfólio resumido para enviar onde quiser e acrescentar conteúdo nas negociações" },
-    { key: "argumentos" as const, icon: MessagesSquare, title: "Argumentos", desc: "Argumentos de venda organizados para facilitar suas conversas e conduzir leads com mais segurança" },
-    { key: "redes" as const, icon: Share2, title: "Redes Sociais", desc: "Materiais de redes sociais prontos para você compartilhar e fortalecer sua presença digital." },
+    {
+      key: "whatsapp" as const,
+      icon: MessageSquare,
+      title: "WhatsApp",
+      eyebrow: "Primeiro contato",
+      desc: "Mensagens prontas para abrir conversa com clareza, contexto e próximo passo.",
+      count: whatsapp.length,
+    },
+    {
+      key: "videos" as const,
+      icon: Video,
+      title: "Vídeos",
+      eyebrow: "Explicação rápida",
+      desc: "Conteúdos para tornar a solução mais visual e fácil de entender.",
+      count: videos.length,
+    },
+    {
+      key: "portfolio" as const,
+      icon: FileText,
+      title: "Portfólio",
+      eyebrow: "Material institucional",
+      desc: "PDF para enviar quando o lead pedir uma visão mais completa da Monnera.",
+      count: portfolio.length,
+    },
+    {
+      key: "argumentos" as const,
+      icon: MessagesSquare,
+      title: "Argumentos",
+      eyebrow: "Condução da conversa",
+      desc: "Frases e pilares para responder objeções com segurança e naturalidade.",
+      count: argumentos.length,
+    },
+    {
+      key: "redes" as const,
+      icon: Share2,
+      title: "Redes sociais",
+      eyebrow: "Presença digital",
+      desc: "Materiais para reforçar autoridade e manter a Monnera no radar.",
+      count: redes.length,
+    },
   ];
+
+  const dialogCopy: Record<NonNullable<typeof openDialog>, { title: string; intro: string }> = {
+    whatsapp: {
+      title: "WhatsApp",
+      intro: "Escolha a mensagem que combina com o momento da conversa, copie e personalize com o nome do lead.",
+    },
+    videos: {
+      title: "Vídeos",
+      intro: "Use vídeos para explicar a Monnera com mais fluidez depois que o lead demonstrar interesse.",
+    },
+    portfolio: {
+      title: "Portfólio",
+      intro: "Envie o PDF quando a conversa pedir uma visão institucional, comercial ou de continuidade.",
+    },
+    argumentos: {
+      title: "Argumentos",
+      intro: "Use os pilares de conexão, centralização e segurança para conduzir objeções sem exagero comercial.",
+    },
+    redes: {
+      title: "Redes sociais",
+      intro: "Compartilhe materiais prontos para fortalecer presença digital e abrir novas conversas.",
+    },
+  };
 
   const copy = (text: string, msg = "Copiado!") => {
     navigator.clipboard.writeText(text);
@@ -103,38 +175,38 @@ export function KitVendasSection() {
     setOpenDialog(key);
   };
 
-  // ---------- Item renderers ----------
-
   const WhatsAppItem = ({ m }: { m: WMsg }) => {
     const open = !!expanded[m.id];
     return (
-      <div className="rounded-xl bg-secondary/40 border border-border overflow-hidden">
+      <div className="overflow-hidden rounded-lg border border-[#d7e9e4] bg-white">
         <button
           type="button"
           onClick={() => toggle(m.id)}
-          className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-secondary/60 transition-colors"
+          className="flex w-full items-center justify-between gap-3 p-4 text-left transition hover:bg-[#f3faf7]"
         >
           <div className="min-w-0">
-            <p className="font-display font-semibold text-base truncate">{m.titulo}</p>
-            {m.subtitulo && <p className="text-xs text-muted-foreground mt-0.5">{m.subtitulo}</p>}
+            <p className="truncate font-semibold text-[#003729]">{m.titulo}</p>
+            {m.subtitulo && <p className="mt-1 text-xs text-[#587169]">{m.subtitulo}</p>}
           </div>
           <ExpandIcon open={open} />
         </button>
         {open && (
-          <div className="px-4 pb-4 space-y-3 border-t border-border/50 pt-3">
+          <div className="space-y-3 border-t border-[#d7e9e4] px-4 pb-4 pt-3">
             {m.imagem_url && (
-              <div className="rounded-lg overflow-hidden bg-black/20 max-w-xs">
-                <img src={m.imagem_url} alt={m.titulo} className="w-full h-auto" loading="lazy" />
+              <div className="max-w-xs overflow-hidden rounded-md bg-[#003729]/10">
+                <img src={m.imagem_url} alt={m.titulo} className="h-auto w-full" loading="lazy" />
               </div>
             )}
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{m.mensagem}</p>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-[#3d5d54]">{m.mensagem}</p>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" className="h-9 px-3 rounded-lg inline-flex items-center gap-1.5" onClick={() => copy(m.mensagem, "Mensagem copiada!")}>
-                <Copy className="w-3.5 h-3.5 mr-1.5" />Copiar Mensagem
+              <Button size="sm" onClick={() => copy(m.mensagem, "Mensagem copiada!")} className="bg-[#003729] text-white hover:bg-[#064b3a]">
+                <Copy className="mr-2 h-3.5 w-3.5" />
+                Copiar mensagem
               </Button>
               {m.imagem_url && (
-                <Button size="sm" variant="outline" className="h-9 px-3 rounded-lg inline-flex items-center gap-1.5" onClick={() => downloadFile(m.imagem_url!, `${m.titulo}.jpg`)}>
-                  <Download className="w-3.5 h-3.5 mr-1.5" />Baixar Imagem
+                <Button size="sm" variant="outline" onClick={() => downloadFile(m.imagem_url!, `${m.titulo}.jpg`)}>
+                  <Download className="mr-2 h-3.5 w-3.5" />
+                  Baixar imagem
                 </Button>
               )}
             </div>
@@ -149,42 +221,50 @@ export function KitVendasSection() {
     const thumb = v.thumbnail_url || (isYoutube(v.video_url) ? ytThumb(v.video_url) : null);
     const isExternal = isYoutube(v.video_url) || isVimeo(v.video_url);
     return (
-      <div className="rounded-xl bg-secondary/40 border border-border overflow-hidden">
+      <div className="overflow-hidden rounded-lg border border-[#d7e9e4] bg-white">
         <button
           type="button"
           onClick={() => toggle(v.id)}
-          className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-secondary/60 transition-colors"
+          className="flex w-full items-center justify-between gap-3 p-4 text-left transition hover:bg-[#f3faf7]"
         >
-          <div className="min-w-0">
-            <p className="font-display font-semibold text-base truncate">{v.titulo}</p>
-            {v.subtitulo && <p className="text-xs text-muted-foreground mt-0.5">{v.subtitulo}</p>}
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#6BB0A1]/15 text-[#003729]">
+              <PlayCircle className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate font-semibold text-[#003729]">{v.titulo}</p>
+              {v.subtitulo && <p className="mt-1 text-xs text-[#587169]">{v.subtitulo}</p>}
+            </div>
           </div>
           <ExpandIcon open={open} />
         </button>
         {open && (
-          <div className="px-4 pb-4 space-y-3 border-t border-border/50 pt-3">
-            <div className="aspect-video bg-black rounded-lg overflow-hidden">
+          <div className="space-y-3 border-t border-[#d7e9e4] px-4 pb-4 pt-3">
+            <div className="aspect-video overflow-hidden rounded-md bg-[#003729]">
               {isYoutube(v.video_url) ? (
-                <iframe src={ytEmbed(v.video_url)} className="w-full h-full" allowFullScreen title={v.titulo} />
+                <iframe src={ytEmbed(v.video_url)} className="h-full w-full" allowFullScreen title={v.titulo} />
               ) : isVimeo(v.video_url) ? (
-                <iframe src={vimeoEmbed(v.video_url)} className="w-full h-full" allowFullScreen title={v.titulo} />
+                <iframe src={vimeoEmbed(v.video_url)} className="h-full w-full" allowFullScreen title={v.titulo} />
               ) : (
-                <video src={v.video_url} poster={thumb || undefined} controls className="w-full h-full" />
+                <video src={v.video_url} poster={thumb || undefined} controls className="h-full w-full" />
               )}
             </div>
-            {v.descricao && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{v.descricao}</p>}
+            {v.descricao && <p className="whitespace-pre-wrap text-sm leading-relaxed text-[#3d5d54]">{v.descricao}</p>}
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" className="h-9 px-3 rounded-lg inline-flex items-center gap-1.5" onClick={() => copy(v.video_url, "Link copiado!")}>
-                <LinkIcon className="w-3.5 h-3.5 mr-1.5" />Copiar Link
+              <Button size="sm" onClick={() => copy(v.video_url, "Link copiado!")} className="bg-[#003729] text-white hover:bg-[#064b3a]">
+                <LinkIcon className="mr-2 h-3.5 w-3.5" />
+                Copiar link
               </Button>
               {!isExternal ? (
-                <Button size="sm" variant="outline" className="h-9 px-3 rounded-lg inline-flex items-center gap-1.5" onClick={() => downloadFile(v.video_url, `${v.titulo}.mp4`)}>
-                  <Download className="w-3.5 h-3.5 mr-1.5" />Baixar Vídeo
+                <Button size="sm" variant="outline" onClick={() => downloadFile(v.video_url, `${v.titulo}.mp4`)}>
+                  <Download className="mr-2 h-3.5 w-3.5" />
+                  Baixar vídeo
                 </Button>
               ) : (
-                <Button size="sm" variant="outline" className="h-9 px-3 rounded-lg inline-flex items-center gap-1.5 border-zinc-700 bg-zinc-950 text-white hover:bg-zinc-900 hover:text-white" asChild>
+                <Button size="sm" variant="outline" asChild>
                   <a href={v.video_url} target="_blank" rel="noreferrer">
-                    <ArrowUpRight className="w-3.5 h-3.5 mr-1.5" />Abrir
+                    <ArrowUpRight className="mr-2 h-3.5 w-3.5" />
+                    Abrir
                   </a>
                 </Button>
               )}
@@ -198,29 +278,31 @@ export function KitVendasSection() {
   const PortfolioItem = ({ p }: { p: Port }) => {
     const open = !!expanded[p.id];
     return (
-      <div className="rounded-xl bg-secondary/40 border border-border overflow-hidden">
+      <div className="overflow-hidden rounded-lg border border-[#d7e9e4] bg-white">
         <button
           type="button"
           onClick={() => toggle(p.id)}
-          className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-secondary/60 transition-colors"
+          className="flex w-full items-center justify-between gap-3 p-4 text-left transition hover:bg-[#f3faf7]"
         >
           <div className="min-w-0">
-            <p className="font-display font-semibold text-base truncate">{p.titulo}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">PDF</p>
+            <p className="truncate font-semibold text-[#003729]">{p.titulo}</p>
+            <p className="mt-1 text-xs text-[#587169]">PDF institucional</p>
           </div>
           <ExpandIcon open={open} />
         </button>
         {open && (
-          <div className="px-4 pb-4 space-y-3 border-t border-border/50 pt-3">
-            <div className="aspect-[4/3] bg-black/20 rounded-lg overflow-hidden">
-              <iframe src={p.pdf_url} className="w-full h-full" title={p.titulo} />
+          <div className="space-y-3 border-t border-[#d7e9e4] px-4 pb-4 pt-3">
+            <div className="aspect-[4/3] overflow-hidden rounded-md bg-[#003729]/10">
+              <iframe src={p.pdf_url} className="h-full w-full" title={p.titulo} />
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={() => copy(p.pdf_url, "Link copiado!")}>
-                <LinkIcon className="w-3.5 h-3.5 mr-1.5" />Copiar Link
+              <Button size="sm" onClick={() => copy(p.pdf_url, "Link copiado!")} className="bg-[#003729] text-white hover:bg-[#064b3a]">
+                <LinkIcon className="mr-2 h-3.5 w-3.5" />
+                Copiar link
               </Button>
               <Button size="sm" variant="outline" onClick={() => downloadFile(p.pdf_url, `${p.titulo}.pdf`)}>
-                <Download className="w-3.5 h-3.5 mr-1.5" />Baixar PDF
+                <Download className="mr-2 h-3.5 w-3.5" />
+                Baixar PDF
               </Button>
             </div>
           </div>
@@ -229,7 +311,6 @@ export function KitVendasSection() {
     );
   };
 
-  // Group argumentos by pilar
   const argumentosByPilar = argumentos.reduce<Record<string, { descricao: string | null; itens: Arg[] }>>((acc, a) => {
     const key = a.pilar || "Outros";
     if (!acc[key]) acc[key] = { descricao: a.pilar_descricao, itens: [] };
@@ -238,131 +319,144 @@ export function KitVendasSection() {
     return acc;
   }, {});
 
+  const activeCopy = openDialog ? dialogCopy[openDialog] : null;
+
   return (
     <>
-      <Card className="border-border">
-        <CardContent className="p-4 sm:p-6 space-y-6">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-display font-bold">Kit de Vendas</h2>
-          </div>
+      <Card className="overflow-hidden border-white/10 bg-[#f5faf8] text-[#003729] shadow-2xl shadow-black/20">
+        <CardContent className="p-0">
+          <div className="grid gap-0 lg:grid-cols-[0.88fr_1.12fr]">
+            <div className="bg-[#003729] p-5 text-white sm:p-7">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#9fd4c8]">
+                <Sparkles className="h-3.5 w-3.5" />
+                Kit de vendas
+              </div>
+              <h2 className="mt-5 text-3xl font-bold leading-tight">Materiais para abrir conversas com mais clareza.</h2>
+              <p className="mt-4 text-sm leading-relaxed text-white/72">
+                Use o kit como apoio de conversa, não como substituto da relação. Primeiro entenda o contexto do lead,
+                depois escolha o material que ajuda a explicar como a Monnera conecta estratégia, operação e pessoas.
+              </p>
+              <div className="mt-6 grid gap-3 text-sm">
+                {["Identifique a dor", "Envie o material certo", "Cadastre o lead", "Convide o time Monnera"].map((step, index) => (
+                  <div key={step} className="flex items-center gap-3">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[#6BB0A1] text-xs font-bold text-[#003729]">
+                      {index + 1}
+                    </span>
+                    <span className="text-white/82">{step}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-          <div>
-            <h3 className="text-base font-semibold text-muted-foreground mb-2">A Monnera</h3>
-            <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
-              A Monnera é uma solução que ajuda o varejo a alcançar o desempenho extraordinário. Ela atua na operação,
-              aprimorando e automatizando as estratégias de incentivo de vendas.
-              <br /><br />
-              Crie campanhas, premiações e faça pagamentos com conformidade legal. Processos otimizados e com estratégia,
-              tudo dentro de uma única plataforma.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
-            {cards.map((c) => (
-              <button
-                key={c.key}
-                onClick={() => handleCardClick(c.key)}
-                className="text-left rounded-2xl border border-border bg-secondary/40 hover:bg-secondary/70 hover:border-primary/40 transition-all p-5 sm:p-6 flex flex-col items-center text-center gap-3"
-              >
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <c.icon className="w-6 h-6 text-primary" />
-                </div>
-                <p className="text-lg font-display font-semibold">{c.title}</p>
-                <p className="text-xs text-muted-foreground leading-snug">{c.desc}</p>
-              </button>
-            ))}
+            <div className="grid gap-3 p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-3">
+              {cards.map((c) => (
+                <button
+                  key={c.key}
+                  type="button"
+                  onClick={() => handleCardClick(c.key)}
+                  className="group rounded-lg border border-[#d7e9e4] bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-[#6BB0A1] hover:shadow-lg hover:shadow-[#003729]/10"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-md bg-[#6BB0A1]/15 text-[#003729]">
+                      <c.icon className="h-5 w-5" />
+                    </div>
+                    <span className="rounded-full bg-[#eef7f4] px-2 py-1 text-xs font-semibold text-[#2b6d5e]">
+                      {c.count}
+                    </span>
+                  </div>
+                  <p className="mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-[#6b8a82]">{c.eyebrow}</p>
+                  <h3 className="mt-1 text-lg font-bold text-[#003729]">{c.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-[#4f6d65]">{c.desc}</p>
+                  <div className="mt-4 flex items-center gap-2 text-sm font-semibold text-[#00624b]">
+                    Acessar material
+                    <ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* WhatsApp Dialog */}
       <Dialog open={openDialog === "whatsapp"} onOpenChange={(o) => !o && setOpenDialog(null)}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto bg-[#f5faf8] text-[#003729]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-display">
-              <MessageSquare className="w-5 h-5 text-primary" />WhatsApp
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <MessageSquare className="h-5 w-5 text-[#00624b]" />
+              {activeCopy?.title}
             </DialogTitle>
           </DialogHeader>
+          <p className="text-sm leading-relaxed text-[#4f6d65]">{activeCopy?.intro}</p>
           {whatsapp.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhuma mensagem disponível ainda.</p>
+            <p className="text-sm text-[#4f6d65]">Nenhuma mensagem disponível ainda.</p>
           ) : (
-            <div className="space-y-2.5">
-              {whatsapp.map((m) => <WhatsAppItem key={m.id} m={m} />)}
-            </div>
+            <div className="space-y-2.5">{whatsapp.map((m) => <WhatsAppItem key={m.id} m={m} />)}</div>
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Videos Dialog */}
       <Dialog open={openDialog === "videos"} onOpenChange={(o) => !o && setOpenDialog(null)}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto bg-[#f5faf8] text-[#003729]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-display">
-              <Video className="w-5 h-5 text-primary" />Vídeos
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Video className="h-5 w-5 text-[#00624b]" />
+              {activeCopy?.title}
             </DialogTitle>
           </DialogHeader>
+          <p className="text-sm leading-relaxed text-[#4f6d65]">{activeCopy?.intro}</p>
           {videos.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum vídeo disponível ainda.</p>
+            <p className="text-sm text-[#4f6d65]">Nenhum vídeo disponível ainda.</p>
           ) : (
-            <div className="space-y-2.5">
-              {videos.map((v) => <VideoItem key={v.id} v={v} />)}
-            </div>
+            <div className="space-y-2.5">{videos.map((v) => <VideoItem key={v.id} v={v} />)}</div>
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Portfólio Dialog */}
       <Dialog open={openDialog === "portfolio"} onOpenChange={(o) => !o && setOpenDialog(null)}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto bg-[#f5faf8] text-[#003729]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-display">
-              <FileText className="w-5 h-5 text-primary" />Portfólio
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <FileText className="h-5 w-5 text-[#00624b]" />
+              {activeCopy?.title}
             </DialogTitle>
           </DialogHeader>
+          <p className="text-sm leading-relaxed text-[#4f6d65]">{activeCopy?.intro}</p>
           {portfolio.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum portfólio disponível ainda.</p>
+            <p className="text-sm text-[#4f6d65]">Nenhum portfólio disponível ainda.</p>
           ) : (
-            <div className="space-y-2.5">
-              {portfolio.map((p) => <PortfolioItem key={p.id} p={p} />)}
-            </div>
+            <div className="space-y-2.5">{portfolio.map((p) => <PortfolioItem key={p.id} p={p} />)}</div>
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Argumentos Dialog */}
       <Dialog open={openDialog === "argumentos"} onOpenChange={(o) => !o && setOpenDialog(null)}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto bg-[#f5faf8] text-[#003729]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-display">
-              <MessagesSquare className="w-5 h-5 text-primary" />Argumentos
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <MessagesSquare className="h-5 w-5 text-[#00624b]" />
+              {activeCopy?.title}
             </DialogTitle>
           </DialogHeader>
+          <p className="text-sm leading-relaxed text-[#4f6d65]">{activeCopy?.intro}</p>
           {argumentos.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum argumento disponível ainda.</p>
+            <p className="text-sm text-[#4f6d65]">Nenhum argumento disponível ainda.</p>
           ) : (
             <div className="space-y-5">
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                A principal força da nossa solução é o <span className="text-primary font-semibold">jeito monnera</span> de gerir
-                incentivos financeiros, que se baseia em 3 pilares:
-              </p>
               {Object.entries(argumentosByPilar).map(([pilar, { descricao, itens }]) => (
                 <div key={pilar} className="space-y-2.5">
-                  <div>
-                    <p className="font-display font-semibold text-base">
-                      <span className="text-primary">{pilar}:</span>
+                  <div className="rounded-lg bg-[#003729] p-4 text-white">
+                    <p className="font-semibold">
+                      <span className="text-[#9fd4c8]">{pilar}</span>
                     </p>
-                    {descricao && (
-                      <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
-                        {descricao} <span className="text-primary font-medium">Use frases como:</span>
-                      </p>
-                    )}
+                    {descricao && <p className="mt-1 text-sm leading-relaxed text-white/72">{descricao}</p>}
                   </div>
                   <div className="space-y-2">
                     {itens.map((a) => (
-                      <div key={a.id} className="rounded-xl bg-secondary/40 border border-border p-4 flex items-start justify-between gap-3">
-                        <p className="text-sm leading-relaxed">{a.objecao}</p>
+                      <div key={a.id} className="flex items-start justify-between gap-3 rounded-lg border border-[#d7e9e4] bg-white p-4">
+                        <p className="text-sm leading-relaxed text-[#3d5d54]">{a.objecao}</p>
                         <Button size="sm" variant="outline" onClick={() => copy(a.objecao, "Frase copiada!")} className="shrink-0">
-                          <Copy className="w-3.5 h-3.5 mr-1.5" />Copiar
+                          <Copy className="mr-2 h-3.5 w-3.5" />
+                          Copiar
                         </Button>
                       </div>
                     ))}
@@ -374,59 +468,64 @@ export function KitVendasSection() {
         </DialogContent>
       </Dialog>
 
-      {/* Redes Sociais Dialog */}
       <Dialog open={openDialog === "redes"} onOpenChange={(o) => !o && setOpenDialog(null)}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto bg-[#f5faf8] text-[#003729]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-display">
-              <Share2 className="w-5 h-5 text-primary" />Redes Sociais
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Share2 className="h-5 w-5 text-[#00624b]" />
+              {activeCopy?.title}
             </DialogTitle>
           </DialogHeader>
+          <p className="text-sm leading-relaxed text-[#4f6d65]">{activeCopy?.intro}</p>
           {redes.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum material disponível ainda.</p>
+            <p className="text-sm text-[#4f6d65]">Nenhum material disponível ainda.</p>
           ) : (
             <div className="space-y-2.5">
               {redes.map((r) => {
                 const open = !!expanded[r.id];
                 let domain = r.link;
-                try { domain = new URL(r.link).hostname.replace(/^www\./, ""); } catch {}
+                try {
+                  domain = new URL(r.link).hostname.replace(/^www\./, "");
+                } catch {}
                 return (
-                  <div key={r.id} className="rounded-xl bg-secondary/40 border border-border overflow-hidden">
+                  <div key={r.id} className="overflow-hidden rounded-lg border border-[#d7e9e4] bg-white">
                     <button
                       type="button"
                       onClick={() => toggle(r.id)}
-                      className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-secondary/60 transition-colors"
+                      className="flex w-full items-center justify-between gap-3 p-4 text-left transition hover:bg-[#f3faf7]"
                     >
-                      <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex min-w-0 items-center gap-3">
                         {r.imagem_url ? (
-                          <img src={r.imagem_url} alt="" className="w-12 h-12 rounded-md object-cover border border-border shrink-0" loading="lazy" />
+                          <img src={r.imagem_url} alt="" className="h-12 w-12 shrink-0 rounded-md border border-[#d7e9e4] object-cover" loading="lazy" />
                         ) : (
-                          <div className="w-12 h-12 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-                            <Share2 className="w-5 h-5 text-primary" />
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-[#6BB0A1]/15">
+                            <Share2 className="h-5 w-5 text-[#003729]" />
                           </div>
                         )}
                         <div className="min-w-0">
-                          <p className="font-display font-semibold text-base truncate">{r.titulo}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5 truncate">{domain}</p>
+                          <p className="truncate font-semibold text-[#003729]">{r.titulo}</p>
+                          <p className="mt-1 truncate text-xs text-[#587169]">{domain}</p>
                         </div>
                       </div>
                       <ExpandIcon open={open} />
                     </button>
                     {open && (
-                      <div className="px-4 pb-4 space-y-3 border-t border-border/50 pt-3">
+                      <div className="space-y-3 border-t border-[#d7e9e4] px-4 pb-4 pt-3">
                         {r.imagem_url && (
-                          <div className="rounded-lg overflow-hidden bg-black/20 max-w-xs">
-                            <img src={r.imagem_url} alt={r.titulo} className="w-full h-auto" loading="lazy" />
+                          <div className="max-w-xs overflow-hidden rounded-md bg-[#003729]/10">
+                            <img src={r.imagem_url} alt={r.titulo} className="h-auto w-full" loading="lazy" />
                           </div>
                         )}
-                        {r.comentario && <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{r.comentario}</p>}
+                        {r.comentario && <p className="whitespace-pre-wrap text-sm leading-relaxed text-[#3d5d54]">{r.comentario}</p>}
                         <div className="flex flex-wrap gap-2">
-                          <Button size="sm" className="h-9 px-3 rounded-lg inline-flex items-center gap-1.5" onClick={() => copy(r.link, "Link copiado!")}>
-                            <LinkIcon className="w-3.5 h-3.5 mr-1.5" />Copiar Link
+                          <Button size="sm" onClick={() => copy(r.link, "Link copiado!")} className="bg-[#003729] text-white hover:bg-[#064b3a]">
+                            <LinkIcon className="mr-2 h-3.5 w-3.5" />
+                            Copiar link
                           </Button>
-                          <Button size="sm" variant="outline" className="h-9 px-3 rounded-lg inline-flex items-center gap-1.5 border-zinc-700 bg-zinc-950 text-white hover:bg-zinc-900 hover:text-white" asChild>
+                          <Button size="sm" variant="outline" asChild>
                             <a href={r.link} target="_blank" rel="noreferrer">
-                              <ExternalLink className="w-3.5 h-3.5 mr-1.5" />Abrir
+                              <ExternalLink className="mr-2 h-3.5 w-3.5" />
+                              Abrir
                             </a>
                           </Button>
                         </div>

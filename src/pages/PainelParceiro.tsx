@@ -4,12 +4,36 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Copy, Link2, Users, LogOut, Loader2, MessageCircle, Mail, CalendarCheck, FileText, UserCheck, ChevronLeft, PhoneCall, FileSignature, Plus, XCircle, CalendarPlus } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarCheck,
+  CalendarPlus,
+  ChevronLeft,
+  Copy,
+  FileSignature,
+  FileText,
+  Link2,
+  Loader2,
+  LogOut,
+  Mail,
+  MessageCircle,
+  PhoneCall,
+  Plus,
+  Send,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  UserCheck,
+  Users,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { PIPELINE_STAGES, PIPELINE_LABELS } from "@/lib/pipelineConstants";
 import { AddLeadDialog } from "@/components/parceiro/AddLeadDialog";
 import { DaysInStage } from "@/components/admin/DaysInStage";
 import { KitVendasSection } from "@/components/parceiro/KitVendasSection";
+
+const calendarUrl = "https://calendar.app.google/wzotf4LMLcW1vKwo6";
 
 const PainelParceiro = () => {
   const navigate = useNavigate();
@@ -37,7 +61,10 @@ const PainelParceiro = () => {
         .eq("ativo", true)
         .maybeSingle();
 
-      if (!p) { navigate("/login"); return; }
+      if (!p) {
+        navigate("/login");
+        return;
+      }
       if (!p.aprovado) {
         toast.error("Seu cadastro está pendente de aprovação.");
         await supabase.auth.signOut();
@@ -62,7 +89,9 @@ const PainelParceiro = () => {
         : { data: [] as { lead_id: string; data_entrada: string }[] };
       setLeads(leadsData || []);
       const sm: Record<string, string> = {};
-      (stageData || []).forEach((s: any) => { sm[s.lead_id] = s.data_entrada; });
+      (stageData || []).forEach((s: any) => {
+        sm[s.lead_id] = s.data_entrada;
+      });
       setStageMap(sm);
       setLoading(false);
     };
@@ -71,8 +100,8 @@ const PainelParceiro = () => {
 
   if (authLoading || loading || !parceiro) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-[#031611] text-white">
+        <Loader2 className="h-8 w-8 animate-spin text-[#6BB0A1]" />
       </div>
     );
   }
@@ -88,12 +117,12 @@ const PainelParceiro = () => {
   };
 
   const whatsappMsg = encodeURIComponent(
-    `Olá!\n\nGostaria de apresentar o Monnera.\n\nUma plataforma que ajuda empresas a aumentar vendas através de campanhas de incentivo com segurança trabalhista e tributária.\n\nSe fizer sentido para sua empresa, você pode preencher rapidamente neste link:\n\n${linkIndicacao}`
+    `Olá!\n\nQuero te apresentar a Monnera.\n\nA Monnera ajuda empresas do varejo a transformar dados de vendas em campanhas de incentivo mais claras, seguras e eficientes.\n\nSe fizer sentido para sua empresa, você pode preencher rapidamente este link:\n\n${linkIndicacao}`
   );
 
-  const emailSubject = encodeURIComponent("Conheça o Monnera");
+  const emailSubject = encodeURIComponent("Conheça a Monnera");
   const emailBody = encodeURIComponent(
-    `Gostaria de apresentar o Monnera.\n\nUma plataforma que ajuda empresas a aumentar vendas através de campanhas de incentivo com segurança trabalhista e tributária.\n\nCaso tenha interesse, preencha rapidamente neste link:\n\n${linkIndicacao}`
+    `Olá!\n\nQuero te apresentar a Monnera, uma solução que conecta estratégia, operação e pessoas para aprimorar campanhas de incentivo de vendas com mais clareza e segurança.\n\nCaso tenha interesse, preencha rapidamente este link:\n\n${linkIndicacao}`
   );
 
   const handleLogout = async () => {
@@ -101,12 +130,13 @@ const PainelParceiro = () => {
     navigate("/");
   };
 
-  // Status counts
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const leadsThisMonth = leads.filter((l) => new Date(l.data_cadastro) >= startOfMonth).length;
   const statusCounts: Record<string, number> = {};
-  PIPELINE_STAGES.forEach((s) => { statusCounts[s.value] = 0; });
+  PIPELINE_STAGES.forEach((s) => {
+    statusCounts[s.value] = 0;
+  });
   leads.forEach((l) => {
     const s = l.status_lead || l.status || "novo_lead";
     if (statusCounts[s] !== undefined) statusCounts[s]++;
@@ -116,7 +146,8 @@ const PainelParceiro = () => {
     ? leads.filter((l) => (l.status_lead || l.status) === statusFilter)
     : leads;
 
-  const handleStatusClick = (status: string) => {
+  const handleStatusClick = (status: string | null) => {
+    if (!status) return;
     if (statusFilter === status) {
       setStatusFilter(null);
       setSearchParams({});
@@ -142,141 +173,261 @@ const PainelParceiro = () => {
       : { data: [] as { lead_id: string; data_entrada: string }[] };
     setLeads(leadsData || []);
     const sm: Record<string, string> = {};
-    (stageData || []).forEach((s: any) => { sm[s.lead_id] = s.data_entrada; });
+    (stageData || []).forEach((s: any) => {
+      sm[s.lead_id] = s.data_entrada;
+    });
     setStageMap(sm);
   };
 
   const statCards = [
-    { label: "Leads Indicados", value: leads.length, icon: Users, status: null },
-    { label: "Leads este mês", value: leadsThisMonth, icon: CalendarCheck, status: null },
-    { label: "Contato Realizado", value: statusCounts.contato_realizado, icon: PhoneCall, status: "contato_realizado" },
-    { label: "Reuniões Agendadas", value: statusCounts.reuniao_agendada, icon: CalendarCheck, status: "reuniao_agendada" },
-    { label: "Propostas Enviadas", value: statusCounts.proposta_enviada, icon: FileText, status: "proposta_enviada" },
-    { label: "Convertidos", value: statusCounts.lead_convertido, icon: UserCheck, status: "lead_convertido" },
-    { label: "Contratos Assinados", value: statusCounts.contrato_assinado, icon: FileSignature, status: "contrato_assinado" },
-    { label: "Perdidos", value: statusCounts.lead_perdido || 0, icon: XCircle, status: "lead_perdido" },
+    { label: "Leads indicados", helper: "Total em acompanhamento", value: leads.length, icon: Users, status: null },
+    { label: "Leads este mês", helper: "Novas portas abertas", value: leadsThisMonth, icon: CalendarCheck, status: null },
+    { label: "Contato realizado", helper: "Conversas iniciadas", value: statusCounts.contato_realizado, icon: PhoneCall, status: "contato_realizado" },
+    { label: "Reuniões agendadas", helper: "Próximos passos", value: statusCounts.reuniao_agendada, icon: CalendarCheck, status: "reuniao_agendada" },
+    { label: "Propostas enviadas", helper: "Oportunidades em análise", value: statusCounts.proposta_enviada, icon: FileText, status: "proposta_enviada" },
+    { label: "Convertidos", helper: "Leads avançados", value: statusCounts.lead_convertido, icon: UserCheck, status: "lead_convertido" },
+    { label: "Contratos assinados", helper: "Resultado consolidado", value: statusCounts.contrato_assinado, icon: FileSignature, status: "contrato_assinado" },
+    { label: "Perdidos", helper: "Aprendizados do funil", value: statusCounts.lead_perdido || 0, icon: XCircle, status: "lead_perdido" },
+  ];
+
+  const facilidades = [
+    {
+      icon: Target,
+      title: "Aborde com contexto",
+      text: "Use as dores de incentivo, operação e vendas para abrir conversas mais qualificadas.",
+    },
+    {
+      icon: Sparkles,
+      title: "Use materiais prontos",
+      text: "Apoie a conversa com mensagens, vídeos, portfólio e posts alinhados à Monnera.",
+    },
+    {
+      icon: Send,
+      title: "Registre oportunidades",
+      text: "Cadastre o lead e deixe o time Monnera entrar junto no melhor momento.",
+    },
+    {
+      icon: ShieldCheck,
+      title: "Acompanhe a evolução",
+      text: "Veja cada etapa com clareza, do primeiro contato ao contrato assinado.",
+    },
   ];
 
   return (
-    <div className="min-h-screen p-3 sm:p-4 md:p-8">
-      <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6">
-        {/* Header */}
-        <div className="flex items-start sm:items-center justify-between gap-2">
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-display font-bold truncate">Painel do Embaixador Monnera</h1>
-            <p className="text-sm text-muted-foreground truncate">Olá, {parceiro.nome}!</p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Button size="sm" onClick={() => setAddLeadOpen(true)}>
-              <Plus className="mr-1 h-4 w-4" /> <span className="hidden sm:inline">Adicionar Lead</span><span className="sm:hidden">Lead</span>
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              <LogOut className="mr-2 h-4 w-4" /> <span className="hidden sm:inline">Sair</span>
-            </Button>
-          </div>
-        </div>
+    <div className="min-h-screen bg-[#031611] text-white">
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(107,176,161,0.24),transparent_36%),linear-gradient(145deg,#003729_0%,#06261d_46%,#031611_100%)]" />
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#031611] to-transparent" />
 
-        {/* Stat Cards - scrollable on mobile */}
-        <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 lg:grid-cols-7 sm:overflow-visible">
-          {statCards.map((card) => (
-            <div
-              key={card.label}
-              className={`stat-card !p-3 sm:!p-4 cursor-pointer transition-all min-w-[100px] sm:min-w-0 shrink-0 sm:shrink ${statusFilter === card.status && card.status ? "ring-2 ring-primary" : ""}`}
-              onClick={() => card.status && handleStatusClick(card.status)}
-            >
-              <div className="flex flex-col items-center text-center gap-1">
-                <card.icon className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-                <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">{card.label}</p>
-                <p className="text-xl sm:text-2xl font-display font-bold">{card.value}</p>
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-8 sm:pt-8 sm:pb-10">
+          <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#9fd4c8]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#6BB0A1]" />
+                Painel do Embaixador
+              </div>
+              <h1 className="mt-4 text-3xl font-bold leading-tight sm:text-4xl">
+                Olá, {parceiro.nome}. Vamos transformar boas conexões em oportunidades.
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/72 sm:text-base">
+                A Monnera segue junto com você: materiais prontos, orientação comercial e um funil claro para levar
+                mais empresas ao desempenho extraordinário com segurança e inteligência.
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button
+                size="sm"
+                onClick={() => setAddLeadOpen(true)}
+                className="bg-[#6BB0A1] text-[#003729] hover:bg-[#8ed0c2]"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Adicionar lead
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLogout}
+                className="border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Sair
+              </Button>
+            </div>
+          </header>
+
+          <section className="mt-7">
+            <div className="mb-3 flex items-end justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9fd4c8]">Métricas primeiro</p>
+                <h2 className="mt-1 text-xl font-bold">Sua operação em movimento</h2>
+              </div>
+              {statusFilter && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setStatusFilter(null);
+                    setSearchParams({});
+                  }}
+                  className="hidden border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white sm:inline-flex"
+                >
+                  Limpar filtro
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-2 lg:grid lg:grid-cols-4 lg:overflow-visible">
+              {statCards.map((card) => {
+                const selected = statusFilter === card.status && card.status;
+                return (
+                  <button
+                    key={card.label}
+                    type="button"
+                    onClick={() => handleStatusClick(card.status)}
+                    className={`group min-w-[190px] rounded-lg border p-4 text-left transition-all lg:min-w-0 ${
+                      selected
+                        ? "border-[#6BB0A1] bg-[#6BB0A1]/16 shadow-[0_0_0_1px_rgba(107,176,161,0.35)]"
+                        : "border-white/12 bg-white/[0.07] hover:border-[#6BB0A1]/60 hover:bg-white/[0.1]"
+                    } ${card.status ? "cursor-pointer" : "cursor-default"}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="rounded-md border border-white/12 bg-[#003729]/80 p-2 text-[#9fd4c8]">
+                        <card.icon className="h-5 w-5" />
+                      </div>
+                      {card.status && <ArrowRight className="h-4 w-4 text-white/30 transition group-hover:text-[#6BB0A1]" />}
+                    </div>
+                    <p className="mt-5 text-3xl font-bold">{card.value || 0}</p>
+                    <p className="mt-1 text-sm font-semibold text-white">{card.label}</p>
+                    <p className="mt-1 text-xs leading-snug text-white/55">{card.helper}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <main className="max-w-6xl mx-auto space-y-5 px-4 pb-10 sm:px-6 lg:px-8">
+        <Card className="overflow-hidden border-white/10 bg-[#f5faf8] text-[#003729] shadow-2xl shadow-black/20">
+          <CardContent className="grid gap-5 p-4 sm:p-6 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div>
+              <div className="flex items-center gap-2 text-sm font-semibold text-[#2b6d5e]">
+                <Link2 className="h-4 w-4" />
+                Compartilhe sua ponte com novos clientes
+              </div>
+              <h2 className="mt-2 text-2xl font-bold">Seu link de indicação Monnera</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#33584f]">
+                Use este link sempre que abrir uma conversa. Ele conecta o lead ao seu perfil de embaixador e ajuda o
+                time Monnera a acompanhar a oportunidade com contexto.
+              </p>
+              <div className="mt-4 rounded-md border border-[#6BB0A1]/35 bg-white px-3 py-3">
+                <p className="break-all font-mono text-xs text-[#00624b] sm:text-sm">{linkIndicacao}</p>
               </div>
             </div>
-          ))}
-        </div>
-
-        {/* Share Link */}
-        <Card className="border-border">
-          <CardHeader className="p-4 sm:p-6">
-            <CardTitle className="text-base sm:text-lg font-display flex items-center gap-2">
-              <Link2 className="w-5 h-5 text-primary shrink-0" />
-              Meu Link de Indicação
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0 space-y-3 sm:space-y-4">
-            <div className="bg-secondary rounded-lg p-3 sm:p-4">
-              <p className="text-xs sm:text-sm font-mono text-primary break-all">{linkIndicacao}</p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Button variant="outline" size="sm" onClick={copyLink} className="w-full sm:w-auto">
-                <Copy className="mr-2 h-4 w-4" /> Copiar Link
+            <div className="grid gap-2 sm:grid-cols-2 lg:min-w-[360px]">
+              <Button onClick={copyLink} className="justify-start bg-[#003729] text-white shadow-sm hover:bg-[#064b3a]">
+                <Copy className="mr-2 h-4 w-4" />
+                Copiar link
               </Button>
-              <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
+              <Button variant="outline" asChild className="justify-start border-[#00624b] bg-white text-[#003729] hover:bg-[#e7f4f0] hover:text-[#003729]">
                 <a href={`https://wa.me/?text=${whatsappMsg}`} target="_blank" rel="noopener noreferrer">
-                  <MessageCircle className="mr-2 h-4 w-4" /> WhatsApp
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  WhatsApp
                 </a>
               </Button>
-              <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
+              <Button variant="outline" asChild className="justify-start border-[#00624b] bg-white text-[#003729] hover:bg-[#e7f4f0] hover:text-[#003729]">
                 <a href={`mailto:?subject=${emailSubject}&body=${emailBody}`}>
-                  <Mail className="mr-2 h-4 w-4" /> Email
+                  <Mail className="mr-2 h-4 w-4" />
+                  Email
                 </a>
               </Button>
-              <Button size="sm" asChild className="w-full sm:w-auto sm:ml-auto">
-                <a href="https://calendar.app.google/wzotf4LMLcW1vKwo6" target="_blank" rel="noopener noreferrer">
-                  <CalendarPlus className="mr-2 h-4 w-4" /> Agende para o time Monnera
+              <Button variant="outline" asChild className="justify-start border-[#00624b] bg-white text-[#003729] hover:bg-[#e7f4f0] hover:text-[#003729]">
+                <a href={calendarUrl} target="_blank" rel="noopener noreferrer">
+                  <CalendarPlus className="mr-2 h-4 w-4" />
+                  Agendar apoio
                 </a>
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Kit de Vendas */}
         <KitVendasSection />
 
-        {/* Leads */}
-        <Card className="border-border">
+        <section className="grid gap-3 md:grid-cols-4">
+          {facilidades.map((item) => (
+            <div key={item.title} className="rounded-lg border border-white/10 bg-white/[0.06] p-4">
+              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-md bg-[#6BB0A1]/15 text-[#9fd4c8]">
+                <item.icon className="h-5 w-5" />
+              </div>
+              <h3 className="font-semibold text-white">{item.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-white/62">{item.text}</p>
+            </div>
+          ))}
+        </section>
+
+        <Card className="border-white/10 bg-white/[0.06] text-white">
           <CardHeader className="p-4 sm:p-6">
-            <CardTitle className="text-base sm:text-lg font-display">
+            <CardTitle className="flex items-center justify-between gap-3 text-lg">
               {statusFilter ? (
                 <span className="flex items-center gap-2">
-                  <button onClick={() => { setStatusFilter(null); setSearchParams({}); }} className="text-muted-foreground hover:text-foreground">
-                    <ChevronLeft className="w-5 h-5" />
+                  <button
+                    onClick={() => {
+                      setStatusFilter(null);
+                      setSearchParams({});
+                    }}
+                    className="rounded-md p-1 text-white/55 transition hover:bg-white/10 hover:text-white"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
                   </button>
                   {PIPELINE_LABELS[statusFilter] || statusFilter}
                 </span>
-              ) : "Meus Leads"}
+              ) : (
+                "Meus leads"
+              )}
+              <Button
+                size="sm"
+                onClick={() => setAddLeadOpen(true)}
+                className="bg-[#6BB0A1] text-[#003729] hover:bg-[#8ed0c2]"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Novo lead
+              </Button>
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
             {filteredLeads.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8 text-sm">
-                {statusFilter ? "Nenhum lead neste estágio." : "Nenhum lead cadastrado ainda. Compartilhe seu link para começar!"}
-              </p>
+              <div className="rounded-lg border border-dashed border-white/15 bg-white/[0.03] px-4 py-8 text-center">
+                <p className="text-sm text-white/65">
+                  {statusFilter
+                    ? "Nenhum lead neste estágio."
+                    : "Nenhum lead cadastrado ainda. Compartilhe seu link ou adicione uma oportunidade para começar."}
+                </p>
+              </div>
             ) : (
               <>
-                {/* Mobile card view */}
                 <div className="space-y-3 md:hidden">
                   {filteredLeads.map((lead) => (
-                    <div key={lead.id} className="bg-secondary/50 rounded-lg p-3 space-y-2 border border-border/50">
+                    <div key={lead.id} className="rounded-lg border border-white/10 bg-[#07251d] p-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="font-medium text-sm truncate">{lead.nome_fantasia}</p>
-                          <p className="text-xs text-muted-foreground">{lead.cidade}</p>
+                          <p className="truncate text-sm font-semibold">{lead.nome_fantasia}</p>
+                          <p className="text-xs text-white/50">{lead.cidade}</p>
                         </div>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] bg-primary/10 text-primary whitespace-nowrap shrink-0">
+                        <span className="shrink-0 rounded-full bg-[#6BB0A1]/15 px-2 py-0.5 text-[10px] text-[#9fd4c8]">
                           {PIPELINE_LABELS[lead.status_lead || lead.status] || "Lead"}
                         </span>
                       </div>
-                      <div className="grid grid-cols-2 gap-1 text-xs">
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                         <div>
-                          <span className="text-muted-foreground">Responsável: </span>
+                          <span className="text-white/45">Responsável: </span>
                           <span>{lead.nome_responsavel}</span>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Tel: </span>
+                          <span className="text-white/45">Telefone: </span>
                           <span>{lead.telefone_responsavel}</span>
                         </div>
-                        <div className="col-span-2 flex items-center justify-between">
+                        <div className="col-span-2 flex items-center justify-between gap-2">
                           <span>
-                            <span className="text-muted-foreground">Data: </span>
+                            <span className="text-white/45">Data: </span>
                             <span>{new Date(lead.data_cadastro).toLocaleDateString("pt-BR")}</span>
                           </span>
                           <DaysInStage dataEntrada={stageMap[lead.id]} compact />
@@ -286,35 +437,36 @@ const PainelParceiro = () => {
                   ))}
                 </div>
 
-                {/* Desktop table */}
-                <div className="overflow-x-auto hidden md:block">
+                <div className="hidden overflow-x-auto md:block">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left py-3 px-2 text-muted-foreground font-medium">Empresa</th>
-                        <th className="text-left py-3 px-2 text-muted-foreground font-medium">Cidade</th>
-                        <th className="text-left py-3 px-2 text-muted-foreground font-medium">Responsável</th>
-                        <th className="text-left py-3 px-2 text-muted-foreground font-medium">Telefone</th>
-                        <th className="text-left py-3 px-2 text-muted-foreground font-medium">Status</th>
-                        <th className="text-left py-3 px-2 text-muted-foreground font-medium">Data</th>
+                      <tr className="border-b border-white/10">
+                        <th className="px-2 py-3 text-left font-medium text-white/50">Empresa</th>
+                        <th className="px-2 py-3 text-left font-medium text-white/50">Cidade</th>
+                        <th className="px-2 py-3 text-left font-medium text-white/50">Responsável</th>
+                        <th className="px-2 py-3 text-left font-medium text-white/50">Telefone</th>
+                        <th className="px-2 py-3 text-left font-medium text-white/50">Status</th>
+                        <th className="px-2 py-3 text-left font-medium text-white/50">Data</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredLeads.map((lead) => (
-                        <tr key={lead.id} className="border-b border-border/50 hover:bg-secondary/50">
-                          <td className="py-3 px-2">{lead.nome_fantasia}</td>
-                          <td className="py-3 px-2">{lead.cidade}</td>
-                          <td className="py-3 px-2">{lead.nome_responsavel}</td>
-                          <td className="py-3 px-2">{lead.telefone_responsavel}</td>
-                          <td className="py-3 px-2">
+                        <tr key={lead.id} className="border-b border-white/8 transition hover:bg-white/[0.04]">
+                          <td className="px-2 py-3 font-medium">{lead.nome_fantasia}</td>
+                          <td className="px-2 py-3 text-white/72">{lead.cidade}</td>
+                          <td className="px-2 py-3 text-white/72">{lead.nome_responsavel}</td>
+                          <td className="px-2 py-3 text-white/72">{lead.telefone_responsavel}</td>
+                          <td className="px-2 py-3">
                             <div className="space-y-1">
-                              <span className="px-2 py-1 rounded-full text-xs bg-primary/10 text-primary">
+                              <span className="rounded-full bg-[#6BB0A1]/15 px-2 py-1 text-xs text-[#9fd4c8]">
                                 {PIPELINE_LABELS[lead.status_lead || lead.status] || "Lead"}
                               </span>
                               <DaysInStage dataEntrada={stageMap[lead.id]} compact />
                             </div>
                           </td>
-                          <td className="py-3 px-2 text-muted-foreground">{new Date(lead.data_cadastro).toLocaleDateString("pt-BR")}</td>
+                          <td className="px-2 py-3 text-white/55">
+                            {new Date(lead.data_cadastro).toLocaleDateString("pt-BR")}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -324,9 +476,8 @@ const PainelParceiro = () => {
             )}
           </CardContent>
         </Card>
-      </div>
+      </main>
 
-      {/* Add Lead Dialog */}
       <AddLeadDialog
         open={addLeadOpen}
         onOpenChange={setAddLeadOpen}
