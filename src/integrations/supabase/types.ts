@@ -742,8 +742,6 @@ export type Database = {
           aprovado: boolean
           ativo: boolean
           codigo_parceiro: string
-          cliente_monnera: boolean
-          cliente_monnera_cnpj: string | null
           cpf: string
           data_cadastro: string
           email: string
@@ -758,8 +756,6 @@ export type Database = {
           aprovado?: boolean
           ativo?: boolean
           codigo_parceiro: string
-          cliente_monnera?: boolean
-          cliente_monnera_cnpj?: string | null
           cpf: string
           data_cadastro?: string
           email: string
@@ -774,8 +770,6 @@ export type Database = {
           aprovado?: boolean
           ativo?: boolean
           codigo_parceiro?: string
-          cliente_monnera?: boolean
-          cliente_monnera_cnpj?: string | null
           cpf?: string
           data_cadastro?: string
           email?: string
@@ -1345,12 +1339,12 @@ export type Database = {
       register_lead_public: {
         Args: {
           p_email_responsavel: string
-          p_erp_utilizado?: string
+          p_erp_utilizado: string
           p_nome_fantasia: string
           p_nome_responsavel: string
           p_origem?: string
           p_parceiro_id: string
-          p_quantidade_lojas?: number
+          p_quantidade_lojas: number
           p_telefone_responsavel: string
           p_valor_campanhas?: number
         }
@@ -1361,8 +1355,6 @@ export type Database = {
           p_codigo_parceiro: string
           p_cpf: string
           p_email: string
-          p_cliente_monnera?: boolean
-          p_cliente_monnera_cnpj?: string | null
           p_nome: string
           p_slug_consultor: string
           p_telefone_ddd: string
