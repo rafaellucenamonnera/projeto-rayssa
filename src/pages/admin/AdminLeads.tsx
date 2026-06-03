@@ -45,8 +45,8 @@ const FINANCEIRO_REQUIRED_FROM = [
 
 const hasValidFinanceiro = (lead: any) =>
   Number(lead?.valor_setup ?? 0) >= 0 &&
-  Number(lead?.valor_mensalidade ?? 0) > 0 &&
-  Number(lead?.qtd_parcelas ?? 0) > 0 &&
+  Number(lead?.valor_mensalidade ?? 0) >= 0 &&
+  (lead?.comissao_vitalicia === true || Number(lead?.qtd_parcelas ?? 0) > 0) &&
   Number(lead?.quantidade_lojas ?? 0) > 0 &&
   Number(lead?.valor_campanhas ?? 0) >= 0 &&
   lead?.valor_campanhas !== null && lead?.valor_campanhas !== undefined;
