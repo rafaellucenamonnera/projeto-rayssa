@@ -755,43 +755,40 @@ const AdminLeads = () => {
     }
   };
 
+  const buildEditFormData = (lead: any) => ({
+    nome_fantasia: lead.nome_fantasia || "",
+    descricao_necessidade: lead.descricao_necessidade || "",
+    status_lead: lead.status_lead || lead.status || "novo_lead",
+    cidade: lead.cidade || "",
+    nome_responsavel: lead.nome_responsavel || "",
+    canal_tracao: lead.canal_tracao || "",
+    tipo_empresa: lead.tipo_empresa || "",
+    numero_funcionarios: lead.numero_funcionarios != null ? String(lead.numero_funcionarios) : "",
+    volume_premiacao_comissao: lead.volume_premiacao_comissao != null ? String(lead.volume_premiacao_comissao) : "",
+    modelo_campanha: lead.modelo_campanha || "",
+    participantes_reuniao: lead.participantes_reuniao || "",
+    cargo_participante: lead.cargo_participante || "",
+  });
+
   const openLeadDetail = (lead: any) => {
     setDetailLead(lead);
     setEditingNumProposta(lead.numero_proposta || "");
     setIsEditingCard(false);
-    setEditFormData({
-      nome_fantasia: lead.nome_fantasia || "",
-      descricao_necessidade: lead.descricao_necessidade || "",
-      status_lead: lead.status_lead || lead.status || "novo_lead",
-      cidade: lead.cidade || "",
-      nome_responsavel: lead.nome_responsavel || "",
-    });
+    setEditFormData(buildEditFormData(lead));
     setDetailOpen(true);
   };
 
   const startEditCard = (lead: any) => {
     if (!canEditCard && !isAdmin) return;
     setDetailLead(lead);
-    setEditFormData({
-      nome_fantasia: lead.nome_fantasia || "",
-      descricao_necessidade: lead.descricao_necessidade || "",
-      status_lead: lead.status_lead || lead.status || "novo_lead",
-      cidade: lead.cidade || "",
-      nome_responsavel: lead.nome_responsavel || "",
-    });
+    setEditFormData(buildEditFormData(lead));
     setIsEditingCard(true);
     setDetailOpen(true);
   };
 
   const cancelEditCard = () => {
     if (!detailLead) return;
-    setEditFormData({
-      nome_fantasia: detailLead.nome_fantasia || "",
-      descricao_necessidade: detailLead.descricao_necessidade || "",
-      status_lead: detailLead.status_lead || detailLead.status || "novo_lead",
-      cidade: detailLead.cidade || "",
-      nome_responsavel: detailLead.nome_responsavel || "",
-    });
+    setEditFormData(buildEditFormData(detailLead));
     setIsEditingCard(false);
   };
 
