@@ -804,11 +804,18 @@ const AdminLeads = () => {
       return;
     }
     setSavingCard(true);
-    const payload = {
+    const payload: any = {
       nome_fantasia: nome,
       descricao_necessidade: editFormData.descricao_necessidade.trim(),
       cidade: editFormData.cidade.trim(),
       nome_responsavel: editFormData.nome_responsavel?.trim() || null,
+      canal_tracao: editFormData.canal_tracao.trim() || null,
+      tipo_empresa: editFormData.tipo_empresa || null,
+      numero_funcionarios: editFormData.numero_funcionarios ? parseInt(editFormData.numero_funcionarios) : null,
+      volume_premiacao_comissao: editFormData.volume_premiacao_comissao ? parseFloat(editFormData.volume_premiacao_comissao) : null,
+      modelo_campanha: editFormData.modelo_campanha.trim() || null,
+      participantes_reuniao: editFormData.participantes_reuniao.trim() || null,
+      cargo_participante: editFormData.cargo_participante.trim() || null,
     };
     const { error } = await supabase.from("leads").update(payload).eq("id", detailLead.id);
     setSavingCard(false);
