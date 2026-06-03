@@ -393,6 +393,19 @@ const AdminLeads = () => {
       setReuniaoDialogOpen(true);
       return;
     }
+    if (newStatus === "reuniao_realizada") {
+      const { data: reunioesLead } = await (supabase as any)
+        .from("reunioes")
+        .select("id, data_reuniao, horario_reuniao")
+        .eq("lead_id", leadId);
+      const temReuniaoCompleta = (reunioesLead || []).some(
+        (r: any) => r.data_reuniao && r.horario_reuniao,
+      );
+      if (!temReuniaoCompleta) {
+        toast.error("Preencha data e horário de uma reunião antes de marcá-la como realizada.");
+        return;
+      }
+    }
     if (newStatus === "contrato_assinado") {
       if (lead && !lead.dados_completos) {
         toast.error("O cliente precisa preencher o formulário de cadastro completo antes de avançar para Contrato Assinado.");
