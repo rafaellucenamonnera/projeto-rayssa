@@ -221,11 +221,24 @@ export const CadastroFinanceiroDialog = ({
             </div>
           )}
 
-          <div className="space-y-1.5">
-            <Label>Quantidade de parcelas</Label>
-            <Input type="number" min="1" value={form.qtd_parcelas}
-              onChange={(e) => setForm({ ...form, qtd_parcelas: e.target.value })} placeholder="12" />
+          <div className="flex items-center justify-between rounded-md border border-border/60 bg-secondary/40 px-3 py-2">
+            <div className="flex items-center gap-2">
+              <InfinityIcon className="h-4 w-4 text-primary" />
+              <div>
+                <Label className="text-sm">Comissão vitalícia</Label>
+                <p className="text-[11px] text-muted-foreground">Sem prazo de parcelas — Embaixador recebe enquanto o cliente pagar.</p>
+              </div>
+            </div>
+            <Switch checked={comissaoVitalicia} onCheckedChange={setComissaoVitalicia} />
           </div>
+
+          {!comissaoVitalicia && (
+            <div className="space-y-1.5">
+              <Label>Quantidade de parcelas</Label>
+              <Input type="number" min="1" value={form.qtd_parcelas}
+                onChange={(e) => setForm({ ...form, qtd_parcelas: e.target.value })} placeholder="12" />
+            </div>
+          )}
 
           {/* Preview cálculos automáticos */}
           {(mensalidade > 0 || setup > 0) && (
