@@ -48,6 +48,7 @@ export const CadastroFinanceiroDialog = ({
 }: CadastroFinanceiroDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [tipoComissao, setTipoComissao] = useState<"percentual" | "fixo">("percentual");
+  const [comissaoVitalicia, setComissaoVitalicia] = useState<boolean>(false);
   const [form, setForm] = useState({
     consultor_id: parceiroId,
     valor_setup: "",
@@ -60,11 +61,12 @@ export const CadastroFinanceiroDialog = ({
   });
 
   useEffect(() => {
+    setComissaoVitalicia(Boolean(initialData?.comissao_vitalicia));
     setForm((f) => ({
       ...f,
       consultor_id: parceiroId,
-      valor_setup: initialData?.valor_setup ? String(initialData.valor_setup) : f.valor_setup,
-      valor_mensalidade: initialData?.valor_mensalidade ? String(initialData.valor_mensalidade) : f.valor_mensalidade,
+      valor_setup: initialData?.valor_setup != null ? String(initialData.valor_setup) : f.valor_setup,
+      valor_mensalidade: initialData?.valor_mensalidade != null ? String(initialData.valor_mensalidade) : f.valor_mensalidade,
       valor_campanhas: initialData?.valor_campanhas != null ? String(initialData.valor_campanhas) : f.valor_campanhas,
       quantidade_lojas: initialData?.quantidade_lojas ? String(initialData.quantidade_lojas) : f.quantidade_lojas,
       qtd_parcelas: initialData?.qtd_parcelas ? String(initialData.qtd_parcelas) : f.qtd_parcelas,
@@ -76,7 +78,7 @@ export const CadastroFinanceiroDialog = ({
   const mensalidade = parseFloat(form.valor_mensalidade) || 0;
   const campanhas = parseFloat(form.valor_campanhas) || 0;
   const qtdLojas = parseInt(form.quantidade_lojas) || 0;
-  const parcelas = parseInt(form.qtd_parcelas) || 0;
+  const parcelas = comissaoVitalicia ? 0 : parseInt(form.qtd_parcelas) || 0;
 
   const mensalidadeTotal = qtdLojas * mensalidade;
   const valorTotalContrato = setup + (mensalidadeTotal * (parcelas || 1)) + campanhas;
@@ -95,9 +97,9 @@ export const CadastroFinanceiroDialog = ({
 
   const handleSave = async () => {
     if (setup < 0) { toast.error("Valor de setup inválido"); return; }
-    if (mensalidade <= 0) { toast.error("Informe o valor da mensalidade"); return; }
+    if (mensalidade < 0) { toast.error("Mensalidade não pode ser negativa"); return; }
     if (qtdLojas <= 0) { toast.error("Quantidade de lojas deve ser ao menos 1"); return; }
-    if (parcelas <= 0) { toast.error("Informe a quantidade de parcelas"); return; }
+    if (!comissaoVitalicia && parcelas <= 0) { toast.error("Informe a quantidade de parcelas ou marque comissão vitalícia"); return; }
     if (campanhas < 0) { toast.error("Receita de campanhas inválida"); return; }
     if (tipoComissao === "percentual" && (parseFloat(form.percentual_comissao) || 0) <= 0) {
       toast.error("Informe o percentual de comissão"); return;
@@ -118,6 +120,7 @@ export const CadastroFinanceiroDialog = ({
           percentual_consultor: percentualEfetivo,
           qtd_parcelas: parcelas,
           parcelas_pagas: 0,
+          comissao_vitalicia: comissaoVitalicia,
         } as any)
         .eq("id", leadId);
 
@@ -129,6 +132,7 @@ export const CadastroFinanceiroDialog = ({
         valor_campanhas: campanhas,
         percentual_consultor: percentualEfetivo,
         qtd_parcelas: parcelas,
+        comissao_vitalicia: comissaoVitalicia,
       });
       onOpenChange(false);
       toast.success("Dados financeiros salvos!");
