@@ -8,11 +8,24 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 // apenas enriquecem cada cliente por similaridade da razão social.
 // ============================================================================
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const allowedOrigins = ["https://monneracomercial.lovable.app", "https://monneraparceiros.lovable.app", "https://parceiros.monnera.com.br"];
+function isAllowedOrigin(origin: string) {
+  if (!origin) return false;
+  if (allowedOrigins.includes(origin)) return true;
+  if (origin.endsWith(".lovable.app")) return true;
+  if (origin.startsWith("http://localhost:")) return true;
+  if (origin.startsWith("http://127.0.0.1:")) return true;
+  return false;
+}
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("Origin") || "";
+  return {
+    "Access-Control-Allow-Origin": isAllowedOrigin(origin) ? origin : allowedOrigins[0],
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Vary": "Origin",
+  };
+}
 
 const SPREADSHEET_ID = Deno.env.get("GOOGLE_SHEETS_SPREADSHEET_ID")?.trim() || "1Ao69-CKVhwmTxzRAhpHotw3Ny_3kU7Id34k4qLTAyo8";
 const CLIENTS_GID = Deno.env.get("GOOGLE_SHEETS_CLIENTS_GID")?.trim() || "1252292837";
