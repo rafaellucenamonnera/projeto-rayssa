@@ -367,7 +367,7 @@ const AdminLeads = () => {
     loadData();
   }, [isCustomCrmPanel, currentPanelId]);
 
-  const handleStatusChange = (leadId: string, leadName: string, newStatus: string) => {
+  const handleStatusChange = async (leadId: string, leadName: string, newStatus: string) => {
     const lead = leads.find((l) => l.id === leadId);
 
     // Bloqueio financeiro: a partir de "Proposta Enviada" exigir dados completos
