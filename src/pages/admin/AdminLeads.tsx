@@ -443,6 +443,7 @@ const AdminLeads = () => {
     valor_campanhas: number;
     percentual_consultor: number;
     qtd_parcelas: number;
+    comissao_vitalicia: boolean;
   }) => {
     if (!pendingFinanceiro) return;
     const { leadId, leadName, nextStatus } = pendingFinanceiro;
