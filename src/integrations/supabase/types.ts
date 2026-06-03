@@ -214,6 +214,62 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_comment_mentions: {
+        Row: {
+          comment_id: string
+          created_at: string
+          created_by: string
+          id: string
+          lead_id: string
+          mentioned_user_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          lead_id: string
+          mentioned_user_id: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          lead_id?: string
+          mentioned_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_comment_mentions_comment_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "lead_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_comment_mentions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "lead_comment_mentions_lead_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_comment_mentions_mentioned_fkey"
+            columns: ["mentioned_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       lead_comments: {
         Row: {
           comentario: string
@@ -335,41 +391,96 @@ export type Database = {
           },
         ]
       }
+      lead_task_participants: {
+        Row: {
+          created_at: string
+          id: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_task_participants_task_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "lead_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_task_participants_user_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       lead_tasks: {
         Row: {
+          assigned_to: string | null
           completed_at: string | null
           created_at: string
           created_by: string | null
+          due_at: string | null
           due_date: string | null
           id: string
           lead_id: string
+          reminder_24h_sent_at: string | null
+          reminder_48h_sent_at: string | null
           status: string
           titulo: string
           updated_at: string
         }
         Insert: {
+          assigned_to?: string | null
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
+          due_at?: string | null
           due_date?: string | null
           id?: string
           lead_id: string
+          reminder_24h_sent_at?: string | null
+          reminder_48h_sent_at?: string | null
           status?: string
           titulo: string
           updated_at?: string
         }
         Update: {
+          assigned_to?: string | null
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
+          due_at?: string | null
           due_date?: string | null
           id?: string
           lead_id?: string
+          reminder_24h_sent_at?: string | null
+          reminder_48h_sent_at?: string | null
           status?: string
           titulo?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "lead_tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "lead_tasks_created_by_fkey"
             columns: ["created_by"]
@@ -760,6 +871,131 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      notification_deliveries: {
+        Row: {
+          channel: string
+          created_at: string
+          delivery_key: string | null
+          error: string | null
+          id: string
+          notification_id: string
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          delivery_key?: string | null
+          error?: string | null
+          id?: string
+          notification_id: string
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          delivery_key?: string | null
+          error?: string | null
+          id?: string
+          notification_id?: string
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_deliveries_notification_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          action_url: string | null
+          actor_user_id: string | null
+          comment_id: string | null
+          created_at: string
+          id: string
+          lead_id: string | null
+          message: string
+          metadata: Json
+          read_at: string | null
+          recipient_user_id: string
+          task_id: string | null
+          title: string
+          type: string
+        }
+        Insert: {
+          action_url?: string | null
+          actor_user_id?: string | null
+          comment_id?: string | null
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          message: string
+          metadata?: Json
+          read_at?: string | null
+          recipient_user_id: string
+          task_id?: string | null
+          title: string
+          type: string
+        }
+        Update: {
+          action_url?: string | null
+          actor_user_id?: string | null
+          comment_id?: string | null
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          message?: string
+          metadata?: Json
+          read_at?: string | null
+          recipient_user_id?: string
+          task_id?: string | null
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_actor_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "notifications_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "lead_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_recipient_fkey"
+            columns: ["recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "notifications_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "lead_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pagamentos_consultores: {
         Row: {
@@ -1341,6 +1577,22 @@ export type Database = {
         Args: { p_data: Json; p_lojas?: Json; p_token: string }
         Returns: Json
       }
+      create_notification: {
+        Args: {
+          p_action_url?: string
+          p_actor_user_id?: string
+          p_comment_id?: string
+          p_delivery_key?: string
+          p_lead_id?: string
+          p_message: string
+          p_metadata?: Json
+          p_recipient_user_id: string
+          p_task_id?: string
+          p_title: string
+          p_type: string
+        }
+        Returns: string
+      }
       duplicate_card: {
         Args: { card_id: string; target_stage_id: string }
         Returns: string
@@ -1410,6 +1662,11 @@ export type Database = {
           id: string
           nome: string
         }[]
+      }
+      mark_all_notifications_read: { Args: never; Returns: number }
+      mark_notification_read: {
+        Args: { p_notification_id: string }
+        Returns: undefined
       }
       register_lead_public: {
         Args: {
