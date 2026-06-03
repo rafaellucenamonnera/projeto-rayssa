@@ -14,8 +14,8 @@ interface LeadReuniaoProps {
 
 interface Reuniao {
   id: string;
-  data_reuniao: string;
-  horario_reuniao: string;
+  data_reuniao: string | null;
+  horario_reuniao: string | null;
   tipo_reuniao: string;
   link_reuniao: string | null;
   observacao: string | null;
@@ -39,7 +39,7 @@ export const LeadReuniao = ({ leadId, currentStage, onMoveToRealizada }: LeadReu
       .from("reunioes")
       .select("*")
       .eq("lead_id", leadId)
-      .order("data_reuniao", { ascending: false });
+      .order("data_reuniao", { ascending: false, nullsFirst: false });
     setReunioes((data as any) || []);
     setLoading(false);
   };
@@ -48,7 +48,8 @@ export const LeadReuniao = ({ leadId, currentStage, onMoveToRealizada }: LeadReu
     loadReunioes();
   }, [leadId]);
 
-  const isPast = (dataStr: string, horaStr: string) => {
+  const isPast = (dataStr: string | null, horaStr: string | null) => {
+    if (!dataStr || !horaStr) return false;
     const dt = new Date(`${dataStr}T${horaStr}`);
     return dt < new Date();
   };
@@ -92,14 +93,18 @@ export const LeadReuniao = ({ leadId, currentStage, onMoveToRealizada }: LeadReu
         return (
           <div key={r.id} className="bg-secondary/50 rounded-lg p-3 space-y-2">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 text-sm">
+              <div className="flex items-center gap-3 text-sm flex-wrap">
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3 w-3 text-muted-foreground" />
-                  {new Date(r.data_reuniao + "T00:00:00").toLocaleDateString("pt-BR")}
+                  {r.data_reuniao
+                    ? new Date(r.data_reuniao + "T00:00:00").toLocaleDateString("pt-BR")
+                    : <span className="italic text-muted-foreground">sem data</span>}
                 </span>
                 <span className="flex items-center gap-1">
                   <Clock className="h-3 w-3 text-muted-foreground" />
-                  {r.horario_reuniao.slice(0, 5)}
+                  {r.horario_reuniao
+                    ? r.horario_reuniao.slice(0, 5)
+                    : <span className="italic text-muted-foreground">sem horário</span>}
                 </span>
                 <span className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded">
                   {tipoLabel[r.tipo_reuniao] || r.tipo_reuniao}

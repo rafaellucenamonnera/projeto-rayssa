@@ -22,6 +22,7 @@ import { AgendarReuniaoDialog } from "@/components/admin/AgendarReuniaoDialog";
 import { CadastroFinanceiroDialog } from "@/components/admin/CadastroFinanceiroDialog";
 import { LeadComments } from "@/components/admin/LeadComments";
 import { LeadReuniao } from "@/components/admin/LeadReuniao";
+import { LeadTasks } from "@/components/admin/LeadTasks";
 import {
   HEALTH_STATUS_ORDER, IMPACT_ORDER,
   healthStatusColor, impactColor,
@@ -45,8 +46,8 @@ const FINANCEIRO_REQUIRED_FROM = [
 
 const hasValidFinanceiro = (lead: any) =>
   Number(lead?.valor_setup ?? 0) >= 0 &&
-  Number(lead?.valor_mensalidade ?? 0) > 0 &&
-  Number(lead?.qtd_parcelas ?? 0) > 0 &&
+  Number(lead?.valor_mensalidade ?? 0) >= 0 &&
+  (lead?.comissao_vitalicia === true || Number(lead?.qtd_parcelas ?? 0) > 0) &&
   Number(lead?.quantidade_lojas ?? 0) > 0 &&
   Number(lead?.valor_campanhas ?? 0) >= 0 &&
   lead?.valor_campanhas !== null && lead?.valor_campanhas !== undefined;
@@ -119,7 +120,20 @@ const AdminLeads = () => {
     status_lead: string;
     cidade: string;
     nome_responsavel: string;
-  }>({ nome_fantasia: "", descricao_necessidade: "", status_lead: "novo_lead", cidade: "", nome_responsavel: "" });
+    canal_tracao: string;
+    tipo_empresa: string;
+    numero_funcionarios: string;
+    volume_premiacao_comissao: string;
+    modelo_campanha: string;
+    participantes_reuniao: string;
+    cargo_participante: string;
+  }>({
+    nome_fantasia: "", descricao_necessidade: "", status_lead: "novo_lead",
+    cidade: "", nome_responsavel: "",
+    canal_tracao: "", tipo_empresa: "", numero_funcionarios: "",
+    volume_premiacao_comissao: "", modelo_campanha: "",
+    participantes_reuniao: "", cargo_participante: "",
+  });
 
   // Reunião dialog
   const [reuniaoDialogOpen, setReuniaoDialogOpen] = useState(false);
@@ -366,7 +380,7 @@ const AdminLeads = () => {
     loadData();
   }, [isCustomCrmPanel, currentPanelId]);
 
-  const handleStatusChange = (leadId: string, leadName: string, newStatus: string) => {
+  const handleStatusChange = async (leadId: string, leadName: string, newStatus: string) => {
     const lead = leads.find((l) => l.id === leadId);
 
     // Bloqueio financeiro: a partir de "Proposta Enviada" exigir dados completos
@@ -391,6 +405,19 @@ const AdminLeads = () => {
       setPendingReuniao({ leadId, leadName });
       setReuniaoDialogOpen(true);
       return;
+    }
+    if (newStatus === "reuniao_realizada") {
+      const { data: reunioesLead } = await (supabase as any)
+        .from("reunioes")
+        .select("id, data_reuniao, horario_reuniao")
+        .eq("lead_id", leadId);
+      const temReuniaoCompleta = (reunioesLead || []).some(
+        (r: any) => r.data_reuniao && r.horario_reuniao,
+      );
+      if (!temReuniaoCompleta) {
+        toast.error("Preencha data e horário de uma reunião antes de marcá-la como realizada.");
+        return;
+      }
     }
     if (newStatus === "contrato_assinado") {
       if (lead && !lead.dados_completos) {
@@ -442,6 +469,7 @@ const AdminLeads = () => {
     valor_campanhas: number;
     percentual_consultor: number;
     qtd_parcelas: number;
+    comissao_vitalicia: boolean;
   }) => {
     if (!pendingFinanceiro) return;
     const { leadId, leadName, nextStatus } = pendingFinanceiro;
@@ -727,43 +755,40 @@ const AdminLeads = () => {
     }
   };
 
+  const buildEditFormData = (lead: any) => ({
+    nome_fantasia: lead.nome_fantasia || "",
+    descricao_necessidade: lead.descricao_necessidade || "",
+    status_lead: lead.status_lead || lead.status || "novo_lead",
+    cidade: lead.cidade || "",
+    nome_responsavel: lead.nome_responsavel || "",
+    canal_tracao: lead.canal_tracao || "",
+    tipo_empresa: lead.tipo_empresa || "",
+    numero_funcionarios: lead.numero_funcionarios != null ? String(lead.numero_funcionarios) : "",
+    volume_premiacao_comissao: lead.volume_premiacao_comissao != null ? String(lead.volume_premiacao_comissao) : "",
+    modelo_campanha: lead.modelo_campanha || "",
+    participantes_reuniao: lead.participantes_reuniao || "",
+    cargo_participante: lead.cargo_participante || "",
+  });
+
   const openLeadDetail = (lead: any) => {
     setDetailLead(lead);
     setEditingNumProposta(lead.numero_proposta || "");
     setIsEditingCard(false);
-    setEditFormData({
-      nome_fantasia: lead.nome_fantasia || "",
-      descricao_necessidade: lead.descricao_necessidade || "",
-      status_lead: lead.status_lead || lead.status || "novo_lead",
-      cidade: lead.cidade || "",
-      nome_responsavel: lead.nome_responsavel || "",
-    });
+    setEditFormData(buildEditFormData(lead));
     setDetailOpen(true);
   };
 
   const startEditCard = (lead: any) => {
     if (!canEditCard && !isAdmin) return;
     setDetailLead(lead);
-    setEditFormData({
-      nome_fantasia: lead.nome_fantasia || "",
-      descricao_necessidade: lead.descricao_necessidade || "",
-      status_lead: lead.status_lead || lead.status || "novo_lead",
-      cidade: lead.cidade || "",
-      nome_responsavel: lead.nome_responsavel || "",
-    });
+    setEditFormData(buildEditFormData(lead));
     setIsEditingCard(true);
     setDetailOpen(true);
   };
 
   const cancelEditCard = () => {
     if (!detailLead) return;
-    setEditFormData({
-      nome_fantasia: detailLead.nome_fantasia || "",
-      descricao_necessidade: detailLead.descricao_necessidade || "",
-      status_lead: detailLead.status_lead || detailLead.status || "novo_lead",
-      cidade: detailLead.cidade || "",
-      nome_responsavel: detailLead.nome_responsavel || "",
-    });
+    setEditFormData(buildEditFormData(detailLead));
     setIsEditingCard(false);
   };
 
@@ -779,11 +804,18 @@ const AdminLeads = () => {
       return;
     }
     setSavingCard(true);
-    const payload = {
+    const payload: any = {
       nome_fantasia: nome,
       descricao_necessidade: editFormData.descricao_necessidade.trim(),
       cidade: editFormData.cidade.trim(),
       nome_responsavel: editFormData.nome_responsavel?.trim() || null,
+      canal_tracao: editFormData.canal_tracao.trim() || null,
+      tipo_empresa: editFormData.tipo_empresa || null,
+      numero_funcionarios: editFormData.numero_funcionarios ? parseInt(editFormData.numero_funcionarios) : null,
+      volume_premiacao_comissao: editFormData.volume_premiacao_comissao ? parseFloat(editFormData.volume_premiacao_comissao) : null,
+      modelo_campanha: editFormData.modelo_campanha.trim() || null,
+      participantes_reuniao: editFormData.participantes_reuniao.trim() || null,
+      cargo_participante: editFormData.cargo_participante.trim() || null,
     };
     const { error } = await supabase.from("leads").update(payload).eq("id", detailLead.id);
     setSavingCard(false);
@@ -1433,6 +1465,7 @@ const AdminLeads = () => {
           qtd_parcelas: pendingFinanceiro.lead.qtd_parcelas,
           quantidade_lojas: pendingFinanceiro.lead.quantidade_lojas,
           percentual_consultor: pendingFinanceiro.lead.percentual_consultor,
+          comissao_vitalicia: pendingFinanceiro.lead.comissao_vitalicia,
         } : undefined}
         onSaved={handleFinanceiroSaved}
         onCancel={handleFinanceiroCancel}
@@ -1518,6 +1551,60 @@ const AdminLeads = () => {
               <div className="border-t border-border pt-4">
                 <h3 className="text-sm font-semibold mb-3">Embaixador Monnera</h3>
                 <p className="text-sm">{parceiros[detailLead.parceiro_id] || "—"}</p>
+              </div>
+
+              {/* Informações comerciais */}
+              <div className="border-t border-border pt-4 space-y-3">
+                <h3 className="text-sm font-semibold">Informações comerciais</h3>
+                {isEditingCard ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-muted-foreground">Canal de tração</label>
+                      <Input value={editFormData.canal_tracao} onChange={(e) => setEditFormData((p) => ({ ...p, canal_tracao: e.target.value }))} placeholder="Ex: Indicação, Inbound, Evento..." />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-muted-foreground">Tipo de empresa</label>
+                      <Select value={editFormData.tipo_empresa || "none"} onValueChange={(v) => setEditFormData((p) => ({ ...p, tipo_empresa: v === "none" ? "" : v }))}>
+                        <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">—</SelectItem>
+                          <SelectItem value="varejo">Varejo</SelectItem>
+                          <SelectItem value="distribuidor">Distribuidor</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-muted-foreground">Nº de funcionários</label>
+                      <Input type="number" min="0" value={editFormData.numero_funcionarios} onChange={(e) => setEditFormData((p) => ({ ...p, numero_funcionarios: e.target.value }))} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-muted-foreground">Volume de premiação/comissão (R$)</label>
+                      <Input type="number" min="0" step="0.01" value={editFormData.volume_premiacao_comissao} onChange={(e) => setEditFormData((p) => ({ ...p, volume_premiacao_comissao: e.target.value }))} />
+                    </div>
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <label className="text-xs text-muted-foreground">Modelo de campanha</label>
+                      <Input value={editFormData.modelo_campanha} onChange={(e) => setEditFormData((p) => ({ ...p, modelo_campanha: e.target.value }))} placeholder="Ex: Cashback, ranking, meta por loja..." />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-muted-foreground">Participantes da reunião</label>
+                      <Input value={editFormData.participantes_reuniao} onChange={(e) => setEditFormData((p) => ({ ...p, participantes_reuniao: e.target.value }))} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-muted-foreground">Cargo do participante</label>
+                      <Input value={editFormData.cargo_participante} onChange={(e) => setEditFormData((p) => ({ ...p, cargo_participante: e.target.value }))} />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    <div><p className="text-xs text-muted-foreground mb-0.5">Canal de tração</p><p>{detailLead.canal_tracao || "—"}</p></div>
+                    <div><p className="text-xs text-muted-foreground mb-0.5">Tipo de empresa</p><p className="capitalize">{detailLead.tipo_empresa || "—"}</p></div>
+                    <div><p className="text-xs text-muted-foreground mb-0.5">Nº de funcionários</p><p>{detailLead.numero_funcionarios ?? "—"}</p></div>
+                    <div><p className="text-xs text-muted-foreground mb-0.5">Volume de premiação/comissão</p><p>{detailLead.volume_premiacao_comissao != null ? fmt(detailLead.volume_premiacao_comissao) : "—"}</p></div>
+                    <div className="sm:col-span-2"><p className="text-xs text-muted-foreground mb-0.5">Modelo de campanha</p><p>{detailLead.modelo_campanha || "—"}</p></div>
+                    <div><p className="text-xs text-muted-foreground mb-0.5">Participantes da reunião</p><p>{detailLead.participantes_reuniao || "—"}</p></div>
+                    <div><p className="text-xs text-muted-foreground mb-0.5">Cargo do participante</p><p>{detailLead.cargo_participante || "—"}</p></div>
+                  </div>
+                )}
               </div>
 
               {/* Pipeline Status */}
@@ -1736,6 +1823,11 @@ const AdminLeads = () => {
                   </Button>
                 </div>
               )}
+
+              {/* Tarefas */}
+              <div className="border-t border-border pt-4">
+                <LeadTasks leadId={detailLead.id} />
+              </div>
 
               {/* Reuniões */}
               <div className="border-t border-border pt-4">

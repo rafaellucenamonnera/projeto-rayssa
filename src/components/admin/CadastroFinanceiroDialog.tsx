@@ -3,10 +3,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, AlertTriangle } from "lucide-react";
+import { Loader2, AlertTriangle, Infinity as InfinityIcon } from "lucide-react";
 
 interface CadastroFinanceiroDialogProps {
   open: boolean;
@@ -23,6 +24,7 @@ interface CadastroFinanceiroDialogProps {
     qtd_parcelas?: number | null;
     quantidade_lojas?: number | null;
     percentual_consultor?: number | null;
+    comissao_vitalicia?: boolean | null;
   };
   audit?: {
     preenchido_por_nome?: string | null;
@@ -36,6 +38,7 @@ interface CadastroFinanceiroDialogProps {
     valor_campanhas: number;
     percentual_consultor: number;
     qtd_parcelas: number;
+    comissao_vitalicia: boolean;
   }) => void;
   onCancel: () => void;
 }
@@ -45,6 +48,7 @@ export const CadastroFinanceiroDialog = ({
 }: CadastroFinanceiroDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [tipoComissao, setTipoComissao] = useState<"percentual" | "fixo">("percentual");
+  const [comissaoVitalicia, setComissaoVitalicia] = useState<boolean>(false);
   const [form, setForm] = useState({
     consultor_id: parceiroId,
     valor_setup: "",
@@ -57,11 +61,12 @@ export const CadastroFinanceiroDialog = ({
   });
 
   useEffect(() => {
+    setComissaoVitalicia(Boolean(initialData?.comissao_vitalicia));
     setForm((f) => ({
       ...f,
       consultor_id: parceiroId,
-      valor_setup: initialData?.valor_setup ? String(initialData.valor_setup) : f.valor_setup,
-      valor_mensalidade: initialData?.valor_mensalidade ? String(initialData.valor_mensalidade) : f.valor_mensalidade,
+      valor_setup: initialData?.valor_setup != null ? String(initialData.valor_setup) : f.valor_setup,
+      valor_mensalidade: initialData?.valor_mensalidade != null ? String(initialData.valor_mensalidade) : f.valor_mensalidade,
       valor_campanhas: initialData?.valor_campanhas != null ? String(initialData.valor_campanhas) : f.valor_campanhas,
       quantidade_lojas: initialData?.quantidade_lojas ? String(initialData.quantidade_lojas) : f.quantidade_lojas,
       qtd_parcelas: initialData?.qtd_parcelas ? String(initialData.qtd_parcelas) : f.qtd_parcelas,
@@ -73,7 +78,7 @@ export const CadastroFinanceiroDialog = ({
   const mensalidade = parseFloat(form.valor_mensalidade) || 0;
   const campanhas = parseFloat(form.valor_campanhas) || 0;
   const qtdLojas = parseInt(form.quantidade_lojas) || 0;
-  const parcelas = parseInt(form.qtd_parcelas) || 0;
+  const parcelas = comissaoVitalicia ? 0 : parseInt(form.qtd_parcelas) || 0;
 
   const mensalidadeTotal = qtdLojas * mensalidade;
   const valorTotalContrato = setup + (mensalidadeTotal * (parcelas || 1)) + campanhas;
@@ -92,9 +97,9 @@ export const CadastroFinanceiroDialog = ({
 
   const handleSave = async () => {
     if (setup < 0) { toast.error("Valor de setup inválido"); return; }
-    if (mensalidade <= 0) { toast.error("Informe o valor da mensalidade"); return; }
+    if (mensalidade < 0) { toast.error("Mensalidade não pode ser negativa"); return; }
     if (qtdLojas <= 0) { toast.error("Quantidade de lojas deve ser ao menos 1"); return; }
-    if (parcelas <= 0) { toast.error("Informe a quantidade de parcelas"); return; }
+    if (!comissaoVitalicia && parcelas <= 0) { toast.error("Informe a quantidade de parcelas ou marque comissão vitalícia"); return; }
     if (campanhas < 0) { toast.error("Receita de campanhas inválida"); return; }
     if (tipoComissao === "percentual" && (parseFloat(form.percentual_comissao) || 0) <= 0) {
       toast.error("Informe o percentual de comissão"); return;
@@ -115,6 +120,7 @@ export const CadastroFinanceiroDialog = ({
           percentual_consultor: percentualEfetivo,
           qtd_parcelas: parcelas,
           parcelas_pagas: 0,
+          comissao_vitalicia: comissaoVitalicia,
         } as any)
         .eq("id", leadId);
 
@@ -126,6 +132,7 @@ export const CadastroFinanceiroDialog = ({
         valor_campanhas: campanhas,
         percentual_consultor: percentualEfetivo,
         qtd_parcelas: parcelas,
+        comissao_vitalicia: comissaoVitalicia,
       });
       onOpenChange(false);
       toast.success("Dados financeiros salvos!");
@@ -180,7 +187,7 @@ export const CadastroFinanceiroDialog = ({
             <div className="space-y-1.5">
               <Label>Mensalidade por loja (R$)</Label>
               <Input type="number" min="0" step="0.01" value={form.valor_mensalidade}
-                onChange={(e) => setForm({ ...form, valor_mensalidade: e.target.value })} placeholder="1000.00" />
+                onChange={(e) => setForm({ ...form, valor_mensalidade: e.target.value })} placeholder="0,00" />
             </div>
             <div className="space-y-1.5">
               <Label>Quantidade de lojas</Label>
@@ -214,11 +221,24 @@ export const CadastroFinanceiroDialog = ({
             </div>
           )}
 
-          <div className="space-y-1.5">
-            <Label>Quantidade de parcelas</Label>
-            <Input type="number" min="1" value={form.qtd_parcelas}
-              onChange={(e) => setForm({ ...form, qtd_parcelas: e.target.value })} placeholder="12" />
+          <div className="flex items-center justify-between rounded-md border border-border/60 bg-secondary/40 px-3 py-2">
+            <div className="flex items-center gap-2">
+              <InfinityIcon className="h-4 w-4 text-primary" />
+              <div>
+                <Label className="text-sm">Comissão vitalícia</Label>
+                <p className="text-[11px] text-muted-foreground">Sem prazo de parcelas — Embaixador recebe enquanto o cliente pagar.</p>
+              </div>
+            </div>
+            <Switch checked={comissaoVitalicia} onCheckedChange={setComissaoVitalicia} />
           </div>
+
+          {!comissaoVitalicia && (
+            <div className="space-y-1.5">
+              <Label>Quantidade de parcelas</Label>
+              <Input type="number" min="1" value={form.qtd_parcelas}
+                onChange={(e) => setForm({ ...form, qtd_parcelas: e.target.value })} placeholder="12" />
+            </div>
+          )}
 
           {/* Preview cálculos automáticos */}
           {(mensalidade > 0 || setup > 0) && (

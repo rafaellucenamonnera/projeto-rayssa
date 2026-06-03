@@ -29,16 +29,8 @@ export const AgendarReuniaoDialog = ({ open, onOpenChange, leadId, leadName, onC
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const validate = () => {
-    const errs: Record<string, string> = {};
-    if (!form.data_reuniao) errs.data_reuniao = "Obrigatório";
-    if (!form.horario_reuniao) errs.horario_reuniao = "Obrigatório";
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
-
   const handleConfirm = async () => {
-    if (!validate()) return;
+    setErrors({});
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -46,8 +38,8 @@ export const AgendarReuniaoDialog = ({ open, onOpenChange, leadId, leadName, onC
 
       const { error } = await supabase.from("reunioes").insert({
         lead_id: leadId,
-        data_reuniao: form.data_reuniao,
-        horario_reuniao: form.horario_reuniao,
+        data_reuniao: form.data_reuniao || null,
+        horario_reuniao: form.horario_reuniao || null,
         tipo_reuniao: form.tipo_reuniao,
         link_reuniao: form.link_reuniao || null,
         observacao: form.observacao || null,
@@ -85,16 +77,17 @@ export const AgendarReuniaoDialog = ({ open, onOpenChange, leadId, leadName, onC
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Data da reunião *</Label>
+              <Label>Data da reunião</Label>
               <Input type="date" value={form.data_reuniao} onChange={(e) => setForm({ ...form, data_reuniao: e.target.value })} />
               {errors.data_reuniao && <p className="text-destructive text-xs">{errors.data_reuniao}</p>}
             </div>
             <div className="space-y-1.5">
-              <Label>Horário *</Label>
+              <Label>Horário</Label>
               <Input type="time" value={form.horario_reuniao} onChange={(e) => setForm({ ...form, horario_reuniao: e.target.value })} />
               {errors.horario_reuniao && <p className="text-destructive text-xs">{errors.horario_reuniao}</p>}
             </div>
           </div>
+          <p className="text-[11px] text-muted-foreground -mt-2">Data e horário são opcionais — serão exigidos ao mover para "Reunião realizada".</p>
           <div className="space-y-1.5">
             <Label>Tipo de reunião</Label>
             <Select value={form.tipo_reuniao} onValueChange={(v) => setForm({ ...form, tipo_reuniao: v })}>
