@@ -14,8 +14,8 @@ interface LeadReuniaoProps {
 
 interface Reuniao {
   id: string;
-  data_reuniao: string;
-  horario_reuniao: string;
+  data_reuniao: string | null;
+  horario_reuniao: string | null;
   tipo_reuniao: string;
   link_reuniao: string | null;
   observacao: string | null;
@@ -39,7 +39,7 @@ export const LeadReuniao = ({ leadId, currentStage, onMoveToRealizada }: LeadReu
       .from("reunioes")
       .select("*")
       .eq("lead_id", leadId)
-      .order("data_reuniao", { ascending: false });
+      .order("data_reuniao", { ascending: false, nullsFirst: false });
     setReunioes((data as any) || []);
     setLoading(false);
   };
@@ -48,7 +48,8 @@ export const LeadReuniao = ({ leadId, currentStage, onMoveToRealizada }: LeadReu
     loadReunioes();
   }, [leadId]);
 
-  const isPast = (dataStr: string, horaStr: string) => {
+  const isPast = (dataStr: string | null, horaStr: string | null) => {
+    if (!dataStr || !horaStr) return false;
     const dt = new Date(`${dataStr}T${horaStr}`);
     return dt < new Date();
   };
