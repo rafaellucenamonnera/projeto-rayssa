@@ -8,11 +8,24 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 // apenas enriquecem cada cliente por similaridade da razão social.
 // ============================================================================
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const allowedOrigins = ["https://monneracomercial.lovable.app", "https://monneraparceiros.lovable.app", "https://parceiros.monnera.com.br"];
+function isAllowedOrigin(origin: string) {
+  if (!origin) return false;
+  if (allowedOrigins.includes(origin)) return true;
+  if (origin.endsWith(".lovable.app")) return true;
+  if (origin.startsWith("http://localhost:")) return true;
+  if (origin.startsWith("http://127.0.0.1:")) return true;
+  return false;
+}
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("Origin") || "";
+  return {
+    "Access-Control-Allow-Origin": isAllowedOrigin(origin) ? origin : allowedOrigins[0],
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Vary": "Origin",
+  };
+}
 
 const SPREADSHEET_ID = Deno.env.get("GOOGLE_SHEETS_SPREADSHEET_ID")?.trim() || "1Ao69-CKVhwmTxzRAhpHotw3Ny_3kU7Id34k4qLTAyo8";
 const CLIENTS_GID = Deno.env.get("GOOGLE_SHEETS_CLIENTS_GID")?.trim() || "1252292837";
@@ -155,6 +168,7 @@ const extractPrimaryNumericValue = (row: Record<string, string>) => {
 };
 
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ success: false, error: "Method not allowed" }), {
@@ -162,11 +176,34 @@ Deno.serve(async (req) => {
     });
   }
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    { auth: { persistSession: false } },
-  );
+  // ---- Auth: require authenticated admin or gestor_conta ----
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const authClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: authHeader } },
+    auth: { persistSession: false },
+  });
+  const { data: userData, error: userErr } = await authClient.auth.getUser();
+  if (userErr || !userData?.user) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  const supabase = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+  const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", userData.user.id);
+  const allowed = (roles || []).some((r: { role: string }) => r.role === "admin" || r.role === "gestor_conta");
+  if (!allowed) {
+    return new Response(JSON.stringify({ error: "Forbidden" }), {
+      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   console.log("[sync-drive-clients] Início (fonte: aba Clientes gid=", CLIENTS_GID, ")");
 
