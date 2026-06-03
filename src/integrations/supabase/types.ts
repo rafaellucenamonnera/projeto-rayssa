@@ -335,15 +335,69 @@ export type Database = {
           },
         ]
       }
+      lead_tasks: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          due_date: string | null
+          id: string
+          lead_id: string
+          status: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          id?: string
+          lead_id: string
+          status?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          id?: string
+          lead_id?: string
+          status?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "lead_tasks_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           campaign_status_current: string | null
           campaign_status_current_month: string | null
           campaign_status_previous: string | null
           campaign_status_previous_month: string | null
+          canal_tracao: string | null
+          cargo_participante: string | null
           categoria: string | null
           cidade: string | null
           cnpj: string | null
+          comissao_vitalicia: boolean
           completion_token: string | null
           consultor: string | null
           contrato_url: string | null
@@ -358,12 +412,12 @@ export type Database = {
           data_cadastro: string
           data_contrato_assinado: string | null
           descricao_necessidade: string | null
-          email_responsavel: string
+          email_responsavel: string | null
           endereco_cep: string | null
           endereco_estado: string | null
           endereco_numero: string | null
           endereco_rua: string | null
-          erp_utilizado: string
+          erp_utilizado: string | null
           financeiro_editado_em: string | null
           financeiro_editado_por: string | null
           financeiro_preenchido_em: string | null
@@ -373,19 +427,22 @@ export type Database = {
           impact_level: string | null
           impacto: string | null
           juros_recebidos: number | null
+          modelo_campanha: string | null
           motivo_perda: string | null
           multas_recebidas: number | null
           nome_fantasia: string
           nome_responsavel: string
+          numero_funcionarios: number | null
           numero_proposta: string | null
           origem: string
           parceiro_id: string
           parcelas_pagas: number | null
+          participantes_reuniao: string | null
           percentual_consultor: number | null
           proposta_url: string | null
           qtd_parcelas: number | null
           quantidade_funcionarios: number | null
-          quantidade_lojas: number
+          quantidade_lojas: number | null
           razao_social: string | null
           receita_taxa_boleto: number | null
           responsavel_comercial_email: string | null
@@ -408,6 +465,7 @@ export type Database = {
           status: string
           status_lead: string
           telefone_responsavel: string
+          tipo_empresa: string | null
           valor_campanhas: number | null
           valor_campanhas_anterior: number | null
           valor_mensalidade: number | null
@@ -415,15 +473,19 @@ export type Database = {
           valor_pagamento: number | null
           valor_pagamento_anterior: number | null
           valor_setup: number | null
+          volume_premiacao_comissao: number | null
         }
         Insert: {
           campaign_status_current?: string | null
           campaign_status_current_month?: string | null
           campaign_status_previous?: string | null
           campaign_status_previous_month?: string | null
+          canal_tracao?: string | null
+          cargo_participante?: string | null
           categoria?: string | null
           cidade?: string | null
           cnpj?: string | null
+          comissao_vitalicia?: boolean
           completion_token?: string | null
           consultor?: string | null
           contrato_url?: string | null
@@ -438,12 +500,12 @@ export type Database = {
           data_cadastro?: string
           data_contrato_assinado?: string | null
           descricao_necessidade?: string | null
-          email_responsavel: string
+          email_responsavel?: string | null
           endereco_cep?: string | null
           endereco_estado?: string | null
           endereco_numero?: string | null
           endereco_rua?: string | null
-          erp_utilizado: string
+          erp_utilizado?: string | null
           financeiro_editado_em?: string | null
           financeiro_editado_por?: string | null
           financeiro_preenchido_em?: string | null
@@ -453,19 +515,22 @@ export type Database = {
           impact_level?: string | null
           impacto?: string | null
           juros_recebidos?: number | null
+          modelo_campanha?: string | null
           motivo_perda?: string | null
           multas_recebidas?: number | null
           nome_fantasia: string
           nome_responsavel: string
+          numero_funcionarios?: number | null
           numero_proposta?: string | null
           origem?: string
           parceiro_id: string
           parcelas_pagas?: number | null
+          participantes_reuniao?: string | null
           percentual_consultor?: number | null
           proposta_url?: string | null
           qtd_parcelas?: number | null
           quantidade_funcionarios?: number | null
-          quantidade_lojas: number
+          quantidade_lojas?: number | null
           razao_social?: string | null
           receita_taxa_boleto?: number | null
           responsavel_comercial_email?: string | null
@@ -488,6 +553,7 @@ export type Database = {
           status?: string
           status_lead?: string
           telefone_responsavel: string
+          tipo_empresa?: string | null
           valor_campanhas?: number | null
           valor_campanhas_anterior?: number | null
           valor_mensalidade?: number | null
@@ -495,15 +561,19 @@ export type Database = {
           valor_pagamento?: number | null
           valor_pagamento_anterior?: number | null
           valor_setup?: number | null
+          volume_premiacao_comissao?: number | null
         }
         Update: {
           campaign_status_current?: string | null
           campaign_status_current_month?: string | null
           campaign_status_previous?: string | null
           campaign_status_previous_month?: string | null
+          canal_tracao?: string | null
+          cargo_participante?: string | null
           categoria?: string | null
           cidade?: string | null
           cnpj?: string | null
+          comissao_vitalicia?: boolean
           completion_token?: string | null
           consultor?: string | null
           contrato_url?: string | null
@@ -518,12 +588,12 @@ export type Database = {
           data_cadastro?: string
           data_contrato_assinado?: string | null
           descricao_necessidade?: string | null
-          email_responsavel?: string
+          email_responsavel?: string | null
           endereco_cep?: string | null
           endereco_estado?: string | null
           endereco_numero?: string | null
           endereco_rua?: string | null
-          erp_utilizado?: string
+          erp_utilizado?: string | null
           financeiro_editado_em?: string | null
           financeiro_editado_por?: string | null
           financeiro_preenchido_em?: string | null
@@ -533,19 +603,22 @@ export type Database = {
           impact_level?: string | null
           impacto?: string | null
           juros_recebidos?: number | null
+          modelo_campanha?: string | null
           motivo_perda?: string | null
           multas_recebidas?: number | null
           nome_fantasia?: string
           nome_responsavel?: string
+          numero_funcionarios?: number | null
           numero_proposta?: string | null
           origem?: string
           parceiro_id?: string
           parcelas_pagas?: number | null
+          participantes_reuniao?: string | null
           percentual_consultor?: number | null
           proposta_url?: string | null
           qtd_parcelas?: number | null
           quantidade_funcionarios?: number | null
-          quantidade_lojas?: number
+          quantidade_lojas?: number | null
           razao_social?: string | null
           receita_taxa_boleto?: number | null
           responsavel_comercial_email?: string | null
@@ -568,6 +641,7 @@ export type Database = {
           status?: string
           status_lead?: string
           telefone_responsavel?: string
+          tipo_empresa?: string | null
           valor_campanhas?: number | null
           valor_campanhas_anterior?: number | null
           valor_mensalidade?: number | null
@@ -575,6 +649,7 @@ export type Database = {
           valor_pagamento?: number | null
           valor_pagamento_anterior?: number | null
           valor_setup?: number | null
+          volume_premiacao_comissao?: number | null
         }
         Relationships: [
           {
@@ -1127,10 +1202,10 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
-          data_reuniao: string
+          data_reuniao: string | null
           google_event_id: string | null
           google_meet_link: string | null
-          horario_reuniao: string
+          horario_reuniao: string | null
           id: string
           lead_id: string
           link_reuniao: string | null
@@ -1142,10 +1217,10 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by: string
-          data_reuniao: string
+          data_reuniao?: string | null
           google_event_id?: string | null
           google_meet_link?: string | null
-          horario_reuniao: string
+          horario_reuniao?: string | null
           id?: string
           lead_id: string
           link_reuniao?: string | null
@@ -1157,10 +1232,10 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
-          data_reuniao?: string
+          data_reuniao?: string | null
           google_event_id?: string | null
           google_meet_link?: string | null
-          horario_reuniao?: string
+          horario_reuniao?: string | null
           id?: string
           lead_id?: string
           link_reuniao?: string | null
@@ -1338,14 +1413,16 @@ export type Database = {
       }
       register_lead_public: {
         Args: {
+          p_canal_tracao?: string
           p_email_responsavel: string
-          p_erp_utilizado: string
+          p_erp_utilizado?: string
           p_nome_fantasia: string
           p_nome_responsavel: string
           p_origem?: string
           p_parceiro_id: string
-          p_quantidade_lojas: number
+          p_quantidade_lojas?: number
           p_telefone_responsavel: string
+          p_tipo_empresa?: string
           p_valor_campanhas?: number
         }
         Returns: string
