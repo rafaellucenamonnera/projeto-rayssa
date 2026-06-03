@@ -120,7 +120,20 @@ const AdminLeads = () => {
     status_lead: string;
     cidade: string;
     nome_responsavel: string;
-  }>({ nome_fantasia: "", descricao_necessidade: "", status_lead: "novo_lead", cidade: "", nome_responsavel: "" });
+    canal_tracao: string;
+    tipo_empresa: string;
+    numero_funcionarios: string;
+    volume_premiacao_comissao: string;
+    modelo_campanha: string;
+    participantes_reuniao: string;
+    cargo_participante: string;
+  }>({
+    nome_fantasia: "", descricao_necessidade: "", status_lead: "novo_lead",
+    cidade: "", nome_responsavel: "",
+    canal_tracao: "", tipo_empresa: "", numero_funcionarios: "",
+    volume_premiacao_comissao: "", modelo_campanha: "",
+    participantes_reuniao: "", cargo_participante: "",
+  });
 
   // Reunião dialog
   const [reuniaoDialogOpen, setReuniaoDialogOpen] = useState(false);
