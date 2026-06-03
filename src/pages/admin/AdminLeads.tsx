@@ -22,6 +22,7 @@ import { AgendarReuniaoDialog } from "@/components/admin/AgendarReuniaoDialog";
 import { CadastroFinanceiroDialog } from "@/components/admin/CadastroFinanceiroDialog";
 import { LeadComments } from "@/components/admin/LeadComments";
 import { LeadReuniao } from "@/components/admin/LeadReuniao";
+import { LeadTasks } from "@/components/admin/LeadTasks";
 import {
   HEALTH_STATUS_ORDER, IMPACT_ORDER,
   healthStatusColor, impactColor,
