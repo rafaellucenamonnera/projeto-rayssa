@@ -1553,6 +1553,60 @@ const AdminLeads = () => {
                 <p className="text-sm">{parceiros[detailLead.parceiro_id] || "—"}</p>
               </div>
 
+              {/* Informações comerciais */}
+              <div className="border-t border-border pt-4 space-y-3">
+                <h3 className="text-sm font-semibold">Informações comerciais</h3>
+                {isEditingCard ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-muted-foreground">Canal de tração</label>
+                      <Input value={editFormData.canal_tracao} onChange={(e) => setEditFormData((p) => ({ ...p, canal_tracao: e.target.value }))} placeholder="Ex: Indicação, Inbound, Evento..." />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-muted-foreground">Tipo de empresa</label>
+                      <Select value={editFormData.tipo_empresa || "none"} onValueChange={(v) => setEditFormData((p) => ({ ...p, tipo_empresa: v === "none" ? "" : v }))}>
+                        <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">—</SelectItem>
+                          <SelectItem value="varejo">Varejo</SelectItem>
+                          <SelectItem value="distribuidor">Distribuidor</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-muted-foreground">Nº de funcionários</label>
+                      <Input type="number" min="0" value={editFormData.numero_funcionarios} onChange={(e) => setEditFormData((p) => ({ ...p, numero_funcionarios: e.target.value }))} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-muted-foreground">Volume de premiação/comissão (R$)</label>
+                      <Input type="number" min="0" step="0.01" value={editFormData.volume_premiacao_comissao} onChange={(e) => setEditFormData((p) => ({ ...p, volume_premiacao_comissao: e.target.value }))} />
+                    </div>
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <label className="text-xs text-muted-foreground">Modelo de campanha</label>
+                      <Input value={editFormData.modelo_campanha} onChange={(e) => setEditFormData((p) => ({ ...p, modelo_campanha: e.target.value }))} placeholder="Ex: Cashback, ranking, meta por loja..." />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-muted-foreground">Participantes da reunião</label>
+                      <Input value={editFormData.participantes_reuniao} onChange={(e) => setEditFormData((p) => ({ ...p, participantes_reuniao: e.target.value }))} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-muted-foreground">Cargo do participante</label>
+                      <Input value={editFormData.cargo_participante} onChange={(e) => setEditFormData((p) => ({ ...p, cargo_participante: e.target.value }))} />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    <div><p className="text-xs text-muted-foreground mb-0.5">Canal de tração</p><p>{detailLead.canal_tracao || "—"}</p></div>
+                    <div><p className="text-xs text-muted-foreground mb-0.5">Tipo de empresa</p><p className="capitalize">{detailLead.tipo_empresa || "—"}</p></div>
+                    <div><p className="text-xs text-muted-foreground mb-0.5">Nº de funcionários</p><p>{detailLead.numero_funcionarios ?? "—"}</p></div>
+                    <div><p className="text-xs text-muted-foreground mb-0.5">Volume de premiação/comissão</p><p>{detailLead.volume_premiacao_comissao != null ? fmt(detailLead.volume_premiacao_comissao) : "—"}</p></div>
+                    <div className="sm:col-span-2"><p className="text-xs text-muted-foreground mb-0.5">Modelo de campanha</p><p>{detailLead.modelo_campanha || "—"}</p></div>
+                    <div><p className="text-xs text-muted-foreground mb-0.5">Participantes da reunião</p><p>{detailLead.participantes_reuniao || "—"}</p></div>
+                    <div><p className="text-xs text-muted-foreground mb-0.5">Cargo do participante</p><p>{detailLead.cargo_participante || "—"}</p></div>
+                  </div>
+                )}
+              </div>
+
               {/* Pipeline Status */}
               <div className="border-t border-border pt-4">
                 <h3 className="text-sm font-semibold mb-3">Pipeline</h3>
