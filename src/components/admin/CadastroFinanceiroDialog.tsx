@@ -24,6 +24,7 @@ interface CadastroFinanceiroDialogProps {
     qtd_parcelas?: number | null;
     quantidade_lojas?: number | null;
     percentual_consultor?: number | null;
+    comissao_vitalicia?: boolean | null;
   };
   audit?: {
     preenchido_por_nome?: string | null;
@@ -37,6 +38,7 @@ interface CadastroFinanceiroDialogProps {
     valor_campanhas: number;
     percentual_consultor: number;
     qtd_parcelas: number;
+    comissao_vitalicia: boolean;
   }) => void;
   onCancel: () => void;
 }
