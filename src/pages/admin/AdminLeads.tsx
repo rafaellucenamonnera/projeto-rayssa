@@ -1824,6 +1824,11 @@ const AdminLeads = () => {
                 </div>
               )}
 
+              {/* Tarefas */}
+              <div className="border-t border-border pt-4">
+                <LeadTasks leadId={detailLead.id} />
+              </div>
+
               {/* Reuniões */}
               <div className="border-t border-border pt-4">
                 <LeadReuniao
