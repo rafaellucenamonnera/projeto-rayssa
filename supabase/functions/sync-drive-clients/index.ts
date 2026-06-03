@@ -168,6 +168,7 @@ const extractPrimaryNumericValue = (row: Record<string, string>) => {
 };
 
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ success: false, error: "Method not allowed" }), {
@@ -175,11 +176,34 @@ Deno.serve(async (req) => {
     });
   }
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    { auth: { persistSession: false } },
-  );
+  // ---- Auth: require authenticated admin or gestor_conta ----
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const authClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: authHeader } },
+    auth: { persistSession: false },
+  });
+  const { data: userData, error: userErr } = await authClient.auth.getUser();
+  if (userErr || !userData?.user) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  const supabase = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+  const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", userData.user.id);
+  const allowed = (roles || []).some((r: { role: string }) => r.role === "admin" || r.role === "gestor_conta");
+  if (!allowed) {
+    return new Response(JSON.stringify({ error: "Forbidden" }), {
+      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   console.log("[sync-drive-clients] Início (fonte: aba Clientes gid=", CLIENTS_GID, ")");
 
