@@ -187,7 +187,7 @@ export const CadastroFinanceiroDialog = ({
             <div className="space-y-1.5">
               <Label>Mensalidade por loja (R$)</Label>
               <Input type="number" min="0" step="0.01" value={form.valor_mensalidade}
-                onChange={(e) => setForm({ ...form, valor_mensalidade: e.target.value })} placeholder="1000.00" />
+                onChange={(e) => setForm({ ...form, valor_mensalidade: e.target.value })} placeholder="0,00" />
             </div>
             <div className="space-y-1.5">
               <Label>Quantidade de lojas</Label>
