@@ -1448,6 +1448,7 @@ const AdminLeads = () => {
           qtd_parcelas: pendingFinanceiro.lead.qtd_parcelas,
           quantidade_lojas: pendingFinanceiro.lead.quantidade_lojas,
           percentual_consultor: pendingFinanceiro.lead.percentual_consultor,
+          comissao_vitalicia: pendingFinanceiro.lead.comissao_vitalicia,
         } : undefined}
         onSaved={handleFinanceiroSaved}
         onCancel={handleFinanceiroCancel}
