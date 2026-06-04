@@ -88,17 +88,28 @@ def draw_centered(draw, box, text, fill, text_font, spacing=0):
 
 
 def create_biomax(path):
-    img = Image.new("RGB", CANVAS, "black")
+    img = Image.new("RGB", CANVAS, "white")
     draw = ImageDraw.Draw(img)
     green = "#5b9c2a"
     red = "#e6330a"
-    draw_centered(draw, (0, 4, CANVAS[0], 44), "R E D E   D E   F A R M A C I A S", green, font(29, True))
-    draw.text((0, 56), "BI", fill=red, font=font(106, True))
-    draw.ellipse((155, 74, 222, 141), fill=green)
-    draw.ellipse((163, 82, 214, 133), fill="white")
-    draw.rounded_rectangle((186, 91, 196, 124), radius=4, fill=green)
-    draw.rounded_rectangle((176, 102, 207, 113), radius=4, fill=green)
-    draw.text((222, 56), "MAX", fill=red, font=font(106, True))
+    draw_centered(draw, (0, 18, CANVAS[0], 56), "R E D E   D E   F A R M A C I A S", green, font(24, True))
+
+    main_font = font(86, True)
+    x = 42
+    y = 66
+    draw.text((x, y), "BIOMAX", fill=red, font=main_font)
+
+    bi_width = draw.textlength("BI", font=main_font)
+    o_width = draw.textlength("O", font=main_font)
+    o_size = 54
+    ox = int(x + bi_width + (o_width - o_size) / 2)
+    oy = y + 22
+    draw.ellipse((ox, oy, ox + o_size, oy + o_size), fill=red)
+    draw.ellipse((ox + 6, oy + 6, ox + o_size - 6, oy + o_size - 6), fill="white")
+    draw.ellipse((ox + 10, oy + 10, ox + o_size - 10, oy + o_size - 10), fill=green)
+    draw.ellipse((ox + 18, oy + 18, ox + o_size - 18, oy + o_size - 18), fill="white")
+    draw.rounded_rectangle((ox + 25, oy + 20, ox + 31, oy + 34), radius=3, fill=green)
+    draw.rounded_rectangle((ox + 21, oy + 24, ox + 35, oy + 30), radius=3, fill=green)
     img.save(path, optimize=True)
 
 

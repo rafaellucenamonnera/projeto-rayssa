@@ -618,18 +618,71 @@ const landingStyles = `
       line-height: 1.6;
     }
 
-    .trust-actions {
+    .section-cta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      margin-top: 34px;
+      padding: 22px 24px;
+      border: 1px solid rgba(0, 55, 41, .12);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, .78);
+      box-shadow: 0 14px 36px rgba(0, 55, 41, .06);
+    }
+
+    .section-cta strong {
+      display: block;
+      color: var(--green-dark);
+      font-size: 18px;
+      line-height: 1.25;
+    }
+
+    .section-cta span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .section-cta-actions {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
-      margin-top: 16px;
+      justify-content: flex-end;
+      flex: 0 0 auto;
     }
 
-    .trust-actions .btn {
-      min-height: 38px;
-      padding: 10px 14px;
-      font-size: 13px;
-      line-height: 1.2;
+    .section-cta-actions .btn {
+      min-height: 42px;
+      padding: 11px 16px;
+      font-size: 14px;
+    }
+
+    .section-cta.on-dark {
+      border-color: rgba(255, 255, 255, .16);
+      background: rgba(255, 255, 255, .08);
+      box-shadow: none;
+    }
+
+    .section-cta.on-dark strong {
+      color: white;
+    }
+
+    .section-cta.on-dark span {
+      color: rgba(255, 255, 255, .72);
+    }
+
+    .section-cta.on-dark .btn.primary {
+      border-color: var(--green-light);
+      background: var(--green-light);
+      color: #07110f;
+    }
+
+    .section-cta.on-dark .btn {
+      border-color: rgba(255, 255, 255, .22);
+      background: rgba(255, 255, 255, .04);
+      color: white;
     }
 
     .final {
@@ -821,9 +874,15 @@ const landingStyles = `
         grid-template-columns: 1fr;
       }
 
-      .trust-actions {
+      .section-cta {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .section-cta-actions {
         display: grid;
         grid-template-columns: 1fr;
+        justify-content: stretch;
       }
     }
   `;
@@ -864,11 +923,17 @@ const renderPartnerLogos = (hidden = false) => partnerLogos
   })
   .join("\n          ");
 
-const trustActions = `
-              <div class="trust-actions">
-                <a class="btn primary" href="/cadastro?perfil=cliente-embaixador">Quero ser Cliente Embaixador</a>
-                <a class="btn" href="/cadastro?perfil=embaixador-comercial">Quero ser Embaixador Comercial</a>
-              </div>`;
+const sectionCta = (tone = "light") => `
+        <div class="section-cta ${tone === "dark" ? "on-dark" : ""}">
+          <div>
+            <strong>Pronto para indicar empresas que precisam evoluir essa operação?</strong>
+            <span>Convide empresas a conhecerem uma jornada mais clara, centralizada e segura com a Monnera.</span>
+          </div>
+          <div class="section-cta-actions">
+            <a class="btn primary" href="/cadastro?perfil=cliente-embaixador">Quero ser Cliente Embaixador</a>
+            <a class="btn" href="/cadastro?perfil=embaixador-comercial">Quero ser Embaixador Comercial</a>
+          </div>
+        </div>`;
 
 const landingMarkup = `<div class="landing-shell"><main class="page">
     <header class="nav">
@@ -1012,6 +1077,7 @@ const landingMarkup = `<div class="landing-shell"><main class="page">
             <p>Centralize planejamento, execução, acompanhamento, apuração e pagamento.</p>
           </article>
         </div>
+        ${sectionCta()}
       </div>
     </section>
 
@@ -1049,6 +1115,7 @@ const landingMarkup = `<div class="landing-shell"><main class="page">
           As informações legais e fiscais devem ser avaliadas conforme o contexto de cada empresa, com validação jurídica
           e contábil própria.
         </p>
+        ${sectionCta("dark")}
       </div>
     </section>
 
@@ -1069,7 +1136,6 @@ const landingMarkup = `<div class="landing-shell"><main class="page">
             <div>
               <h3>Facilidade na Obtenção de Dados</h3>
               <p>Espelhamento automático via API, SFTP ou estrutura equivalente. Também permite o upload de informações através de um simples relatório de vendas do seu próprio sistema.</p>
-              ${trustActions}
             </div>
           </article>
           <article class="trust-item">
@@ -1077,7 +1143,6 @@ const landingMarkup = `<div class="landing-shell"><main class="page">
             <div>
               <h3>Previsibilidade de Ganho para o Participante</h3>
               <p>Atualização diária (D-1) no App. O vendedor acompanha hoje o seu ganho financeiro de ontem em cada campanha por CPF com total clareza.</p>
-              ${trustActions}
             </div>
           </article>
           <article class="trust-item">
@@ -1085,7 +1150,6 @@ const landingMarkup = `<div class="landing-shell"><main class="page">
             <div>
               <h3>Geração de Metas Automáticas</h3>
               <p>Cálculo inteligente e individualizado. A plataforma define metas, supermetas e faixas de desempenho para cada participante em todas as premiações.</p>
-              ${trustActions}
             </div>
           </article>
           <article class="trust-item">
@@ -1093,7 +1157,6 @@ const landingMarkup = `<div class="landing-shell"><main class="page">
             <div>
               <h3>Gestão Centralizada</h3>
               <p>Tudo gerido através do painel do gestor. Reúne em um só lugar a criação de regras, comunicação, apuração e acompanhamento da performance de todo o time.</p>
-              ${trustActions}
             </div>
           </article>
           <article class="trust-item">
@@ -1101,10 +1164,12 @@ const landingMarkup = `<div class="landing-shell"><main class="page">
             <div>
               <h3>Pagamento Facilitado</h3>
               <p>Distribuição automática de prêmios. A empresa paga apenas um único boleto e o Monnera repassa os valores de forma individualizada com base no mérito de cada funcionário.</p>
-              ${trustActions}
             </div>
           </article>
         </div>
+      </div>
+      <div class="wrap">
+        ${sectionCta()}
       </div>
     </section>
 
