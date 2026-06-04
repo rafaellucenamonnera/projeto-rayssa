@@ -1052,43 +1052,36 @@ const landingMarkup = `<div class="landing-shell"><main class="page">
           <article class="trust-item">
             <div class="icon">01</div>
             <div>
-              <h3>Integração com ERP</h3>
-              <p>A Monnera espelha dados de venda via API, SFTP, views ou estruturas equivalentes.</p>
+              <h3>Facilidade na Obtenção de Dados</h3>
+              <p>Espelhamento automático via API, SFTP ou estrutura equivalente. Também permite o upload de informações através de um simples relatório de vendas do seu próprio sistema.</p>
             </div>
           </article>
           <article class="trust-item">
             <div class="icon">02</div>
             <div>
-              <h3>Atualização D-1</h3>
-              <p>O participante pode visualizar hoje o resultado apurado a partir dos dados de ontem.</p>
+              <h3>Previsibilidade de Ganho para o Participante</h3>
+              <p>Atualização diária (D-1) no App. O vendedor acompanha hoje o seu ganho financeiro de ontem em cada campanha por CPF com total clareza.</p>
             </div>
           </article>
           <article class="trust-item">
             <div class="icon">03</div>
             <div>
-              <h3>Metas inteligentes</h3>
-              <p>Campanhas podem ter meta mínima, meta, super meta e faixas de desempenho.</p>
+              <h3>Geração de Metas Automáticas</h3>
+              <p>Cálculo inteligente e individualizado. A plataforma define metas, supermetas e faixas de desempenho para cada participante em todas as premiações.</p>
             </div>
           </article>
           <article class="trust-item">
             <div class="icon">04</div>
             <div>
-              <h3>Totalização por CPF</h3>
-              <p>Reconhece o desempenho individual com mais justiça e clareza.</p>
+              <h3>Gestão Centralizada</h3>
+              <p>Tudo gerido através do painel do gestor. Reúne em um só lugar a criação de regras, comunicação, apuração e acompanhamento da performance de todo o time.</p>
             </div>
           </article>
           <article class="trust-item">
             <div class="icon">05</div>
             <div>
-              <h3>Cálculo sobre valor líquido</h3>
-              <p>Apoia apurações com base no valor faturado líquido, excluindo impostos como ICMS e ST.</p>
-            </div>
-          </article>
-          <article class="trust-item">
-            <div class="icon">06</div>
-            <div>
-              <h3>Operação centralizada</h3>
-              <p>Reúne campanhas, participantes, regras, comunicação, apuração e pagamento.</p>
+              <h3>Pagamento Facilitado</h3>
+              <p>Distribuição automática de prêmios. A empresa paga apenas um único boleto e o Monnera repassa os valores de forma individualizada com base no mérito de cada funcionário.</p>
             </div>
           </article>
         </div>
