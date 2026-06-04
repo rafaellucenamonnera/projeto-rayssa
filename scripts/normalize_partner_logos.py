@@ -88,30 +88,29 @@ def draw_centered(draw, box, text, fill, text_font, spacing=0):
 
 
 def create_biomax(path):
-    img = Image.new("RGB", CANVAS, "white")
+    img = Image.new("RGB", CANVAS, "black")
     draw = ImageDraw.Draw(img)
     green = "#5b9c2a"
     red = "#e6330a"
-    draw_centered(draw, (0, 6, CANVAS[0], 38), "R E D E   D E   F A R M A C I A S", green, font(24, True))
-    draw.text((22, 42), "BI", fill=red, font=font(86, True))
-    draw.ellipse((166, 58, 230, 122), fill=green)
-    draw.ellipse((176, 68, 220, 112), fill="white")
-    draw.rounded_rectangle((194, 75, 202, 105), radius=4, fill=green)
-    draw.rounded_rectangle((185, 88, 211, 96), radius=4, fill=green)
-    draw.text((228, 42), "MAX", fill=red, font=font(86, True))
+    draw_centered(draw, (0, 4, CANVAS[0], 44), "R E D E   D E   F A R M A C I A S", green, font(29, True))
+    draw.text((0, 56), "BI", fill=red, font=font(106, True))
+    draw.ellipse((155, 74, 222, 141), fill=green)
+    draw.ellipse((163, 82, 214, 133), fill="white")
+    draw.rounded_rectangle((186, 91, 196, 124), radius=4, fill=green)
+    draw.rounded_rectangle((176, 102, 207, 113), radius=4, fill=green)
+    draw.text((222, 56), "MAX", fill=red, font=font(106, True))
     img.save(path, optimize=True)
 
 
 def create_unipreco(path):
-    img = Image.new("RGB", CANVAS, "#e8f0f3")
+    img = Image.new("RGB", CANVAS, "#0aa39a")
     draw = ImageDraw.Draw(img)
     red = "#ed3343"
-    teal = "#00a99d"
-    draw.ellipse((136, 58, 198, 120), fill=red)
-    draw.rounded_rectangle((160, 70, 174, 108), radius=5, fill="white")
-    draw.rounded_rectangle((148, 82, 186, 96), radius=5, fill="white")
-    draw.text((202, 73), "unipreco", fill=teal, font=font(50, True))
-    draw.text((336, 55), "farmacias", fill=teal, font=font(24, False))
+    draw.ellipse((116, 58, 180, 122), fill=red)
+    draw.rounded_rectangle((140, 70, 156, 110), radius=5, fill="white")
+    draw.rounded_rectangle((128, 82, 168, 98), radius=5, fill="white")
+    draw.text((188, 72), "unipreco", fill="white", font=font(52, True))
+    draw.text((328, 53), "farmacias", fill="white", font=font(22, True))
     img.save(path, optimize=True)
 
 
