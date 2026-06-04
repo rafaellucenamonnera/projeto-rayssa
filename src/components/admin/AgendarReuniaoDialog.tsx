@@ -29,8 +29,13 @@ export const AgendarReuniaoDialog = ({ open, onOpenChange, leadId, leadName, onC
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleConfirm = async () => {
+  const validate = () => {
     setErrors({});
+    return true;
+  };
+
+  const handleConfirm = async () => {
+    if (!validate()) return;
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -87,7 +92,6 @@ export const AgendarReuniaoDialog = ({ open, onOpenChange, leadId, leadName, onC
               {errors.horario_reuniao && <p className="text-destructive text-xs">{errors.horario_reuniao}</p>}
             </div>
           </div>
-          <p className="text-[11px] text-muted-foreground -mt-2">Data e horário são opcionais — serão exigidos ao mover para "Reunião realizada".</p>
           <div className="space-y-1.5">
             <Label>Tipo de reunião</Label>
             <Select value={form.tipo_reuniao} onValueChange={(v) => setForm({ ...form, tipo_reuniao: v })}>

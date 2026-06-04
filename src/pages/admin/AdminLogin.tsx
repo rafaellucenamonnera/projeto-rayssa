@@ -63,12 +63,13 @@ const AdminLogin = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <Card className="w-full max-w-sm border-border">
+    <div className="min-h-screen flex items-center justify-center bg-[#f4faf7] p-4">
+      <div className="absolute inset-x-0 top-0 h-40 bg-[#003729]" />
+      <Card className="relative w-full max-w-sm border-[#d6ebe5] bg-white shadow-xl">
         <CardHeader className="text-center space-y-2">
           <img src={logoMonnera} alt="Monnera" className="w-12 h-12 rounded-xl mx-auto mb-2" />
-          <CardTitle className="text-2xl font-display">Retaguarda Monnera</CardTitle>
-          <CardDescription>Acesse com suas credenciais</CardDescription>
+          <CardTitle className="text-2xl font-display text-[#003729]">Retaguarda Monnera</CardTitle>
+          <CardDescription>Gestão completa de incentivo de vendas</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
@@ -86,7 +87,7 @@ const AdminLogin = () => {
             </Button>
             <div className="relative my-2">
               <Separator />
-              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">ou</span>
+              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 text-xs text-muted-foreground">ou</span>
             </div>
             <Button
               type="button"

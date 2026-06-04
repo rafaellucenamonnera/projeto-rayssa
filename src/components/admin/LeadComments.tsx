@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, MessageSquare, Send, Pencil, Trash2, X, Check } from "lucide-react";
 import { PIPELINE_LABELS } from "@/lib/pipelineConstants";
+import { cardActionUrl, createNotifications } from "@/lib/notifications";
 
 interface LeadCommentsProps {
   leadId: string;
@@ -21,6 +22,11 @@ interface Comment {
   user_id: string;
 }
 
+type MentionUser = {
+  user_id: string;
+  nome: string;
+};
+
 export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsProps) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
@@ -30,11 +36,20 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
   const [editingText, setEditingText] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [users, setUsers] = useState<MentionUser[]>([]);
+  const [selectedMentionIds, setSelectedMentionIds] = useState<string[]>([]);
+  const [mentionQuery, setMentionQuery] = useState("");
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setCurrentUserId(user.id);
     });
+    supabase
+      .from("profiles")
+      .select("user_id,nome,ativo")
+      .eq("ativo", true)
+      .order("nome", { ascending: true })
+      .then(({ data }) => setUsers(((data as any) || []).map((u: any) => ({ user_id: u.user_id, nome: u.nome }))));
   }, []);
 
   const loadComments = async () => {
@@ -59,16 +74,42 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Não autenticado");
 
-      const { error } = await supabase.from("lead_comments").insert({
+      const { data: comment, error } = await supabase.from("lead_comments").insert({
         lead_id: leadId,
         etapa: currentStage,
         usuario: userName,
         user_id: user.id,
         comentario: newComment.trim().slice(0, 500),
-      } as any);
+      } as any).select("id").single();
 
       if (error) throw error;
+      const mentionedIds = Array.from(new Set(selectedMentionIds)).filter((id) => id !== user.id);
+      if (mentionedIds.length > 0 && comment?.id) {
+        await (supabase as any).from("lead_comment_mentions").insert(
+          mentionedIds.map((mentioned_user_id) => ({
+            comment_id: comment.id,
+            lead_id: leadId,
+            mentioned_user_id,
+            created_by: user.id,
+          })),
+        );
+        await createNotifications(
+          mentionedIds.map((recipientUserId) => ({
+            recipientUserId,
+            type: "comment_mention",
+            title: "Você foi mencionado em um comentário",
+            message: `${userName} mencionou você no card.`,
+            leadId,
+            commentId: comment.id,
+            actionUrl: cardActionUrl(leadId),
+            metadata: { comment_preview: newComment.trim().slice(0, 140) },
+            deliveryKey: `comment-${comment.id}-mention-${recipientUserId}`,
+          })),
+        );
+      }
       setNewComment("");
+      setSelectedMentionIds([]);
+      setMentionQuery("");
       loadComments();
     } catch {
       toast.error("Erro ao adicionar comentário");
@@ -76,6 +117,35 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
       setSubmitting(false);
     }
   };
+
+  const handleCommentChange = (value: string) => {
+    const sliced = value.slice(0, 500);
+    setNewComment(sliced);
+    const match = sliced.match(/@([\p{L}\p{N}._-]*)$/u);
+    setMentionQuery(match ? match[1].toLowerCase() : "");
+  };
+
+  const addMention = (user: MentionUser) => {
+    const nextText = newComment.replace(/@([\p{L}\p{N}._-]*)$/u, `@${user.nome} `).slice(0, 500);
+    setNewComment(nextText);
+    setSelectedMentionIds((prev) => (prev.includes(user.user_id) ? prev : [...prev, user.user_id]));
+    setMentionQuery("");
+  };
+
+  const renderCommentText = (text: string) => {
+    const parts = text.split(/(@[\p{L}\p{N}À-ÿ._ -]+)/gu);
+    return parts.map((part, index) =>
+      part.startsWith("@") ? (
+        <span key={`${part}-${index}`} className="font-medium text-primary">{part}</span>
+      ) : (
+        <span key={`${part}-${index}`}>{part}</span>
+      ),
+    );
+  };
+
+  const mentionSuggestions = mentionQuery
+    ? users.filter((u) => u.nome.toLowerCase().includes(mentionQuery)).slice(0, 6)
+    : [];
 
   const handleEdit = async (commentId: string) => {
     if (!editingText.trim()) return;
@@ -120,11 +190,30 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
       <div className="space-y-2">
         <Textarea
           value={newComment}
-          onChange={(e) => setNewComment(e.target.value.slice(0, 500))}
+          onChange={(e) => handleCommentChange(e.target.value)}
           placeholder="Adicionar comentário..."
           rows={2}
           maxLength={500}
         />
+        {mentionSuggestions.length > 0 && (
+          <div className="rounded-md border border-border bg-popover p-1 shadow-sm">
+            {mentionSuggestions.map((u) => (
+              <button
+                key={u.user_id}
+                type="button"
+                onClick={() => addMention(u)}
+                className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-secondary"
+              >
+                @{u.nome}
+              </button>
+            ))}
+          </div>
+        )}
+        {selectedMentionIds.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            Mencionando: {selectedMentionIds.map((id) => users.find((u) => u.user_id === id)?.nome).filter(Boolean).join(", ")}
+          </p>
+        )}
         <div className="flex items-center justify-between">
           <span className="text-xs text-muted-foreground">{newComment.length}/500</span>
           <Button size="sm" onClick={handleSubmit} disabled={submitting || !newComment.trim()}>
@@ -210,7 +299,7 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm">{c.comentario}</p>
+                  <p className="text-sm">{renderCommentText(c.comentario)}</p>
                 )}
               </div>
             );

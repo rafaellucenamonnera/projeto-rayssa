@@ -100,7 +100,7 @@ const PainelParceiro = () => {
 
   if (authLoading || loading || !parceiro) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#031611] text-white">
+      <div className="monnera-page flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-[#6BB0A1]" />
       </div>
     );
@@ -214,22 +214,19 @@ const PainelParceiro = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#031611] text-white">
+    <div className="monnera-page">
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(107,176,161,0.24),transparent_36%),linear-gradient(145deg,#003729_0%,#06261d_46%,#031611_100%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#031611] to-transparent" />
-
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-8 sm:pt-8 sm:pb-10">
           <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#9fd4c8]">
+              <div className="monnera-eyebrow">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#6BB0A1]" />
                 Painel do Embaixador
               </div>
-              <h1 className="mt-4 text-3xl font-bold leading-tight sm:text-4xl">
+              <h1 className="mt-4 text-3xl font-bold leading-tight text-[#003729] sm:text-4xl">
                 Olá, {parceiro.nome}. Vamos transformar boas conexões em oportunidades.
               </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/72 sm:text-base">
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#33584f] sm:text-base">
                 A Monnera segue junto com você: materiais prontos, orientação comercial e um funil claro para levar
                 mais empresas ao desempenho extraordinário com segurança e inteligência.
               </p>
@@ -247,7 +244,7 @@ const PainelParceiro = () => {
                 variant="outline"
                 size="sm"
                 onClick={handleLogout}
-                className="border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+                className="border-[#b9d8d0] bg-white text-[#003729] hover:bg-[#e7f4f0] hover:text-[#003729]"
               >
                 <LogOut className="mr-2 h-4 w-4" />
                 Sair
@@ -258,8 +255,8 @@ const PainelParceiro = () => {
           <section className="mt-7">
             <div className="mb-3 flex items-end justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9fd4c8]">Métricas primeiro</p>
-                <h2 className="mt-1 text-xl font-bold">Sua operação em movimento</h2>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#2b6d5e]">Métricas primeiro</p>
+                <h2 className="mt-1 text-xl font-bold text-[#003729]">Sua operação em movimento</h2>
               </div>
               {statusFilter && (
                 <Button
@@ -269,7 +266,7 @@ const PainelParceiro = () => {
                     setStatusFilter(null);
                     setSearchParams({});
                   }}
-                  className="hidden border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white sm:inline-flex"
+                  className="hidden border-[#b9d8d0] bg-white text-[#003729] hover:bg-[#e7f4f0] hover:text-[#003729] sm:inline-flex"
                 >
                   Limpar filtro
                 </Button>
@@ -285,19 +282,19 @@ const PainelParceiro = () => {
                     onClick={() => handleStatusClick(card.status)}
                     className={`group min-w-[190px] rounded-lg border p-4 text-left transition-all lg:min-w-0 ${
                       selected
-                        ? "border-[#6BB0A1] bg-[#6BB0A1]/16 shadow-[0_0_0_1px_rgba(107,176,161,0.35)]"
-                        : "border-white/12 bg-white/[0.07] hover:border-[#6BB0A1]/60 hover:bg-white/[0.1]"
+                        ? "border-[#6BB0A1] bg-[#e7f4f0] shadow-[0_0_0_1px_rgba(107,176,161,0.35)]"
+                        : "border-[#d7e9e4] bg-white hover:border-[#6BB0A1]/70 hover:bg-[#fbfdfb]"
                     } ${card.status ? "cursor-pointer" : "cursor-default"}`}
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <div className="rounded-md border border-white/12 bg-[#003729]/80 p-2 text-[#9fd4c8]">
+                      <div className="rounded-md border border-[#d7e9e4] bg-[#6BB0A1]/15 p-2 text-[#003729]">
                         <card.icon className="h-5 w-5" />
                       </div>
-                      {card.status && <ArrowRight className="h-4 w-4 text-white/30 transition group-hover:text-[#6BB0A1]" />}
+                      {card.status && <ArrowRight className="h-4 w-4 text-[#6b8a82] transition group-hover:text-[#00624b]" />}
                     </div>
-                    <p className="mt-5 text-3xl font-bold">{card.value || 0}</p>
-                    <p className="mt-1 text-sm font-semibold text-white">{card.label}</p>
-                    <p className="mt-1 text-xs leading-snug text-white/55">{card.helper}</p>
+                    <p className="mt-5 text-3xl font-bold text-[#003729]">{card.value || 0}</p>
+                    <p className="mt-1 text-sm font-semibold text-[#003729]">{card.label}</p>
+                    <p className="mt-1 text-xs leading-snug text-[#4f6d65]">{card.helper}</p>
                   </button>
                 );
               })}
@@ -307,7 +304,7 @@ const PainelParceiro = () => {
       </div>
 
       <main className="max-w-6xl mx-auto space-y-5 px-4 pb-10 sm:px-6 lg:px-8">
-        <Card className="overflow-hidden border-white/10 bg-[#f5faf8] text-[#003729] shadow-2xl shadow-black/20">
+        <Card className="monnera-card-elevated overflow-hidden">
           <CardContent className="grid gap-5 p-4 sm:p-6 lg:grid-cols-[1fr_auto] lg:items-center">
             <div>
               <div className="flex items-center gap-2 text-sm font-semibold text-[#2b6d5e]">
@@ -354,17 +351,17 @@ const PainelParceiro = () => {
 
         <section className="grid gap-3 md:grid-cols-4">
           {facilidades.map((item) => (
-            <div key={item.title} className="rounded-lg border border-white/10 bg-white/[0.06] p-4">
-              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-md bg-[#6BB0A1]/15 text-[#9fd4c8]">
+            <div key={item.title} className="monnera-hero-panel">
+              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-md bg-[#6BB0A1]/15 text-[#003729]">
                 <item.icon className="h-5 w-5" />
               </div>
-              <h3 className="font-semibold text-white">{item.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-white/62">{item.text}</p>
+              <h3 className="font-semibold text-[#003729]">{item.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-[#4f6d65]">{item.text}</p>
             </div>
           ))}
         </section>
 
-        <Card className="border-white/10 bg-white/[0.06] text-white">
+        <Card className="monnera-card">
           <CardHeader className="p-4 sm:p-6">
             <CardTitle className="flex items-center justify-between gap-3 text-lg">
               {statusFilter ? (
@@ -374,7 +371,7 @@ const PainelParceiro = () => {
                       setStatusFilter(null);
                       setSearchParams({});
                     }}
-                    className="rounded-md p-1 text-white/55 transition hover:bg-white/10 hover:text-white"
+                    className="rounded-md p-1 text-[#4f6d65] transition hover:bg-[#e7f4f0] hover:text-[#003729]"
                   >
                     <ChevronLeft className="h-5 w-5" />
                   </button>
@@ -395,8 +392,8 @@ const PainelParceiro = () => {
           </CardHeader>
           <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
             {filteredLeads.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-white/15 bg-white/[0.03] px-4 py-8 text-center">
-                <p className="text-sm text-white/65">
+              <div className="rounded-lg border border-dashed border-[#b9d8d0] bg-[#f5faf8] px-4 py-8 text-center">
+                <p className="text-sm text-[#4f6d65]">
                   {statusFilter
                     ? "Nenhum lead neste estágio."
                     : "Nenhum lead cadastrado ainda. Compartilhe seu link ou adicione uma oportunidade para começar."}
@@ -406,11 +403,11 @@ const PainelParceiro = () => {
               <>
                 <div className="space-y-3 md:hidden">
                   {filteredLeads.map((lead) => (
-                    <div key={lead.id} className="rounded-lg border border-white/10 bg-[#07251d] p-3">
+                    <div key={lead.id} className="rounded-lg border border-[#d7e9e4] bg-white p-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold">{lead.nome_fantasia}</p>
-                          <p className="text-xs text-white/50">{lead.cidade}</p>
+                          <p className="text-xs text-[#6b8a82]">{lead.cidade}</p>
                         </div>
                         <span className="shrink-0 rounded-full bg-[#6BB0A1]/15 px-2 py-0.5 text-[10px] text-[#9fd4c8]">
                           {PIPELINE_LABELS[lead.status_lead || lead.status] || "Lead"}
@@ -418,16 +415,16 @@ const PainelParceiro = () => {
                       </div>
                       <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                         <div>
-                          <span className="text-white/45">Responsável: </span>
+                          <span className="text-[#6b8a82]">Responsável: </span>
                           <span>{lead.nome_responsavel}</span>
                         </div>
                         <div>
-                          <span className="text-white/45">Telefone: </span>
+                          <span className="text-[#6b8a82]">Telefone: </span>
                           <span>{lead.telefone_responsavel}</span>
                         </div>
                         <div className="col-span-2 flex items-center justify-between gap-2">
                           <span>
-                            <span className="text-white/45">Data: </span>
+                            <span className="text-[#6b8a82]">Data: </span>
                             <span>{new Date(lead.data_cadastro).toLocaleDateString("pt-BR")}</span>
                           </span>
                           <DaysInStage dataEntrada={stageMap[lead.id]} compact />
@@ -440,22 +437,22 @@ const PainelParceiro = () => {
                 <div className="hidden overflow-x-auto md:block">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-white/10">
-                        <th className="px-2 py-3 text-left font-medium text-white/50">Empresa</th>
-                        <th className="px-2 py-3 text-left font-medium text-white/50">Cidade</th>
-                        <th className="px-2 py-3 text-left font-medium text-white/50">Responsável</th>
-                        <th className="px-2 py-3 text-left font-medium text-white/50">Telefone</th>
-                        <th className="px-2 py-3 text-left font-medium text-white/50">Status</th>
-                        <th className="px-2 py-3 text-left font-medium text-white/50">Data</th>
+                      <tr className="border-b border-[#d7e9e4]">
+                        <th className="px-2 py-3 text-left font-medium text-[#4f6d65]">Empresa</th>
+                        <th className="px-2 py-3 text-left font-medium text-[#4f6d65]">Cidade</th>
+                        <th className="px-2 py-3 text-left font-medium text-[#4f6d65]">Responsável</th>
+                        <th className="px-2 py-3 text-left font-medium text-[#4f6d65]">Telefone</th>
+                        <th className="px-2 py-3 text-left font-medium text-[#4f6d65]">Status</th>
+                        <th className="px-2 py-3 text-left font-medium text-[#4f6d65]">Data</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredLeads.map((lead) => (
-                        <tr key={lead.id} className="border-b border-white/8 transition hover:bg-white/[0.04]">
+                        <tr key={lead.id} className="border-b border-[#edf5f2] transition hover:bg-[#f5faf8]">
                           <td className="px-2 py-3 font-medium">{lead.nome_fantasia}</td>
-                          <td className="px-2 py-3 text-white/72">{lead.cidade}</td>
-                          <td className="px-2 py-3 text-white/72">{lead.nome_responsavel}</td>
-                          <td className="px-2 py-3 text-white/72">{lead.telefone_responsavel}</td>
+                          <td className="px-2 py-3 text-[#4f6d65]">{lead.cidade}</td>
+                          <td className="px-2 py-3 text-[#4f6d65]">{lead.nome_responsavel}</td>
+                          <td className="px-2 py-3 text-[#4f6d65]">{lead.telefone_responsavel}</td>
                           <td className="px-2 py-3">
                             <div className="space-y-1">
                               <span className="rounded-full bg-[#6BB0A1]/15 px-2 py-1 text-xs text-[#9fd4c8]">
@@ -464,7 +461,7 @@ const PainelParceiro = () => {
                               <DaysInStage dataEntrada={stageMap[lead.id]} compact />
                             </div>
                           </td>
-                          <td className="px-2 py-3 text-white/55">
+                          <td className="px-2 py-3 text-[#6b8a82]">
                             {new Date(lead.data_cadastro).toLocaleDateString("pt-BR")}
                           </td>
                         </tr>

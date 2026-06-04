@@ -161,52 +161,52 @@ const CadastroParceiro = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#031611] text-white">
+    <div className="monnera-page">
       <main className="mx-auto grid min-h-screen max-w-6xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:items-center lg:px-8">
         <section className="space-y-7">
           <div className="flex items-center gap-3">
             <img src={logoMonnera} alt="Monnera" className="h-11 w-11 rounded-lg object-cover" />
             <div>
-              <p className="text-sm font-semibold text-[#9fd4c8]">Monnera</p>
-              <p className="text-xs text-white/55">Programa de embaixadores</p>
+              <p className="text-sm font-semibold text-[#003729]">Monnera</p>
+              <p className="text-xs text-[#4f6d65]">Programa de embaixadores</p>
             </div>
           </div>
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#9fd4c8]">
+            <div className="monnera-eyebrow">
               <Sparkles className="h-3.5 w-3.5" />
               Parceria com propósito
             </div>
-            <h1 className="mt-5 text-4xl font-bold leading-tight sm:text-5xl">
+            <h1 className="mt-5 text-4xl font-bold leading-tight text-[#003729] sm:text-5xl">
               Seja a ponte entre empresas e uma operação comercial mais segura.
             </h1>
-            <p className="mt-5 max-w-2xl text-base leading-relaxed text-white/72">
+            <p className="mt-5 max-w-2xl text-base leading-relaxed text-[#33584f]">
               Como embaixador Monnera, você abre conversas qualificadas com empresas que precisam evoluir campanhas de
               incentivo, melhorar performance e reduzir riscos operacionais.
             </p>
           </div>
           <div className="space-y-3">
             {benefits.map((benefit) => (
-              <div key={benefit} className="flex gap-3 rounded-lg border border-white/10 bg-white/[0.06] p-4">
-                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#9fd4c8]" />
-                <p className="text-sm leading-relaxed text-white/72">{benefit}</p>
+              <div key={benefit} className="monnera-hero-panel flex gap-3">
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#00624b]" />
+                <p className="text-sm leading-relaxed text-[#33584f]">{benefit}</p>
               </div>
             ))}
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-lg border border-white/10 bg-white/[0.06] p-4">
-              <Network className="h-5 w-5 text-[#9fd4c8]" />
-              <p className="mt-3 font-semibold">Conexão com inteligência</p>
-              <p className="mt-1 text-sm text-white/60">Estratégia, dados e pessoas no mesmo ecossistema.</p>
+            <div className="monnera-hero-panel">
+              <Network className="h-5 w-5 text-[#00624b]" />
+              <p className="mt-3 font-semibold text-[#003729]">Conexão com inteligência</p>
+              <p className="mt-1 text-sm text-[#4f6d65]">Estratégia, dados e pessoas no mesmo ecossistema.</p>
             </div>
-            <div className="rounded-lg border border-white/10 bg-white/[0.06] p-4">
-              <ShieldCheck className="h-5 w-5 text-[#9fd4c8]" />
-              <p className="mt-3 font-semibold">Governança comercial</p>
-              <p className="mt-1 text-sm text-white/60">Clareza para indicar com confiança e responsabilidade.</p>
+            <div className="monnera-hero-panel">
+              <ShieldCheck className="h-5 w-5 text-[#00624b]" />
+              <p className="mt-3 font-semibold text-[#003729]">Governança comercial</p>
+              <p className="mt-1 text-sm text-[#4f6d65]">Clareza para indicar com confiança e responsabilidade.</p>
             </div>
           </div>
         </section>
 
-        <Card className="border-white/10 bg-[#f5faf8] text-[#003729] shadow-2xl shadow-black/25">
+        <Card className="monnera-card-elevated">
           <CardContent className="p-5 sm:p-7">
             <div className="mb-6">
               <p className="text-sm font-semibold uppercase tracking-[0.14em] text-[#2b6d5e]">Cadastro de embaixador</p>

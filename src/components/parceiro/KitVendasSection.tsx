@@ -323,16 +323,16 @@ export function KitVendasSection() {
 
   return (
     <>
-      <Card className="overflow-hidden border-white/10 bg-[#f5faf8] text-[#003729] shadow-2xl shadow-black/20">
+      <Card className="monnera-card-elevated overflow-hidden">
         <CardContent className="p-0">
           <div className="grid gap-0 lg:grid-cols-[0.88fr_1.12fr]">
-            <div className="bg-[#003729] p-5 text-white sm:p-7">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#9fd4c8]">
+            <div className="border-b border-[#d7e9e4] bg-[#e7f4f0] p-5 text-[#003729] sm:p-7 lg:border-b-0 lg:border-r">
+              <div className="monnera-eyebrow">
                 <Sparkles className="h-3.5 w-3.5" />
                 Kit de vendas
               </div>
               <h2 className="mt-5 text-3xl font-bold leading-tight">Materiais para abrir conversas com mais clareza.</h2>
-              <p className="mt-4 text-sm leading-relaxed text-white/72">
+              <p className="mt-4 text-sm leading-relaxed text-[#33584f]">
                 Use o kit como apoio de conversa, não como substituto da relação. Primeiro entenda o contexto do lead,
                 depois escolha o material que ajuda a explicar como a Monnera conecta estratégia, operação e pessoas.
               </p>
@@ -342,7 +342,7 @@ export function KitVendasSection() {
                     <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[#6BB0A1] text-xs font-bold text-[#003729]">
                       {index + 1}
                     </span>
-                    <span className="text-white/82">{step}</span>
+                    <span className="text-[#33584f]">{step}</span>
                   </div>
                 ))}
               </div>

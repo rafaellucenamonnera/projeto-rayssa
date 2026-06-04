@@ -6,13 +6,13 @@ const landingStyles = `
       --green-deep: #06251d;
       --green-light: #6BB0A1;
       --green-mist: #eaf5f1;
-      --paper: #f7f4ec;
-      --paper-soft: #fbfaf6;
+      --paper: #f4faf7;
+      --paper-soft: #fbfdfb;
       --ink: #0a221b;
       --muted: #52645f;
-      --line: rgba(0, 55, 41, .16);
-      --orange: #ff9700;
-      --shadow: 0 24px 70px rgba(0, 55, 41, .16);
+      --line: rgba(0, 55, 41, .14);
+      --accent-warm: #d89528;
+      --shadow: 0 18px 44px rgba(0, 55, 41, .10);
     }
 
     .landing-shell, .landing-shell * { box-sizing: border-box; }
@@ -32,8 +32,8 @@ const landingStyles = `
       min-height: 100vh;
       overflow: hidden;
       background:
-        radial-gradient(circle at 88% 4%, rgba(107, 176, 161, .26), transparent 28rem),
-        linear-gradient(180deg, #f5f1e8 0%, #fbfaf6 30%, #eaf5f1 100%);
+        linear-gradient(135deg, rgba(107, 176, 161, .16), transparent 32rem),
+        linear-gradient(180deg, #fbfdfb 0%, #f4faf7 48%, #eaf5f1 100%);
     }
 
     .wrap {
@@ -46,8 +46,8 @@ const landingStyles = `
       top: 0;
       z-index: 20;
       backdrop-filter: blur(18px);
-      background: rgba(247, 244, 236, .84);
-      border-bottom: 1px solid rgba(0, 55, 41, .08);
+      background: rgba(251, 253, 251, .92);
+      border-bottom: 1px solid rgba(0, 55, 41, .10);
     }
 
     .nav-inner {
@@ -113,20 +113,20 @@ const landingStyles = `
       align-items: center;
       justify-content: center;
       gap: 10px;
-      border-radius: 10px;
-      padding: 15px 22px;
+      border-radius: 8px;
+      padding: 14px 22px;
       border: 1px solid var(--line);
-      background: rgba(255, 255, 255, .68);
+      background: rgba(255, 255, 255, .86);
       color: var(--green-dark);
       font-size: 15px;
-      font-weight: 900;
+      font-weight: 800;
       cursor: pointer;
       transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
     }
 
     .btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 14px 32px rgba(0, 55, 41, .12);
+      transform: translateY(-1px);
+      box-shadow: 0 10px 24px rgba(0, 55, 41, .10);
     }
 
     .btn svg {
@@ -136,48 +136,48 @@ const landingStyles = `
     }
 
     .btn.primary {
-      border-color: var(--orange);
-      background: var(--orange);
-      color: white;
-      box-shadow: 0 18px 36px rgba(255, 151, 0, .22);
-    }
-
-    .btn.dark {
       border-color: var(--green-dark);
       background: var(--green-dark);
       color: white;
+      box-shadow: 0 14px 30px rgba(0, 55, 41, .16);
+    }
+
+    .btn.dark {
+      border-color: rgba(0, 55, 41, .20);
+      background: var(--green-mist);
+      color: var(--green-dark);
     }
 
     .hero {
       position: relative;
-      padding: 72px 0 86px;
+      padding: 64px 0 72px;
     }
 
     .hero::before {
       content: "";
       position: absolute;
       inset: 0 0 auto auto;
-      width: 52vw;
-      height: 720px;
+      width: 46vw;
+      height: 620px;
       background:
-        linear-gradient(135deg, transparent 0 42%, rgba(0, 55, 41, .08) 42% 44%, transparent 44% 100%),
-        linear-gradient(45deg, transparent 0 53%, rgba(107, 176, 161, .18) 53% 55%, transparent 55% 100%);
-      opacity: .9;
+        linear-gradient(135deg, transparent 0 43%, rgba(0, 55, 41, .045) 43% 44%, transparent 44% 100%),
+        linear-gradient(45deg, transparent 0 54%, rgba(107, 176, 161, .10) 54% 55%, transparent 55% 100%);
+      opacity: .72;
       pointer-events: none;
     }
 
     .hero-grid {
       position: relative;
       display: grid;
-      grid-template-columns: 1.02fr .98fr;
-      gap: 52px;
+      grid-template-columns: 1.08fr .92fr;
+      gap: 48px;
       align-items: center;
     }
 
     .eyebrow {
       margin: 0 0 18px;
       color: var(--green-dark);
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 900;
       letter-spacing: .22em;
       text-transform: uppercase;
@@ -187,21 +187,21 @@ const landingStyles = `
       margin: 0;
       max-width: 720px;
       color: var(--green-dark);
-      font-size: clamp(48px, 6.4vw, 84px);
-      line-height: .98;
+      font-size: clamp(42px, 5.4vw, 70px);
+      line-height: 1.04;
       letter-spacing: 0;
     }
 
     .hero h1 span {
-      color: var(--orange);
+      color: var(--green-light);
     }
 
     .lead {
       max-width: 650px;
       margin: 28px 0 0;
       color: var(--muted);
-      font-size: 20px;
-      line-height: 1.65;
+      font-size: 19px;
+      line-height: 1.62;
     }
 
     .hero-actions {
@@ -219,8 +219,8 @@ const landingStyles = `
       align-items: flex-start;
       padding: 18px;
       border: 1px solid var(--line);
-      border-radius: 16px;
-      background: rgba(255, 255, 255, .66);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, .82);
       color: #405550;
       line-height: 1.55;
       box-shadow: 0 10px 28px rgba(0, 55, 41, .06);
@@ -234,11 +234,9 @@ const landingStyles = `
       position: relative;
       max-width: 570px;
       margin-left: auto;
-      padding: 18px;
-      border-radius: 34px;
-      background:
-        linear-gradient(180deg, rgba(255, 255, 255, .78), rgba(255, 255, 255, .32)),
-        rgba(255, 255, 255, .42);
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, .72);
       border: 1px solid rgba(0, 55, 41, .12);
       box-shadow: var(--shadow);
     }
@@ -281,9 +279,9 @@ const landingStyles = `
       align-self: center;
       margin-top: 44px;
       width: min(100%, 360px);
-      background: var(--orange);
-      color: white;
-      border-color: var(--orange);
+      background: var(--green-light);
+      color: var(--green-dark);
+      border-color: var(--green-light);
       font-size: 20px;
     }
 
@@ -294,7 +292,7 @@ const landingStyles = `
 
     .audience-card {
       padding: 28px;
-      border-radius: 22px;
+      border-radius: 12px;
       border: 1px solid rgba(0, 55, 41, .12);
       background: white;
       color: var(--ink);
@@ -303,7 +301,7 @@ const landingStyles = `
 
     .audience-card.dark {
       color: white;
-      background: var(--green-dark);
+      background: linear-gradient(180deg, #003729, #06251d);
       border-color: rgba(255, 255, 255, .12);
       box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06);
     }
@@ -312,15 +310,15 @@ const landingStyles = `
       display: block;
       margin-bottom: 10px;
       color: var(--green-light);
-      font-weight: 950;
+      font-weight: 850;
       letter-spacing: .14em;
       text-transform: uppercase;
     }
 
     .audience-card h2 {
       margin: 0;
-      font-size: clamp(28px, 3vw, 40px);
-      line-height: 1.05;
+      font-size: clamp(26px, 2.8vw, 36px);
+      line-height: 1.08;
       letter-spacing: 0;
     }
 
@@ -399,7 +397,7 @@ const landingStyles = `
       justify-content: center;
       flex: 0 0 auto;
       border: 1px solid rgba(0, 55, 41, .1);
-      border-radius: 16px;
+      border-radius: 10px;
       background: #fff;
       box-shadow: 0 10px 28px rgba(0, 55, 41, .07);
       padding: 5px 8px;
@@ -427,7 +425,7 @@ const landingStyles = `
     }
 
     .section.light {
-      background: #fffdf8;
+      background: #ffffff;
     }
 
     .section.mist {
@@ -437,7 +435,7 @@ const landingStyles = `
     .section.dark {
       color: white;
       background:
-        linear-gradient(135deg, #06251d, #003729 68%, #0b4b3a);
+        linear-gradient(135deg, #06251d, #003729 72%, #0a4636);
     }
 
     .section-head {
@@ -479,7 +477,7 @@ const landingStyles = `
     .value-card {
       min-height: 270px;
       padding: 28px;
-      border-radius: 18px;
+      border-radius: 10px;
       border: 1px solid var(--line);
       background: white;
       box-shadow: 0 14px 40px rgba(0, 55, 41, .06);
@@ -496,7 +494,7 @@ const landingStyles = `
       display: grid;
       place-items: center;
       margin-bottom: 28px;
-      border-radius: 14px;
+      border-radius: 10px;
       color: var(--green-dark);
       background: var(--green-mist);
       font-weight: 900;
@@ -537,7 +535,7 @@ const landingStyles = `
     .legal-note {
       margin-top: 24px;
       padding: 18px 20px;
-      border-radius: 16px;
+      border-radius: 10px;
       border: 1px solid rgba(255, 255, 255, .16);
       background: rgba(255, 255, 255, .08);
       color: rgba(255, 255, 255, .74);
@@ -555,7 +553,7 @@ const landingStyles = `
       position: relative;
       min-height: 230px;
       padding: 26px;
-      border-radius: 18px;
+      border-radius: 10px;
       background: rgba(255, 255, 255, .1);
       border: 1px solid rgba(255, 255, 255, .16);
       overflow: hidden;
@@ -602,7 +600,7 @@ const landingStyles = `
       gap: 16px;
       align-items: start;
       padding: 22px;
-      border-radius: 18px;
+      border-radius: 10px;
       background: white;
       border: 1px solid var(--line);
       box-shadow: 0 12px 36px rgba(0, 55, 41, .05);
@@ -625,7 +623,7 @@ const landingStyles = `
       text-align: center;
       color: white;
       background:
-        radial-gradient(circle at 50% 0%, rgba(107, 176, 161, .28), transparent 28rem),
+        radial-gradient(circle at 50% 0%, rgba(107, 176, 161, .20), transparent 28rem),
         var(--green-dark);
     }
 
@@ -666,7 +664,7 @@ const landingStyles = `
       border-color: var(--green-light);
       background: var(--green-light);
       color: #07110f;
-      box-shadow: 0 18px 36px rgba(107, 176, 161, .22);
+      box-shadow: 0 14px 30px rgba(107, 176, 161, .18);
     }
 
     .footer-actions .btn.outline {
@@ -831,12 +829,11 @@ const landingMarkup = `<div class="landing-shell"><main class="page">
     <section class="hero">
       <div class="wrap hero-grid">
         <div>
-          <p class="eyebrow">Programa de indicação Monnera</p>
-          <h1>Indique a Monnera. Gere valor para suas conexões. Cresça junto com o <span>extraordinário.</span></h1>
+          <p class="eyebrow">Gestão de incentivo de vendas</p>
+          <h1>A Monnera conecta estratégia, operação e pessoas para construir desempenho <span>extraordinário.</span></h1>
           <p class="lead">
-            A Monnera transforma dados de vendas em campanhas de incentivo com mais clareza, governança e segurança
-            operacional. Agora, clientes e embaixadores comerciais podem indicar empresas que ainda operam com
-            planilhas, metas confusas, pouca rastreabilidade ou baixa visibilidade para quem vende.
+            Transformamos dados de vendas em campanhas de incentivo mais claras, centralizadas e seguras. Clientes e
+            embaixadores podem indicar empresas que precisam sair da planilha e operar premiações com mais governança.
           </p>
           <div class="hero-actions">
             <a class="btn primary" href="#quero-ser">Quero participar</a>
@@ -845,8 +842,8 @@ const landingMarkup = `<div class="landing-shell"><main class="page">
           <div class="note">
             <span aria-hidden="true">✓</span>
             <span>
-              <strong>Governance & Performance:</strong> uma solução que combina plataforma, inteligência, adequação ao
-              contexto e suporte para transformar incentivo de vendas em gestão.
+              <strong>Seguimos juntos:</strong> plataforma, inteligência e acompanhamento próximo para transformar
+              incentivo de vendas em uma operação mais prática, rastreável e orientada a resultado.
             </span>
           </div>
         </div>

@@ -65,9 +65,9 @@ export function AdminSidebar() {
     <Sidebar collapsible="icon">
       <SidebarContent>
         <div className="p-4 flex items-center gap-2">
-          <img src={logoMonnera} alt="Monnera" className="w-8 h-8 rounded-md" />
+          <img src={logoMonnera} alt="Monnera" className="w-8 h-8 rounded-md border border-[#6BB0A1]/40" />
           {!collapsed && (
-            <h2 className="text-lg font-display font-bold glow-text text-[#32b89b] shadow-none">Monnera</h2>
+            <h2 className="text-lg font-display font-bold text-sidebar-foreground">Monnera</h2>
           )}
         </div>
         <SidebarGroup>

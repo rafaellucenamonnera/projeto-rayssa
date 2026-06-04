@@ -57,23 +57,23 @@ export const HEALTH_STATUS_ORDER: HealthStatusKey[] = [
 export const IMPACT_ORDER: ImpactKey[] = ["ALTO", "MEDIO", "BAIXO", "MINIMO", "SEM_IMPACTO"];
 
 const HEALTH_PALETTE: Record<HealthStatusKey, ColorTokens> = {
-  CHURN:     { hex: "#7f1d1d", bgClass: "bg-red-900",    textOnClass: "text-red-50",     softBgClass: "bg-red-900/20",    borderClass: "border-red-700/60",    label: "CHURN" },
-  EVENTUAL:  { hex: "#c2410c", bgClass: "bg-orange-700", textOnClass: "text-orange-50",  softBgClass: "bg-orange-700/20", borderClass: "border-orange-500/60", label: "EVENTUAL" },
-  CRITICO:   { hex: "#dc2626", bgClass: "bg-red-600",    textOnClass: "text-red-50",     softBgClass: "bg-red-600/20",    borderClass: "border-red-500/60",    label: "CRÍTICO" },
-  RISCO:     { hex: "#d97706", bgClass: "bg-amber-600",  textOnClass: "text-amber-50",   softBgClass: "bg-amber-600/20",  borderClass: "border-amber-500/60",  label: "RISCO" },
-  ATENCAO:   { hex: "#ca8a04", bgClass: "bg-yellow-600", textOnClass: "text-yellow-50",  softBgClass: "bg-yellow-600/20", borderClass: "border-yellow-500/60", label: "ATENÇÃO" },
-  MONITORAR: { hex: "#2563eb", bgClass: "bg-blue-600",   textOnClass: "text-blue-50",    softBgClass: "bg-blue-600/20",   borderClass: "border-blue-500/60",   label: "MONITORAR" },
-  SAUDAVEL:  { hex: "#16a34a", bgClass: "bg-green-600",  textOnClass: "text-green-50",   softBgClass: "bg-green-600/20",  borderClass: "border-green-500/60",  label: "SAUDÁVEL" },
-  RECENTE:   { hex: "#0891b2", bgClass: "bg-cyan-600",   textOnClass: "text-cyan-50",    softBgClass: "bg-cyan-600/20",   borderClass: "border-cyan-500/60",   label: "RECENTE" },
-  SEM_STATUS_CLIENTE: { hex: "#475569", bgClass: "bg-slate-600", textOnClass: "text-slate-50", softBgClass: "bg-slate-600/20", borderClass: "border-slate-500/60", label: "Sem status" },
+  CHURN:     { hex: "#7f1d1d", bgClass: "bg-red-50",       textOnClass: "text-red-800",       softBgClass: "bg-red-50",       borderClass: "border-red-200",       label: "CHURN" },
+  EVENTUAL:  { hex: "#9a3412", bgClass: "bg-orange-50",    textOnClass: "text-orange-800",    softBgClass: "bg-orange-50",    borderClass: "border-orange-200",    label: "EVENTUAL" },
+  CRITICO:   { hex: "#dc2626", bgClass: "bg-red-50",       textOnClass: "text-red-700",       softBgClass: "bg-red-50",       borderClass: "border-red-200",       label: "CRÍTICO" },
+  RISCO:     { hex: "#b45309", bgClass: "bg-amber-50",     textOnClass: "text-amber-800",     softBgClass: "bg-amber-50",     borderClass: "border-amber-200",     label: "RISCO" },
+  ATENCAO:   { hex: "#a16207", bgClass: "bg-yellow-50",    textOnClass: "text-yellow-800",    softBgClass: "bg-yellow-50",    borderClass: "border-yellow-200",    label: "ATENÇÃO" },
+  MONITORAR: { hex: "#2563eb", bgClass: "bg-blue-50",      textOnClass: "text-blue-700",      softBgClass: "bg-blue-50",      borderClass: "border-blue-200",      label: "MONITORAR" },
+  SAUDAVEL:  { hex: "#00624b", bgClass: "bg-[#e7f4f0]",    textOnClass: "text-[#003729]",     softBgClass: "bg-[#e7f4f0]",    borderClass: "border-[#b9d8d0]",    label: "SAUDÁVEL" },
+  RECENTE:   { hex: "#0f766e", bgClass: "bg-teal-50",      textOnClass: "text-teal-800",      softBgClass: "bg-teal-50",      borderClass: "border-teal-200",      label: "RECENTE" },
+  SEM_STATUS_CLIENTE: { hex: "#4f6d65", bgClass: "bg-[#f5faf8]", textOnClass: "text-[#4f6d65]", softBgClass: "bg-[#f5faf8]", borderClass: "border-[#d7e9e4]", label: "Sem status" },
 };
 
 const IMPACT_PALETTE: Record<ImpactKey, ColorTokens> = {
-  ALTO:   { hex: "#dc2626", bgClass: "bg-red-600",    textOnClass: "text-red-50",    softBgClass: "bg-red-600/15",    borderClass: "border-red-500/60",    label: "ALTO" },
-  MEDIO:  { hex: "#ea580c", bgClass: "bg-orange-600", textOnClass: "text-orange-50", softBgClass: "bg-orange-600/15", borderClass: "border-orange-500/60", label: "MÉDIO" },
-  BAIXO:  { hex: "#ca8a04", bgClass: "bg-yellow-600", textOnClass: "text-yellow-50", softBgClass: "bg-yellow-600/15", borderClass: "border-yellow-500/60", label: "BAIXO" },
-  MINIMO: { hex: "#64748b", bgClass: "bg-slate-500",  textOnClass: "text-slate-50",  softBgClass: "bg-slate-500/15",  borderClass: "border-slate-400/60",  label: "MÍNIMO" },
-  SEM_IMPACTO: { hex: "#475569", bgClass: "bg-slate-700", textOnClass: "text-slate-50", softBgClass: "bg-slate-700/15", borderClass: "border-slate-500/60", label: "Sem impacto" },
+  ALTO:   { hex: "#dc2626", bgClass: "bg-red-50",       textOnClass: "text-red-700",       softBgClass: "bg-red-50",       borderClass: "border-red-200",       label: "ALTO" },
+  MEDIO:  { hex: "#c2410c", bgClass: "bg-orange-50",    textOnClass: "text-orange-800",    softBgClass: "bg-orange-50",    borderClass: "border-orange-200",    label: "MÉDIO" },
+  BAIXO:  { hex: "#a16207", bgClass: "bg-yellow-50",    textOnClass: "text-yellow-800",    softBgClass: "bg-yellow-50",    borderClass: "border-yellow-200",    label: "BAIXO" },
+  MINIMO: { hex: "#4f6d65", bgClass: "bg-[#f5faf8]",    textOnClass: "text-[#4f6d65]",     softBgClass: "bg-[#f5faf8]",    borderClass: "border-[#d7e9e4]",    label: "MÍNIMO" },
+  SEM_IMPACTO: { hex: "#4f6d65", bgClass: "bg-[#f5faf8]", textOnClass: "text-[#4f6d65]", softBgClass: "bg-[#f5faf8]", borderClass: "border-[#d7e9e4]", label: "Sem impacto" },
 };
 
 export const healthStatusColor = (s?: string | null): ColorTokens =>

@@ -79,44 +79,44 @@ const LoginParceiro = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#031611] text-white">
+    <div className="monnera-page">
       <main className="mx-auto grid min-h-screen max-w-6xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_0.9fr] lg:items-center lg:px-8">
         <section className="space-y-7">
           <div className="flex items-center gap-3">
             <img src={logoMonnera} alt="Monnera" className="h-11 w-11 rounded-lg object-cover" />
             <div>
-              <p className="text-sm font-semibold text-[#9fd4c8]">Monnera</p>
-              <p className="text-xs text-white/55">Painel do embaixador</p>
+              <p className="text-sm font-semibold text-[#003729]">Monnera</p>
+              <p className="text-xs text-[#4f6d65]">Painel do embaixador</p>
             </div>
           </div>
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#9fd4c8]">
+            <div className="monnera-eyebrow">
               <KeyRound className="h-3.5 w-3.5" />
               Já sou embaixador
             </div>
-            <h1 className="mt-5 max-w-2xl text-4xl font-bold leading-tight sm:text-5xl">
+            <h1 className="mt-5 max-w-2xl text-4xl font-bold leading-tight text-[#003729] sm:text-5xl">
               Acesse seu painel e acompanhe as oportunidades que você abriu.
             </h1>
-            <p className="mt-5 max-w-2xl text-base leading-relaxed text-white/72">
+            <p className="mt-5 max-w-2xl text-base leading-relaxed text-[#33584f]">
               Entre para copiar seu link, usar o kit de vendas e acompanhar a evolução dos leads com o apoio do time
               Monnera.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-lg border border-white/10 bg-white/[0.06] p-4">
-              <Users className="h-5 w-5 text-[#9fd4c8]" />
-              <p className="mt-3 font-semibold">Indicações organizadas</p>
-              <p className="mt-1 text-sm text-white/60">Seu funil, seus leads e seus próximos passos em um só lugar.</p>
+            <div className="monnera-hero-panel">
+              <Users className="h-5 w-5 text-[#00624b]" />
+              <p className="mt-3 font-semibold text-[#003729]">Indicações organizadas</p>
+              <p className="mt-1 text-sm text-[#4f6d65]">Seu funil, seus leads e seus próximos passos em um só lugar.</p>
             </div>
-            <div className="rounded-lg border border-white/10 bg-white/[0.06] p-4">
-              <ShieldCheck className="h-5 w-5 text-[#9fd4c8]" />
-              <p className="mt-3 font-semibold">Apoio com confiança</p>
-              <p className="mt-1 text-sm text-white/60">Materiais e mensagens para conduzir conversas com clareza.</p>
+            <div className="monnera-hero-panel">
+              <ShieldCheck className="h-5 w-5 text-[#00624b]" />
+              <p className="mt-3 font-semibold text-[#003729]">Apoio com confiança</p>
+              <p className="mt-1 text-sm text-[#4f6d65]">Materiais e mensagens para conduzir conversas com clareza.</p>
             </div>
           </div>
         </section>
 
-        <Card className="border-white/10 bg-[#f5faf8] text-[#003729] shadow-2xl shadow-black/25">
+        <Card className="monnera-card-elevated">
           <CardContent className="p-5 sm:p-7">
             <div className="mb-6 text-center">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-[#6BB0A1]/20">

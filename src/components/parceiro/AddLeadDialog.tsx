@@ -28,12 +28,13 @@ export const AddLeadDialog = ({ open, onOpenChange, parceiroId, parceiroNome, on
     quantidade_lojas: "",
     erp_utilizado: "",
     valor_campanhas: "",
+    canal_tracao: "",
   });
 
   const resetForm = () => {
     setForm({
       nome_responsavel: "", telefone_responsavel: "", email_responsavel: "",
-      nome_fantasia: "", quantidade_lojas: "", erp_utilizado: "", valor_campanhas: "",
+      nome_fantasia: "", quantidade_lojas: "", erp_utilizado: "", valor_campanhas: "", canal_tracao: "",
     });
     setErrors({});
     setSubmitted(false);
@@ -66,6 +67,7 @@ export const AddLeadDialog = ({ open, onOpenChange, parceiroId, parceiroNome, on
         quantidade_lojas: parseInt(form.quantidade_lojas),
         erp_utilizado: form.erp_utilizado.trim(),
         valor_campanhas: form.valor_campanhas ? parseFloat(form.valor_campanhas) : null,
+        canal_tracao: form.canal_tracao.trim() || null,
         origem: "consultor_manual",
       } as any);
 
@@ -152,6 +154,10 @@ export const AddLeadDialog = ({ open, onOpenChange, parceiroId, parceiroNome, on
           <div className={fieldClass}>
             <Label>Valor médio pago em campanhas (R$/mês)</Label>
             <Input type="number" min="0" step="0.01" value={form.valor_campanhas} onChange={(e) => setForm({ ...form, valor_campanhas: e.target.value })} placeholder="Opcional" />
+          </div>
+          <div className={fieldClass}>
+            <Label>Canal de tração</Label>
+            <Input value={form.canal_tracao} onChange={(e) => setForm({ ...form, canal_tracao: e.target.value })} placeholder="Ex: indicação, evento, outbound" />
           </div>
 
           <Button type="submit" className="w-full text-base py-6" disabled={loading}>

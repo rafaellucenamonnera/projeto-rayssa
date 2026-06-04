@@ -65,38 +65,38 @@ interface PipelineKanbanProps {
 
 const campaignStatusClass = (status?: string | null) => {
   const s = (status || "").toUpperCase();
-  if (s.includes("ATIVA")) return "bg-emerald-500/20 text-emerald-300 border-emerald-400/40";
-  if (s.includes("PAGA") && s.includes("PARC")) return "bg-amber-500/20 text-amber-300 border-amber-400/40";
-  if (s.includes("PAGA")) return "bg-teal-500/20 text-teal-300 border-teal-400/40";
-  if (s.includes("CHURN")) return "bg-red-500/20 text-red-300 border-red-400/40";
-  if (s.includes("INATIVA")) return "bg-slate-500/20 text-slate-300 border-slate-400/40";
-  if (s.includes("IMPLEMENT")) return "bg-violet-500/20 text-violet-300 border-violet-400/40";
-  if (s.includes("AG") && s.includes("FUND")) return "bg-orange-500/20 text-orange-300 border-orange-400/40";
+  if (s.includes("ATIVA")) return "bg-[#e7f4f0] text-[#003729] border-[#b9d8d0]";
+  if (s.includes("PAGA") && s.includes("PARC")) return "bg-amber-50 text-amber-800 border-amber-200";
+  if (s.includes("PAGA")) return "bg-teal-50 text-teal-800 border-teal-200";
+  if (s.includes("CHURN")) return "bg-red-50 text-red-700 border-red-200";
+  if (s.includes("INATIVA")) return "bg-[#f5faf8] text-[#4f6d65] border-[#d7e9e4]";
+  if (s.includes("IMPLEMENT")) return "bg-[#e7f4f0] text-[#003729] border-[#b9d8d0]";
+  if (s.includes("AG") && s.includes("FUND")) return "bg-orange-50 text-orange-800 border-orange-200";
   return "bg-secondary/40 text-foreground border-border";
 };
 const csatMeta = (direction?: string | null) => {
-  if (direction === "up") return { icon: ArrowUp, color: "text-emerald-400" };
-  if (direction === "down") return { icon: ArrowDown, color: "text-red-400" };
-  return { icon: ArrowRight, color: "text-slate-300" };
+  if (direction === "up") return { icon: ArrowUp, color: "text-[#00624b]" };
+  if (direction === "down") return { icon: ArrowDown, color: "text-red-600" };
+  return { icon: ArrowRight, color: "text-muted-foreground" };
 };
 const healthStatusClass = (status?: string | null) => {
   const s = (status || "").toUpperCase();
-  if (s.includes("CHURN")) return "bg-rose-900/60 text-rose-200 border-rose-700/50";
-  if (s.includes("CRIT")) return "bg-red-600/30 text-red-200 border-red-500/50";
-  if (s.includes("RISCO")) return "bg-orange-600/30 text-orange-200 border-orange-500/50";
-  if (s.includes("ATEN")) return "bg-amber-500/30 text-amber-200 border-amber-400/50";
-  if (s.includes("MONITOR")) return "bg-blue-600/30 text-blue-200 border-blue-500/50";
-  if (s.includes("EVENTUAL")) return "bg-violet-600/30 text-violet-200 border-violet-500/50";
-  if (s.includes("RECENTE")) return "bg-sky-600/30 text-sky-200 border-sky-500/50";
-  if (s.includes("SAUD")) return "bg-emerald-600/30 text-emerald-200 border-emerald-500/50";
+  if (s.includes("CHURN")) return "bg-red-50 text-red-700 border-red-200";
+  if (s.includes("CRIT")) return "bg-red-50 text-red-700 border-red-200";
+  if (s.includes("RISCO")) return "bg-orange-50 text-orange-800 border-orange-200";
+  if (s.includes("ATEN")) return "bg-amber-50 text-amber-800 border-amber-200";
+  if (s.includes("MONITOR")) return "bg-blue-50 text-blue-700 border-blue-200";
+  if (s.includes("EVENTUAL")) return "bg-orange-50 text-orange-800 border-orange-200";
+  if (s.includes("RECENTE")) return "bg-teal-50 text-teal-800 border-teal-200";
+  if (s.includes("SAUD")) return "bg-[#e7f4f0] text-[#003729] border-[#b9d8d0]";
   return "bg-secondary/40 text-foreground border-border";
 };
 const impactClass = (impact?: string | null) => {
   const s = (impact || "").toUpperCase();
-  if (s.includes("ALTO")) return "bg-red-600/30 text-red-200 border-red-500/50";
-  if (s.includes("MEDIO") || s.includes("MÉDIO")) return "bg-orange-600/30 text-orange-200 border-orange-500/50";
-  if (s.includes("BAIXO")) return "bg-amber-500/30 text-amber-200 border-amber-400/50";
-  if (s.includes("MINIMO") || s.includes("MÍNIMO")) return "bg-slate-500/30 text-slate-200 border-slate-400/50";
+  if (s.includes("ALTO")) return "bg-red-50 text-red-700 border-red-200";
+  if (s.includes("MEDIO") || s.includes("MÉDIO")) return "bg-orange-50 text-orange-800 border-orange-200";
+  if (s.includes("BAIXO")) return "bg-amber-50 text-amber-800 border-amber-200";
+  if (s.includes("MINIMO") || s.includes("MÍNIMO")) return "bg-[#f5faf8] text-[#4f6d65] border-[#d7e9e4]";
   return "bg-secondary/40 text-foreground border-border";
 };
 
@@ -233,7 +233,7 @@ export const PipelineKanban = ({
                 const revVar = typeof l.revenue_variation === "number" ? l.revenue_variation : null;
                 const revTrend = revVar == null ? null : revVar > EPSILON ? "up" : revVar < -EPSILON ? "down" : "neutral";
                 const RevIcon = revTrend === "up" ? ArrowUp : revTrend === "down" ? ArrowDown : ArrowRight;
-                const revColor = revTrend === "up" ? "text-emerald-400" : revTrend === "down" ? "text-red-400" : "text-muted-foreground";
+                const revColor = revTrend === "up" ? "text-[#00624b]" : revTrend === "down" ? "text-red-600" : "text-muted-foreground";
                 return (
                   <div
                     key={l.id}

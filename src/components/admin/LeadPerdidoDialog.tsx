@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface LeadPerdidoDialogProps {
   open: boolean;
@@ -15,6 +16,7 @@ interface LeadPerdidoDialogProps {
 export const LeadPerdidoDialog = ({ open, onOpenChange, leadName, onConfirm, onCancel }: LeadPerdidoDialogProps) => {
   const [motivo, setMotivo] = useState("");
   const [error, setError] = useState("");
+  const motivosSugeridos = ["Número inválido", "Nunca respondeu", "Parou de responder", "Não é prioridade no momento"];
 
   const handleConfirm = () => {
     if (!motivo.trim()) {
@@ -41,6 +43,16 @@ export const LeadPerdidoDialog = ({ open, onOpenChange, leadName, onConfirm, onC
         <p className="text-sm text-muted-foreground">Lead: <strong>{leadName}</strong></p>
         <div className="space-y-1.5">
           <Label>Motivo da perda *</Label>
+          <Select value={motivo} onValueChange={(value) => { setMotivo(value); setError(""); }}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione um motivo sugerido" />
+            </SelectTrigger>
+            <SelectContent>
+              {motivosSugeridos.map((item) => (
+                <SelectItem key={item} value={item}>{item}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Textarea
             value={motivo}
             onChange={(e) => { setMotivo(e.target.value.slice(0, 200)); setError(""); }}

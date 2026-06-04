@@ -3,11 +3,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, AlertTriangle, Infinity as InfinityIcon } from "lucide-react";
+import { Loader2, AlertTriangle } from "lucide-react";
 
 interface CadastroFinanceiroDialogProps {
   open: boolean;
@@ -48,7 +47,6 @@ export const CadastroFinanceiroDialog = ({
 }: CadastroFinanceiroDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [tipoComissao, setTipoComissao] = useState<"percentual" | "fixo">("percentual");
-  const [comissaoVitalicia, setComissaoVitalicia] = useState<boolean>(false);
   const [form, setForm] = useState({
     consultor_id: parceiroId,
     valor_setup: "",
@@ -58,19 +56,20 @@ export const CadastroFinanceiroDialog = ({
     percentual_comissao: "",
     valor_comissao_fixo: "",
     qtd_parcelas: "",
+    comissao_vitalicia: false,
   });
 
   useEffect(() => {
-    setComissaoVitalicia(Boolean(initialData?.comissao_vitalicia));
     setForm((f) => ({
       ...f,
       consultor_id: parceiroId,
-      valor_setup: initialData?.valor_setup != null ? String(initialData.valor_setup) : f.valor_setup,
-      valor_mensalidade: initialData?.valor_mensalidade != null ? String(initialData.valor_mensalidade) : f.valor_mensalidade,
+      valor_setup: initialData?.valor_setup ? String(initialData.valor_setup) : f.valor_setup,
+      valor_mensalidade: initialData?.valor_mensalidade ? String(initialData.valor_mensalidade) : f.valor_mensalidade,
       valor_campanhas: initialData?.valor_campanhas != null ? String(initialData.valor_campanhas) : f.valor_campanhas,
       quantidade_lojas: initialData?.quantidade_lojas ? String(initialData.quantidade_lojas) : f.quantidade_lojas,
       qtd_parcelas: initialData?.qtd_parcelas ? String(initialData.qtd_parcelas) : f.qtd_parcelas,
       percentual_comissao: initialData?.percentual_consultor ? String((initialData.percentual_consultor || 0) * 100) : f.percentual_comissao,
+      comissao_vitalicia: !!initialData?.comissao_vitalicia,
     }));
   }, [parceiroId, initialData, open]);
 
@@ -78,7 +77,7 @@ export const CadastroFinanceiroDialog = ({
   const mensalidade = parseFloat(form.valor_mensalidade) || 0;
   const campanhas = parseFloat(form.valor_campanhas) || 0;
   const qtdLojas = parseInt(form.quantidade_lojas) || 0;
-  const parcelas = comissaoVitalicia ? 0 : parseInt(form.qtd_parcelas) || 0;
+  const parcelas = parseInt(form.qtd_parcelas) || 0;
 
   const mensalidadeTotal = qtdLojas * mensalidade;
   const valorTotalContrato = setup + (mensalidadeTotal * (parcelas || 1)) + campanhas;
@@ -87,7 +86,7 @@ export const CadastroFinanceiroDialog = ({
     ? mensalidadeTotal * (parseFloat(form.percentual_comissao) || 0) / 100
     : parseFloat(form.valor_comissao_fixo) || 0;
 
-  const valorComissaoTotal = comissaoMensal * (parcelas || 0);
+  const valorComissaoTotal = form.comissao_vitalicia ? 0 : comissaoMensal * (parcelas || 0);
 
   const percentualEfetivo = tipoComissao === "percentual"
     ? (parseFloat(form.percentual_comissao) || 0) / 100
@@ -97,9 +96,9 @@ export const CadastroFinanceiroDialog = ({
 
   const handleSave = async () => {
     if (setup < 0) { toast.error("Valor de setup inválido"); return; }
-    if (mensalidade < 0) { toast.error("Mensalidade não pode ser negativa"); return; }
+    if (mensalidade < 0) { toast.error("Mensalidade inválida"); return; }
     if (qtdLojas <= 0) { toast.error("Quantidade de lojas deve ser ao menos 1"); return; }
-    if (!comissaoVitalicia && parcelas <= 0) { toast.error("Informe a quantidade de parcelas ou marque comissão vitalícia"); return; }
+    if (!form.comissao_vitalicia && parcelas <= 0) { toast.error("Informe a quantidade de parcelas"); return; }
     if (campanhas < 0) { toast.error("Receita de campanhas inválida"); return; }
     if (tipoComissao === "percentual" && (parseFloat(form.percentual_comissao) || 0) <= 0) {
       toast.error("Informe o percentual de comissão"); return;
@@ -118,9 +117,9 @@ export const CadastroFinanceiroDialog = ({
           valor_campanhas: campanhas,
           quantidade_lojas: qtdLojas,
           percentual_consultor: percentualEfetivo,
-          qtd_parcelas: parcelas,
+          qtd_parcelas: form.comissao_vitalicia ? null : parcelas,
           parcelas_pagas: 0,
-          comissao_vitalicia: comissaoVitalicia,
+          comissao_vitalicia: form.comissao_vitalicia,
         } as any)
         .eq("id", leadId);
 
@@ -131,8 +130,8 @@ export const CadastroFinanceiroDialog = ({
         valor_mensalidade: mensalidade,
         valor_campanhas: campanhas,
         percentual_consultor: percentualEfetivo,
-        qtd_parcelas: parcelas,
-        comissao_vitalicia: comissaoVitalicia,
+        qtd_parcelas: form.comissao_vitalicia ? 0 : parcelas,
+        comissao_vitalicia: form.comissao_vitalicia,
       });
       onOpenChange(false);
       toast.success("Dados financeiros salvos!");
@@ -155,7 +154,7 @@ export const CadastroFinanceiroDialog = ({
 
         <div className="rounded-md bg-amber-500/10 border border-amber-500/30 p-3 flex gap-2 text-xs">
           <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-          <p>Para avançar este lead você precisa preencher <strong>Setup, Mensalidade, Quantidade de lojas e Receita de campanhas</strong>. Esses dados alimentam o pipeline financeiro.</p>
+          <p>Para avançar este lead você precisa preencher <strong>Setup, Mensalidade, Quantidade de lojas e Receita de campanhas</strong>. Mensalidade pode ser zero quando a negociação exigir.</p>
         </div>
 
         <p className="text-sm text-muted-foreground">Lead: <strong>{leadName}</strong></p>
@@ -187,7 +186,7 @@ export const CadastroFinanceiroDialog = ({
             <div className="space-y-1.5">
               <Label>Mensalidade por loja (R$)</Label>
               <Input type="number" min="0" step="0.01" value={form.valor_mensalidade}
-                onChange={(e) => setForm({ ...form, valor_mensalidade: e.target.value })} placeholder="0,00" />
+                onChange={(e) => setForm({ ...form, valor_mensalidade: e.target.value })} placeholder="1000.00" />
             </div>
             <div className="space-y-1.5">
               <Label>Quantidade de lojas</Label>
@@ -221,24 +220,26 @@ export const CadastroFinanceiroDialog = ({
             </div>
           )}
 
-          <div className="flex items-center justify-between rounded-md border border-border/60 bg-secondary/40 px-3 py-2">
-            <div className="flex items-center gap-2">
-              <InfinityIcon className="h-4 w-4 text-primary" />
-              <div>
-                <Label className="text-sm">Comissão vitalícia</Label>
-                <p className="text-[11px] text-muted-foreground">Sem prazo de parcelas — Embaixador recebe enquanto o cliente pagar.</p>
-              </div>
-            </div>
-            <Switch checked={comissaoVitalicia} onCheckedChange={setComissaoVitalicia} />
+          <div className="space-y-1.5">
+            <Label>Quantidade de parcelas</Label>
+            <Input type="number" min="1" value={form.qtd_parcelas}
+              onChange={(e) => setForm({ ...form, qtd_parcelas: e.target.value })} placeholder="12" disabled={form.comissao_vitalicia} />
           </div>
 
-          {!comissaoVitalicia && (
-            <div className="space-y-1.5">
-              <Label>Quantidade de parcelas</Label>
-              <Input type="number" min="1" value={form.qtd_parcelas}
-                onChange={(e) => setForm({ ...form, qtd_parcelas: e.target.value })} placeholder="12" />
-            </div>
-          )}
+          <label className="flex items-start gap-3 rounded-md border border-border bg-secondary/40 p-3 text-sm">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={form.comissao_vitalicia}
+              onChange={(e) => setForm({ ...form, comissao_vitalicia: e.target.checked, qtd_parcelas: e.target.checked ? "" : form.qtd_parcelas })}
+            />
+            <span>
+              <span className="font-medium">Comissão vitalícia</span>
+              <span className="block text-xs text-muted-foreground">
+                Use quando o parceiro participou da agenda ou fechou diretamente com o cliente. Quantidade de parcelas não se aplica.
+              </span>
+            </span>
+          </label>
 
           {/* Preview cálculos automáticos */}
           {(mensalidade > 0 || setup > 0) && (

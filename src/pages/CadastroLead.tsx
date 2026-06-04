@@ -35,6 +35,8 @@ const CadastroLead = () => {
     quantidade_lojas: "",
     erp_utilizado: "",
     valor_campanhas: "",
+    canal_tracao: "",
+    tipo_empresa: "",
   });
 
   useEffect(() => {
@@ -98,6 +100,8 @@ const CadastroLead = () => {
         p_erp_utilizado: form.erp_utilizado.trim() || undefined,
         p_valor_campanhas: form.valor_campanhas ? parseFloat(form.valor_campanhas) : null,
         p_origem: "link_indicacao",
+        p_canal_tracao: form.canal_tracao.trim() || undefined,
+        p_tipo_empresa: form.tipo_empresa || undefined,
       });
 
       if (error) throw error;
@@ -111,8 +115,8 @@ const CadastroLead = () => {
 
   if (parceiroValid === false) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#031611] p-4">
-        <Card className="w-full max-w-md border-white/10 bg-white text-center">
+      <div className="monnera-page flex items-center justify-center p-4">
+        <Card className="monnera-card w-full max-w-md text-center">
           <CardContent className="py-12">
             <p className="text-lg font-semibold text-red-700">Link inválido ou embaixador Monnera inativo.</p>
           </CardContent>
@@ -123,7 +127,7 @@ const CadastroLead = () => {
 
   if (parceiroValid === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#031611]">
+      <div className="monnera-page flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-[#6BB0A1]" />
       </div>
     );
@@ -131,8 +135,8 @@ const CadastroLead = () => {
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#031611] p-4">
-        <Card className="w-full max-w-md border-white/10 bg-[#f5faf8] text-center text-[#003729]">
+      <div className="monnera-page flex items-center justify-center p-4">
+        <Card className="monnera-card-elevated w-full max-w-md text-center">
           <CardContent className="py-12 space-y-4">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#6BB0A1]/20">
               <CheckCircle className="h-8 w-8 text-[#00624b]" />
@@ -168,51 +172,50 @@ const CadastroLead = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#031611] text-white">
+    <div className="monnera-page">
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(107,176,161,0.26),transparent_32%),linear-gradient(135deg,#003729_0%,#05231b_48%,#031611_100%)]" />
         <main className="relative mx-auto grid min-h-screen max-w-6xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[1.08fr_0.92fr] lg:items-center lg:px-8">
           <section className="space-y-8">
             <div className="flex items-center gap-3">
               <img src={logoMonnera} alt="Monnera" className="h-11 w-11 rounded-lg object-cover" />
               <div>
-                <p className="text-sm font-semibold text-[#9fd4c8]">Monnera</p>
-                <p className="text-xs text-white/55">Sales Performance & Compliance</p>
+                <p className="text-sm font-semibold text-[#003729]">Monnera</p>
+                <p className="text-xs text-[#4f6d65]">Sales Performance & Compliance</p>
               </div>
             </div>
 
             <div className="max-w-2xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#9fd4c8]">
+              <div className="monnera-eyebrow">
                 <Sparkles className="h-3.5 w-3.5" />
                 Indicação qualificada
               </div>
-              <h1 className="mt-5 text-4xl font-bold leading-tight sm:text-5xl">
+              <h1 className="mt-5 text-4xl font-bold leading-tight text-[#003729] sm:text-5xl">
                 Encurte o caminho entre incentivo de vendas, performance e segurança.
               </h1>
-              <p className="mt-5 text-base leading-relaxed text-white/72 sm:text-lg">
+              <p className="mt-5 text-base leading-relaxed text-[#33584f] sm:text-lg">
                 A Monnera ajuda empresas a transformar campanhas comerciais em uma operação mais clara, governada e
                 conectada. Preencha o cadastro para iniciar uma conversa objetiva sobre melhoria de performance e
                 mitigação de passivo trabalhista.
               </p>
               {parceiroNome && (
-                <p className="mt-4 text-sm text-[#9fd4c8]">
-                  Você chegou por indicação de <span className="font-semibold text-white">{parceiroNome}</span>.
+                <p className="mt-4 text-sm text-[#2b6d5e]">
+                  Você chegou por indicação de <span className="font-semibold text-[#003729]">{parceiroNome}</span>.
                 </p>
               )}
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
               {pillars.map((pillar) => (
-                <div key={pillar.title} className="rounded-lg border border-white/10 bg-white/[0.07] p-4">
-                  <pillar.icon className="h-5 w-5 text-[#9fd4c8]" />
-                  <h2 className="mt-4 font-semibold">{pillar.title}</h2>
-                  <p className="mt-2 text-sm leading-relaxed text-white/62">{pillar.text}</p>
+                <div key={pillar.title} className="monnera-hero-panel">
+                  <pillar.icon className="h-5 w-5 text-[#00624b]" />
+                  <h2 className="mt-4 font-semibold text-[#003729]">{pillar.title}</h2>
+                  <p className="mt-2 text-sm leading-relaxed text-[#4f6d65]">{pillar.text}</p>
                 </div>
               ))}
             </div>
           </section>
 
-          <Card className="border-white/10 bg-[#f5faf8] text-[#003729] shadow-2xl shadow-black/25">
+          <Card className="monnera-card-elevated">
             <CardContent className="p-5 sm:p-7">
               <div className="mb-6">
                 <p className="text-sm font-semibold uppercase tracking-[0.14em] text-[#2b6d5e]">Comece pela conversa certa</p>
@@ -259,6 +262,24 @@ const CadastroLead = () => {
                 <div className={fieldClass}>
                   <Label>Valor médio pago em campanhas de vendas por mês</Label>
                   <Input type="number" min="0" step="0.01" value={form.valor_campanhas} onChange={(e) => setForm({ ...form, valor_campanhas: e.target.value })} placeholder="R$ (opcional)" />
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className={fieldClass}>
+                    <Label>Canal de tração</Label>
+                    <Input value={form.canal_tracao} onChange={(e) => setForm({ ...form, canal_tracao: e.target.value })} placeholder="Ex: indicação, evento, outbound" />
+                  </div>
+                  <div className={fieldClass}>
+                    <Label>Tipo de empresa</Label>
+                    <select
+                      value={form.tipo_empresa}
+                      onChange={(e) => setForm({ ...form, tipo_empresa: e.target.value })}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+                    >
+                      <option value="">Opcional</option>
+                      <option value="varejo">Varejo</option>
+                      <option value="distribuidor">Distribuidor</option>
+                    </select>
+                  </div>
                 </div>
 
                 <Button type="submit" className="w-full bg-[#003729] py-6 text-base font-bold text-white hover:bg-[#064b3a]" disabled={loading}>

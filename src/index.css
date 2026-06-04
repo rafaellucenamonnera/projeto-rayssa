@@ -1,49 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap') layer(fonts);
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap') layer(fonts);
-
 @layer base {
   :root {
-    --background: 220 20% 10%;
-    --foreground: 210 20% 92%;
+    --background: 150 28% 97%;
+    --foreground: 163 100% 11%;
 
-    --card: 220 18% 13%;
-    --card-foreground: 210 20% 92%;
+    --card: 0 0% 100%;
+    --card-foreground: 163 100% 11%;
 
-    --popover: 220 18% 13%;
-    --popover-foreground: 210 20% 92%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 163 100% 11%;
 
-    --primary: 168 80% 45%;
-    --primary-foreground: 220 20% 10%;
+    --primary: 163 100% 11%;
+    --primary-foreground: 160 35% 96%;
 
-    --secondary: 220 15% 18%;
-    --secondary-foreground: 210 20% 85%;
+    --secondary: 164 32% 92%;
+    --secondary-foreground: 163 80% 16%;
 
-    --muted: 220 15% 16%;
-    --muted-foreground: 215 15% 55%;
+    --muted: 160 24% 94%;
+    --muted-foreground: 164 18% 36%;
 
-    --accent: 168 60% 35%;
-    --accent-foreground: 210 20% 95%;
+    --accent: 169 32% 55%;
+    --accent-foreground: 163 100% 11%;
 
     --destructive: 0 72% 55%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 220 15% 20%;
-    --input: 220 15% 20%;
-    --ring: 168 80% 45%;
+    --border: 164 24% 84%;
+    --input: 164 24% 84%;
+    --ring: 169 32% 55%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
-    --sidebar-background: 220 20% 8%;
-    --sidebar-foreground: 210 15% 70%;
-    --sidebar-primary: 168 80% 45%;
-    --sidebar-primary-foreground: 220 20% 10%;
-    --sidebar-accent: 220 15% 14%;
-    --sidebar-accent-foreground: 210 20% 92%;
-    --sidebar-border: 220 15% 15%;
-    --sidebar-ring: 168 80% 45%;
+    --sidebar-background: 163 100% 11%;
+    --sidebar-foreground: 160 35% 96%;
+    --sidebar-primary: 169 32% 55%;
+    --sidebar-primary-foreground: 163 100% 11%;
+    --sidebar-accent: 162 67% 17%;
+    --sidebar-accent-foreground: 160 35% 96%;
+    --sidebar-border: 163 65% 18%;
+    --sidebar-ring: 169 32% 55%;
 
     --success: 142 70% 45%;
     --warning: 38 92% 50%;
@@ -58,33 +58,62 @@
 
   body {
     @apply bg-background text-foreground font-sans;
-    font-family: 'Manrope', 'Inter', system-ui, sans-serif;
-    font-weight: 500;
+    font-family: 'Mark Pro', 'Inter', 'Aptos', 'Montserrat', sans-serif;
+    font-weight: 400;
+    letter-spacing: 0;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Manrope', 'Inter', system-ui, sans-serif;
+    font-family: 'Mark Pro', 'Inter', 'Aptos', 'Montserrat', sans-serif;
     font-weight: 700;
+    letter-spacing: 0;
   }
 }
 
 @layer components {
   .stat-card {
-    @apply bg-card border border-border rounded-xl p-6 transition-all duration-300;
-    background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(220 18% 15%) 100%);
+    @apply bg-card border border-border rounded-lg p-6 transition-all duration-300 shadow-sm;
   }
 
   .stat-card:hover {
     border-color: hsl(var(--primary) / 0.3);
-    box-shadow: 0 0 20px hsl(var(--primary) / 0.1);
+    box-shadow: 0 12px 30px hsl(var(--primary) / 0.08);
   }
 
   .glow-text {
     color: hsl(var(--primary));
-    text-shadow: 0 0 20px hsl(var(--primary) / 0.3);
   }
 
   .glass-panel {
-    @apply bg-card/80 backdrop-blur-lg border border-border rounded-xl;
+    @apply bg-card/90 backdrop-blur-lg border border-border rounded-lg shadow-sm;
+  }
+
+  .monnera-page {
+    @apply min-h-screen bg-background text-foreground;
+    background:
+      radial-gradient(circle at 12% 8%, hsl(var(--accent) / 0.16), transparent 28rem),
+      linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--secondary) / 0.55) 100%);
+  }
+
+  .monnera-hero-panel {
+    @apply rounded-lg border border-border bg-card/80 p-4 shadow-sm;
+  }
+
+  .monnera-eyebrow {
+    @apply inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold uppercase text-primary shadow-sm;
+    letter-spacing: 0.12em;
+  }
+
+  .monnera-card {
+    @apply border border-border bg-card text-card-foreground shadow-sm;
+  }
+
+  .monnera-card-elevated {
+    @apply border border-border bg-card text-card-foreground shadow-lg;
+    box-shadow: 0 18px 48px hsl(var(--primary) / 0.10);
+  }
+
+  .monnera-muted {
+    @apply text-muted-foreground;
   }
 }
