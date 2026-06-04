@@ -1,3 +1,5 @@
+import logoMonnera from "@/assets/logo-monnera.jpg";
+
 const landingStyles = `
     :root {
       --green-dark: #003729;
@@ -59,38 +61,44 @@ const landingStyles = `
     .brand {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 16px;
       font-weight: 900;
       color: var(--green-dark);
+      min-width: 0;
     }
 
-    .brand-mark {
-      width: 56px;
-      height: 56px;
-      border-radius: 16px;
-      display: grid;
-      place-items: center;
-      color: white;
+    .brand-logo {
+      width: 58px;
+      height: 58px;
+      border-radius: 10px;
+      object-fit: contain;
       background: var(--green-dark);
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14);
-      letter-spacing: -.06em;
-      font-size: 32px;
-      line-height: 1;
+      box-shadow: 0 8px 22px rgba(0, 55, 41, .10);
+      flex: 0 0 auto;
+    }
+
+    .brand-text {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 4px;
+      min-width: 0;
     }
 
     .brand-text small {
       display: block;
-      margin-bottom: 4px;
       color: var(--green-light);
       font-size: 12px;
-      letter-spacing: .22em;
+      letter-spacing: .34em;
       text-transform: uppercase;
+      line-height: 1;
     }
 
     .brand-text strong {
       display: block;
-      font-size: 22px;
+      font-size: 24px;
       line-height: 1;
+      color: var(--green-dark);
     }
 
     .nav-links {
@@ -701,13 +709,18 @@ const landingStyles = `
         min-height: 76px;
       }
 
-      .brand-mark {
+      .brand-logo {
         width: 48px;
         height: 48px;
       }
 
       .brand-text strong {
         font-size: 18px;
+      }
+
+      .brand-text small {
+        font-size: 10px;
+        letter-spacing: .26em;
       }
 
       .nav-links {
@@ -802,9 +815,9 @@ const landingMarkup = `<div class="landing-shell"><main class="page">
     <header class="nav">
       <div class="wrap nav-inner">
         <a class="brand" href="/" aria-label="Monnera">
-          <span class="brand-mark">M</span>
+          <img class="brand-logo" src="${logoMonnera}" alt="Monnera" />
           <span class="brand-text">
-            <small>Monnera</small>
+            <small>MONNERA</small>
             <strong>Embaixadores</strong>
           </span>
         </a>
