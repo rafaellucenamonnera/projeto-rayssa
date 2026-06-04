@@ -1,39 +1,38 @@
-# Corrigir salvamento de "Pode ser Responsável por Cards"
+## Adicionar vínculo de painel (panel_id) aos leads
 
-## Problema
+### Contexto
+O Kanban precisa filtrar cards por painel. A coluna `panel_id` será adicionada à tabela `leads` com foreign key para `pipeline_panels(id)` e valor padrão `'comercial'` para leads existentes.
 
-Ao marcar a permissão para a Isabela Machado (e outros usuários como Rayssa Camporeze e confidercomercialweb), o toast mostra sucesso mas o valor não persiste. Causa raiz: esses usuários existem em `auth.users` mas **não possuem linha em `public.profiles`**. O código atual faz `UPDATE` em `profiles` por `user_id`, que afeta 0 linhas silenciosamente.
+### Mudanças
 
-## Solução
+**1. Migration SQL no Supabase**
+Executar via `supabase--migration`:
+```sql
+ALTER TABLE public.leads
+  ADD COLUMN IF NOT EXISTS panel_id text NOT NULL DEFAULT 'comercial';
 
-### 1. Migration — Backfill de profiles ausentes
+UPDATE public.leads
+SET panel_id = 'comercial'
+WHERE panel_id IS NULL OR panel_id = '';
 
-Inserir linhas em `public.profiles` para os usuários de `auth.users` que ainda não possuem profile, usando `nome` de `raw_user_meta_data` (com fallback para o email), `ativo = true`, `can_be_responsible = false`.
+ALTER TABLE public.leads
+  DROP CONSTRAINT IF EXISTS leads_panel_id_fkey;
 
-### 2. Frontend — `src/pages/admin/AdminPermissoes.tsx`
+ALTER TABLE public.leads
+  ADD CONSTRAINT leads_panel_id_fkey
+  FOREIGN KEY (panel_id)
+  REFERENCES public.pipeline_panels(id)
+  ON DELETE RESTRICT;
 
-Trocar o `update` por `upsert` em `profiles` no `handleSave`, garantindo que mesmo um usuário sem profile receba a permissão corretamente:
-
-```ts
-const selected = users.find(u => u.user_id === selectedUserId);
-await supabase.from("profiles").upsert(
-  {
-    user_id: selectedUserId,
-    nome: selected?.nome ?? selected?.email ?? "Sem nome",
-    can_be_responsible: canBeResponsible,
-    ativo: true,
-  },
-  { onConflict: "user_id" }
-);
+CREATE INDEX IF NOT EXISTS idx_leads_panel_id ON public.leads(panel_id);
 ```
 
-### 3. Validação
+**2. Validação pós-migration**
+Confirmar via `supabase--read_query`:
+- Existência da coluna `panel_id` em `leads`
+- `panel_id = 'comercial'` para leads antigos
+- Foreign key `leads_panel_id_fkey` apontando para `pipeline_panels(id)`
+- Índice `idx_leads_panel_id` existente
 
-- Marcar a permissão para Isabela e salvar.
-- Confirmar `profiles.can_be_responsible = true` para ela.
-- Confirmar que ela aparece em `get_available_responsible_users()`.
-
-## Escopo
-
-- Sem alteração de RLS, triggers, edge functions ou outras telas.
-- Mudança mínima e focada apenas no fluxo de permissões.
+**3. Build**
+Verificar que o projeto continua compilando após a migration.
