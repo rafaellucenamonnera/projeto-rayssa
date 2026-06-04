@@ -618,6 +618,20 @@ const landingStyles = `
       line-height: 1.6;
     }
 
+    .trust-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .trust-actions .btn {
+      min-height: 38px;
+      padding: 10px 14px;
+      font-size: 13px;
+      line-height: 1.2;
+    }
+
     .final {
       padding: 92px 0;
       text-align: center;
@@ -806,8 +820,55 @@ const landingStyles = `
       .trust-item {
         grid-template-columns: 1fr;
       }
+
+      .trust-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+      }
     }
   `;
+
+const partnerLogos = [
+  { id: "01", name: "Preco Baixo", variant: "logo-wide" },
+  { id: "02", name: "Parceiro comercial Monnera 02", variant: "logo-wide" },
+  { id: "03", name: "Parceiro comercial Monnera 03", variant: "logo-wide" },
+  { id: "04", name: "Santa Lucia Drogarias", variant: "logo-wide" },
+  { id: "05", name: "Parceiro comercial Monnera 05", variant: "logo-wide" },
+  { id: "06", name: "Parceiro comercial Monnera 06", variant: "logo-wide" },
+  { id: "07", name: "Parceiro comercial Monnera 07", variant: "logo-wide" },
+  { id: "08", name: "Parceiro comercial Monnera 08", variant: "logo-wide" },
+  { id: "09", name: "Parceiro comercial Monnera 09", variant: "logo-wide" },
+  { id: "10", name: "Parceiro comercial Monnera 10", variant: "logo-wide" },
+  { id: "11", name: "Parceiro comercial Monnera 11", variant: "logo-wide" },
+  { id: "12", name: "Parceiro comercial Monnera 12", variant: "logo-wide" },
+  { id: "13", name: "Farmacias Unipreco", variant: "logo-wide" },
+  { id: "14", name: "Parceiro comercial Monnera 14", variant: "logo-wide" },
+  { id: "15", name: "Parceiro comercial Monnera 15", variant: "logo-wide" },
+  { id: "16", name: "Parceiro comercial Monnera 16", variant: "logo-wide" },
+  { id: "17", name: "Parceiro comercial Monnera 17", variant: "logo-wide" },
+  { id: "18", name: "Parceiro comercial Monnera 18", variant: "logo-wide" },
+  { id: "19", name: "Parceiro comercial Monnera 19", variant: "logo-wide" },
+  { id: "20", name: "Parceiro comercial Monnera 20", variant: "logo-wide" },
+  { id: "21", name: "Parceiro comercial Monnera 21", variant: "logo-compact" },
+  { id: "22", name: "Parceiro comercial Monnera 22", variant: "logo-compact" },
+  { id: "23", name: "Parceiro comercial Monnera 23", variant: "logo-wide" },
+  { id: "24", name: "Parceiro comercial Monnera 24", variant: "logo-compact" },
+  { id: "25", name: "Rede de Farmacias Biomax", variant: "logo-wide" },
+  { id: "26", name: "Farmacias Cruzeiro", variant: "logo-wide" },
+];
+
+const renderPartnerLogos = (hidden = false) => partnerLogos
+  .map(({ id, name, variant }) => {
+    const alt = hidden ? "" : name;
+    return `<span class="authority-logo-card ${variant}"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-${id}.png" alt="${alt}" /></span>`;
+  })
+  .join("\n          ");
+
+const trustActions = `
+              <div class="trust-actions">
+                <a class="btn primary" href="/cadastro?perfil=cliente-embaixador">Quero ser Cliente Embaixador</a>
+                <a class="btn" href="/cadastro?perfil=embaixador-comercial">Quero ser Embaixador Comercial</a>
+              </div>`;
 
 const landingMarkup = `<div class="landing-shell"><main class="page">
     <header class="nav">
@@ -890,56 +951,10 @@ const landingMarkup = `<div class="landing-shell"><main class="page">
       <p class="authority-kicker">Parceiros comerciais Monnera</p>
       <div class="authority-track">
         <div class="authority-logo-list">
-          <span class="authority-logo-card logo-compact"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-01.png" alt="Parceiro comercial Monnera 01" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-02.png" alt="Parceiro comercial Monnera 02" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-03.png" alt="Parceiro comercial Monnera 03" /></span>
-          <span class="authority-logo-card logo-compact"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-04.png" alt="Parceiro comercial Monnera 04" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-05.png" alt="Parceiro comercial Monnera 05" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-06.png" alt="Parceiro comercial Monnera 06" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-07.png" alt="Parceiro comercial Monnera 07" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-08.png" alt="Parceiro comercial Monnera 08" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-09.png" alt="Parceiro comercial Monnera 09" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-10.png" alt="Parceiro comercial Monnera 10" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-11.png" alt="Parceiro comercial Monnera 11" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-12.png" alt="Parceiro comercial Monnera 12" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-13.png" alt="Parceiro comercial Monnera 13" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-14.png" alt="Parceiro comercial Monnera 14" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-15.png" alt="Parceiro comercial Monnera 15" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-16.png" alt="Parceiro comercial Monnera 16" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-17.png" alt="Parceiro comercial Monnera 17" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-18.png" alt="Parceiro comercial Monnera 18" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-19.png" alt="Parceiro comercial Monnera 19" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-20.png" alt="Parceiro comercial Monnera 20" /></span>
-          <span class="authority-logo-card logo-compact"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-21.png" alt="Parceiro comercial Monnera 21" /></span>
-          <span class="authority-logo-card logo-compact"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-22.png" alt="Parceiro comercial Monnera 22" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-23.png" alt="Parceiro comercial Monnera 23" /></span>
-          <span class="authority-logo-card logo-compact"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-24.png" alt="Parceiro comercial Monnera 24" /></span>
+          ${renderPartnerLogos()}
         </div>
         <div class="authority-logo-list" aria-hidden="true">
-          <span class="authority-logo-card logo-compact"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-01.png" alt="" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-02.png" alt="" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-03.png" alt="" /></span>
-          <span class="authority-logo-card logo-compact"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-04.png" alt="" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-05.png" alt="" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-06.png" alt="" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-07.png" alt="" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-08.png" alt="" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-09.png" alt="" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-10.png" alt="" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-11.png" alt="" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-12.png" alt="" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-13.png" alt="" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-14.png" alt="" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-15.png" alt="" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-16.png" alt="" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-17.png" alt="" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-18.png" alt="" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-19.png" alt="" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-20.png" alt="" /></span>
-          <span class="authority-logo-card logo-compact"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-21.png" alt="" /></span>
-          <span class="authority-logo-card logo-compact"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-22.png" alt="" /></span>
-          <span class="authority-logo-card logo-wide"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-23.png" alt="" /></span>
-          <span class="authority-logo-card logo-compact"><img src="/assets-clientes-monnera/parceiros-comerciais/parceiro-24.png" alt="" /></span>
+          ${renderPartnerLogos(true)}
         </div>
       </div>
     </section>
@@ -1054,6 +1069,7 @@ const landingMarkup = `<div class="landing-shell"><main class="page">
             <div>
               <h3>Facilidade na Obtenção de Dados</h3>
               <p>Espelhamento automático via API, SFTP ou estrutura equivalente. Também permite o upload de informações através de um simples relatório de vendas do seu próprio sistema.</p>
+              ${trustActions}
             </div>
           </article>
           <article class="trust-item">
@@ -1061,6 +1077,7 @@ const landingMarkup = `<div class="landing-shell"><main class="page">
             <div>
               <h3>Previsibilidade de Ganho para o Participante</h3>
               <p>Atualização diária (D-1) no App. O vendedor acompanha hoje o seu ganho financeiro de ontem em cada campanha por CPF com total clareza.</p>
+              ${trustActions}
             </div>
           </article>
           <article class="trust-item">
@@ -1068,6 +1085,7 @@ const landingMarkup = `<div class="landing-shell"><main class="page">
             <div>
               <h3>Geração de Metas Automáticas</h3>
               <p>Cálculo inteligente e individualizado. A plataforma define metas, supermetas e faixas de desempenho para cada participante em todas as premiações.</p>
+              ${trustActions}
             </div>
           </article>
           <article class="trust-item">
@@ -1075,6 +1093,7 @@ const landingMarkup = `<div class="landing-shell"><main class="page">
             <div>
               <h3>Gestão Centralizada</h3>
               <p>Tudo gerido através do painel do gestor. Reúne em um só lugar a criação de regras, comunicação, apuração e acompanhamento da performance de todo o time.</p>
+              ${trustActions}
             </div>
           </article>
           <article class="trust-item">
@@ -1082,6 +1101,7 @@ const landingMarkup = `<div class="landing-shell"><main class="page">
             <div>
               <h3>Pagamento Facilitado</h3>
               <p>Distribuição automática de prêmios. A empresa paga apenas um único boleto e o Monnera repassa os valores de forma individualizada com base no mérito de cada funcionário.</p>
+              ${trustActions}
             </div>
           </article>
         </div>
