@@ -546,6 +546,7 @@ export type Database = {
           numero_funcionarios: number | null
           numero_proposta: string | null
           origem: string
+          panel_id: string
           parceiro_id: string
           parcelas_pagas: number | null
           participantes_reuniao: string | null
@@ -634,6 +635,7 @@ export type Database = {
           numero_funcionarios?: number | null
           numero_proposta?: string | null
           origem?: string
+          panel_id?: string
           parceiro_id: string
           parcelas_pagas?: number | null
           participantes_reuniao?: string | null
@@ -722,6 +724,7 @@ export type Database = {
           numero_funcionarios?: number | null
           numero_proposta?: string | null
           origem?: string
+          panel_id?: string
           parceiro_id?: string
           parcelas_pagas?: number | null
           participantes_reuniao?: string | null
@@ -763,6 +766,13 @@ export type Database = {
           volume_premiacao_comissao?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "leads_panel_id_fkey"
+            columns: ["panel_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_panels"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "leads_parceiro_id_fkey"
             columns: ["parceiro_id"]
