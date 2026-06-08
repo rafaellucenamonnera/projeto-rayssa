@@ -38,6 +38,7 @@ interface StalledLead {
   nome_fantasia: string;
   etapa: string;
   dias: number;
+  dias_totais: number;
   parceiro_nome: string;
 }
 
@@ -154,17 +155,21 @@ const AdminDashboard = () => {
       if (leadIds.length > 0) {
         const { data: leadDetails } = await supabase
           .from("leads")
-          .select("id, nome_fantasia, parceiro_id")
+          .select("id, nome_fantasia, parceiro_id, data_cadastro")
           .in("id", leadIds);
 
         const stalled: StalledLead[] = stalledData.map((s: any) => {
           const lead = (leadDetails || []).find((l: any) => l.id === s.lead_id);
           const dias = Math.max(0, Math.floor((Date.now() - new Date(s.data_entrada).getTime()) / (1000 * 60 * 60 * 24)));
+          const dias_totais = lead?.data_cadastro
+            ? Math.max(0, Math.floor((Date.now() - new Date(lead.data_cadastro).getTime()) / (1000 * 60 * 60 * 24)))
+            : 0;
           return {
             id: s.lead_id,
             nome_fantasia: lead?.nome_fantasia || "—",
             etapa: s.etapa,
             dias,
+            dias_totais,
             parceiro_nome: nomeMap.get(lead?.parceiro_id || "") || "—",
           };
         })
@@ -264,7 +269,7 @@ const AdminDashboard = () => {
               <FileSignature className="w-7 h-7 text-emerald-500" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Conversão Geral</p>
+              <p className="text-sm text-muted-foreground">Taxa de Conversão</p>
               <p className="text-3xl font-display font-bold">{conversionRate}%</p>
               <p className="text-xs text-muted-foreground">Lead → Contrato Assinado</p>
             </div>
@@ -384,7 +389,8 @@ const AdminDashboard = () => {
                   <TableRow>
                     <TableHead>Empresa</TableHead>
                     <TableHead>Etapa</TableHead>
-                    <TableHead className="text-right">Dias</TableHead>
+                    <TableHead className="text-right">Dias na etapa</TableHead>
+                    <TableHead className="text-right">Dias totais</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -401,6 +407,9 @@ const AdminDashboard = () => {
                       </TableCell>
                       <TableCell className={`text-right font-mono font-bold ${getDaysColor(l.dias)}`}>
                         {l.dias}d
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-muted-foreground">
+                        {l.dias_totais}d
                       </TableCell>
                     </TableRow>
                   ))}
