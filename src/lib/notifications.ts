@@ -34,6 +34,9 @@ export const createNotification = async (payload: NotificationPayload) => {
     void supabase.functions.invoke("send-notification-email", {
       body: { notification_id: data },
     });
+    void supabase.functions.invoke("send-slack-notification", {
+      body: { notification_id: data },
+    });
   }
   return data as string | null;
 };

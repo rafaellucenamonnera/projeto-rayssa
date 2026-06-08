@@ -23,8 +23,10 @@ interface Comment {
 }
 
 type MentionUser = {
-  user_id: string;
+  user_id?: string;
+  slack_user_id?: string;
   nome: string;
+  registration_status?: string | null;
 };
 
 export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsProps) => {
@@ -38,18 +40,38 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [users, setUsers] = useState<MentionUser[]>([]);
   const [selectedMentionIds, setSelectedMentionIds] = useState<string[]>([]);
+  const [selectedSlackMentions, setSelectedSlackMentions] = useState<MentionUser[]>([]);
   const [mentionQuery, setMentionQuery] = useState("");
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setCurrentUserId(user.id);
     });
-    supabase
+    const loadMentionUsers = async () => {
+      const [{ data: profileUsers }, { data: slackUsers }] = await Promise.all([
+        supabase
       .from("profiles")
       .select("user_id,nome,ativo")
       .eq("ativo", true)
-      .order("nome", { ascending: true })
-      .then(({ data }) => setUsers(((data as any) || []).map((u: any) => ({ user_id: u.user_id, nome: u.nome }))));
+          .order("nome", { ascending: true }),
+        (supabase as any)
+          .from("slack_users")
+          .select("slack_user_id,name,real_name,email,registration_status,is_active,profile_user_id")
+          .eq("is_active", true)
+          .order("name", { ascending: true }),
+      ]);
+      const internalUsers = ((profileUsers as any) || []).map((u: any) => ({ user_id: u.user_id, nome: u.nome }));
+      const internalIds = new Set(internalUsers.map((u: MentionUser) => u.user_id));
+      const slackOnlyUsers = ((slackUsers as any) || [])
+        .filter((u: any) => !u.profile_user_id || !internalIds.has(u.profile_user_id))
+        .map((u: any) => ({
+          slack_user_id: u.slack_user_id,
+          nome: u.real_name || u.name || u.email || u.slack_user_id,
+          registration_status: u.registration_status || "pending",
+        }));
+      setUsers([...internalUsers, ...slackOnlyUsers]);
+    };
+    loadMentionUsers();
   }, []);
 
   const loadComments = async () => {
@@ -107,8 +129,26 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
           })),
         );
       }
+      if (selectedSlackMentions.length > 0 && comment?.id) {
+        await Promise.all(selectedSlackMentions.map((mentioned) =>
+          supabase.functions.invoke("send-slack-notification", {
+            body: {
+              slack_user_id: mentioned.slack_user_id,
+              registration_status: mentioned.registration_status || "pending",
+              title: "Você foi mencionado em um comentário",
+              message: `${userName} mencionou você no card: "${newComment.trim().slice(0, 180)}"`,
+              action_url: cardActionUrl(leadId),
+              event_type: "comment_mention",
+              entity_type: "lead_comment",
+              entity_id: comment.id,
+              delivery_key: `comment-${comment.id}-slack-mention-${mentioned.slack_user_id}`,
+            },
+          }),
+        ));
+      }
       setNewComment("");
       setSelectedMentionIds([]);
+      setSelectedSlackMentions([]);
       setMentionQuery("");
       loadComments();
     } catch {
@@ -128,7 +168,13 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
   const addMention = (user: MentionUser) => {
     const nextText = newComment.replace(/@([\p{L}\p{N}._-]*)$/u, `@${user.nome} `).slice(0, 500);
     setNewComment(nextText);
-    setSelectedMentionIds((prev) => (prev.includes(user.user_id) ? prev : [...prev, user.user_id]));
+    if (user.user_id) {
+      setSelectedMentionIds((prev) => (prev.includes(user.user_id!) ? prev : [...prev, user.user_id!]));
+    } else if (user.slack_user_id) {
+      setSelectedSlackMentions((prev) =>
+        prev.some((item) => item.slack_user_id === user.slack_user_id) ? prev : [...prev, user],
+      );
+    }
     setMentionQuery("");
   };
 
@@ -209,9 +255,9 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
             ))}
           </div>
         )}
-        {selectedMentionIds.length > 0 && (
+        {(selectedMentionIds.length > 0 || selectedSlackMentions.length > 0) && (
           <p className="text-xs text-muted-foreground">
-            Mencionando: {selectedMentionIds.map((id) => users.find((u) => u.user_id === id)?.nome).filter(Boolean).join(", ")}
+            Mencionando: {[...selectedMentionIds.map((id) => users.find((u) => u.user_id === id)?.nome), ...selectedSlackMentions.map((u) => `${u.nome} (Slack)`)].filter(Boolean).join(", ")}
           </p>
         )}
         <div className="flex items-center justify-between">

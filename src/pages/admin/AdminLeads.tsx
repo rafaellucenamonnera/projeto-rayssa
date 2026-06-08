@@ -74,6 +74,7 @@ const AdminLeads = () => {
   const [parceiros, setParceiros] = useState<Record<string, string>>({});
   const [parceirosAll, setParceirosAll] = useState<{ id: string; nome: string }[]>([]);
   const [usersAll, setUsersAll] = useState<{ user_id: string; nome: string }[]>([]);
+  const [slackUsersAll, setSlackUsersAll] = useState<{ slack_user_id: string; nome: string; registration_status?: string | null }[]>([]);
   const [allActiveUsers, setAllActiveUsers] = useState<{ user_id: string; nome: string }[]>([]);
   const [newCardOpen, setNewCardOpen] = useState(false);
   const [savingNewCard, setSavingNewCard] = useState(false);
@@ -123,7 +124,8 @@ const AdminLeads = () => {
     cidade: string;
     nome_responsavel: string;
     responsible_user_id: string;
-  }>({ nome_fantasia: "", descricao_necessidade: "", status_lead: "novo_lead", cidade: "", nome_responsavel: "", responsible_user_id: "" });
+    responsible_slack_user_id: string;
+  }>({ nome_fantasia: "", descricao_necessidade: "", status_lead: "novo_lead", cidade: "", nome_responsavel: "", responsible_user_id: "", responsible_slack_user_id: "" });
 
   // Reunião dialog
   const [reuniaoDialogOpen, setReuniaoDialogOpen] = useState(false);
@@ -313,7 +315,7 @@ const AdminLeads = () => {
   };
 
   const loadData = async () => {
-    const [leadsRes, parceirosRes, stageRes, reunioesRes, usersRes] = await Promise.all([
+    const [leadsRes, parceirosRes, stageRes, reunioesRes, usersRes, slackUsersRes] = await Promise.all([
       isCustomCrmPanel
         ? (supabase as any).from("representative_cards").select("*").eq("panel_id", currentPanelId).order("created_at", { ascending: false })
         : supabase.from("leads").select("*").order("data_cadastro", { ascending: false }),
@@ -321,6 +323,7 @@ const AdminLeads = () => {
       supabase.from("lead_stage_history").select("lead_id, data_entrada").is("data_saida", null),
       supabase.from("reunioes").select("*").eq("realizada", false).order("data_reuniao", { ascending: true }),
       supabase.from("profiles").select("user_id,nome,ativo,can_be_responsible").eq("ativo", true).order("nome", { ascending: true }),
+      (supabase as any).from("slack_users").select("slack_user_id,name,real_name,registration_status,profile_user_id,is_active").eq("is_active", true).order("name", { ascending: true }),
     ]);
     setLeads(leadsRes.data || []);
     const map: Record<string, string> = {};
@@ -331,6 +334,14 @@ const AdminLeads = () => {
     const allUsers = ((usersRes.data as any) || []).map((u: any) => ({ user_id: u.user_id, nome: u.nome, can_be_responsible: !!u.can_be_responsible }));
     setAllActiveUsers(allUsers.map((u: any) => ({ user_id: u.user_id, nome: u.nome })));
     setUsersAll(allUsers.filter((u: any) => u.can_be_responsible).map((u: any) => ({ user_id: u.user_id, nome: u.nome })));
+    const internalIds = new Set(allUsers.map((u: any) => u.user_id));
+    setSlackUsersAll((((slackUsersRes as any).data || []) as any[])
+      .filter((u: any) => !u.profile_user_id || !internalIds.has(u.profile_user_id))
+      .map((u: any) => ({
+        slack_user_id: u.slack_user_id,
+        nome: u.real_name || u.name || u.slack_user_id,
+        registration_status: u.registration_status || "pending",
+      })));
 
     const sm: Record<string, string> = {};
     (stageRes.data || []).forEach((s: any) => { sm[s.lead_id] = s.data_entrada; });
@@ -384,6 +395,33 @@ const AdminLeads = () => {
     loadData();
   }, [isCustomCrmPanel, currentPanelId]);
 
+  const formatCurrencyBRL = (value: number) =>
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+
+  const parseCurrencyBRL = (value: string) => {
+    const normalized = value.replace(/[^\d,]/g, "").replace(",", ".");
+    if (!normalized) return null;
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  const formatCurrencyBRLInput = (value: string) => {
+    const parsed = parseCurrencyBRL(value);
+    return parsed == null ? "" : formatCurrencyBRL(parsed);
+  };
+
+  const formatCurrencyBRLFromNumber = (value: unknown) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? formatCurrencyBRL(parsed) : "";
+  };
+
+  const getTipoEmpresaLabel = (tipoEmpresa?: string | null) => {
+    if (tipoEmpresa === "varejo") return "Varejo";
+    if (tipoEmpresa === "distribuidor") return "Distribuidor";
+    if (tipoEmpresa === "industria") return "Indústria";
+    return "—";
+  };
+
   useEffect(() => {
     const cardId = searchParams.get("card");
     if (!cardId || leads.length === 0) return;
@@ -409,7 +447,7 @@ const AdminLeads = () => {
       quantidade_lojas: lead?.quantidade_lojas ? String(lead.quantidade_lojas) : "",
       erp_utilizado: lead?.erp_utilizado || "",
       numero_funcionarios: lead?.numero_funcionarios || lead?.quantidade_funcionarios ? String(lead.numero_funcionarios || lead.quantidade_funcionarios) : "",
-      volume_premiacao_comissao: lead?.volume_premiacao_comissao ? String(lead.volume_premiacao_comissao) : "",
+      volume_premiacao_comissao: formatCurrencyBRLFromNumber(lead?.volume_premiacao_comissao),
       modelo_campanha: lead?.modelo_campanha || "",
       participantes_reuniao: lead?.participantes_reuniao || "",
       cargo_participante: lead?.cargo_participante || "",
@@ -493,13 +531,14 @@ const AdminLeads = () => {
     }
 
     setSavingReuniaoRealizada(true);
+    const volumePremiacaoComissao = parseCurrencyBRL(reuniaoRealizadaForm.volume_premiacao_comissao);
     const payload: any = {
       status_lead: "reuniao_realizada",
       quantidade_lojas: quantidadeLojas,
       erp_utilizado: reuniaoRealizadaForm.erp_utilizado.trim(),
       numero_funcionarios: numeroFuncionarios,
       quantidade_funcionarios: numeroFuncionarios,
-      volume_premiacao_comissao: reuniaoRealizadaForm.volume_premiacao_comissao ? parseFloat(reuniaoRealizadaForm.volume_premiacao_comissao) : null,
+      volume_premiacao_comissao: volumePremiacaoComissao,
       modelo_campanha: reuniaoRealizadaForm.modelo_campanha.trim() || null,
       participantes_reuniao: reuniaoRealizadaForm.participantes_reuniao.trim() || null,
       cargo_participante: reuniaoRealizadaForm.cargo_participante.trim() || null,
@@ -612,6 +651,24 @@ const AdminLeads = () => {
     }
   };
 
+  const autoSyncJiraContractSigned = async (leadId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("sync-jira-contract-signed", {
+        body: { lead_id: leadId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (data?.skipped) {
+        toast.info("Integração Jira já sincronizada para este card.");
+        return;
+      }
+      toast.success("Card de implementação criado no Jira com sucesso!");
+    } catch (err: any) {
+      console.error("Jira sync failed:", err);
+      toast.error("Erro ao sincronizar Jira: " + (err.message || "Erro desconhecido"));
+    }
+  };
+
   const updateStatus = async (leadId: string, newStatus: string, propostaUrl?: string, numeroProposta?: string) => {
     const updateData: any = { status_lead: newStatus };
     if (propostaUrl) updateData.proposta_url = propostaUrl;
@@ -650,6 +707,7 @@ const AdminLeads = () => {
 
     if (newStatus === "contrato_assinado") {
       autoGenerateDossie(leadId);
+      autoSyncJiraContractSigned(leadId);
     }
   };
 
@@ -850,6 +908,7 @@ const AdminLeads = () => {
       cidade: lead.cidade || "",
       nome_responsavel: lead.nome_responsavel || "",
       responsible_user_id: lead.responsible_user_id || "",
+      responsible_slack_user_id: lead.responsible_slack_user_id || "",
     });
     setDetailOpen(true);
   };
@@ -864,6 +923,7 @@ const AdminLeads = () => {
       cidade: lead.cidade || "",
       nome_responsavel: lead.nome_responsavel || "",
       responsible_user_id: lead.responsible_user_id || "",
+      responsible_slack_user_id: lead.responsible_slack_user_id || "",
     });
     setIsEditingCard(true);
     setDetailOpen(true);
@@ -878,6 +938,7 @@ const AdminLeads = () => {
       cidade: detailLead.cidade || "",
       nome_responsavel: detailLead.nome_responsavel || "",
       responsible_user_id: detailLead.responsible_user_id || "",
+      responsible_slack_user_id: detailLead.responsible_slack_user_id || "",
     });
     setIsEditingCard(false);
   };
@@ -900,9 +961,11 @@ const AdminLeads = () => {
       cidade: editFormData.cidade.trim(),
       nome_responsavel: editFormData.nome_responsavel?.trim() || null,
       responsible_user_id: editFormData.responsible_user_id || null,
+      responsible_slack_user_id: editFormData.responsible_slack_user_id || null,
     };
     const previousResponsibleUserId = detailLead.responsible_user_id || null;
-    const { error } = await supabase.from("leads").update(payload).eq("id", detailLead.id);
+    const previousResponsibleSlackUserId = detailLead.responsible_slack_user_id || null;
+    const { error } = await supabase.from("leads").update(payload as any).eq("id", detailLead.id);
     setSavingCard(false);
     if (error) {
       toast.error("Erro ao salvar card");
@@ -922,6 +985,22 @@ const AdminLeads = () => {
         actionUrl: cardActionUrl(detailLead.id),
         metadata: { previous_responsible_user_id: previousResponsibleUserId },
         deliveryKey: `lead-${detailLead.id}-responsible-${payload.responsible_user_id}-${Date.now()}`,
+      });
+    }
+    if (payload.responsible_slack_user_id && payload.responsible_slack_user_id !== previousResponsibleSlackUserId) {
+      const slackUser = slackUsersAll.find((u) => u.slack_user_id === payload.responsible_slack_user_id);
+      await supabase.functions.invoke("send-slack-notification", {
+        body: {
+          slack_user_id: payload.responsible_slack_user_id,
+          registration_status: slackUser?.registration_status || "pending",
+          title: "Você foi definido como responsável",
+          message: `Você agora é responsável pelo card ${payload.nome_fantasia}.`,
+          action_url: cardActionUrl(detailLead.id),
+          event_type: "card_responsible_assigned",
+          entity_type: "lead",
+          entity_id: detailLead.id,
+          delivery_key: `lead-${detailLead.id}-responsible-slack-${payload.responsible_slack_user_id}-${Date.now()}`,
+        },
       });
     }
     toast.success("Card atualizado");
@@ -1034,7 +1113,7 @@ const AdminLeads = () => {
   const isConvertedOrBeyond = (status: string) =>
     ["lead_convertido", "contrato_enviado", "contrato_assinado"].includes(status);
 
-  const fmt = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+  const fmt = formatCurrencyBRL;
 
   const StatusSelect = ({ lead }: { lead: any }) => {
     const currentStatus = lead.status_lead || lead.status || "novo_lead";
@@ -1573,7 +1652,17 @@ const AdminLeads = () => {
             </div>
             <div className="space-y-1.5">
               <Label>Volume pago em premiação / comissão</Label>
-              <Input type="number" min="0" step="0.01" value={reuniaoRealizadaForm.volume_premiacao_comissao} onChange={(e) => setReuniaoRealizadaForm((p) => ({ ...p, volume_premiacao_comissao: e.target.value }))} />
+              <Input
+                inputMode="numeric"
+                value={reuniaoRealizadaForm.volume_premiacao_comissao}
+                onChange={(e) => setReuniaoRealizadaForm((p) => ({ ...p, volume_premiacao_comissao: e.target.value.replace(/[^\d]/g, "") }))}
+                onFocus={(e) => {
+                  const parsed = parseCurrencyBRL(e.target.value);
+                  setReuniaoRealizadaForm((p) => ({ ...p, volume_premiacao_comissao: parsed == null ? "" : String(Math.round(parsed)) }));
+                }}
+                onBlur={(e) => setReuniaoRealizadaForm((p) => ({ ...p, volume_premiacao_comissao: formatCurrencyBRLInput(e.target.value) }))}
+                placeholder="R$ 250.000,00"
+              />
             </div>
             <div className="space-y-1.5">
               <Label>Modelo de campanha</Label>
@@ -1591,11 +1680,12 @@ const AdminLeads = () => {
                   <SelectItem value="nao_informado">Não informado</SelectItem>
                   <SelectItem value="varejo">Varejo</SelectItem>
                   <SelectItem value="distribuidor">Distribuidor</SelectItem>
+                  <SelectItem value="industria">Indústria</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Cargo</Label>
+              <Label>Ramo de atuação</Label>
               <Input value={reuniaoRealizadaForm.cargo_participante} onChange={(e) => setReuniaoRealizadaForm((p) => ({ ...p, cargo_participante: e.target.value }))} />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
@@ -1687,7 +1777,7 @@ const AdminLeads = () => {
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">Tipo de empresa</p>
-                  <p>{detailLead.tipo_empresa === "varejo" ? "Varejo" : detailLead.tipo_empresa === "distribuidor" ? "Distribuidor" : "—"}</p>
+                  <p>{getTipoEmpresaLabel(detailLead.tipo_empresa)}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">Canal de tração</p>
@@ -1712,7 +1802,7 @@ const AdminLeads = () => {
                       <p>{detailLead.participantes_reuniao || "—"}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground text-xs mb-1">Cargo</p>
+                      <p className="text-muted-foreground text-xs mb-1">Ramo de atuação</p>
                       <p>{detailLead.cargo_participante || "—"}</p>
                     </div>
                   </div>
@@ -1792,13 +1882,39 @@ const AdminLeads = () => {
                       onChange={(e) => setEditFormData((prev) => ({ ...prev, descricao_necessidade: e.target.value }))}
                       className="w-full min-h-[110px] rounded-md border border-border bg-background px-3 py-2 text-sm"
                     />
-                    <Select value={editFormData.responsible_user_id} onValueChange={(value) => setEditFormData((prev) => ({ ...prev, responsible_user_id: value }))}>
+                    <Select
+                      value={editFormData.responsible_slack_user_id ? `slack:${editFormData.responsible_slack_user_id}` : (editFormData.responsible_user_id ? `user:${editFormData.responsible_user_id}` : "")}
+                      onValueChange={(value) => {
+                        if (value.startsWith("slack:")) {
+                          const slackId = value.replace("slack:", "");
+                          const slackUser = slackUsersAll.find((u) => u.slack_user_id === slackId);
+                          setEditFormData((prev) => ({
+                            ...prev,
+                            responsible_user_id: "",
+                            responsible_slack_user_id: slackId,
+                            nome_responsavel: slackUser?.nome || prev.nome_responsavel,
+                          }));
+                          return;
+                        }
+                        const userId = value.replace("user:", "");
+                        const user = usersAll.find((u) => u.user_id === userId);
+                        setEditFormData((prev) => ({
+                          ...prev,
+                          responsible_user_id: userId,
+                          responsible_slack_user_id: "",
+                          nome_responsavel: user?.nome || prev.nome_responsavel,
+                        }));
+                      }}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Responsável pelo card" />
                       </SelectTrigger>
                       <SelectContent>
                         {usersAll.map((u) => (
-                          <SelectItem key={u.user_id} value={u.user_id}>{u.nome}</SelectItem>
+                          <SelectItem key={u.user_id} value={`user:${u.user_id}`}>{u.nome}</SelectItem>
+                        ))}
+                        {slackUsersAll.map((u) => (
+                          <SelectItem key={u.slack_user_id} value={`slack:${u.slack_user_id}`}>{u.nome} (Slack)</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
