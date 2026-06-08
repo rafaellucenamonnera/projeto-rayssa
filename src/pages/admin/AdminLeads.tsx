@@ -384,6 +384,33 @@ const AdminLeads = () => {
     loadData();
   }, [isCustomCrmPanel, currentPanelId]);
 
+  const formatCurrencyBRL = (value: number) =>
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+
+  const parseCurrencyBRL = (value: string) => {
+    const normalized = value.replace(/[^\d,]/g, "").replace(",", ".");
+    if (!normalized) return null;
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  const formatCurrencyBRLInput = (value: string) => {
+    const parsed = parseCurrencyBRL(value);
+    return parsed == null ? "" : formatCurrencyBRL(parsed);
+  };
+
+  const formatCurrencyBRLFromNumber = (value: unknown) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? formatCurrencyBRL(parsed) : "";
+  };
+
+  const getTipoEmpresaLabel = (tipoEmpresa?: string | null) => {
+    if (tipoEmpresa === "varejo") return "Varejo";
+    if (tipoEmpresa === "distribuidor") return "Distribuidor";
+    if (tipoEmpresa === "industria") return "Indústria";
+    return "—";
+  };
+
   useEffect(() => {
     const cardId = searchParams.get("card");
     if (!cardId || leads.length === 0) return;
@@ -409,7 +436,7 @@ const AdminLeads = () => {
       quantidade_lojas: lead?.quantidade_lojas ? String(lead.quantidade_lojas) : "",
       erp_utilizado: lead?.erp_utilizado || "",
       numero_funcionarios: lead?.numero_funcionarios || lead?.quantidade_funcionarios ? String(lead.numero_funcionarios || lead.quantidade_funcionarios) : "",
-      volume_premiacao_comissao: lead?.volume_premiacao_comissao ? String(lead.volume_premiacao_comissao) : "",
+      volume_premiacao_comissao: formatCurrencyBRLFromNumber(lead?.volume_premiacao_comissao),
       modelo_campanha: lead?.modelo_campanha || "",
       participantes_reuniao: lead?.participantes_reuniao || "",
       cargo_participante: lead?.cargo_participante || "",
@@ -493,13 +520,14 @@ const AdminLeads = () => {
     }
 
     setSavingReuniaoRealizada(true);
+    const volumePremiacaoComissao = parseCurrencyBRL(reuniaoRealizadaForm.volume_premiacao_comissao);
     const payload: any = {
       status_lead: "reuniao_realizada",
       quantidade_lojas: quantidadeLojas,
       erp_utilizado: reuniaoRealizadaForm.erp_utilizado.trim(),
       numero_funcionarios: numeroFuncionarios,
       quantidade_funcionarios: numeroFuncionarios,
-      volume_premiacao_comissao: reuniaoRealizadaForm.volume_premiacao_comissao ? parseFloat(reuniaoRealizadaForm.volume_premiacao_comissao) : null,
+      volume_premiacao_comissao: volumePremiacaoComissao,
       modelo_campanha: reuniaoRealizadaForm.modelo_campanha.trim() || null,
       participantes_reuniao: reuniaoRealizadaForm.participantes_reuniao.trim() || null,
       cargo_participante: reuniaoRealizadaForm.cargo_participante.trim() || null,
@@ -1034,7 +1062,7 @@ const AdminLeads = () => {
   const isConvertedOrBeyond = (status: string) =>
     ["lead_convertido", "contrato_enviado", "contrato_assinado"].includes(status);
 
-  const fmt = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+  const fmt = formatCurrencyBRL;
 
   const StatusSelect = ({ lead }: { lead: any }) => {
     const currentStatus = lead.status_lead || lead.status || "novo_lead";
@@ -1573,7 +1601,17 @@ const AdminLeads = () => {
             </div>
             <div className="space-y-1.5">
               <Label>Volume pago em premiação / comissão</Label>
-              <Input type="number" min="0" step="0.01" value={reuniaoRealizadaForm.volume_premiacao_comissao} onChange={(e) => setReuniaoRealizadaForm((p) => ({ ...p, volume_premiacao_comissao: e.target.value }))} />
+              <Input
+                inputMode="numeric"
+                value={reuniaoRealizadaForm.volume_premiacao_comissao}
+                onChange={(e) => setReuniaoRealizadaForm((p) => ({ ...p, volume_premiacao_comissao: e.target.value.replace(/[^\d]/g, "") }))}
+                onFocus={(e) => {
+                  const parsed = parseCurrencyBRL(e.target.value);
+                  setReuniaoRealizadaForm((p) => ({ ...p, volume_premiacao_comissao: parsed == null ? "" : String(Math.round(parsed)) }));
+                }}
+                onBlur={(e) => setReuniaoRealizadaForm((p) => ({ ...p, volume_premiacao_comissao: formatCurrencyBRLInput(e.target.value) }))}
+                placeholder="R$ 250.000,00"
+              />
             </div>
             <div className="space-y-1.5">
               <Label>Modelo de campanha</Label>
@@ -1591,11 +1629,12 @@ const AdminLeads = () => {
                   <SelectItem value="nao_informado">Não informado</SelectItem>
                   <SelectItem value="varejo">Varejo</SelectItem>
                   <SelectItem value="distribuidor">Distribuidor</SelectItem>
+                  <SelectItem value="industria">Indústria</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Cargo</Label>
+              <Label>Ramo de atuação</Label>
               <Input value={reuniaoRealizadaForm.cargo_participante} onChange={(e) => setReuniaoRealizadaForm((p) => ({ ...p, cargo_participante: e.target.value }))} />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
@@ -1687,7 +1726,7 @@ const AdminLeads = () => {
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">Tipo de empresa</p>
-                  <p>{detailLead.tipo_empresa === "varejo" ? "Varejo" : detailLead.tipo_empresa === "distribuidor" ? "Distribuidor" : "—"}</p>
+                  <p>{getTipoEmpresaLabel(detailLead.tipo_empresa)}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">Canal de tração</p>
@@ -1712,7 +1751,7 @@ const AdminLeads = () => {
                       <p>{detailLead.participantes_reuniao || "—"}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground text-xs mb-1">Cargo</p>
+                      <p className="text-muted-foreground text-xs mb-1">Ramo de atuação</p>
                       <p>{detailLead.cargo_participante || "—"}</p>
                     </div>
                   </div>
