@@ -38,6 +38,7 @@ interface StalledLead {
   nome_fantasia: string;
   etapa: string;
   dias: number;
+  dias_totais: number;
   parceiro_nome: string;
 }
 
