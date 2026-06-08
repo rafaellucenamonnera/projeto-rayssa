@@ -67,6 +67,7 @@ const AdminDashboard = () => {
   const [ranking, setRanking] = useState<RankingItem[]>([]);
   const [stageMetrics, setStageMetrics] = useState<StageMetric[]>([]);
   const [stalledLeads, setStalledLeads] = useState<StalledLead[]>([]);
+  const [stalledLeadSearch, setStalledLeadSearch] = useState("");
   const [bottleneck, setBottleneck] = useState<StageMetric | null>(null);
   const [panels, setPanels] = useState<Panel[]>([]);
   const [pipelineStages, setPipelineStages] = useState<PipelineStageConfig[]>(DEFAULT_STATUS_CONFIG);
@@ -218,7 +219,6 @@ const AdminDashboard = () => {
           };
         })
           .sort((a: StalledLead, b: StalledLead) => b.dias - a.dias)
-          .slice(0, 10);
         setStalledLeads(stalled);
       } else {
         setStalledLeads([]);
@@ -234,6 +234,10 @@ const AdminDashboard = () => {
     : 0;
 
   const getStageLabel = (stage: string) => stageLabels[stage] || getPipelineStageLabel(stage);
+
+  const filteredStalledLeads = stalledLeads.filter((lead) =>
+    lead.nome_fantasia.toLowerCase().includes(stalledLeadSearch.trim().toLowerCase())
+  );
 
   const navigateToLeadsByStatus = (status: string) => {
     const params = new URLSearchParams(window.location.search);
@@ -441,37 +445,50 @@ const AdminDashboard = () => {
             {stalledLeads.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">Sem leads parados.</p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Empresa</TableHead>
-                    <TableHead>Etapa</TableHead>
-                    <TableHead className="text-right">Dias na etapa</TableHead>
-                    <TableHead className="text-right">Dias totais</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {stalledLeads.map((l) => (
-                    <TableRow key={l.id} className="cursor-pointer" onClick={() => navigateToLeadsByStatus(l.etapa)}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium text-sm">{l.nome_fantasia}</p>
-                          <p className="text-[10px] text-muted-foreground">{l.parceiro_nome}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {getStageLabel(l.etapa)}
-                      </TableCell>
-                      <TableCell className={`text-right font-mono font-bold ${getDaysColor(l.dias)}`}>
-                        {l.dias}d
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-muted-foreground">
-                        {l.dias_totais}d
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="space-y-3">
+                <Input
+                  value={stalledLeadSearch}
+                  onChange={(e) => setStalledLeadSearch(e.target.value)}
+                  placeholder="Filtrar por cliente..."
+                />
+                {filteredStalledLeads.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">Nenhum cliente encontrado.</p>
+                ) : (
+                  <div className="max-h-[520px] overflow-y-auto pr-2">
+                    <Table>
+                      <TableHeader className="sticky top-0 z-10 bg-card">
+                        <TableRow>
+                          <TableHead>Empresa</TableHead>
+                          <TableHead>Etapa</TableHead>
+                          <TableHead className="text-right">Dias na etapa</TableHead>
+                          <TableHead className="text-right">Dias totais</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredStalledLeads.map((l) => (
+                          <TableRow key={l.id} className="cursor-pointer" onClick={() => navigateToLeadsByStatus(l.etapa)}>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium text-sm">{l.nome_fantasia}</p>
+                                <p className="text-[10px] text-muted-foreground">{l.parceiro_nome}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              {getStageLabel(l.etapa)}
+                            </TableCell>
+                            <TableCell className={`text-right font-mono font-bold ${getDaysColor(l.dias)}`}>
+                              {l.dias}d
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-muted-foreground">
+                              {l.dias_totais}d
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
             )}
           </CardContent>
         </Card>
