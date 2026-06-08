@@ -389,7 +389,8 @@ const AdminDashboard = () => {
                   <TableRow>
                     <TableHead>Empresa</TableHead>
                     <TableHead>Etapa</TableHead>
-                    <TableHead className="text-right">Dias</TableHead>
+                    <TableHead className="text-right">Dias na etapa</TableHead>
+                    <TableHead className="text-right">Dias totais</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -406,6 +407,9 @@ const AdminDashboard = () => {
                       </TableCell>
                       <TableCell className={`text-right font-mono font-bold ${getDaysColor(l.dias)}`}>
                         {l.dias}d
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-muted-foreground">
+                        {l.dias_totais}d
                       </TableCell>
                     </TableRow>
                   ))}
