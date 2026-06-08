@@ -269,7 +269,7 @@ const AdminDashboard = () => {
               <FileSignature className="w-7 h-7 text-emerald-500" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Conversão Geral</p>
+              <p className="text-sm text-muted-foreground">Taxa de Conversão</p>
               <p className="text-3xl font-display font-bold">{conversionRate}%</p>
               <p className="text-xs text-muted-foreground">Lead → Contrato Assinado</p>
             </div>
