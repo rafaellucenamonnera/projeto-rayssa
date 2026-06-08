@@ -217,11 +217,7 @@ const AdminDashboard = () => {
             parceiro_nome: nomeMap.get(lead?.parceiro_id || "") || "—",
           };
         })
-          .sort((a: StalledLead, b: StalledLead) => {
-            const stageOrder = (orders[a.etapa] ?? getPipelineStageOrder(a.etapa)) - (orders[b.etapa] ?? getPipelineStageOrder(b.etapa));
-            if (stageOrder !== 0) return stageOrder;
-            return b.dias - a.dias;
-          })
+          .sort((a: StalledLead, b: StalledLead) => b.dias - a.dias)
           .slice(0, 10);
         setStalledLeads(stalled);
       } else {
