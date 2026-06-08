@@ -155,17 +155,21 @@ const AdminDashboard = () => {
       if (leadIds.length > 0) {
         const { data: leadDetails } = await supabase
           .from("leads")
-          .select("id, nome_fantasia, parceiro_id")
+          .select("id, nome_fantasia, parceiro_id, data_cadastro")
           .in("id", leadIds);
 
         const stalled: StalledLead[] = stalledData.map((s: any) => {
           const lead = (leadDetails || []).find((l: any) => l.id === s.lead_id);
           const dias = Math.max(0, Math.floor((Date.now() - new Date(s.data_entrada).getTime()) / (1000 * 60 * 60 * 24)));
+          const dias_totais = lead?.data_cadastro
+            ? Math.max(0, Math.floor((Date.now() - new Date(lead.data_cadastro).getTime()) / (1000 * 60 * 60 * 24)))
+            : 0;
           return {
             id: s.lead_id,
             nome_fantasia: lead?.nome_fantasia || "—",
             etapa: s.etapa,
             dias,
+            dias_totais,
             parceiro_nome: nomeMap.get(lead?.parceiro_id || "") || "—",
           };
         })
