@@ -17,4 +17,23 @@ export const PIPELINE_LABELS: Record<string, string> = Object.fromEntries(
 // Legacy mapping for backward compatibility
 PIPELINE_LABELS["proposta_comercial"] = "Proposta Enviada";
 
+export const PIPELINE_STAGE_ORDER: Record<string, number> = Object.fromEntries(
+  PIPELINE_STAGES.map((s, index) => [s.value, index])
+);
+
+PIPELINE_STAGE_ORDER["proposta_comercial"] = PIPELINE_STAGE_ORDER.proposta_enviada;
+
+export const getPipelineStageLabel = (stage: string) => {
+  if (PIPELINE_LABELS[stage]) return PIPELINE_LABELS[stage];
+
+  return stage
+    .split("_")
+    .filter((part) => !/^\d+$/.test(part))
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+};
+
+export const getPipelineStageOrder = (stage: string) =>
+  PIPELINE_STAGE_ORDER[stage] ?? PIPELINE_STAGES.length;
+
 export type PipelineStatus = (typeof PIPELINE_STAGES)[number]["value"];

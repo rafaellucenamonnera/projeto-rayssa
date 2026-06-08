@@ -6,18 +6,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { Users, FileText, TrendingUp, CalendarCheck, FileSpreadsheet, CheckCircle, Trophy, PhoneCall, FileSignature, Send, Clock, AlertTriangle, BarChart3 } from "lucide-react";
-import { PIPELINE_LABELS } from "@/lib/pipelineConstants";
+import { getPipelineStageLabel, getPipelineStageOrder, PIPELINE_STAGES } from "@/lib/pipelineConstants";
 
-const STATUS_CONFIG = [
-  { value: "novo_lead", label: "Lead", icon: FileText, colorClass: "bg-primary/10 text-primary" },
-  { value: "contato_realizado", label: "Contato Realizado", icon: PhoneCall, colorClass: "bg-cyan-500/10 text-cyan-500" },
-  { value: "reuniao_agendada", label: "Reunião Agendada", icon: CalendarCheck, colorClass: "bg-amber-500/10 text-amber-500" },
-  { value: "reuniao_realizada", label: "Reunião Realizada", icon: CheckCircle, colorClass: "bg-orange-500/10 text-orange-500" },
-  { value: "proposta_enviada", label: "Proposta Enviada", icon: Send, colorClass: "bg-blue-500/10 text-blue-500" },
-  { value: "lead_convertido", label: "Lead Convertido", icon: CheckCircle, colorClass: "bg-emerald-500/10 text-emerald-500" },
-  { value: "contrato_enviado", label: "Contrato Enviado", icon: FileSpreadsheet, colorClass: "bg-violet-500/10 text-violet-500" },
-  { value: "contrato_assinado", label: "Contrato Assinado", icon: FileSignature, colorClass: "bg-green-500/10 text-green-500" },
-];
+const STATUS_STYLE: Record<string, { icon: typeof FileText; colorClass: string }> = {
+  novo_lead: { icon: FileText, colorClass: "bg-primary/10 text-primary" },
+  contato_realizado: { icon: PhoneCall, colorClass: "bg-cyan-500/10 text-cyan-500" },
+  reuniao_agendada: { icon: CalendarCheck, colorClass: "bg-amber-500/10 text-amber-500" },
+  reuniao_realizada: { icon: CheckCircle, colorClass: "bg-orange-500/10 text-orange-500" },
+  proposta_enviada: { icon: Send, colorClass: "bg-blue-500/10 text-blue-500" },
+  lead_convertido: { icon: CheckCircle, colorClass: "bg-emerald-500/10 text-emerald-500" },
+  contrato_enviado: { icon: FileSpreadsheet, colorClass: "bg-violet-500/10 text-violet-500" },
+  contrato_assinado: { icon: FileSignature, colorClass: "bg-green-500/10 text-green-500" },
+  lead_perdido: { icon: AlertTriangle, colorClass: "bg-destructive/10 text-destructive" },
+};
+
+const DEFAULT_STATUS_CONFIG = PIPELINE_STAGES
+  .filter((stage) => stage.value !== "lead_perdido")
+  .map((stage, index) => ({ ...stage, sort_order: index + 1 }));
 
 interface RankingItem {
   parceiro_id: string;
@@ -30,7 +35,7 @@ interface RankingItem {
 interface StageMetric {
   etapa: string;
   tempo_medio: number;
-  total_passagens: number;
+  total_leads: number;
 }
 
 interface StalledLead {
@@ -47,16 +52,25 @@ interface Panel {
   name: string;
 }
 
+interface PipelineStageConfig {
+  value: string;
+  label: string;
+  sort_order: number;
+}
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [totalParceiros, setTotalParceiros] = useState(0);
   const [totalLeads, setTotalLeads] = useState(0);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  const [signedContractsCount, setSignedContractsCount] = useState(0);
   const [ranking, setRanking] = useState<RankingItem[]>([]);
   const [stageMetrics, setStageMetrics] = useState<StageMetric[]>([]);
   const [stalledLeads, setStalledLeads] = useState<StalledLead[]>([]);
   const [bottleneck, setBottleneck] = useState<StageMetric | null>(null);
   const [panels, setPanels] = useState<Panel[]>([]);
+  const [pipelineStages, setPipelineStages] = useState<PipelineStageConfig[]>(DEFAULT_STATUS_CONFIG);
+  const [stageLabels, setStageLabels] = useState<Record<string, string>>({});
   const [selectedPanel, setSelectedPanel] = useState<string>("comercial");
   const [selectedConsultor, setSelectedConsultor] = useState<string>("all");
   const [selectedResponsavel, setSelectedResponsavel] = useState<string>("all");
@@ -88,9 +102,16 @@ const AdminDashboard = () => {
     const load = async () => {
       const { data: panelStages } = await (supabase as any)
         .from("pipeline_stages_config")
-        .select("value")
+        .select("value, label, sort_order")
         .eq("panel_key", selectedPanel);
-      const stageValues = (panelStages || []).map((s: any) => s.value);
+      const panelStageList = ((panelStages || []) as PipelineStageConfig[])
+        .sort((a, b) => a.sort_order - b.sort_order);
+      const activeStages = panelStageList.length > 0 ? panelStageList : DEFAULT_STATUS_CONFIG;
+      const stageValues = activeStages.map((s) => s.value);
+      const labels = Object.fromEntries(activeStages.map((s) => [s.value, s.label]));
+      const orders = Object.fromEntries(activeStages.map((s, index) => [s.value, index]));
+      setPipelineStages(activeStages);
+      setStageLabels(labels);
 
       let leadsQuery: any = supabase.from("leads").select("id, status_lead, parceiro_id, nome_responsavel, data_cadastro");
       if (stageValues.length > 0) leadsQuery = leadsQuery.in("status_lead", stageValues);
@@ -106,10 +127,9 @@ const AdminDashboard = () => {
         .order("data_entrada", { ascending: true });
       if (stageValues.length > 0) stalledQuery = stalledQuery.in("etapa", stageValues);
 
-      const [parceiros, leads, metricsRes, stalledRes] = await Promise.all([
+      const [parceiros, leads, stalledRes] = await Promise.all([
         supabase.from("parceiros_comerciais").select("id", { count: "exact", head: true }),
         leadsQuery,
-        supabase.rpc("get_pipeline_stage_metrics"),
         stalledQuery,
       ]);
       setTotalParceiros(parceiros.count || 0);
@@ -118,7 +138,7 @@ const AdminDashboard = () => {
       setTotalLeads(leadsData.length);
 
       const counts: Record<string, number> = {};
-      STATUS_CONFIG.forEach((s) => { counts[s.value] = 0; });
+      activeStages.forEach((s) => { counts[s.value] = 0; });
 
       const parceiroMap = new Map<string, { total: number; convertidos: number; assinados: number }>();
       leadsData.forEach((l: any) => {
@@ -132,6 +152,7 @@ const AdminDashboard = () => {
         parceiroMap.set(l.parceiro_id, entry);
       });
       setStatusCounts(counts);
+      setSignedContractsCount(leadsData.filter((l: any) => l.status_lead === "contrato_assinado").length);
 
       const nomeMap = new Map(consultores.map((p) => [p.id, p.nome]));
       setResponsaveis(Array.from(new Set(leadsData.map((l: any) => l.nome_responsavel).filter(Boolean))).sort() as string[]);
@@ -141,7 +162,30 @@ const AdminDashboard = () => {
         .slice(0, 10);
       setRanking(rankingList);
 
-      const metrics: StageMetric[] = (metricsRes.data as any) || [];
+      const currentStageByLead = new Map(
+        ((stalledRes.data || []) as any[]).map((s: any) => [s.lead_id, s.data_entrada])
+      );
+      const stageTotals = new Map<string, { totalDias: number; totalLeads: number }>();
+      leadsData.forEach((lead: any) => {
+        const etapa = lead.status_lead || "novo_lead";
+        if (etapa === "lead_perdido") return;
+
+        const dataEntrada = currentStageByLead.get(lead.id);
+        const dias = dataEntrada
+          ? Math.max(0, Math.floor((Date.now() - new Date(dataEntrada as string).getTime()) / (1000 * 60 * 60 * 24)))
+          : 0;
+        const current = stageTotals.get(etapa) || { totalDias: 0, totalLeads: 0 };
+        current.totalDias += dias;
+        current.totalLeads += 1;
+        stageTotals.set(etapa, current);
+      });
+      const metrics: StageMetric[] = Array.from(stageTotals.entries())
+        .map(([etapa, data]) => ({
+          etapa,
+          tempo_medio: Number((data.totalDias / data.totalLeads).toFixed(1)),
+          total_leads: data.totalLeads,
+        }))
+        .sort((a, b) => (orders[a.etapa] ?? getPipelineStageOrder(a.etapa)) - (orders[b.etapa] ?? getPipelineStageOrder(b.etapa)));
       setStageMetrics(metrics);
       if (metrics.length > 0) {
         const bn = metrics.reduce((max, m) => m.tempo_medio > max.tempo_medio ? m : max, metrics[0]);
@@ -155,7 +199,7 @@ const AdminDashboard = () => {
       if (leadIds.length > 0) {
         const { data: leadDetails } = await supabase
           .from("leads")
-          .select("id, nome_fantasia, parceiro_id, data_cadastro")
+          .select("id, nome_fantasia, parceiro_id, status_lead, data_cadastro")
           .in("id", leadIds);
 
         const stalled: StalledLead[] = stalledData.map((s: any) => {
@@ -167,13 +211,17 @@ const AdminDashboard = () => {
           return {
             id: s.lead_id,
             nome_fantasia: lead?.nome_fantasia || "—",
-            etapa: s.etapa,
+            etapa: lead?.status_lead || s.etapa || "novo_lead",
             dias,
             dias_totais,
             parceiro_nome: nomeMap.get(lead?.parceiro_id || "") || "—",
           };
         })
-          .sort((a: StalledLead, b: StalledLead) => b.dias - a.dias)
+          .sort((a: StalledLead, b: StalledLead) => {
+            const stageOrder = (orders[a.etapa] ?? getPipelineStageOrder(a.etapa)) - (orders[b.etapa] ?? getPipelineStageOrder(b.etapa));
+            if (stageOrder !== 0) return stageOrder;
+            return b.dias - a.dias;
+          })
           .slice(0, 10);
         setStalledLeads(stalled);
       } else {
@@ -186,8 +234,16 @@ const AdminDashboard = () => {
   const medals = ["🥇", "🥈", "🥉"];
 
   const conversionRate = totalLeads > 0
-    ? Math.round(((statusCounts.contrato_assinado || 0) / totalLeads) * 100)
+    ? Math.round((signedContractsCount / totalLeads) * 100)
     : 0;
+
+  const getStageLabel = (stage: string) => stageLabels[stage] || getPipelineStageLabel(stage);
+
+  const navigateToLeadsByStatus = (status: string) => {
+    const params = new URLSearchParams(window.location.search);
+    params.set("status", status);
+    navigate(`/admin/leads?${params.toString()}`);
+  };
 
   const getDaysColor = (dias: number) =>
     dias <= 3 ? "text-emerald-600" : dias <= 7 ? "text-amber-500" : "text-destructive";
@@ -281,15 +337,16 @@ const AdminDashboard = () => {
       <div>
         <h2 className="text-lg font-display font-semibold mb-3">Pipeline Comercial</h2>
         <div className="flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 lg:grid-cols-8 sm:overflow-visible">
-          {STATUS_CONFIG.map((s) => {
-            const Icon = s.icon;
+          {pipelineStages.filter((s) => s.value !== "lead_perdido").map((s) => {
+            const style = STATUS_STYLE[s.value] || { icon: FileText, colorClass: "bg-primary/10 text-primary" };
+            const Icon = style.icon;
             const count = statusCounts[s.value] || 0;
             const pct = totalLeads > 0 ? Math.round((count / totalLeads) * 100) : 0;
             return (
-              <Card key={s.value} className="border-border cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all min-w-[130px] sm:min-w-0 shrink-0 sm:shrink" onClick={() => navigate(`/admin/leads?status=${s.value}`)}>
+              <Card key={s.value} className="border-border cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all min-w-[130px] sm:min-w-0 shrink-0 sm:shrink" onClick={() => navigateToLeadsByStatus(s.value)}>
                 <CardContent className="p-3 sm:p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${s.colorClass}`}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${style.colorClass}`}>
                       <Icon className="w-4 h-4" />
                     </div>
                   </div>
@@ -331,10 +388,14 @@ const AdminDashboard = () => {
                   const pct = Math.round((m.tempo_medio / maxTempo) * 100);
                   const isBottleneck = bottleneck?.etapa === m.etapa;
                   return (
-                    <div key={m.etapa} className="space-y-1">
+                    <div
+                      key={m.etapa}
+                      className="space-y-1 cursor-pointer rounded-md transition-colors hover:bg-secondary/50"
+                      onClick={() => navigateToLeadsByStatus(m.etapa)}
+                    >
                       <div className="flex items-center justify-between text-sm">
                         <span className={`${isBottleneck ? "font-semibold text-destructive" : ""}`}>
-                          {PIPELINE_LABELS[m.etapa] || m.etapa}
+                          {getStageLabel(m.etapa)}
                           {isBottleneck && " 🔴"}
                         </span>
                         <span className={`font-mono text-xs ${getDaysColor(m.tempo_medio)}`}>
@@ -363,7 +424,7 @@ const AdminDashboard = () => {
                   <div>
                     <p className="font-semibold text-destructive">Gargalo atual do funil</p>
                     <p className="text-xs text-muted-foreground">
-                      {PIPELINE_LABELS[bottleneck.etapa] || bottleneck.etapa} — Tempo médio: {bottleneck.tempo_medio} dias
+                      {getStageLabel(bottleneck.etapa)} — Tempo médio: {bottleneck.tempo_medio} dias
                     </p>
                   </div>
                 </div>
@@ -395,7 +456,7 @@ const AdminDashboard = () => {
                 </TableHeader>
                 <TableBody>
                   {stalledLeads.map((l) => (
-                    <TableRow key={l.id} className="cursor-pointer" onClick={() => navigate(`/admin/leads?status=${l.etapa}`)}>
+                    <TableRow key={l.id} className="cursor-pointer" onClick={() => navigateToLeadsByStatus(l.etapa)}>
                       <TableCell>
                         <div>
                           <p className="font-medium text-sm">{l.nome_fantasia}</p>
@@ -403,7 +464,7 @@ const AdminDashboard = () => {
                         </div>
                       </TableCell>
                       <TableCell className="text-xs">
-                        {PIPELINE_LABELS[l.etapa] || l.etapa}
+                        {getStageLabel(l.etapa)}
                       </TableCell>
                       <TableCell className={`text-right font-mono font-bold ${getDaysColor(l.dias)}`}>
                         {l.dias}d
