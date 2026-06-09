@@ -466,23 +466,18 @@ Deno.serve(async (req) => {
   }
 
   // -------- 4) Etapa-alvo no painel Sucesso --------
+  debug.step = "load_stage";
   const { data: successStages, error: stagesErr } = await supabase
     .from("pipeline_stages_config")
     .select("value,label,sort_order")
     .eq("panel_key", "sucesso")
     .order("sort_order", { ascending: true })
     .limit(1);
-  if (stagesErr) {
-    return new Response(JSON.stringify({ success: false, error: `Erro lendo etapas: ${stagesErr.message}` }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  if (stagesErr) return opError(`Erro lendo etapas: ${stagesErr.message}`);
   const successStageValue = successStages?.[0]?.value;
   if (!successStageValue) {
-    return new Response(JSON.stringify({
-      success: false,
-      error: "Nenhuma etapa configurada para o painel 'sucesso'. Cadastre ao menos uma etapa em pipeline_stages_config.",
-    }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return opError("Nenhuma etapa configurada para o painel 'sucesso'. Cadastre ao menos uma etapa em pipeline_stages_config.");
+  }
   }
 
   // -------- 5) Parceiro padrão para origem google_drive --------
