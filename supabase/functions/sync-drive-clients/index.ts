@@ -317,8 +317,9 @@ Deno.serve(async (req) => {
   debug.step = "parse_clients";
   const clients: ClientRow[] = [];
   clientsRaw.forEach((r, i) => {
-    const razao = pick(r, "razao_social", "razao", "razaosocial");
-    const fantasiaRaw = pick(r, "nome_fantasia", "nomefantasia", "fantasia");
+    // Fallback por posição: col_1 = nome fantasia, col_2 = razão social, col_3 = consultor/carteira.
+    const razao = pick(r, "razao_social", "razao", "razaosocial", "col_2");
+    const fantasiaRaw = pick(r, "nome_fantasia", "nomefantasia", "fantasia", "col_1");
     if (!razao && !fantasiaRaw) return;
 
     // Extrai CNPJ se aparecer no nome fantasia (formato "NOME - 12345678901234")
@@ -332,7 +333,7 @@ Deno.serve(async (req) => {
       cnpj,
       nome_fantasia: nome_fantasia || razao,
       razao_social: razao || nome_fantasia,
-      consultor: pick(r, "carteira", "cs", "consultor", "responsavel", "responsavel_cs"),
+      consultor: pick(r, "carteira", "cs", "consultor", "responsavel", "responsavel_cs", "col_3"),
     });
   });
 
