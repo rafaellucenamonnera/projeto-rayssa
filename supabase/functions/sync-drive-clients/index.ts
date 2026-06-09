@@ -131,7 +131,11 @@ const parseCsv = (raw: string, headerHint?: string): Record<string, string>[] =>
   const headers = parseLine(lines[headerIdx]).map(normalizeHeader);
   return lines.slice(headerIdx + 1).map((line) => {
     const cols = parseLine(line);
-    return headers.reduce<Record<string, string>>((a, h, i) => { a[h] = cols[i] || ""; return a; }, {});
+    const obj: Record<string, string> = {};
+    headers.forEach((h, i) => { if (h) obj[h] = cols[i] || ""; });
+    // Fallback posicional para parsers que precisam ler por coluna mesmo sem cabeçalho útil.
+    cols.forEach((v, i) => { obj[`col_${i + 1}`] = v || ""; });
+    return obj;
   });
 };
 
