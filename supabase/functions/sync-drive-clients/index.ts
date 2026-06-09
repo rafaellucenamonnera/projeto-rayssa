@@ -296,28 +296,24 @@ Deno.serve(async (req) => {
     mode: SOURCE_MODE,
     sheets: SHEETS_META,
   };
-  const debug: { step: string; rows_read: Record<string, number> } = {
+  const debug: { step: string; rows_read: Record<string, number>; clients_sample?: string[][] } = {
     step: "init",
     rows_read: { clientes: 0, receita: 0, status: 0, csat: 0, saude: 0 },
   };
-  const opError = (message: string) =>
-    new Response(JSON.stringify({ success: false, version: "sucesso_deterministic_columns_v2", error: message, source: sourceInfo, debug }), {
+  const operationalError = (message: string, extra: Record<string, unknown> = {}) =>
+    new Response(JSON.stringify({ success: false, version: FUNCTION_VERSION, error: message, source: sourceInfo, debug, ...extra }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
-  // -------- Fetch sheets --------
+  // -------- Fetch sheets (deterministic, preserva linhas brutas) --------
   debug.step = "fetch_clients";
-  let clientsRaw: Record<string, string>[] = [];
+  let clientsRows: string[][] = [];
   try {
-    const res = await fetch(csvUrl(CLIENTS_SHEET, CLIENTS_GID), { headers: { "Cache-Control": "no-cache" } });
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      return opError(`Falha ao ler aba "${CLIENTS_SHEET}" (status ${res.status}). ${body.slice(0, 200)}`);
-    }
-    clientsRaw = parseCsv(await res.text(), "nome_fantasia");
-    debug.rows_read.clientes = clientsRaw.length;
+    const sheets = await readSheetsFromProxy(SHEETS_META);
+    clientsRows = sheets.clientsRows;
+    debug.rows_read.clientes = clientsRows.length;
   } catch (e) {
-    return opError(`Erro de rede ao ler aba "${CLIENTS_SHEET}": ${e instanceof Error ? e.message : String(e)}`);
+    return operationalError(`Erro ao ler aba "${CLIENTS_SHEET}": ${e instanceof Error ? e.message : String(e)}`);
   }
 
   const readAux = async (label: string, sheet: string, gid: string, hint?: string) => {
@@ -347,35 +343,48 @@ Deno.serve(async (req) => {
   debug.rows_read.csat = csatRaw.length;
   debug.rows_read.saude = healthRaw.length;
 
-  console.log(`[sync-drive-clients] Linhas lidas: clientes=${clientsRaw.length}, receita=${revenueRaw.length}, status=${statusRaw.length}, csat=${csatRaw.length}, saude=${healthRaw.length}`);
+  console.log(`[sync-drive-clients] Linhas lidas: clientes=${clientsRows.length}, receita=${revenueRaw.length}, status=${statusRaw.length}, csat=${csatRaw.length}, saude=${healthRaw.length}`);
 
-  // -------- 1) Parse aba Clientes --------
+  // -------- 1) Parse aba CARTEIRA: leitura determinística A=nome fantasia, B=razão social, C=carteira --------
   debug.step = "parse_clients";
   const clients: ClientRow[] = [];
-  clientsRaw.forEach((r, i) => {
-    // Fallback por posição: col_1 = nome fantasia, col_2 = razão social, col_3 = consultor/carteira.
-    const razao = pick(r, "razao_social", "razao", "razaosocial", "col_2");
-    const fantasiaRaw = pick(r, "nome_fantasia", "nomefantasia", "fantasia", "col_1");
+  clientsRows.slice(1).forEach((cols, idx) => {
+    const fantasiaRaw = (cols[0] || "").trim();
+    const razao = (cols[1] || "").trim();
+    const consultor = (cols[2] || "").trim();
     if (!razao && !fantasiaRaw) return;
 
     // Extrai CNPJ se aparecer no nome fantasia (formato "NOME - 12345678901234")
     const cnpjMatch = fantasiaRaw.match(/\b(\d{14})\b/) || razao.match(/\b(\d{14})\b/);
     const cnpj = cnpjMatch ? cnpjMatch[1] : "";
-    // Remove sufixo "- CNPJ" do nome fantasia
     const nome_fantasia = fantasiaRaw.replace(/\s*-\s*\d{14}\s*$/, "").trim();
 
     clients.push({
-      source_row: i + 2,
+      source_row: idx + 2,
       cnpj,
       nome_fantasia: nome_fantasia || razao,
       razao_social: razao || nome_fantasia,
-      consultor: pick(r, "carteira", "cs", "consultor", "responsavel", "responsavel_cs", "col_3"),
+      consultor,
     });
   });
 
   if (clients.length === 0) {
-    return opError(`Nenhum cliente encontrado na aba "${CLIENTS_SHEET}" (verifique colunas NOME FANTASIA / Carteira).`);
+    debug.clients_sample = clientsRows.slice(0, 5);
+    return operationalError(
+      `Nenhum cliente encontrado na aba "${CLIENTS_SHEET}" (colunas A/B/C vazias).`,
+    );
   }
+
+  // Adapter de linhas brutas → registros usados pelo pipeline restante (compat com nomes antigos).
+  const clientsRaw = clientsRows.slice(1).map((cols) => {
+    const obj: Record<string, string> = {};
+    cols.forEach((v, i) => { obj[`col_${i + 1}`] = v || ""; });
+    obj["nome_fantasia"] = cols[0] || "";
+    obj["razao_social"] = cols[1] || "";
+    obj["carteira"] = cols[2] || "";
+    return obj;
+  });
+
 
   // -------- 2) Build revenueByCompany a partir da aba Receita / Contratante --------
   // Lógica: cada vez que encontramos uma linha "cliente" (com nome em Contratante/Empresa
