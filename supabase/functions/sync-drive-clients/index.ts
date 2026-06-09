@@ -633,6 +633,7 @@ Deno.serve(async (req) => {
   debug.step = "done";
   return new Response(JSON.stringify({
     success: true,
+    version: "sucesso_deterministic_columns_v2",
     clients_in_sheet: clients.length,
     total_rows_read: clientsRaw.length,
     valid_clients: clients.length,
