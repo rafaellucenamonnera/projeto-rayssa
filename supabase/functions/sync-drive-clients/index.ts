@@ -141,6 +141,40 @@ const parseCsv = (raw: string, headerHint?: string): Record<string, string>[] =>
   });
 };
 
+// Parse CSV raw into 2D array of rows (cols A,B,C,...), preserving original positions.
+const parseCsvRows = (raw: string): string[][] => {
+  const lines = raw.split(/\r?\n/);
+  const parseLine = (line: string) => {
+    const out: string[] = []; let cur = ""; let q = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { if (q && line[i + 1] === '"') { cur += '"'; i++; } else q = !q; }
+      else if (c === "," && !q) { out.push(cur.trim()); cur = ""; }
+      else cur += c;
+    }
+    out.push(cur.trim()); return out;
+  };
+  return lines.map(parseLine);
+};
+
+// Fetch a sheet via proxy/public CSV and return raw 2D rows.
+const readProxyRows = async (sheet: string, gid: string): Promise<string[][]> => {
+  const res = await fetch(csvUrl(sheet, gid), { headers: { "Cache-Control": "no-cache" } });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`status ${res.status}: ${body.slice(0, 200)}`);
+  }
+  return parseCsvRows(await res.text());
+};
+
+// Reads all sheets, preserving raw row arrays for deterministic column access.
+const readSheetsFromProxy = async (sheets: typeof SHEETS_META) => {
+  const clientsRows = await readProxyRows(sheets.clients.sheet, sheets.clients.gid);
+  return { clientsRows };
+};
+
+
+
 const parseMonthHeader = (key: string) => {
   const k = normalizeHeader(key);
   const mmyyyy = k.match(/(0?[1-9]|1[0-2])[_/-](20\d{2})/);
