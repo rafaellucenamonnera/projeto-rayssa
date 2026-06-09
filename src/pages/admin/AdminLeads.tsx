@@ -1197,20 +1197,24 @@ const AdminLeads = () => {
               className={`px-3 py-1.5 transition-colors ${view === "lista" ? "bg-primary text-primary-foreground" : "bg-card hover:bg-secondary"}`}
             >Lista</button>
           </div>
-          <LeadExportButton
-            leads={filtered}
-            parceiros={parceiros}
-            customCrmMode={isCustomCrmPanel}
-            users={Object.fromEntries(allActiveUsers.map((u) => [u.user_id, u.nome]))}
-          />
-          <LeadImportDialog
-            parceiros={parceirosAll}
-            onImported={loadData}
-            customCrmMode={isCustomCrmPanel}
-            users={usersAll}
-            panelId={currentPanelId}
-            firstStageId={pipelineStages[0]?.value}
-          />
+          {currentPanelId !== "sucesso" && (
+            <>
+              <LeadExportButton
+                leads={filtered}
+                parceiros={parceiros}
+                customCrmMode={isCustomCrmPanel}
+                users={Object.fromEntries(allActiveUsers.map((u) => [u.user_id, u.nome]))}
+              />
+              <LeadImportDialog
+                parceiros={parceirosAll}
+                onImported={loadData}
+                customCrmMode={isCustomCrmPanel}
+                users={usersAll}
+                panelId={currentPanelId}
+                firstStageId={pipelineStages[0]?.value}
+              />
+            </>
+          )}
           {isCustomCrmPanel && (
             <Button onClick={() => setNewCardOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
               + Card
