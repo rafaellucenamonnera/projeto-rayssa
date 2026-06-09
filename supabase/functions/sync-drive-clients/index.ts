@@ -131,7 +131,11 @@ const parseCsv = (raw: string, headerHint?: string): Record<string, string>[] =>
   const headers = parseLine(lines[headerIdx]).map(normalizeHeader);
   return lines.slice(headerIdx + 1).map((line) => {
     const cols = parseLine(line);
-    return headers.reduce<Record<string, string>>((a, h, i) => { a[h] = cols[i] || ""; return a; }, {});
+    const obj: Record<string, string> = {};
+    headers.forEach((h, i) => { if (h) obj[h] = cols[i] || ""; });
+    // Fallback posicional para parsers que precisam ler por coluna mesmo sem cabeçalho útil.
+    cols.forEach((v, i) => { obj[`col_${i + 1}`] = v || ""; });
+    return obj;
   });
 };
 
@@ -313,8 +317,9 @@ Deno.serve(async (req) => {
   debug.step = "parse_clients";
   const clients: ClientRow[] = [];
   clientsRaw.forEach((r, i) => {
-    const razao = pick(r, "razao_social", "razao", "razaosocial");
-    const fantasiaRaw = pick(r, "nome_fantasia", "nomefantasia", "fantasia");
+    // Fallback por posição: col_1 = nome fantasia, col_2 = razão social, col_3 = consultor/carteira.
+    const razao = pick(r, "razao_social", "razao", "razaosocial", "col_2");
+    const fantasiaRaw = pick(r, "nome_fantasia", "nomefantasia", "fantasia", "col_1");
     if (!razao && !fantasiaRaw) return;
 
     // Extrai CNPJ se aparecer no nome fantasia (formato "NOME - 12345678901234")
@@ -328,7 +333,7 @@ Deno.serve(async (req) => {
       cnpj,
       nome_fantasia: nome_fantasia || razao,
       razao_social: razao || nome_fantasia,
-      consultor: pick(r, "carteira", "cs", "consultor", "responsavel", "responsavel_cs"),
+      consultor: pick(r, "carteira", "cs", "consultor", "responsavel", "responsavel_cs", "col_3"),
     });
   });
 
