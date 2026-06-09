@@ -237,7 +237,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  console.log("[sync-drive-clients] Início (fonte: aba Clientes gid=", CLIENTS_GID, ")");
+  console.log("[sync-drive-clients] Início (fonte:", SOURCE_MODE, "aba=", CLIENTS_SHEET, "gid=", CLIENTS_GID, ")");
 
   const counters = {
     processed: 0,
@@ -251,31 +251,66 @@ Deno.serve(async (req) => {
   };
   const errors: Array<{ row?: number; razao_social?: string; message: string }> = [];
 
-  // -------- Fetch all sheets in parallel --------
-  const [clientsRes, revenueRes, statusRes, csatRes, healthRes] = await Promise.all([
-    fetch(csvUrl(CLIENTS_GID), { headers: { "Cache-Control": "no-cache" } }),
-    fetch(csvUrl(REVENUE_GID), { headers: { "Cache-Control": "no-cache" } }),
-    STATUS_GID ? fetch(csvUrl(STATUS_GID), { headers: { "Cache-Control": "no-cache" } }) : Promise.resolve(null),
-    CSAT_GID ? fetch(csvUrl(CSAT_GID), { headers: { "Cache-Control": "no-cache" } }) : Promise.resolve(null),
-    HEALTH_GID ? fetch(csvUrl(HEALTH_GID), { headers: { "Cache-Control": "no-cache" } }) : Promise.resolve(null),
-  ]);
+  const sourceInfo = {
+    spreadsheet_id: SPREADSHEET_ID,
+    mode: SOURCE_MODE,
+    sheets: SHEETS_META,
+  };
+  const debug: { step: string; rows_read: Record<string, number> } = {
+    step: "init",
+    rows_read: { clientes: 0, receita: 0, status: 0, csat: 0, saude: 0 },
+  };
+  const opError = (message: string) =>
+    new Response(JSON.stringify({ success: false, error: message, source: sourceInfo, debug }), {
+      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
 
-  if (!clientsRes.ok) {
-    return new Response(JSON.stringify({
-      success: false,
-      error: `Falha ao ler aba Clientes (status ${clientsRes.status}). Verifique permissões da planilha.`,
-    }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  // -------- Fetch sheets --------
+  debug.step = "fetch_clients";
+  let clientsRaw: Record<string, string>[] = [];
+  try {
+    const res = await fetch(csvUrl(CLIENTS_SHEET, CLIENTS_GID), { headers: { "Cache-Control": "no-cache" } });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      return opError(`Falha ao ler aba "${CLIENTS_SHEET}" (status ${res.status}). ${body.slice(0, 200)}`);
+    }
+    clientsRaw = parseCsv(await res.text(), "nome_fantasia");
+    debug.rows_read.clientes = clientsRaw.length;
+  } catch (e) {
+    return opError(`Erro de rede ao ler aba "${CLIENTS_SHEET}": ${e instanceof Error ? e.message : String(e)}`);
   }
 
-  const clientsRaw = parseCsv(await clientsRes.text());
-  const revenueRaw = revenueRes.ok ? parseCsv(await revenueRes.text()) : [];
-  const statusRaw = statusRes?.ok ? parseCsv(await statusRes.text()) : [];
-  const csatRaw = csatRes?.ok ? parseCsv(await csatRes.text()) : [];
-  const healthRaw = healthRes?.ok ? parseCsv(await healthRes.text(), "contratante") : [];
+  const readAux = async (label: string, sheet: string, gid: string, hint?: string) => {
+    if (!sheet && !gid) return [];
+    try {
+      const res = await fetch(csvUrl(sheet, gid), { headers: { "Cache-Control": "no-cache" } });
+      if (!res.ok) {
+        errors.push({ message: `Aba auxiliar "${sheet || gid}" indisponível (status ${res.status}); sincronização seguirá sem ${label}.` });
+        return [];
+      }
+      return parseCsv(await res.text(), hint);
+    } catch (e) {
+      errors.push({ message: `Aba auxiliar "${sheet || gid}" falhou: ${e instanceof Error ? e.message : String(e)}` });
+      return [];
+    }
+  };
+
+  debug.step = "fetch_aux";
+  const [revenueRaw, statusRaw, csatRaw, healthRaw] = await Promise.all([
+    readAux("receita", REVENUE_SHEET, REVENUE_GID, "contratante"),
+    readAux("status_campanha", STATUS_SHEET, STATUS_GID),
+    readAux("csat", CSAT_SHEET, CSAT_GID),
+    readAux("painel_saude", HEALTH_SHEET, HEALTH_GID, "contratante"),
+  ]);
+  debug.rows_read.receita = revenueRaw.length;
+  debug.rows_read.status = statusRaw.length;
+  debug.rows_read.csat = csatRaw.length;
+  debug.rows_read.saude = healthRaw.length;
 
   console.log(`[sync-drive-clients] Linhas lidas: clientes=${clientsRaw.length}, receita=${revenueRaw.length}, status=${statusRaw.length}, csat=${csatRaw.length}, saude=${healthRaw.length}`);
 
   // -------- 1) Parse aba Clientes --------
+  debug.step = "parse_clients";
   const clients: ClientRow[] = [];
   clientsRaw.forEach((r, i) => {
     const razao = pick(r, "razao_social", "razao", "razaosocial");
@@ -298,10 +333,7 @@ Deno.serve(async (req) => {
   });
 
   if (clients.length === 0) {
-    return new Response(JSON.stringify({
-      success: false,
-      error: "Nenhum cliente encontrado na aba Clientes (verifique colunas RAZAO SOCIAL / NOME FANTASIA / Carteira).",
-    }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return opError(`Nenhum cliente encontrado na aba "${CLIENTS_SHEET}" (verifique colunas NOME FANTASIA / Carteira).`);
   }
 
   // -------- 2) Build revenueByCompany a partir da aba Receita / Contratante --------
