@@ -590,7 +590,7 @@ Deno.serve(async (req) => {
     clients_in_sheet: clients.length,
     ...counters,
     stage_used: successStageValue,
-    source: { spreadsheet_id: SPREADSHEET_ID, clients_gid: CLIENTS_GID, revenue_gid: REVENUE_GID },
+    source: { mode: SOURCE_MODE, spreadsheet_id: SPREADSHEET_ID, clients_gid: CLIENTS_GID, revenue_gid: REVENUE_GID },
     errors,
   }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 });
