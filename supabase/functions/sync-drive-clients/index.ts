@@ -28,6 +28,14 @@ function getCorsHeaders(req: Request) {
 }
 
 const SPREADSHEET_ID = Deno.env.get("GOOGLE_SHEETS_SPREADSHEET_ID")?.trim() || "1Ao69-CKVhwmTxzRAhpHotw3Ny_3kU7Id34k4qLTAyo8";
+
+// Aba/gid por planilha (gid mantido como fallback para o modo public_csv).
+const CLIENTS_SHEET = Deno.env.get("GOOGLE_SHEETS_CLIENTS_SHEET")?.trim() || "CARTEIRA";
+const REVENUE_SHEET = Deno.env.get("GOOGLE_SHEETS_REVENUE_SHEET")?.trim() || "Receita / Contratant";
+const STATUS_SHEET = Deno.env.get("GOOGLE_SHEETS_STATUS_SHEET")?.trim() || "Status Campanhas";
+const CSAT_SHEET = Deno.env.get("GOOGLE_SHEETS_CSAT_SHEET")?.trim() || "CSAT_Experiência Monnera";
+const HEALTH_SHEET = Deno.env.get("GOOGLE_SHEETS_HEALTH_SHEET")?.trim() || "Painel de Saúde";
+
 const CLIENTS_GID = Deno.env.get("GOOGLE_SHEETS_CLIENTS_GID")?.trim() || "1252292837";
 const REVENUE_GID = Deno.env.get("GOOGLE_SHEETS_GID")?.trim() || "0";
 const STATUS_GID = Deno.env.get("GOOGLE_SHEETS_STATUS_CAMPANHA_GID")?.trim() || "";
@@ -39,12 +47,21 @@ const PROXY_TOKEN = Deno.env.get("GOOGLE_SHEETS_PROXY_TOKEN")?.trim() || "";
 const USE_PROXY = Boolean(PROXY_URL && PROXY_TOKEN);
 const SOURCE_MODE = USE_PROXY ? "apps_script_proxy" : "public_csv";
 
-const csvUrl = (gid: string) => {
+const SHEETS_META = {
+  clients: { sheet: CLIENTS_SHEET, gid: CLIENTS_GID },
+  revenue: { sheet: REVENUE_SHEET, gid: REVENUE_GID },
+  status: { sheet: STATUS_SHEET, gid: STATUS_GID },
+  csat: { sheet: CSAT_SHEET, gid: CSAT_GID },
+  health: { sheet: HEALTH_SHEET, gid: HEALTH_GID },
+};
+
+const csvUrl = (sheet: string, gid: string) => {
   if (USE_PROXY) {
     const u = new URL(PROXY_URL);
     u.searchParams.set("token", PROXY_TOKEN);
     u.searchParams.set("spreadsheetId", SPREADSHEET_ID);
-    u.searchParams.set("gid", gid);
+    if (sheet) u.searchParams.set("sheet", sheet);
+    if (gid) u.searchParams.set("gid", gid);
     u.searchParams.set("format", "csv");
     return u.toString();
   }
