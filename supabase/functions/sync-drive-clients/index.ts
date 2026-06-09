@@ -265,7 +265,7 @@ Deno.serve(async (req) => {
     rows_read: { clientes: 0, receita: 0, status: 0, csat: 0, saude: 0 },
   };
   const opError = (message: string) =>
-    new Response(JSON.stringify({ success: false, error: message, source: sourceInfo, debug }), {
+    new Response(JSON.stringify({ success: false, version: "sucesso_deterministic_columns_v2", error: message, source: sourceInfo, debug }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
