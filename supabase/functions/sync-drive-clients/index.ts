@@ -504,6 +504,7 @@ Deno.serve(async (req) => {
   });
 
   // -------- 7) Processa cada cliente --------
+  debug.step = "process_clients";
   for (const c of clients) {
     counters.processed++;
     try {
