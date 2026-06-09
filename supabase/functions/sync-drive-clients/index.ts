@@ -28,6 +28,14 @@ function getCorsHeaders(req: Request) {
 }
 
 const SPREADSHEET_ID = Deno.env.get("GOOGLE_SHEETS_SPREADSHEET_ID")?.trim() || "1Ao69-CKVhwmTxzRAhpHotw3Ny_3kU7Id34k4qLTAyo8";
+
+// Aba/gid por planilha (gid mantido como fallback para o modo public_csv).
+const CLIENTS_SHEET = Deno.env.get("GOOGLE_SHEETS_CLIENTS_SHEET")?.trim() || "CARTEIRA";
+const REVENUE_SHEET = Deno.env.get("GOOGLE_SHEETS_REVENUE_SHEET")?.trim() || "Receita / Contratant";
+const STATUS_SHEET = Deno.env.get("GOOGLE_SHEETS_STATUS_SHEET")?.trim() || "Status Campanhas";
+const CSAT_SHEET = Deno.env.get("GOOGLE_SHEETS_CSAT_SHEET")?.trim() || "CSAT_Experiência Monnera";
+const HEALTH_SHEET = Deno.env.get("GOOGLE_SHEETS_HEALTH_SHEET")?.trim() || "Painel de Saúde";
+
 const CLIENTS_GID = Deno.env.get("GOOGLE_SHEETS_CLIENTS_GID")?.trim() || "1252292837";
 const REVENUE_GID = Deno.env.get("GOOGLE_SHEETS_GID")?.trim() || "0";
 const STATUS_GID = Deno.env.get("GOOGLE_SHEETS_STATUS_CAMPANHA_GID")?.trim() || "";
@@ -39,12 +47,21 @@ const PROXY_TOKEN = Deno.env.get("GOOGLE_SHEETS_PROXY_TOKEN")?.trim() || "";
 const USE_PROXY = Boolean(PROXY_URL && PROXY_TOKEN);
 const SOURCE_MODE = USE_PROXY ? "apps_script_proxy" : "public_csv";
 
-const csvUrl = (gid: string) => {
+const SHEETS_META = {
+  clients: { sheet: CLIENTS_SHEET, gid: CLIENTS_GID },
+  revenue: { sheet: REVENUE_SHEET, gid: REVENUE_GID },
+  status: { sheet: STATUS_SHEET, gid: STATUS_GID },
+  csat: { sheet: CSAT_SHEET, gid: CSAT_GID },
+  health: { sheet: HEALTH_SHEET, gid: HEALTH_GID },
+};
+
+const csvUrl = (sheet: string, gid: string) => {
   if (USE_PROXY) {
     const u = new URL(PROXY_URL);
     u.searchParams.set("token", PROXY_TOKEN);
     u.searchParams.set("spreadsheetId", SPREADSHEET_ID);
-    u.searchParams.set("gid", gid);
+    if (sheet) u.searchParams.set("sheet", sheet);
+    if (gid) u.searchParams.set("gid", gid);
     u.searchParams.set("format", "csv");
     return u.toString();
   }
@@ -220,7 +237,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  console.log("[sync-drive-clients] Início (fonte: aba Clientes gid=", CLIENTS_GID, ")");
+  console.log("[sync-drive-clients] Início (fonte:", SOURCE_MODE, "aba=", CLIENTS_SHEET, "gid=", CLIENTS_GID, ")");
 
   const counters = {
     processed: 0,
@@ -234,31 +251,66 @@ Deno.serve(async (req) => {
   };
   const errors: Array<{ row?: number; razao_social?: string; message: string }> = [];
 
-  // -------- Fetch all sheets in parallel --------
-  const [clientsRes, revenueRes, statusRes, csatRes, healthRes] = await Promise.all([
-    fetch(csvUrl(CLIENTS_GID), { headers: { "Cache-Control": "no-cache" } }),
-    fetch(csvUrl(REVENUE_GID), { headers: { "Cache-Control": "no-cache" } }),
-    STATUS_GID ? fetch(csvUrl(STATUS_GID), { headers: { "Cache-Control": "no-cache" } }) : Promise.resolve(null),
-    CSAT_GID ? fetch(csvUrl(CSAT_GID), { headers: { "Cache-Control": "no-cache" } }) : Promise.resolve(null),
-    HEALTH_GID ? fetch(csvUrl(HEALTH_GID), { headers: { "Cache-Control": "no-cache" } }) : Promise.resolve(null),
-  ]);
+  const sourceInfo = {
+    spreadsheet_id: SPREADSHEET_ID,
+    mode: SOURCE_MODE,
+    sheets: SHEETS_META,
+  };
+  const debug: { step: string; rows_read: Record<string, number> } = {
+    step: "init",
+    rows_read: { clientes: 0, receita: 0, status: 0, csat: 0, saude: 0 },
+  };
+  const opError = (message: string) =>
+    new Response(JSON.stringify({ success: false, error: message, source: sourceInfo, debug }), {
+      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
 
-  if (!clientsRes.ok) {
-    return new Response(JSON.stringify({
-      success: false,
-      error: `Falha ao ler aba Clientes (status ${clientsRes.status}). Verifique permissões da planilha.`,
-    }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  // -------- Fetch sheets --------
+  debug.step = "fetch_clients";
+  let clientsRaw: Record<string, string>[] = [];
+  try {
+    const res = await fetch(csvUrl(CLIENTS_SHEET, CLIENTS_GID), { headers: { "Cache-Control": "no-cache" } });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      return opError(`Falha ao ler aba "${CLIENTS_SHEET}" (status ${res.status}). ${body.slice(0, 200)}`);
+    }
+    clientsRaw = parseCsv(await res.text(), "nome_fantasia");
+    debug.rows_read.clientes = clientsRaw.length;
+  } catch (e) {
+    return opError(`Erro de rede ao ler aba "${CLIENTS_SHEET}": ${e instanceof Error ? e.message : String(e)}`);
   }
 
-  const clientsRaw = parseCsv(await clientsRes.text());
-  const revenueRaw = revenueRes.ok ? parseCsv(await revenueRes.text()) : [];
-  const statusRaw = statusRes?.ok ? parseCsv(await statusRes.text()) : [];
-  const csatRaw = csatRes?.ok ? parseCsv(await csatRes.text()) : [];
-  const healthRaw = healthRes?.ok ? parseCsv(await healthRes.text(), "contratante") : [];
+  const readAux = async (label: string, sheet: string, gid: string, hint?: string) => {
+    if (!sheet && !gid) return [];
+    try {
+      const res = await fetch(csvUrl(sheet, gid), { headers: { "Cache-Control": "no-cache" } });
+      if (!res.ok) {
+        errors.push({ message: `Aba auxiliar "${sheet || gid}" indisponível (status ${res.status}); sincronização seguirá sem ${label}.` });
+        return [];
+      }
+      return parseCsv(await res.text(), hint);
+    } catch (e) {
+      errors.push({ message: `Aba auxiliar "${sheet || gid}" falhou: ${e instanceof Error ? e.message : String(e)}` });
+      return [];
+    }
+  };
+
+  debug.step = "fetch_aux";
+  const [revenueRaw, statusRaw, csatRaw, healthRaw] = await Promise.all([
+    readAux("receita", REVENUE_SHEET, REVENUE_GID, "contratante"),
+    readAux("status_campanha", STATUS_SHEET, STATUS_GID),
+    readAux("csat", CSAT_SHEET, CSAT_GID),
+    readAux("painel_saude", HEALTH_SHEET, HEALTH_GID, "contratante"),
+  ]);
+  debug.rows_read.receita = revenueRaw.length;
+  debug.rows_read.status = statusRaw.length;
+  debug.rows_read.csat = csatRaw.length;
+  debug.rows_read.saude = healthRaw.length;
 
   console.log(`[sync-drive-clients] Linhas lidas: clientes=${clientsRaw.length}, receita=${revenueRaw.length}, status=${statusRaw.length}, csat=${csatRaw.length}, saude=${healthRaw.length}`);
 
   // -------- 1) Parse aba Clientes --------
+  debug.step = "parse_clients";
   const clients: ClientRow[] = [];
   clientsRaw.forEach((r, i) => {
     const razao = pick(r, "razao_social", "razao", "razaosocial");
@@ -281,10 +333,7 @@ Deno.serve(async (req) => {
   });
 
   if (clients.length === 0) {
-    return new Response(JSON.stringify({
-      success: false,
-      error: "Nenhum cliente encontrado na aba Clientes (verifique colunas RAZAO SOCIAL / NOME FANTASIA / Carteira).",
-    }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return opError(`Nenhum cliente encontrado na aba "${CLIENTS_SHEET}" (verifique colunas NOME FANTASIA / Carteira).`);
   }
 
   // -------- 2) Build revenueByCompany a partir da aba Receita / Contratante --------
@@ -417,44 +466,34 @@ Deno.serve(async (req) => {
   }
 
   // -------- 4) Etapa-alvo no painel Sucesso --------
+  debug.step = "load_stage";
   const { data: successStages, error: stagesErr } = await supabase
     .from("pipeline_stages_config")
     .select("value,label,sort_order")
     .eq("panel_key", "sucesso")
     .order("sort_order", { ascending: true })
     .limit(1);
-  if (stagesErr) {
-    return new Response(JSON.stringify({ success: false, error: `Erro lendo etapas: ${stagesErr.message}` }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  if (stagesErr) return opError(`Erro lendo etapas: ${stagesErr.message}`);
   const successStageValue = successStages?.[0]?.value;
   if (!successStageValue) {
-    return new Response(JSON.stringify({
-      success: false,
-      error: "Nenhuma etapa configurada para o painel 'sucesso'. Cadastre ao menos uma etapa em pipeline_stages_config.",
-    }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return opError("Nenhuma etapa configurada para o painel 'sucesso'. Cadastre ao menos uma etapa em pipeline_stages_config.");
   }
 
   // -------- 5) Parceiro padrão para origem google_drive --------
+  debug.step = "load_partner";
   const { data: defaultPartner } = await supabase
     .from("parceiros_comerciais").select("id").eq("ativo", true).limit(1).maybeSingle();
   if (!defaultPartner?.id) {
-    return new Response(JSON.stringify({ success: false, error: "Nenhum parceiro ativo disponível" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return opError("Nenhum parceiro ativo disponível em parceiros_comerciais (ativo=true).");
   }
 
   // -------- 6) Carrega leads existentes (status sucesso) --------
+  debug.step = "load_existing_leads";
   const { data: existingLeads, error: existingErr } = await supabase
     .from("leads")
     .select("id,cnpj,razao_social,nome_fantasia,consultor,valor_mensalidade,valor_campanhas,valor_pagamento")
     .eq("status", "sucesso");
-  if (existingErr) {
-    return new Response(JSON.stringify({ success: false, error: existingErr.message }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  if (existingErr) return opError(`Erro lendo leads existentes: ${existingErr.message}`);
   const existingByCnpj = new Map<string, typeof existingLeads[number]>();
   const existingByName = new Map<string, typeof existingLeads[number]>();
   (existingLeads || []).forEach((l) => {
@@ -465,6 +504,7 @@ Deno.serve(async (req) => {
   });
 
   // -------- 7) Processa cada cliente --------
+  debug.step = "process_clients";
   for (const c of clients) {
     counters.processed++;
     try {
@@ -585,12 +625,16 @@ Deno.serve(async (req) => {
     error_count: errors.length,
   } as never);
 
+  debug.step = "done";
   return new Response(JSON.stringify({
     success: true,
     clients_in_sheet: clients.length,
+    total_rows_read: clientsRaw.length,
+    valid_clients: clients.length,
     ...counters,
     stage_used: successStageValue,
-    source: { mode: SOURCE_MODE, spreadsheet_id: SPREADSHEET_ID, clients_gid: CLIENTS_GID, revenue_gid: REVENUE_GID },
+    source: sourceInfo,
+    debug,
     errors,
   }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 });
