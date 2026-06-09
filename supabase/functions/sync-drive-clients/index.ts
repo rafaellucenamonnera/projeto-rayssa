@@ -478,27 +478,22 @@ Deno.serve(async (req) => {
   if (!successStageValue) {
     return opError("Nenhuma etapa configurada para o painel 'sucesso'. Cadastre ao menos uma etapa em pipeline_stages_config.");
   }
-  }
 
   // -------- 5) Parceiro padrão para origem google_drive --------
+  debug.step = "load_partner";
   const { data: defaultPartner } = await supabase
     .from("parceiros_comerciais").select("id").eq("ativo", true).limit(1).maybeSingle();
   if (!defaultPartner?.id) {
-    return new Response(JSON.stringify({ success: false, error: "Nenhum parceiro ativo disponível" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return opError("Nenhum parceiro ativo disponível em parceiros_comerciais (ativo=true).");
   }
 
   // -------- 6) Carrega leads existentes (status sucesso) --------
+  debug.step = "load_existing_leads";
   const { data: existingLeads, error: existingErr } = await supabase
     .from("leads")
     .select("id,cnpj,razao_social,nome_fantasia,consultor,valor_mensalidade,valor_campanhas,valor_pagamento")
     .eq("status", "sucesso");
-  if (existingErr) {
-    return new Response(JSON.stringify({ success: false, error: existingErr.message }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  if (existingErr) return opError(`Erro lendo leads existentes: ${existingErr.message}`);
   const existingByCnpj = new Map<string, typeof existingLeads[number]>();
   const existingByName = new Map<string, typeof existingLeads[number]>();
   (existingLeads || []).forEach((l) => {
