@@ -290,6 +290,11 @@ const AdminLeads = () => {
     try {
       const { data, error } = await supabase.functions.invoke("sync-drive-clients", { method: "POST" });
       if (error) throw error;
+      if (data?.success === false) {
+        console.error("[sync-drive-clients] resposta:", data);
+        toast.error(data?.error || "Falha ao sincronizar Drive", { id: "sync-drive-clients" });
+        return;
+      }
       const summary = [
         `Linhas lidas: ${data?.total_rows_read ?? 0}`,
         `Clientes válidos: ${data?.valid_clients ?? 0}`,
