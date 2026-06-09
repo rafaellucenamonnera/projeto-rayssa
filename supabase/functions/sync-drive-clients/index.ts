@@ -28,7 +28,7 @@ function getCorsHeaders(req: Request) {
   };
 }
 
-const FUNCTION_VERSION = "sucesso_deterministic_columns_v2";
+const FUNCTION_VERSION = "sucesso_deterministic_columns_v3_proxy_json_decode";
 
 const SPREADSHEET_ID = Deno.env.get("GOOGLE_SHEETS_SPREADSHEET_ID")?.trim() || "1Ao69-CKVhwmTxzRAhpHotw3Ny_3kU7Id34k4qLTAyo8";
 
