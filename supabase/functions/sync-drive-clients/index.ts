@@ -34,7 +34,22 @@ const STATUS_GID = Deno.env.get("GOOGLE_SHEETS_STATUS_CAMPANHA_GID")?.trim() || 
 const CSAT_GID = Deno.env.get("GOOGLE_SHEETS_CSAT_GID")?.trim() || "";
 const HEALTH_GID = Deno.env.get("GOOGLE_SHEETS_PAINEL_SAUDE_GID")?.trim() || "409080197";
 
-const csvUrl = (gid: string) => `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${encodeURIComponent(gid)}`;
+const PROXY_URL = Deno.env.get("GOOGLE_SHEETS_PROXY_URL")?.trim() || "";
+const PROXY_TOKEN = Deno.env.get("GOOGLE_SHEETS_PROXY_TOKEN")?.trim() || "";
+const USE_PROXY = Boolean(PROXY_URL && PROXY_TOKEN);
+const SOURCE_MODE = USE_PROXY ? "apps_script_proxy" : "public_csv";
+
+const csvUrl = (gid: string) => {
+  if (USE_PROXY) {
+    const u = new URL(PROXY_URL);
+    u.searchParams.set("token", PROXY_TOKEN);
+    u.searchParams.set("spreadsheetId", SPREADSHEET_ID);
+    u.searchParams.set("gid", gid);
+    u.searchParams.set("format", "csv");
+    return u.toString();
+  }
+  return `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${encodeURIComponent(gid)}`;
+};
 
 const PT_MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
