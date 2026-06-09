@@ -438,6 +438,7 @@ Deno.serve(async (req) => {
     debug.clients_sample = clientsRows.slice(0, 5);
     return operationalError(
       `Nenhum cliente encontrado na aba "${CLIENTS_SHEET}" (colunas A/B/C vazias).`,
+      { clients_in_sheet: Math.max(clientsRows.length - 1, 0) },
     );
   }
 
