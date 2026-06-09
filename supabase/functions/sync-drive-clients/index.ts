@@ -28,7 +28,7 @@ function getCorsHeaders(req: Request) {
   };
 }
 
-const FUNCTION_VERSION = "sucesso_deterministic_columns_v2";
+const FUNCTION_VERSION = "sucesso_deterministic_columns_v3_proxy_json_decode";
 
 const SPREADSHEET_ID = Deno.env.get("GOOGLE_SHEETS_SPREADSHEET_ID")?.trim() || "1Ao69-CKVhwmTxzRAhpHotw3Ny_3kU7Id34k4qLTAyo8";
 
@@ -158,19 +158,84 @@ const parseCsvRows = (raw: string): string[][] => {
   return lines.map(parseLine);
 };
 
+// Decode Apps Script proxy payload that may be:
+//  a) Pure CSV text
+//  b) Strict JSON: { sheets: { <key>: { rows: [[...]] } } } or { rows: [[...]] }
+//  c) Serialized JSON-like blob (unquoted keys/strings) — try to coerce
+const decodeProxyPayload = (text: string): unknown => {
+  const trimmed = (text || "").trim();
+  if (!trimmed) return null;
+  // Strict JSON
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      // Try tolerant fix: quote unquoted keys, then unquoted string values.
+      try {
+        let s = trimmed;
+        // Quote keys: {key: or ,key:
+        s = s.replace(/([{,]\s*)([A-Za-z_][A-Za-z0-9_]*)\s*:/g, '$1"$2":');
+        // Quote bare string values up to , } or ]
+        s = s.replace(/:\s*([A-Za-z_][^,{}\[\]"]*?)(?=[,}\]])/g, (_m, v) => {
+          const trimmedVal = String(v).trim();
+          if (trimmedVal === "true" || trimmedVal === "false" || trimmedVal === "null") {
+            return `: ${trimmedVal}`;
+          }
+          if (/^-?\d+(\.\d+)?$/.test(trimmedVal)) return `: ${trimmedVal}`;
+          return `: "${trimmedVal.replace(/"/g, '\\"')}"`;
+        });
+        return JSON.parse(s);
+      } catch {
+        return null;
+      }
+    }
+  }
+  return null;
+};
+
+// Extract a 2D string matrix (rows) from a decoded proxy payload, for a given sheet key.
+const extractRowsFromDecoded = (decoded: unknown, sheetKey?: string): string[][] | null => {
+  if (!decoded || typeof decoded !== "object") return null;
+  const obj = decoded as Record<string, unknown>;
+  // { sheets: { clients: { rows: [...] } } }
+  const sheets = obj.sheets as Record<string, unknown> | undefined;
+  if (sheets && typeof sheets === "object") {
+    if (sheetKey && sheets[sheetKey] && typeof sheets[sheetKey] === "object") {
+      const s = sheets[sheetKey] as Record<string, unknown>;
+      if (Array.isArray(s.rows)) return s.rows as string[][];
+    }
+    // First sheet fallback
+    for (const k of Object.keys(sheets)) {
+      const s = sheets[k] as Record<string, unknown>;
+      if (s && Array.isArray(s.rows)) return s.rows as string[][];
+    }
+  }
+  if (Array.isArray(obj.rows)) return obj.rows as string[][];
+  if (Array.isArray(obj.values)) return obj.values as string[][];
+  return null;
+};
+
 // Fetch a sheet via proxy/public CSV and return raw 2D rows.
-const readProxyRows = async (sheet: string, gid: string): Promise<string[][]> => {
+const readProxyRows = async (sheet: string, gid: string, sheetKey?: string): Promise<string[][]> => {
   const res = await fetch(csvUrl(sheet, gid), { headers: { "Cache-Control": "no-cache" } });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(`status ${res.status}: ${body.slice(0, 200)}`);
   }
-  return parseCsvRows(await res.text());
+  const text = await res.text();
+  const decoded = decodeProxyPayload(text);
+  if (decoded) {
+    const rows = extractRowsFromDecoded(decoded, sheetKey);
+    if (rows && Array.isArray(rows)) {
+      return rows.map((r) => Array.isArray(r) ? r.map((c) => (c == null ? "" : String(c))) : []);
+    }
+  }
+  return parseCsvRows(text);
 };
 
 // Reads all sheets, preserving raw row arrays for deterministic column access.
 const readSheetsFromProxy = async (sheets: typeof SHEETS_META) => {
-  const clientsRows = await readProxyRows(sheets.clients.sheet, sheets.clients.gid);
+  const clientsRows = await readProxyRows(sheets.clients.sheet, sheets.clients.gid, "clients");
   return { clientsRows };
 };
 
@@ -373,6 +438,7 @@ Deno.serve(async (req) => {
     debug.clients_sample = clientsRows.slice(0, 5);
     return operationalError(
       `Nenhum cliente encontrado na aba "${CLIENTS_SHEET}" (colunas A/B/C vazias).`,
+      { clients_in_sheet: Math.max(clientsRows.length - 1, 0) },
     );
   }
 
