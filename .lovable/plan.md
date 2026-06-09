@@ -1,30 +1,23 @@
-## Contexto
+## Plano: Configurar Secrets e Redeployar Edge Function
 
-A sincronização Lovable ↔ GitHub é automática e bidirecional — não há comando manual para "puxar" um commit. Verifiquei o estado atual de `src/pages/admin/AdminDashboard.tsx` contra o commit `1c9a48b Adiciona dias totais no dashboard comercial`:
+### Objetivo
+Configurar os secrets solicitados no Supabase e garantir que a edge function `sync-drive-clients` esteja deployada com o estado atual do código.
 
-| Item esperado | Estado atual |
-|---|---|
-| Coluna "Dias na etapa" em Leads Mais Tempo na Mesma Etapa | Existe como "Dias" (precisa renomear) |
-| Coluna "Dias totais" (desde `data_cadastro`) | **Faltando** |
-| Indicador "Taxa de Conversão" | Existe como "Conversão Geral" (precisa renomear) |
-| Cálculo `contrato_assinado / total_leads * 100` | Já correto (linha 183-185) |
+### Passos
 
-Como o commit não chegou via sync, vou aplicar as mudanças diretamente no arquivo (DB-only não é necessário — tudo é frontend).
+1. **Adicionar Secrets ao Supabase**
+   - `GOOGLE_SHEETS_SPREADSHEET_ID` = `14wK-h06tExCMqKRx-EW-JsXUFHX7XTZTOsucJ1LkNgE`
+   - `GOOGLE_SHEETS_PROXY_URL` = `https://script.google.com/macros/s/AKfycby-701y4H5tuLWJibIkfG9QRk97HoiPWa5magdKJ32xw0CE-FB1LeyOjxFvKp0gCGd8/exec`
+   - `GOOGLE_SHEETS_PROXY_TOKEN` = `monnera_sucesso_2026_x7Kp92LmQ4vB18sT`
 
-## Mudanças em `src/pages/admin/AdminDashboard.tsx`
+2. **Redeployar Edge Function**
+   - Executar deploy da função `sync-drive-clients` para garantir que o ambiente receba qualquer alteração de código já existente e os novos secrets.
 
-1. **Interface `StalledLead`**: adicionar campo `dias_totais: number`.
-2. **Query de detalhes do lead** (linha ~155-158): incluir `data_cadastro` no `select`.
-3. **Mapeamento em `stalled`** (linha ~160-172): calcular `dias_totais = floor((Date.now() - new Date(lead.data_cadastro)) / 86400000)`.
-4. **Card "Leads Mais Tempo na Mesma Etapa"** (linha ~382-408):
-   - Renomear cabeçalho `Dias` → `Dias na etapa`.
-   - Adicionar nova coluna `Dias totais` à direita.
-   - Renderizar `{l.dias_totais}d` na nova célula (sem coloração ou cor neutra `text-muted-foreground`).
-5. **Card de indicador** (linha ~267): renomear `Conversão Geral` → `Taxa de Conversão`.
+### Observação Técnica
+A edge function `sync-drive-clients` (código atual em `supabase/functions/sync-drive-clients/index.ts`) utiliza `GOOGLE_SHEETS_SPREADSHEET_ID`, mas **não referencia `GOOGLE_SHEETS_PROXY_URL` nem `GOOGLE_SHEETS_PROXY_TOKEN`** — ela acessa o Google Sheets via URL pública de exportação CSV (`https://docs.google.com/spreadsheets/d/.../export?format=csv`).  
+Os secrets serão persistidos no ambiente, mas a função só os consumirá se o código for atualizado posteriormente para chamar o proxy.
 
-## Validação
-
-- Build limpo (sem erros TS).
-- Abrir `/admin` → conferir card com nova coluna "Dias totais" e label "Taxa de Conversão".
-
-Sem alterações de banco, edge functions ou outras telas.
+### Restrições Respeitadas
+- Nenhuma criação de tabela.
+- Nenhuma alteração de RLS.
+- Nenhuma alteração de schema.
