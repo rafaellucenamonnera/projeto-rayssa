@@ -13,6 +13,7 @@ function isAllowedOrigin(origin: string) {
   if (!origin) return false;
   if (allowedOrigins.includes(origin)) return true;
   if (origin.endsWith(".lovable.app")) return true;
+  if (origin.endsWith(".lovableproject.com")) return true;
   if (origin.startsWith("http://localhost:")) return true;
   if (origin.startsWith("http://127.0.0.1:")) return true;
   return false;
