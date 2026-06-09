@@ -624,12 +624,16 @@ Deno.serve(async (req) => {
     error_count: errors.length,
   } as never);
 
+  debug.step = "done";
   return new Response(JSON.stringify({
     success: true,
     clients_in_sheet: clients.length,
+    total_rows_read: clientsRaw.length,
+    valid_clients: clients.length,
     ...counters,
     stage_used: successStageValue,
-    source: { mode: SOURCE_MODE, spreadsheet_id: SPREADSHEET_ID, clients_gid: CLIENTS_GID, revenue_gid: REVENUE_GID },
+    source: sourceInfo,
+    debug,
     errors,
   }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 });
