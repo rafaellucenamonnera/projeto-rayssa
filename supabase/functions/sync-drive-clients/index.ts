@@ -523,10 +523,10 @@ Deno.serve(async (req) => {
     .eq("panel_key", "sucesso")
     .order("sort_order", { ascending: true })
     .limit(1);
-  if (stagesErr) return opError(`Erro lendo etapas: ${stagesErr.message}`);
+  if (stagesErr) return operationalError(`Erro lendo etapas: ${stagesErr.message}`);
   const successStageValue = successStages?.[0]?.value;
   if (!successStageValue) {
-    return opError("Nenhuma etapa configurada para o painel 'sucesso'. Cadastre ao menos uma etapa em pipeline_stages_config.");
+    return operationalError("Nenhuma etapa configurada para o painel 'sucesso'. Cadastre ao menos uma etapa em pipeline_stages_config.");
   }
 
   // -------- 5) Parceiro padrão para origem google_drive --------
@@ -534,7 +534,7 @@ Deno.serve(async (req) => {
   const { data: defaultPartner } = await supabase
     .from("parceiros_comerciais").select("id").eq("ativo", true).limit(1).maybeSingle();
   if (!defaultPartner?.id) {
-    return opError("Nenhum parceiro ativo disponível em parceiros_comerciais (ativo=true).");
+    return operationalError("Nenhum parceiro ativo disponível em parceiros_comerciais (ativo=true).");
   }
 
   // -------- 6) Carrega leads existentes (status sucesso) --------
@@ -543,7 +543,7 @@ Deno.serve(async (req) => {
     .from("leads")
     .select("id,cnpj,razao_social,nome_fantasia,consultor,valor_mensalidade,valor_campanhas,valor_pagamento")
     .eq("status", "sucesso");
-  if (existingErr) return opError(`Erro lendo leads existentes: ${existingErr.message}`);
+  if (existingErr) return operationalError(`Erro lendo leads existentes: ${existingErr.message}`);
   const existingByCnpj = new Map<string, typeof existingLeads[number]>();
   const existingByName = new Map<string, typeof existingLeads[number]>();
   (existingLeads || []).forEach((l) => {
@@ -678,7 +678,7 @@ Deno.serve(async (req) => {
   debug.step = "done";
   return new Response(JSON.stringify({
     success: true,
-    version: "sucesso_deterministic_columns_v2",
+    version: FUNCTION_VERSION,
     clients_in_sheet: clients.length,
     total_rows_read: clientsRaw.length,
     valid_clients: clients.length,
