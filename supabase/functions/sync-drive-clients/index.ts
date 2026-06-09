@@ -27,6 +27,8 @@ function getCorsHeaders(req: Request) {
   };
 }
 
+const FUNCTION_VERSION = "sucesso_deterministic_columns_v2";
+
 const SPREADSHEET_ID = Deno.env.get("GOOGLE_SHEETS_SPREADSHEET_ID")?.trim() || "1Ao69-CKVhwmTxzRAhpHotw3Ny_3kU7Id34k4qLTAyo8";
 
 // Aba/gid por planilha (gid mantido como fallback para o modo public_csv).
@@ -138,6 +140,40 @@ const parseCsv = (raw: string, headerHint?: string): Record<string, string>[] =>
     return obj;
   });
 };
+
+// Parse CSV raw into 2D array of rows (cols A,B,C,...), preserving original positions.
+const parseCsvRows = (raw: string): string[][] => {
+  const lines = raw.split(/\r?\n/);
+  const parseLine = (line: string) => {
+    const out: string[] = []; let cur = ""; let q = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { if (q && line[i + 1] === '"') { cur += '"'; i++; } else q = !q; }
+      else if (c === "," && !q) { out.push(cur.trim()); cur = ""; }
+      else cur += c;
+    }
+    out.push(cur.trim()); return out;
+  };
+  return lines.map(parseLine);
+};
+
+// Fetch a sheet via proxy/public CSV and return raw 2D rows.
+const readProxyRows = async (sheet: string, gid: string): Promise<string[][]> => {
+  const res = await fetch(csvUrl(sheet, gid), { headers: { "Cache-Control": "no-cache" } });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`status ${res.status}: ${body.slice(0, 200)}`);
+  }
+  return parseCsvRows(await res.text());
+};
+
+// Reads all sheets, preserving raw row arrays for deterministic column access.
+const readSheetsFromProxy = async (sheets: typeof SHEETS_META) => {
+  const clientsRows = await readProxyRows(sheets.clients.sheet, sheets.clients.gid);
+  return { clientsRows };
+};
+
+
 
 const parseMonthHeader = (key: string) => {
   const k = normalizeHeader(key);
@@ -260,28 +296,24 @@ Deno.serve(async (req) => {
     mode: SOURCE_MODE,
     sheets: SHEETS_META,
   };
-  const debug: { step: string; rows_read: Record<string, number> } = {
+  const debug: { step: string; rows_read: Record<string, number>; clients_sample?: string[][] } = {
     step: "init",
     rows_read: { clientes: 0, receita: 0, status: 0, csat: 0, saude: 0 },
   };
-  const opError = (message: string) =>
-    new Response(JSON.stringify({ success: false, version: "sucesso_deterministic_columns_v2", error: message, source: sourceInfo, debug }), {
+  const operationalError = (message: string, extra: Record<string, unknown> = {}) =>
+    new Response(JSON.stringify({ success: false, version: FUNCTION_VERSION, error: message, source: sourceInfo, debug, ...extra }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
-  // -------- Fetch sheets --------
+  // -------- Fetch sheets (deterministic, preserva linhas brutas) --------
   debug.step = "fetch_clients";
-  let clientsRaw: Record<string, string>[] = [];
+  let clientsRows: string[][] = [];
   try {
-    const res = await fetch(csvUrl(CLIENTS_SHEET, CLIENTS_GID), { headers: { "Cache-Control": "no-cache" } });
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      return opError(`Falha ao ler aba "${CLIENTS_SHEET}" (status ${res.status}). ${body.slice(0, 200)}`);
-    }
-    clientsRaw = parseCsv(await res.text(), "nome_fantasia");
-    debug.rows_read.clientes = clientsRaw.length;
+    const sheets = await readSheetsFromProxy(SHEETS_META);
+    clientsRows = sheets.clientsRows;
+    debug.rows_read.clientes = clientsRows.length;
   } catch (e) {
-    return opError(`Erro de rede ao ler aba "${CLIENTS_SHEET}": ${e instanceof Error ? e.message : String(e)}`);
+    return operationalError(`Erro ao ler aba "${CLIENTS_SHEET}": ${e instanceof Error ? e.message : String(e)}`);
   }
 
   const readAux = async (label: string, sheet: string, gid: string, hint?: string) => {
@@ -311,35 +343,48 @@ Deno.serve(async (req) => {
   debug.rows_read.csat = csatRaw.length;
   debug.rows_read.saude = healthRaw.length;
 
-  console.log(`[sync-drive-clients] Linhas lidas: clientes=${clientsRaw.length}, receita=${revenueRaw.length}, status=${statusRaw.length}, csat=${csatRaw.length}, saude=${healthRaw.length}`);
+  console.log(`[sync-drive-clients] Linhas lidas: clientes=${clientsRows.length}, receita=${revenueRaw.length}, status=${statusRaw.length}, csat=${csatRaw.length}, saude=${healthRaw.length}`);
 
-  // -------- 1) Parse aba Clientes --------
+  // -------- 1) Parse aba CARTEIRA: leitura determinística A=nome fantasia, B=razão social, C=carteira --------
   debug.step = "parse_clients";
   const clients: ClientRow[] = [];
-  clientsRaw.forEach((r, i) => {
-    // Fallback por posição: col_1 = nome fantasia, col_2 = razão social, col_3 = consultor/carteira.
-    const razao = pick(r, "razao_social", "razao", "razaosocial", "col_2");
-    const fantasiaRaw = pick(r, "nome_fantasia", "nomefantasia", "fantasia", "col_1");
+  clientsRows.slice(1).forEach((cols, idx) => {
+    const fantasiaRaw = (cols[0] || "").trim();
+    const razao = (cols[1] || "").trim();
+    const consultor = (cols[2] || "").trim();
     if (!razao && !fantasiaRaw) return;
 
     // Extrai CNPJ se aparecer no nome fantasia (formato "NOME - 12345678901234")
     const cnpjMatch = fantasiaRaw.match(/\b(\d{14})\b/) || razao.match(/\b(\d{14})\b/);
     const cnpj = cnpjMatch ? cnpjMatch[1] : "";
-    // Remove sufixo "- CNPJ" do nome fantasia
     const nome_fantasia = fantasiaRaw.replace(/\s*-\s*\d{14}\s*$/, "").trim();
 
     clients.push({
-      source_row: i + 2,
+      source_row: idx + 2,
       cnpj,
       nome_fantasia: nome_fantasia || razao,
       razao_social: razao || nome_fantasia,
-      consultor: pick(r, "carteira", "cs", "consultor", "responsavel", "responsavel_cs", "col_3"),
+      consultor,
     });
   });
 
   if (clients.length === 0) {
-    return opError(`Nenhum cliente encontrado na aba "${CLIENTS_SHEET}" (verifique colunas NOME FANTASIA / Carteira).`);
+    debug.clients_sample = clientsRows.slice(0, 5);
+    return operationalError(
+      `Nenhum cliente encontrado na aba "${CLIENTS_SHEET}" (colunas A/B/C vazias).`,
+    );
   }
+
+  // Adapter de linhas brutas → registros usados pelo pipeline restante (compat com nomes antigos).
+  const clientsRaw = clientsRows.slice(1).map((cols) => {
+    const obj: Record<string, string> = {};
+    cols.forEach((v, i) => { obj[`col_${i + 1}`] = v || ""; });
+    obj["nome_fantasia"] = cols[0] || "";
+    obj["razao_social"] = cols[1] || "";
+    obj["carteira"] = cols[2] || "";
+    return obj;
+  });
+
 
   // -------- 2) Build revenueByCompany a partir da aba Receita / Contratante --------
   // Lógica: cada vez que encontramos uma linha "cliente" (com nome em Contratante/Empresa
@@ -478,10 +523,10 @@ Deno.serve(async (req) => {
     .eq("panel_key", "sucesso")
     .order("sort_order", { ascending: true })
     .limit(1);
-  if (stagesErr) return opError(`Erro lendo etapas: ${stagesErr.message}`);
+  if (stagesErr) return operationalError(`Erro lendo etapas: ${stagesErr.message}`);
   const successStageValue = successStages?.[0]?.value;
   if (!successStageValue) {
-    return opError("Nenhuma etapa configurada para o painel 'sucesso'. Cadastre ao menos uma etapa em pipeline_stages_config.");
+    return operationalError("Nenhuma etapa configurada para o painel 'sucesso'. Cadastre ao menos uma etapa em pipeline_stages_config.");
   }
 
   // -------- 5) Parceiro padrão para origem google_drive --------
@@ -489,7 +534,7 @@ Deno.serve(async (req) => {
   const { data: defaultPartner } = await supabase
     .from("parceiros_comerciais").select("id").eq("ativo", true).limit(1).maybeSingle();
   if (!defaultPartner?.id) {
-    return opError("Nenhum parceiro ativo disponível em parceiros_comerciais (ativo=true).");
+    return operationalError("Nenhum parceiro ativo disponível em parceiros_comerciais (ativo=true).");
   }
 
   // -------- 6) Carrega leads existentes (status sucesso) --------
@@ -498,7 +543,7 @@ Deno.serve(async (req) => {
     .from("leads")
     .select("id,cnpj,razao_social,nome_fantasia,consultor,valor_mensalidade,valor_campanhas,valor_pagamento")
     .eq("status", "sucesso");
-  if (existingErr) return opError(`Erro lendo leads existentes: ${existingErr.message}`);
+  if (existingErr) return operationalError(`Erro lendo leads existentes: ${existingErr.message}`);
   const existingByCnpj = new Map<string, typeof existingLeads[number]>();
   const existingByName = new Map<string, typeof existingLeads[number]>();
   (existingLeads || []).forEach((l) => {
@@ -633,7 +678,7 @@ Deno.serve(async (req) => {
   debug.step = "done";
   return new Response(JSON.stringify({
     success: true,
-    version: "sucesso_deterministic_columns_v2",
+    version: FUNCTION_VERSION,
     clients_in_sheet: clients.length,
     total_rows_read: clientsRaw.length,
     valid_clients: clients.length,
