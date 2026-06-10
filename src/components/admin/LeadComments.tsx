@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Loader2, MessageSquare, Send, Pencil, Trash2, X, Check } from "lucide-react";
 import { PIPELINE_LABELS } from "@/lib/pipelineConstants";
 import { cardActionUrl, createNotifications } from "@/lib/notifications";
+import { AttachmentPicker, CommentAttachmentList, StagedAttachment, uploadStagedAttachments } from "./CommentAttachments";
 
 interface LeadCommentsProps {
   leadId: string;
