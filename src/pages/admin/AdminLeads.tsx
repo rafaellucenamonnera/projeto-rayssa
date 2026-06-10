@@ -1233,8 +1233,8 @@ const AdminLeads = () => {
     if (filterEmpresa && !((l.full_name || l.nome_fantasia) || "").toLowerCase().includes(filterEmpresa.toLowerCase())) return false;
     if (isCustomCrmPanel && filterResponsibleUser !== "all" && l.responsible_user_id !== filterResponsibleUser) return false;
     if (currentPanelId === "sucesso" && filterCampaignStatus !== "all" && (l.campaign_status_current || "SEM_STATUS") !== filterCampaignStatus) return false;
-    if (currentPanelId === "sucesso" && filterImpactLevel !== "all" && normalizeImpact(l.impact_level) !== filterImpactLevel) return false;
-    if (currentPanelId === "sucesso" && filterHealthStatus !== "all" && normalizeHealthStatus(l.health_status) !== filterHealthStatus) return false;
+    if ((currentPanelId === "sucesso" || currentPanelId === "campanhas") && filterImpactLevel !== "all" && normalizeImpact(l.impact_level) !== filterImpactLevel) return false;
+    if ((currentPanelId === "sucesso" || currentPanelId === "campanhas") && filterHealthStatus !== "all" && normalizeHealthStatus(l.health_status) !== filterHealthStatus) return false;
     if (filterDataInicio) {
       const d = new Date(l.data_cadastro);
       if (d < new Date(filterDataInicio)) return false;
