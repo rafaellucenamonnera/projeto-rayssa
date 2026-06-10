@@ -40,6 +40,7 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
   const [users, setUsers] = useState<MentionUser[]>([]);
   const [selectedMentionIds, setSelectedMentionIds] = useState<string[]>([]);
   const [mentionQuery, setMentionQuery] = useState("");
+  const [stagedAttachments, setStagedAttachments] = useState<StagedAttachment[]>([]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
