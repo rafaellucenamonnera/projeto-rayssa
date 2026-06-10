@@ -63,7 +63,10 @@ const CadastroParceiro = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+    if (!validate()) {
+      toast.error("Preencha todos os campos obrigatórios antes de continuar.");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -75,40 +78,35 @@ const CadastroParceiro = () => {
       });
 
       if (authError) {
-        if (authError.message.includes("already registered")) {
-          const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-            email: form.email.trim().toLowerCase(),
-            password: form.senha,
-          });
-          if (loginError) {
-            setErrors({ email: "Email já registrado. Verifique a senha informada." });
-            return;
-          }
-          if (!loginData.user) throw new Error("Erro ao autenticar");
-
-          const { data: existing } = await supabase
-            .from("parceiros_comerciais")
-            .select("id")
-            .eq("user_id", loginData.user.id)
-            .maybeSingle();
-          if (existing) {
-            setErrors({ email: "Você já está cadastrado como embaixador Monnera." });
-            return;
-          }
-          userId = loginData.user.id;
-        } else if (authError.message.includes("weak_password") || authError.message.includes("weak") || (authError as any).code === "weak_password") {
-          setErrors({ senha: "Senha muito fraca. Escolha uma senha mais segura e diferente de senhas comuns." });
+        const msg = authError.message || "";
+        const code = (authError as any).code || "";
+        if (msg.toLowerCase().includes("already registered") || msg.toLowerCase().includes("user already")) {
+          setErrors({ email: "Este e-mail já possui cadastro." });
+          toast.error("Este e-mail já possui cadastro. Acesse seu painel ou recupere sua senha.");
           return;
-        } else {
-          throw authError;
         }
-      } else {
-        if (!authData.user) throw new Error("Erro ao criar conta");
-        userId = authData.user.id;
+        if (code === "weak_password" || msg.toLowerCase().includes("weak")) {
+          setErrors({ senha: "Senha muito fraca. Escolha uma senha mais segura." });
+          toast.error("Senha muito fraca. Escolha uma senha mais segura.");
+          return;
+        }
+        console.error("signUp error:", authError);
+        toast.error("Não foi possível concluir seu cadastro agora. Tente novamente ou contate o suporte.");
+        return;
       }
 
+      if (!authData.user) {
+        toast.error("Não foi possível concluir seu cadastro agora. Tente novamente ou contate o suporte.");
+        return;
+      }
+      userId = authData.user.id;
+
       const { data: codeData, error: codeError } = await supabase.rpc("generate_partner_code");
-      if (codeError) throw codeError;
+      if (codeError) {
+        console.error("generate_partner_code error:", codeError);
+        toast.error("Não foi possível concluir seu cadastro agora. Tente novamente ou contate o suporte.");
+        return;
+      }
 
       const codigo_parceiro = codeData as string;
       const cpfClean = form.cpf.replace(/\D/g, "");
@@ -138,21 +136,28 @@ const CadastroParceiro = () => {
         }
         await supabase.auth.signOut();
 
-        if (insertError.message.includes("parceiros_comerciais_cpf_key")) {
-          setErrors({ cpf: "CPF já cadastrado" });
-        } else if (insertError.message.includes("parceiros_comerciais_email_key")) {
-          setErrors({ email: "Email já cadastrado" });
-        } else {
-          throw insertError;
+        const msg = insertError.message || "";
+        if (msg.includes("parceiros_comerciais_cpf_key") || msg.toLowerCase().includes("\"cpf\"")) {
+          setErrors({ cpf: "Este CPF ou CNPJ já está vinculado a um cadastro existente." });
+          toast.error("Este CPF ou CNPJ já está vinculado a um cadastro existente.");
+          return;
         }
+        if (msg.includes("parceiros_comerciais_email_key") || msg.toLowerCase().includes("\"email\"")) {
+          setErrors({ email: "Este e-mail já possui cadastro." });
+          toast.error("Este e-mail já possui cadastro. Acesse seu painel ou recupere sua senha.");
+          return;
+        }
+        console.error("register_parceiro error:", insertError);
+        toast.error("Não foi possível concluir seu cadastro agora. Tente novamente ou contate o suporte.");
         return;
       }
 
       const parceiro = parceiroData as any;
-      toast.success("Cadastro realizado com sucesso! Seu perfil foi enviado para aprovação.");
+      toast.success("Cadastro enviado com sucesso. Agora aguarde a aprovação para acessar o painel.");
       navigate("/confirmacao", { state: { parceiro } });
     } catch (error: any) {
-      toast.error("Erro ao cadastrar. Tente novamente.");
+      console.error("Cadastro embaixador — erro inesperado:", error);
+      toast.error("Não foi possível concluir seu cadastro agora. Tente novamente ou contate o suporte.");
     } finally {
       setLoading(false);
     }
