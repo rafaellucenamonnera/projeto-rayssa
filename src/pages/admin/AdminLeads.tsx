@@ -157,6 +157,12 @@ const AdminLeads = () => {
   const [financeiroDialogOpen, setFinanceiroDialogOpen] = useState(false);
   const [pendingFinanceiro, setPendingFinanceiro] = useState<{ leadId: string; leadName: string; parceiroId: string; nextStatus?: string; lead?: any } | null>(null);
 
+  // Campaign flow dialogs
+  const [campaignMoveOpen, setCampaignMoveOpen] = useState(false);
+  const [pendingCampaignMove, setPendingCampaignMove] = useState<{ leadId: string; leadName: string; lead: any } | null>(null);
+  const [campanhaConcluidaOpen, setCampanhaConcluidaOpen] = useState(false);
+  const [pendingCampanhaConcluida, setPendingCampanhaConcluida] = useState<{ leadId: string; leadName: string } | null>(null);
+
   // Kanban toggle
   const [view, setView] = useState<"kanban" | "lista">("kanban");
 
