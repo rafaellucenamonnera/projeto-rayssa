@@ -34,6 +34,16 @@ import { DaysInStage } from "@/components/admin/DaysInStage";
 import { PipelineKanban } from "@/components/admin/PipelineKanban";
 import { PIPELINE_STAGES, PIPELINE_LABELS } from "@/lib/pipelineConstants";
 import { cardActionUrl, createNotification } from "@/lib/notifications";
+import { addBusinessHoursBR } from "@/lib/businessHours";
+import {
+  SUCESSO_STAGE_CRIACAO_CAMPANHA,
+  CAMPANHAS_STAGE_CONSTRUCAO,
+  CAMPANHAS_STAGE_AGUARDANDO_CLIENTE,
+  CAMPANHAS_STAGE_CONCLUIDA,
+  SLA_SUCESSO_TO_CAMPANHA_HOURS,
+  SLA_CAMPANHAS_AGUARDANDO_CLIENTE_HOURS,
+} from "@/lib/campaignFlow";
+import { CampaignMoveDialog, CampanhaConcluidaDialog } from "@/components/admin/CampaignFlowDialogs";
 
 type PipelineStage = { value: string; label: string; sort_order: number };
 
@@ -146,6 +156,12 @@ const AdminLeads = () => {
   // Financial dialog
   const [financeiroDialogOpen, setFinanceiroDialogOpen] = useState(false);
   const [pendingFinanceiro, setPendingFinanceiro] = useState<{ leadId: string; leadName: string; parceiroId: string; nextStatus?: string; lead?: any } | null>(null);
+
+  // Campaign flow dialogs
+  const [campaignMoveOpen, setCampaignMoveOpen] = useState(false);
+  const [pendingCampaignMove, setPendingCampaignMove] = useState<{ leadId: string; leadName: string; lead: any } | null>(null);
+  const [campanhaConcluidaOpen, setCampanhaConcluidaOpen] = useState(false);
+  const [pendingCampanhaConcluida, setPendingCampanhaConcluida] = useState<{ leadId: string; leadName: string } | null>(null);
 
   // Kanban toggle
   const [view, setView] = useState<"kanban" | "lista">("kanban");
@@ -454,6 +470,27 @@ const AdminLeads = () => {
   const handleStatusChange = (leadId: string, leadName: string, newStatus: string) => {
     const lead = leads.find((l) => l.id === leadId);
 
+    // Sucesso → Criação Campanha: abrir modal de briefing obrigatório
+    if (currentPanelId === "sucesso" && newStatus === SUCESSO_STAGE_CRIACAO_CAMPANHA) {
+      setPendingCampaignMove({ leadId, leadName, lead });
+      setCampaignMoveOpen(true);
+      return;
+    }
+
+    // Campanhas → Aguardando cliente: tarefa 24h úteis automática
+    if (currentPanelId === "campanhas" && newStatus === CAMPANHAS_STAGE_AGUARDANDO_CLIENTE) {
+      void moveCampanhaToAguardandoCliente(leadId, leadName, newStatus);
+      return;
+    }
+
+    // Campanhas → Concluída: exigir URL + comentário
+    if (currentPanelId === "campanhas" && newStatus === CAMPANHAS_STAGE_CONCLUIDA) {
+      setPendingCampanhaConcluida({ leadId, leadName });
+      setCampanhaConcluidaOpen(true);
+      return;
+    }
+
+
     // Bloqueio financeiro: a partir de "Proposta Enviada" exigir dados completos
     if (FINANCEIRO_REQUIRED_FROM.includes(newStatus) && lead && !hasValidFinanceiro(lead)) {
       toast.warning("Preencha o financeiro para avançar este lead.");
@@ -493,6 +530,181 @@ const AdminLeads = () => {
     }
     updateStatus(leadId, newStatus);
   };
+
+  // ===== Fluxo Sucesso → Criação de Campanhas =====
+  const createSlaTask = async (params: {
+    leadId: string;
+    titulo: string;
+    businessHours: number;
+    userId: string;
+  }): Promise<string | null> => {
+    const due = addBusinessHoursBR(new Date(), params.businessHours);
+    const { data, error } = await (supabase as any)
+      .from("lead_tasks")
+      .insert({
+        lead_id: params.leadId,
+        titulo: params.titulo,
+        due_at: due.toISOString(),
+        due_date: due.toISOString().slice(0, 10),
+        assigned_to: params.userId,
+        created_by: params.userId,
+      })
+      .select("id")
+      .single();
+    if (error) {
+      console.error("createSlaTask:", error);
+      return null;
+    }
+    return data?.id ?? null;
+  };
+
+  const handleCampaignMoveConfirm = async (briefing: string) => {
+    if (!pendingCampaignMove) return;
+    const { leadId, leadName, lead } = pendingCampaignMove;
+    const { data: auth } = await supabase.auth.getUser();
+    const userId = auth.user?.id;
+    if (!userId) {
+      toast.error("Sessão expirada");
+      return;
+    }
+
+    // 1. Atualiza o card no Sucesso
+    const { error: stageErr } = await supabase
+      .from("leads")
+      .update({ status_lead: SUCESSO_STAGE_CRIACAO_CAMPANHA })
+      .eq("id", leadId);
+    if (stageErr) {
+      toast.error("Erro ao mover o card: " + stageErr.message);
+      return;
+    }
+
+    // 2. Comentário com o briefing no card original
+    await supabase.from("lead_comments").insert({
+      lead_id: leadId,
+      etapa: SUCESSO_STAGE_CRIACAO_CAMPANHA,
+      usuario: currentUserName,
+      user_id: userId,
+      comentario: ("Briefing Campanha: " + briefing).slice(0, 500),
+    } as any);
+
+    // 3. Cria card-espelho no painel Campanhas
+    const mirrorPayload: any = {
+      nome_fantasia: lead?.nome_fantasia || leadName,
+      nome_responsavel: lead?.nome_responsavel || null,
+      email_responsavel: lead?.email_responsavel || `campanha-${Date.now()}@monnera.local`,
+      telefone_responsavel: lead?.telefone_responsavel || null,
+      cidade: lead?.cidade || null,
+      erp_utilizado: lead?.erp_utilizado || "Nao informado",
+      origem: "campanha_interna",
+      parceiro_id: lead?.parceiro_id || null,
+      status_lead: CAMPANHAS_STAGE_CONSTRUCAO,
+      status: "campanha",
+      consultor: lead?.consultor || null,
+      health_status: lead?.health_status || null,
+      impact_level: lead?.impact_level || null,
+      quantidade_lojas: lead?.quantidade_lojas || 1,
+    };
+    const { data: mirror, error: mirrorErr } = await supabase
+      .from("leads")
+      .insert(mirrorPayload as any)
+      .select("id")
+      .single();
+
+    let mirrorId: string | null = null;
+    if (mirrorErr) {
+      toast.warning("Card movido, mas falhou ao criar cópia em Campanhas: " + mirrorErr.message);
+    } else {
+      mirrorId = (mirror as any)?.id ?? null;
+      if (mirrorId) {
+        await supabase.from("lead_comments").insert({
+          lead_id: mirrorId,
+          etapa: CAMPANHAS_STAGE_CONSTRUCAO,
+          usuario: currentUserName,
+          user_id: userId,
+          comentario: ("Briefing Campanha: " + briefing).slice(0, 500),
+        } as any);
+      }
+    }
+
+    // 4. Tarefa SLA 48h úteis no card de campanhas (se criado) ou no original
+    const taskOwnerLead = mirrorId || leadId;
+    const taskId = await createSlaTask({
+      leadId: taskOwnerLead,
+      titulo: `Iniciar construção da campanha — ${leadName}`,
+      businessHours: SLA_SUCESSO_TO_CAMPANHA_HOURS,
+      userId,
+    });
+
+    // 5. Link entre os dois cards
+    if (mirrorId) {
+      await (supabase as any).from("lead_campaign_links").insert({
+        success_lead_id: leadId,
+        campaign_lead_id: mirrorId,
+        opening_task_id: taskId,
+        requested_by_user_id: userId,
+      });
+    }
+
+    setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, status_lead: SUCESSO_STAGE_CRIACAO_CAMPANHA } : l)));
+    setCampaignMoveOpen(false);
+    setPendingCampaignMove(null);
+    toast.success("Card enviado para Criação de Campanhas (SLA 48h úteis)");
+    void loadData();
+  };
+
+  const moveCampanhaToAguardandoCliente = async (leadId: string, leadName: string, newStatus: string) => {
+    const { data: auth } = await supabase.auth.getUser();
+    const userId = auth.user?.id;
+    if (!userId) {
+      toast.error("Sessão expirada");
+      return;
+    }
+    const { error } = await supabase.from("leads").update({ status_lead: newStatus }).eq("id", leadId);
+    if (error) {
+      toast.error("Erro ao mover o card: " + error.message);
+      return;
+    }
+    await createSlaTask({
+      leadId,
+      titulo: `Acompanhar retorno do cliente — ${leadName}`,
+      businessHours: SLA_CAMPANHAS_AGUARDANDO_CLIENTE_HOURS,
+      userId,
+    });
+    setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, status_lead: newStatus } : l)));
+    toast.success("Card movido para Aguardando cliente (SLA 24h úteis)");
+  };
+
+  const handleCampanhaConcluidaConfirm = async (url: string, comment: string) => {
+    if (!pendingCampanhaConcluida) return;
+    const { leadId } = pendingCampanhaConcluida;
+    const { data: auth } = await supabase.auth.getUser();
+    const userId = auth.user?.id;
+    if (!userId) {
+      toast.error("Sessão expirada");
+      return;
+    }
+    const { error } = await supabase
+      .from("leads")
+      .update({ status_lead: CAMPANHAS_STAGE_CONCLUIDA })
+      .eq("id", leadId);
+    if (error) {
+      toast.error("Erro ao concluir: " + error.message);
+      return;
+    }
+    await supabase.from("lead_comments").insert({
+      lead_id: leadId,
+      etapa: CAMPANHAS_STAGE_CONCLUIDA,
+      usuario: currentUserName,
+      user_id: userId,
+      comentario: (`Campanha concluída — URL: ${url}\n${comment}`).slice(0, 500),
+    } as any);
+    setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, status_lead: CAMPANHAS_STAGE_CONCLUIDA } : l)));
+    setCampanhaConcluidaOpen(false);
+    setPendingCampanhaConcluida(null);
+    toast.success("Campanha concluída");
+  };
+
+
 
   const handleReuniaoConfirm = () => {
     if (pendingReuniao) {
@@ -1021,8 +1233,8 @@ const AdminLeads = () => {
     if (filterEmpresa && !((l.full_name || l.nome_fantasia) || "").toLowerCase().includes(filterEmpresa.toLowerCase())) return false;
     if (isCustomCrmPanel && filterResponsibleUser !== "all" && l.responsible_user_id !== filterResponsibleUser) return false;
     if (currentPanelId === "sucesso" && filterCampaignStatus !== "all" && (l.campaign_status_current || "SEM_STATUS") !== filterCampaignStatus) return false;
-    if (currentPanelId === "sucesso" && filterImpactLevel !== "all" && normalizeImpact(l.impact_level) !== filterImpactLevel) return false;
-    if (currentPanelId === "sucesso" && filterHealthStatus !== "all" && normalizeHealthStatus(l.health_status) !== filterHealthStatus) return false;
+    if ((currentPanelId === "sucesso" || currentPanelId === "campanhas") && filterImpactLevel !== "all" && normalizeImpact(l.impact_level) !== filterImpactLevel) return false;
+    if ((currentPanelId === "sucesso" || currentPanelId === "campanhas") && filterHealthStatus !== "all" && normalizeHealthStatus(l.health_status) !== filterHealthStatus) return false;
     if (filterDataInicio) {
       const d = new Date(l.data_cadastro);
       if (d < new Date(filterDataInicio)) return false;
@@ -1043,8 +1255,8 @@ const AdminLeads = () => {
     if (filterEmpresa && !((l.full_name || l.nome_fantasia) || "").toLowerCase().includes(filterEmpresa.toLowerCase())) return false;
     if (isCustomCrmPanel && filterResponsibleUser !== "all" && l.responsible_user_id !== filterResponsibleUser) return false;
     if (currentPanelId === "sucesso" && filterCampaignStatus !== "all" && (l.campaign_status_current || "SEM_STATUS") !== filterCampaignStatus) return false;
-    if (currentPanelId === "sucesso" && filterImpactLevel !== "all" && normalizeImpact(l.impact_level) !== filterImpactLevel) return false;
-    if (currentPanelId === "sucesso" && filterHealthStatus !== "all" && normalizeHealthStatus(l.health_status) !== filterHealthStatus) return false;
+    if ((currentPanelId === "sucesso" || currentPanelId === "campanhas") && filterImpactLevel !== "all" && normalizeImpact(l.impact_level) !== filterImpactLevel) return false;
+    if ((currentPanelId === "sucesso" || currentPanelId === "campanhas") && filterHealthStatus !== "all" && normalizeHealthStatus(l.health_status) !== filterHealthStatus) return false;
     if (filterDataInicio) {
       const d = new Date(l.data_cadastro);
       if (d < new Date(filterDataInicio)) return false;
@@ -1301,7 +1513,7 @@ const AdminLeads = () => {
             </SelectContent>
           </Select>
         )}
-        {currentPanelId === "sucesso" && (
+        {(currentPanelId === "sucesso" || currentPanelId === "campanhas") && (
           <Select value={filterImpactLevel} onValueChange={setFilterImpactLevel}>
             <SelectTrigger><SelectValue placeholder="Impacto" /></SelectTrigger>
             <SelectContent>
@@ -1320,7 +1532,7 @@ const AdminLeads = () => {
             </SelectContent>
           </Select>
         )}
-        {currentPanelId === "sucesso" && (
+        {(currentPanelId === "sucesso" || currentPanelId === "campanhas") && (
           <Select value={filterHealthStatus} onValueChange={setFilterHealthStatus}>
             <SelectTrigger><SelectValue placeholder="Status Cliente" /></SelectTrigger>
             <SelectContent>
@@ -1578,6 +1790,21 @@ const AdminLeads = () => {
         onConfirm={handlePerdidoConfirm}
         onCancel={() => { setPerdidoDialogOpen(false); setPendingPerdido(null); }}
       />
+
+      <CampaignMoveDialog
+        open={campaignMoveOpen}
+        leadName={pendingCampaignMove?.leadName || ""}
+        onConfirm={handleCampaignMoveConfirm}
+        onCancel={() => { setCampaignMoveOpen(false); setPendingCampaignMove(null); }}
+      />
+
+      <CampanhaConcluidaDialog
+        open={campanhaConcluidaOpen}
+        leadName={pendingCampanhaConcluida?.leadName || ""}
+        onConfirm={handleCampanhaConcluidaConfirm}
+        onCancel={() => { setCampanhaConcluidaOpen(false); setPendingCampanhaConcluida(null); }}
+      />
+
 
       {/* Agendar Reunião Dialog */}
       <AgendarReuniaoDialog

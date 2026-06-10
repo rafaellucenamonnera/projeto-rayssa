@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Loader2, MessageSquare, Send, Pencil, Trash2, X, Check } from "lucide-react";
 import { PIPELINE_LABELS } from "@/lib/pipelineConstants";
 import { cardActionUrl, createNotifications } from "@/lib/notifications";
+import { AttachmentPicker, CommentAttachmentList, StagedAttachment, uploadStagedAttachments } from "./CommentAttachments";
 
 interface LeadCommentsProps {
   leadId: string;
@@ -39,6 +40,7 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
   const [users, setUsers] = useState<MentionUser[]>([]);
   const [selectedMentionIds, setSelectedMentionIds] = useState<string[]>([]);
   const [mentionQuery, setMentionQuery] = useState("");
+  const [stagedAttachments, setStagedAttachments] = useState<StagedAttachment[]>([]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -68,7 +70,11 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
   }, [leadId]);
 
   const handleSubmit = async () => {
-    if (!newComment.trim()) return;
+    if (!newComment.trim() && stagedAttachments.length === 0) return;
+    if (!newComment.trim()) {
+      toast.error("Escreva um comentário antes de anexar arquivos");
+      return;
+    }
     setSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -83,6 +89,19 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
       } as any).select("id").single();
 
       if (error) throw error;
+
+      if (stagedAttachments.length > 0 && comment?.id) {
+        try {
+          await uploadStagedAttachments(stagedAttachments, {
+            commentId: comment.id,
+            leadId,
+            userId: user.id,
+          });
+        } catch (e: any) {
+          toast.error("Comentário salvo, mas falhou ao enviar anexos: " + (e?.message || ""));
+        }
+      }
+
       const mentionedIds = Array.from(new Set(selectedMentionIds)).filter((id) => id !== user.id);
       if (mentionedIds.length > 0 && comment?.id) {
         await (supabase as any).from("lead_comment_mentions").insert(
@@ -110,6 +129,7 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
       setNewComment("");
       setSelectedMentionIds([]);
       setMentionQuery("");
+      setStagedAttachments([]);
       loadComments();
     } catch {
       toast.error("Erro ao adicionar comentário");
@@ -214,6 +234,7 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
             Mencionando: {selectedMentionIds.map((id) => users.find((u) => u.user_id === id)?.nome).filter(Boolean).join(", ")}
           </p>
         )}
+        <AttachmentPicker staged={stagedAttachments} onChange={setStagedAttachments} disabled={submitting} />
         <div className="flex items-center justify-between">
           <span className="text-xs text-muted-foreground">{newComment.length}/500</span>
           <Button size="sm" onClick={handleSubmit} disabled={submitting || !newComment.trim()}>
@@ -299,7 +320,10 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm">{renderCommentText(c.comentario)}</p>
+                  <>
+                    <p className="text-sm">{renderCommentText(c.comentario)}</p>
+                    <CommentAttachmentList commentId={c.id} />
+                  </>
                 )}
               </div>
             );
