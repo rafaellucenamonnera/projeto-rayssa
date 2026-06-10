@@ -1,46 +1,86 @@
-# Plano — Fluxo Criação de Campanhas
+## Causa raiz encontrada
 
-A maior parte do trabalho já foi entregue em iterações anteriores. Este plano fecha o que ainda falta: revisão final + publicação.
+O frontend (`src/pages/CadastroParceiro.tsx`, linhas 118–129) chama a RPC `register_parceiro` passando **9 parâmetros**, incluindo `p_cliente_monnera` e `p_cliente_monnera_cnpj`. Mas a função no banco aceita apenas **7 parâmetros** (sem esses dois) e a tabela `parceiros_comerciais` **não possui** essas colunas.
 
-## Já em produção no projeto (verificado)
+Resultado: o PostgREST devolve "Could not find the function public.register_parceiro(...)" para todo cadastro. O `catch` genérico transforma isso em **"Erro ao cadastrar. Tente novamente."** — mesmo quando os dados estão corretos. Nenhum cadastro consegue ser concluído pelo formulário hoje.
 
-**Backend**
-- Painéis `sucesso` (Painel Sucesso do Cliente) e `campanhas` (Painel Criação Campanhas) em `pipeline_panels`.
-- Etapa `Criação Campanha` no painel Sucesso e etapas `Construção campanha`, `Primeira Campanha`, `Aguardando cliente`, `Em execução`, `Concluida` no painel Campanhas.
-- Tabelas `lead_comment_attachments` e `lead_campaign_links` com colunas exatamente nos nomes pedidos (`success_lead_id`, `campaign_lead_id`, `opening_task_id`, `requested_by_user_id`, `storage_path`, `file_name`, `mime_type`, `size_bytes`, `created_by`).
-- Bucket privado `lead-comment-attachments` com RLS restrita a admin / gestor_conta / owner.
-- RLS de `lead_campaign_links` restrita a admin / gestor_conta / `requested_by_user_id`.
+## Arquivos analisados
 
-**Frontend**
-- Rotas `/admin/painel-sucesso`, `/admin/painel-campanhas` e `/admin/painel/:panelId`.
-- `src/lib/businessHours.ts` — cálculo de horas úteis BR (seg-sex, 09:00–18:00, UTC-3).
-- `src/lib/campaignFlow.ts` — IDs de etapa, SLAs (48h / 24h) e limites de anexo (10 MB, 5/comentário).
-- `CommentAttachments.tsx` + integração em `LeadComments.tsx` (imagens, PDF, CSV/XLS/XLSX, signed URLs).
-- `CampaignFlowDialogs.tsx` — modal de briefing obrigatório e modal URL+comentário para Concluída.
-- `AdminLeads.tsx` — intercepta moves, cria card-cópia em Campanhas, link em `lead_campaign_links`, tarefas SLA, filtros Impacto/Saúde no painel Campanhas.
+- `src/pages/CadastroParceiro.tsx` — formulário + submit
+- `supabase/functions/delete-orphan-user/index.ts` — cleanup (não é a causa)
+- RPC `public.register_parceiro` e tabela `public.parceiros_comerciais` (via SQL)
 
-**Edge function**
-- `sync-drive-clients` já reimplantada na rodada anterior.
+## Plano de correção (mínimo, sem refatorar)
 
-## O que falta nesta rodada
+### 1) Backend — migration
 
-1. **QA do fluxo no preview** — rodar checklist:
-   - Anexar imagem/PDF/planilha em comentário (limites 10 MB e 5/comentário).
-   - Mover card do Painel Sucesso etapa "Criação Campanha" → confirmar modal de briefing obrigatório, criação do card-espelho no Painel Campanhas, registro em `lead_campaign_links` e tarefa SLA 48h úteis.
-   - Mover em Campanhas para "Aguardando cliente" → validar tarefa automática 24h úteis.
-   - Mover para "Concluida" → validar exigência de URL válida + comentário ≥ 5 chars.
-   - Filtros Impacto e Saúde no painel Campanhas.
+Adicionar colunas e atualizar a RPC para receber os dois campos. Sem alterar policies nem fluxo.
 
-2. **Pequenos ajustes que podem aparecer no QA** (somente se algum item acima falhar):
-   - Conferir que `CAMPANHAS_STAGE_CONCLUIDA` em `src/lib/campaignFlow.ts` casa com o valor real `etapa_campanhas_1781057426192` (já confere) e que renomeações futuras de etapa não quebrem o gate — se necessário, adicionar fallback por `label` ("Concluida"/"Aguardando cliente").
-   - Garantir que o comentário-espelho criado no card de Campanhas reproduz o briefing e referencia o `success_lead_id`.
+```sql
+ALTER TABLE public.parceiros_comerciais
+  ADD COLUMN IF NOT EXISTS cliente_monnera boolean,
+  ADD COLUMN IF NOT EXISTS cliente_monnera_cnpj text;
 
-3. **Publicação** — após QA verde, publicar a app (`monneraparceiros.lovable.app`). Secrets não são alterados.
+CREATE UNIQUE INDEX IF NOT EXISTS parceiros_comerciais_cpf_key
+  ON public.parceiros_comerciais (cpf);
+CREATE UNIQUE INDEX IF NOT EXISTS parceiros_comerciais_email_key
+  ON public.parceiros_comerciais (email);
 
-## Fora de escopo
+-- DROP da assinatura antiga + CREATE da nova com os 2 parâmetros extras
+DROP FUNCTION IF EXISTS public.register_parceiro(uuid,text,text,text,text,text,text,text);
 
-- Feriados nacionais (já confirmado nesta versão).
-- Notificações por e-mail adicionais para SLA (usar fluxo existente de tarefas).
-- Renomear painéis/etapas existentes.
+CREATE OR REPLACE FUNCTION public.register_parceiro(
+  p_user_id uuid, p_codigo_parceiro text, p_nome text, p_cpf text,
+  p_email text, p_telefone_ddd text, p_telefone_numero text,
+  p_slug_consultor text, p_cliente_monnera boolean,
+  p_cliente_monnera_cnpj text
+) RETURNS json LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE result json;
+BEGIN
+  IF auth.uid() IS NULL OR p_user_id IS DISTINCT FROM auth.uid() THEN
+    RAISE EXCEPTION 'Não autorizado';
+  END IF;
 
-Posso seguir para o build, rodar o QA do checklist no preview e publicar?
+  INSERT INTO public.parceiros_comerciais
+    (user_id, codigo_parceiro, nome, cpf, email, telefone_ddd, telefone_numero,
+     slug_consultor, cliente_monnera, cliente_monnera_cnpj)
+  VALUES
+    (p_user_id, p_codigo_parceiro, p_nome, p_cpf, p_email, p_telefone_ddd,
+     p_telefone_numero, p_slug_consultor, p_cliente_monnera, p_cliente_monnera_cnpj)
+  RETURNING json_build_object('id', id, 'nome', nome,
+    'codigo_parceiro', codigo_parceiro, 'slug_consultor', slug_consultor)
+  INTO result;
+  RETURN result;
+END $$;
+```
+
+### 2) Frontend — `src/pages/CadastroParceiro.tsx`
+
+Trocar o `catch` genérico por mensagens específicas. Sem mudar layout, validações nem campos.
+
+- `authError` "already registered" / "User already registered" → toast: **"Este e-mail já possui cadastro. Acesse seu painel ou recupere sua senha."** (mantém o link "Acesse seu painel" já presente)
+- `authError` "weak_password" → toast: **"Senha fraca. Escolha uma senha mais segura."**
+- `insertError` com `parceiros_comerciais_cpf_key` ou `cpf` → toast + erro no campo: **"Este CPF ou CNPJ já está vinculado a um cadastro existente."**
+- `insertError` com `parceiros_comerciais_email_key` → toast: **"Este e-mail já possui cadastro. Acesse seu painel ou recupere sua senha."**
+- Qualquer outro erro → toast: **"Não foi possível concluir seu cadastro agora. Tente novamente ou contate o suporte."** + `console.error` com o erro real para diagnóstico.
+- Sucesso → toast: **"Cadastro enviado com sucesso. Agora aguarde a aprovação para acessar o painel."** (texto atualizado).
+- A validação client-side já cobre "campos obrigatórios", "senhas não coincidem" e "CNPJ inválido" — sem mudar.
+
+### 3) Pergunta antes de implementar
+
+O escopo do projeto pede também validar se o **CNPJ do cliente Monnera realmente existe** na base. Hoje **não existe** uma tabela de clientes Monnera para consultar (só temos `parceiros_comerciais`, `leads`, `lojas` etc.).
+
+Quer que eu:
+
+- **(A)** apenas grave o CNPJ informado sem validar contra base (mensagem "CNPJ inexistente" fica fora deste fix); ou
+- **(B)** valide contra alguma tabela que você indicar (qual?)?
+
+Sem essa definição, sigo com **(A)** — que é o mínimo para destravar o cadastro e entregar todas as outras mensagens específicas pedidas.
+
+## Teste após implementar
+
+1. Cadastrar novo embaixador com dados válidos → toast de sucesso + redirect `/confirmacao`.
+2. Repetir com mesmo e-mail → toast específico de e-mail duplicado.
+3. Repetir com mesmo CPF e e-mail novo → toast específico de CPF duplicado.
+4. Senha fraca (`123456`) → toast específico.
+5. Verificar no banco que `cliente_monnera` e `cliente_monnera_cnpj` ficam gravados.

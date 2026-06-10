@@ -1168,6 +1168,8 @@ export type Database = {
         Row: {
           aprovado: boolean
           ativo: boolean
+          cliente_monnera: boolean | null
+          cliente_monnera_cnpj: string | null
           codigo_parceiro: string
           cpf: string
           data_cadastro: string
@@ -1182,6 +1184,8 @@ export type Database = {
         Insert: {
           aprovado?: boolean
           ativo?: boolean
+          cliente_monnera?: boolean | null
+          cliente_monnera_cnpj?: string | null
           codigo_parceiro: string
           cpf: string
           data_cadastro?: string
@@ -1196,6 +1200,8 @@ export type Database = {
         Update: {
           aprovado?: boolean
           ativo?: boolean
+          cliente_monnera?: boolean | null
+          cliente_monnera_cnpj?: string | null
           codigo_parceiro?: string
           cpf?: string
           data_cadastro?: string
@@ -1802,6 +1808,8 @@ export type Database = {
       }
       register_parceiro: {
         Args: {
+          p_cliente_monnera: boolean
+          p_cliente_monnera_cnpj: string
           p_codigo_parceiro: string
           p_cpf: string
           p_email: string
