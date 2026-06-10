@@ -234,6 +234,7 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
             Mencionando: {selectedMentionIds.map((id) => users.find((u) => u.user_id === id)?.nome).filter(Boolean).join(", ")}
           </p>
         )}
+        <AttachmentPicker staged={stagedAttachments} onChange={setStagedAttachments} disabled={submitting} />
         <div className="flex items-center justify-between">
           <span className="text-xs text-muted-foreground">{newComment.length}/500</span>
           <Button size="sm" onClick={handleSubmit} disabled={submitting || !newComment.trim()}>
