@@ -34,6 +34,16 @@ import { DaysInStage } from "@/components/admin/DaysInStage";
 import { PipelineKanban } from "@/components/admin/PipelineKanban";
 import { PIPELINE_STAGES, PIPELINE_LABELS } from "@/lib/pipelineConstants";
 import { cardActionUrl, createNotification } from "@/lib/notifications";
+import { addBusinessHoursBR } from "@/lib/businessHours";
+import {
+  SUCESSO_STAGE_CRIACAO_CAMPANHA,
+  CAMPANHAS_STAGE_CONSTRUCAO,
+  CAMPANHAS_STAGE_AGUARDANDO_CLIENTE,
+  CAMPANHAS_STAGE_CONCLUIDA,
+  SLA_SUCESSO_TO_CAMPANHA_HOURS,
+  SLA_CAMPANHAS_AGUARDANDO_CLIENTE_HOURS,
+} from "@/lib/campaignFlow";
+import { CampaignMoveDialog, CampanhaConcluidaDialog } from "@/components/admin/CampaignFlowDialogs";
 
 type PipelineStage = { value: string; label: string; sort_order: number };
 
