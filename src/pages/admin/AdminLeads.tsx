@@ -1513,7 +1513,7 @@ const AdminLeads = () => {
             </SelectContent>
           </Select>
         )}
-        {currentPanelId === "sucesso" && (
+        {(currentPanelId === "sucesso" || currentPanelId === "campanhas") && (
           <Select value={filterImpactLevel} onValueChange={setFilterImpactLevel}>
             <SelectTrigger><SelectValue placeholder="Impacto" /></SelectTrigger>
             <SelectContent>
