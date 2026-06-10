@@ -214,6 +214,109 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_campaign_links: {
+        Row: {
+          campaign_lead_id: string
+          created_at: string
+          id: string
+          opening_task_id: string | null
+          requested_by_user_id: string | null
+          success_lead_id: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_lead_id: string
+          created_at?: string
+          id?: string
+          opening_task_id?: string | null
+          requested_by_user_id?: string | null
+          success_lead_id: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_lead_id?: string
+          created_at?: string
+          id?: string
+          opening_task_id?: string | null
+          requested_by_user_id?: string | null
+          success_lead_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_campaign_links_campaign_lead_id_fkey"
+            columns: ["campaign_lead_id"]
+            isOneToOne: true
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_campaign_links_opening_task_id_fkey"
+            columns: ["opening_task_id"]
+            isOneToOne: false
+            referencedRelation: "lead_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_campaign_links_success_lead_id_fkey"
+            columns: ["success_lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_comment_attachments: {
+        Row: {
+          comment_id: string
+          created_at: string
+          created_by: string
+          file_name: string
+          id: string
+          lead_id: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          created_by: string
+          file_name: string
+          id?: string
+          lead_id: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          created_by?: string
+          file_name?: string
+          id?: string
+          lead_id?: string
+          mime_type?: string
+          size_bytes?: number
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_comment_attachments_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "lead_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_comment_attachments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_comment_mentions: {
         Row: {
           comment_id: string
