@@ -470,6 +470,27 @@ const AdminLeads = () => {
   const handleStatusChange = (leadId: string, leadName: string, newStatus: string) => {
     const lead = leads.find((l) => l.id === leadId);
 
+    // Sucesso → Criação Campanha: abrir modal de briefing obrigatório
+    if (currentPanelId === "sucesso" && newStatus === SUCESSO_STAGE_CRIACAO_CAMPANHA) {
+      setPendingCampaignMove({ leadId, leadName, lead });
+      setCampaignMoveOpen(true);
+      return;
+    }
+
+    // Campanhas → Aguardando cliente: tarefa 24h úteis automática
+    if (currentPanelId === "campanhas" && newStatus === CAMPANHAS_STAGE_AGUARDANDO_CLIENTE) {
+      void moveCampanhaToAguardandoCliente(leadId, leadName, newStatus);
+      return;
+    }
+
+    // Campanhas → Concluída: exigir URL + comentário
+    if (currentPanelId === "campanhas" && newStatus === CAMPANHAS_STAGE_CONCLUIDA) {
+      setPendingCampanhaConcluida({ leadId, leadName });
+      setCampanhaConcluidaOpen(true);
+      return;
+    }
+
+
     // Bloqueio financeiro: a partir de "Proposta Enviada" exigir dados completos
     if (FINANCEIRO_REQUIRED_FROM.includes(newStatus) && lead && !hasValidFinanceiro(lead)) {
       toast.warning("Preencha o financeiro para avançar este lead.");
