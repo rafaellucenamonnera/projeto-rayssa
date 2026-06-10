@@ -1532,7 +1532,7 @@ const AdminLeads = () => {
             </SelectContent>
           </Select>
         )}
-        {currentPanelId === "sucesso" && (
+        {(currentPanelId === "sucesso" || currentPanelId === "campanhas") && (
           <Select value={filterHealthStatus} onValueChange={setFilterHealthStatus}>
             <SelectTrigger><SelectValue placeholder="Status Cliente" /></SelectTrigger>
             <SelectContent>
