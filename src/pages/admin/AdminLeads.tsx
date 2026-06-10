@@ -1791,6 +1791,21 @@ const AdminLeads = () => {
         onCancel={() => { setPerdidoDialogOpen(false); setPendingPerdido(null); }}
       />
 
+      <CampaignMoveDialog
+        open={campaignMoveOpen}
+        leadName={pendingCampaignMove?.leadName || ""}
+        onConfirm={handleCampaignMoveConfirm}
+        onCancel={() => { setCampaignMoveOpen(false); setPendingCampaignMove(null); }}
+      />
+
+      <CampanhaConcluidaDialog
+        open={campanhaConcluidaOpen}
+        leadName={pendingCampanhaConcluida?.leadName || ""}
+        onConfirm={handleCampanhaConcluidaConfirm}
+        onCancel={() => { setCampanhaConcluidaOpen(false); setPendingCampanhaConcluida(null); }}
+      />
+
+
       {/* Agendar Reunião Dialog */}
       <AgendarReuniaoDialog
         open={reuniaoDialogOpen}
