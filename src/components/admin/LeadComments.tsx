@@ -320,7 +320,10 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm">{renderCommentText(c.comentario)}</p>
+                  <>
+                    <p className="text-sm">{renderCommentText(c.comentario)}</p>
+                    <CommentAttachmentList commentId={c.id} />
+                  </>
                 )}
               </div>
             );
