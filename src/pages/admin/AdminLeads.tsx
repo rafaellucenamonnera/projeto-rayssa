@@ -184,7 +184,7 @@ const AdminLeads = () => {
   const panelIdByPath: Record<string, string> = {
     "/admin/painel-comercial": "comercial",
     "/admin/painel-onboarding": "onboarding",
-    "/admin/painel-sucesso": "sucesso",
+    
     "/admin/painel-campanhas": "campanhas",
     "/admin/leads": "comercial",
   };
