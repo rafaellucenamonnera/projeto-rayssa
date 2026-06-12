@@ -1,86 +1,89 @@
-## Causa raiz encontrada
+# Painel Sucesso no backend Cloud atual
 
-O frontend (`src/pages/CadastroParceiro.tsx`, linhas 118–129) chama a RPC `register_parceiro` passando **9 parâmetros**, incluindo `p_cliente_monnera` e `p_cliente_monnera_cnpj`. Mas a função no banco aceita apenas **7 parâmetros** (sem esses dois) e a tabela `parceiros_comerciais` **não possui** essas colunas.
+Backend mantido: `bapxuzodzgahscatvofs`. Sem trocar env vars, sem cliente dual. Sem mexer em `leads`, parceiros, financeiro, login ou demais painéis.
 
-Resultado: o PostgREST devolve "Could not find the function public.register_parceiro(...)" para todo cadastro. O `catch` genérico transforma isso em **"Erro ao cadastrar. Tente novamente."** — mesmo quando os dados estão corretos. Nenhum cadastro consegue ser concluído pelo formulário hoje.
+## 1. Migration — schema success_*
 
-## Arquivos analisados
+Aplicar exatamente o DDL fornecido pelo usuário em uma única migration:
 
-- `src/pages/CadastroParceiro.tsx` — formulário + submit
-- `supabase/functions/delete-orphan-user/index.ts` — cleanup (não é a causa)
-- RPC `public.register_parceiro` e tabela `public.parceiros_comerciais` (via SQL)
+- enum `public.success_panel_rule_priority` (`baixa | media | alta | critica`)
+- tabela `public.success_customers` (PK `contratante_cnpj`, validação 14 dígitos, campos de receita/venda/aderência/sincronização, `prioridade`, `classificacao`, etc.)
+- índice `idx_success_customers_prioridade`
+- tabela `public.success_customer_assignments` (PK `contratante_cnpj`, `cs_user_id → auth.users`)
+- tabela `public.success_customer_feedback_history` (CSAT exp/dono 0–5, NPS 0–10, unique por `(contratante_cnpj, survey_month)`)
+- índice `idx_success_feedback_customer_month`
+- view `public.success_customer_cards_view` com `security_invoker = true` (join + `latest_feedback` por DISTINCT ON)
+- RLS habilitado nas 3 tabelas
+- Policies de SELECT para `authenticated` em todas, e policies `FOR ALL` para admin/gestor em assignments e feedback (usando `public.has_role`)
+- GRANTs para `authenticated` (SELECT em customers e view; SELECT/INSERT/UPDATE em assignments e feedback)
 
-## Plano de correção (mínimo, sem refatorar)
+Observações:
+- A função `public.has_role` e o enum `public.app_role` já existem no Cloud — reuso direto.
+- Nenhuma alteração em `leads`, `parceiros_comerciais`, `lead_comments`, `pipeline_*`, etc.
 
-### 1) Backend — migration
+## 2. Seed inicial (12 clientes mockados)
 
-Adicionar colunas e atualizar a RPC para receber os dois campos. Sem alterar policies nem fluxo.
+Após a migration ser aprovada, em uma operação de dados (insert tool):
 
-```sql
-ALTER TABLE public.parceiros_comerciais
-  ADD COLUMN IF NOT EXISTS cliente_monnera boolean,
-  ADD COLUMN IF NOT EXISTS cliente_monnera_cnpj text;
+1. Zerar apenas a camada do Painel Sucesso:
+   - `DELETE FROM public.success_customer_feedback_history;`
+   - `DELETE FROM public.success_customer_assignments;`
+   - `DELETE FROM public.success_customers;`
+2. Inserir **12 linhas** em `success_customers` cobrindo prioridades variadas (`critica`, `alta`, `media`, `baixa`), diferentes UFs, segmentos, faixas de mensalidade, aderência e dias de atraso — para a UI ter dados representativos.
+3. Inserir **1–2 registros de feedback** por cliente em `success_customer_feedback_history` (CSAT exp, CSAT dono, NPS, `survey_month` nos últimos 2 meses), para a view `latest_feedback` retornar valores.
+4. Nenhum `success_customer_assignments` inicial (campos de CS ficam null na view — UI mostra "Sem responsável").
 
-CREATE UNIQUE INDEX IF NOT EXISTS parceiros_comerciais_cpf_key
-  ON public.parceiros_comerciais (cpf);
-CREATE UNIQUE INDEX IF NOT EXISTS parceiros_comerciais_email_key
-  ON public.parceiros_comerciais (email);
+## 3. Frontend — AdminSuccessPanel + rota
 
--- DROP da assinatura antiga + CREATE da nova com os 2 parâmetros extras
-DROP FUNCTION IF EXISTS public.register_parceiro(uuid,text,text,text,text,text,text,text);
+Arquivos novos:
 
-CREATE OR REPLACE FUNCTION public.register_parceiro(
-  p_user_id uuid, p_codigo_parceiro text, p_nome text, p_cpf text,
-  p_email text, p_telefone_ddd text, p_telefone_numero text,
-  p_slug_consultor text, p_cliente_monnera boolean,
-  p_cliente_monnera_cnpj text
-) RETURNS json LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
-DECLARE result json;
-BEGIN
-  IF auth.uid() IS NULL OR p_user_id IS DISTINCT FROM auth.uid() THEN
-    RAISE EXCEPTION 'Não autorizado';
-  END IF;
+- `src/pages/admin/AdminSuccessPanel.tsx` — página que consome `success_customer_cards_view` via `supabase.from("success_customer_cards_view").select("*")` (cast `as any` enquanto types não regerados).
+  - Cabeçalho: título "Painel Sucesso", subtítulo, contadores por `prioridade`.
+  - Filtros no topo: busca por razão social/CNPJ, select de `prioridade`, select de `classificacao`.
+  - Tabela densa (shadcn `Table`) com colunas:
+    - Cliente (`razao_social` + `nome_fantasia` + CNPJ formatado)
+    - UF / Município
+    - Prioridade (badge colorido)
+    - Classificação
+    - Mensalidade (BRL)
+    - Venda total / Venda premiada (BRL)
+    - Aderência (%)
+    - Dias sem sync / Dias atraso venda
+    - CSAT exp / CSAT dono / NPS (do `latest_feedback`)
+    - CS responsável (`cs_name_snapshot` ou "—")
+    - Ação recomendada (truncada com tooltip)
+  - Ordenação default: `prioridade` (critica→baixa), depois `razao_social`.
+  - Estados: loading skeleton, empty state, erro com toast.
 
-  INSERT INTO public.parceiros_comerciais
-    (user_id, codigo_parceiro, nome, cpf, email, telefone_ddd, telefone_numero,
-     slug_consultor, cliente_monnera, cliente_monnera_cnpj)
-  VALUES
-    (p_user_id, p_codigo_parceiro, p_nome, p_cpf, p_email, p_telefone_ddd,
-     p_telefone_numero, p_slug_consultor, p_cliente_monnera, p_cliente_monnera_cnpj)
-  RETURNING json_build_object('id', id, 'nome', nome,
-    'codigo_parceiro', codigo_parceiro, 'slug_consultor', slug_consultor)
-  INTO result;
-  RETURN result;
-END $$;
+Arquivos editados:
+
+- `src/App.tsx` — adicionar rota `/admin/painel-sucesso` renderizando `AdminSuccessPanel` dentro de `AdminLayout`, protegida por `isInternalUser`. **Não** remover rotas existentes; apenas adicionar. Não tocar em rotas de leads/pipeline antigo.
+- `src/components/AdminSidebar.tsx` — adicionar item de menu "Painel Sucesso" apontando para `/admin/painel-sucesso` (ícone `HeartPulse` ou similar), sem remover itens existentes.
+
+Explicitamente **não** usado:
+- `PipelineKanban` antigo
+- `AdminLeads`
+- tabela `leads`, `lead_comments`, `lead_campaign_links`
+- nenhum dual-client; tudo no `supabase` padrão (`@/integrations/supabase/client`)
+
+## 4. Tipagem
+
+Após a migration, `src/integrations/supabase/types.ts` é regenerado automaticamente e passa a expor `success_customers`, `success_customer_assignments`, `success_customer_feedback_history` e a view. Enquanto isso, o componente usa `as any` apenas no ponto do `.from(...)` para destravar — sem redefinir tipos manualmente.
+
+## 5. Detalhes técnicos
+
+- Formatação BRL via `Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })`.
+- CNPJ formatado `00.000.000/0000-00` para exibição (helper inline).
+- Cores de prioridade reusam `bg-red-500/15 text-red-300` etc. seguindo dark theme estático já em uso (sem novo theme provider).
+- Sem realtime nem mutations no MVP — apenas leitura da view.
+- Nenhuma edge function nova; sync com Drive permanece como está (não é escopo desta tarefa).
+
+## Fluxo de execução
+
+```text
+1. supabase--migration  →  cria enum, 3 tabelas, índices, view, RLS, policies, grants
+2. (após aprovação)     →  insert tool zera as 3 tabelas e popula 12 clientes + feedback
+3. Cria AdminSuccessPanel.tsx
+4. Edita App.tsx (nova rota) e AdminSidebar.tsx (novo item)
+5. Verifica build e abre /admin/painel-sucesso no preview
 ```
-
-### 2) Frontend — `src/pages/CadastroParceiro.tsx`
-
-Trocar o `catch` genérico por mensagens específicas. Sem mudar layout, validações nem campos.
-
-- `authError` "already registered" / "User already registered" → toast: **"Este e-mail já possui cadastro. Acesse seu painel ou recupere sua senha."** (mantém o link "Acesse seu painel" já presente)
-- `authError` "weak_password" → toast: **"Senha fraca. Escolha uma senha mais segura."**
-- `insertError` com `parceiros_comerciais_cpf_key` ou `cpf` → toast + erro no campo: **"Este CPF ou CNPJ já está vinculado a um cadastro existente."**
-- `insertError` com `parceiros_comerciais_email_key` → toast: **"Este e-mail já possui cadastro. Acesse seu painel ou recupere sua senha."**
-- Qualquer outro erro → toast: **"Não foi possível concluir seu cadastro agora. Tente novamente ou contate o suporte."** + `console.error` com o erro real para diagnóstico.
-- Sucesso → toast: **"Cadastro enviado com sucesso. Agora aguarde a aprovação para acessar o painel."** (texto atualizado).
-- A validação client-side já cobre "campos obrigatórios", "senhas não coincidem" e "CNPJ inválido" — sem mudar.
-
-### 3) Pergunta antes de implementar
-
-O escopo do projeto pede também validar se o **CNPJ do cliente Monnera realmente existe** na base. Hoje **não existe** uma tabela de clientes Monnera para consultar (só temos `parceiros_comerciais`, `leads`, `lojas` etc.).
-
-Quer que eu:
-
-- **(A)** apenas grave o CNPJ informado sem validar contra base (mensagem "CNPJ inexistente" fica fora deste fix); ou
-- **(B)** valide contra alguma tabela que você indicar (qual?)?
-
-Sem essa definição, sigo com **(A)** — que é o mínimo para destravar o cadastro e entregar todas as outras mensagens específicas pedidas.
-
-## Teste após implementar
-
-1. Cadastrar novo embaixador com dados válidos → toast de sucesso + redirect `/confirmacao`.
-2. Repetir com mesmo e-mail → toast específico de e-mail duplicado.
-3. Repetir com mesmo CPF e e-mail novo → toast específico de CPF duplicado.
-4. Senha fraca (`123456`) → toast específico.
-5. Verificar no banco que `cliente_monnera` e `cliente_monnera_cnpj` ficam gravados.

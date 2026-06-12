@@ -42,6 +42,7 @@ const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminFinanceiro = lazy(() => import("./pages/admin/AdminFinanceiro"));
 const AdminParceiros = lazyWithRetry(() => import("./pages/admin/AdminParceiros"));
 const AdminLeads = lazyWithRetry(() => import("./pages/admin/AdminLeads"));
+const AdminSuccessPanel = lazyWithRetry(() => import("./pages/admin/AdminSuccessPanel"));
 const AdminUsuarios = lazyWithRetry(() => import("./pages/admin/AdminUsuarios"));
 const AdminKitVendas = lazy(() => import("./pages/admin/AdminKitVendas"));
 const AdminPermissoes = lazy(() => import("./pages/admin/AdminPermissoes"));
@@ -88,7 +89,7 @@ const App = () => (
                 <Route path="leads" element={<AdminLeads />} />
                 <Route path="painel-comercial" element={<AdminLeads />} />
                 <Route path="painel-onboarding" element={<AdminLeads />} />
-                <Route path="painel-sucesso" element={<AdminLeads />} />
+                <Route path="painel-sucesso" element={<AdminSuccessPanel />} />
                 <Route path="painel-campanhas" element={<AdminLeads />} />
                 <Route path="painel/:panelId" element={<AdminLeads />} />
                 <Route path="contatos" element={<AdminContatos />} />

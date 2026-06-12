@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { LayoutDashboard, Users, FileText, UserCog, DollarSign, Briefcase, Settings, ShieldCheck, PlugZap, Contact } from "lucide-react";
+import { LayoutDashboard, Users, FileText, UserCog, DollarSign, Briefcase, Settings, ShieldCheck, PlugZap, Contact, HeartPulse } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
@@ -40,6 +40,7 @@ export function AdminSidebar() {
     { title: "Financeiro", url: "/admin/financeiro", icon: DollarSign },
     { title: "Embaixadores Monnera", url: "/admin/parceiros", icon: Users },
     { title: "Contatos", url: "/admin/contatos", icon: Contact },
+    { title: "Painel Sucesso", url: "/admin/painel-sucesso", icon: HeartPulse },
     { title: "Atualizar Kit e Redes Sociais", url: "/admin/kit-vendas", icon: Briefcase },
   ];
 

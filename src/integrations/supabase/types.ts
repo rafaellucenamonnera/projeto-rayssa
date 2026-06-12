@@ -1612,6 +1612,174 @@ export type Database = {
           },
         ]
       }
+      success_customer_assignments: {
+        Row: {
+          contratante_cnpj: string
+          cs_name_snapshot: string | null
+          cs_user_id: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          contratante_cnpj: string
+          cs_name_snapshot?: string | null
+          cs_user_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          contratante_cnpj?: string
+          cs_name_snapshot?: string | null
+          cs_user_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      success_customer_feedback_history: {
+        Row: {
+          contratante_cnpj: string
+          created_at: string
+          csat_dono: number | null
+          csat_exp: number | null
+          filled_at: string
+          filled_by: string | null
+          id: string
+          nps: number | null
+          survey_month: string
+          updated_at: string
+        }
+        Insert: {
+          contratante_cnpj: string
+          created_at?: string
+          csat_dono?: number | null
+          csat_exp?: number | null
+          filled_at?: string
+          filled_by?: string | null
+          id?: string
+          nps?: number | null
+          survey_month: string
+          updated_at?: string
+        }
+        Update: {
+          contratante_cnpj?: string
+          created_at?: string
+          csat_dono?: number | null
+          csat_exp?: number | null
+          filled_at?: string
+          filled_by?: string | null
+          id?: string
+          nps?: number | null
+          survey_month?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      success_customers: {
+        Row: {
+          acao_recomendada: string | null
+          aderencia: number | null
+          classificacao: string | null
+          contratante_cnpj: string
+          dias_atraso_venda_media: number | null
+          dias_sem_sincronizacao_media: number | null
+          mensalidade: number | null
+          mes_referencia: string | null
+          meses_monnera: number | null
+          motivo_classificacao: string | null
+          municipio: string | null
+          nome_fantasia: string | null
+          prioridade:
+            | Database["public"]["Enums"]["success_panel_rule_priority"]
+            | null
+          quantidade_cnpjs_atraso_venda: number
+          quantidade_cnpjs_sem_sincronizacao: number
+          quantidade_empresas: number | null
+          quantidade_empresas_ativas: number | null
+          razao_social: string | null
+          receita_campanhas: number
+          receita_ordem_pagamento: number
+          receita_servicos_outros: number
+          receita_transferencias: number
+          segmento: string | null
+          source_updated_at: string | null
+          status_campanha: string | null
+          tipo_contratante: string | null
+          uf: string | null
+          updated_at: string
+          venda_premiada: number
+          venda_total: number
+        }
+        Insert: {
+          acao_recomendada?: string | null
+          aderencia?: number | null
+          classificacao?: string | null
+          contratante_cnpj: string
+          dias_atraso_venda_media?: number | null
+          dias_sem_sincronizacao_media?: number | null
+          mensalidade?: number | null
+          mes_referencia?: string | null
+          meses_monnera?: number | null
+          motivo_classificacao?: string | null
+          municipio?: string | null
+          nome_fantasia?: string | null
+          prioridade?:
+            | Database["public"]["Enums"]["success_panel_rule_priority"]
+            | null
+          quantidade_cnpjs_atraso_venda?: number
+          quantidade_cnpjs_sem_sincronizacao?: number
+          quantidade_empresas?: number | null
+          quantidade_empresas_ativas?: number | null
+          razao_social?: string | null
+          receita_campanhas?: number
+          receita_ordem_pagamento?: number
+          receita_servicos_outros?: number
+          receita_transferencias?: number
+          segmento?: string | null
+          source_updated_at?: string | null
+          status_campanha?: string | null
+          tipo_contratante?: string | null
+          uf?: string | null
+          updated_at?: string
+          venda_premiada?: number
+          venda_total?: number
+        }
+        Update: {
+          acao_recomendada?: string | null
+          aderencia?: number | null
+          classificacao?: string | null
+          contratante_cnpj?: string
+          dias_atraso_venda_media?: number | null
+          dias_sem_sincronizacao_media?: number | null
+          mensalidade?: number | null
+          mes_referencia?: string | null
+          meses_monnera?: number | null
+          motivo_classificacao?: string | null
+          municipio?: string | null
+          nome_fantasia?: string | null
+          prioridade?:
+            | Database["public"]["Enums"]["success_panel_rule_priority"]
+            | null
+          quantidade_cnpjs_atraso_venda?: number
+          quantidade_cnpjs_sem_sincronizacao?: number
+          quantidade_empresas?: number | null
+          quantidade_empresas_ativas?: number | null
+          razao_social?: string | null
+          receita_campanhas?: number
+          receita_ordem_pagamento?: number
+          receita_servicos_outros?: number
+          receita_transferencias?: number
+          segmento?: string | null
+          source_updated_at?: string | null
+          status_campanha?: string | null
+          tipo_contratante?: string | null
+          uf?: string | null
+          updated_at?: string
+          venda_premiada?: number
+          venda_total?: number
+        }
+        Relationships: []
+      }
       sync_job_logs: {
         Row: {
           created_at: string
@@ -1692,7 +1860,49 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      success_customer_cards_view: {
+        Row: {
+          acao_recomendada: string | null
+          aderencia: number | null
+          classificacao: string | null
+          contratante_cnpj: string | null
+          cs_name_snapshot: string | null
+          cs_user_id: string | null
+          csat_dono: number | null
+          csat_exp: number | null
+          dias_atraso_venda_media: number | null
+          dias_sem_sincronizacao_media: number | null
+          filled_at: string | null
+          mensalidade: number | null
+          mes_referencia: string | null
+          meses_monnera: number | null
+          motivo_classificacao: string | null
+          municipio: string | null
+          nome_fantasia: string | null
+          nps: number | null
+          prioridade:
+            | Database["public"]["Enums"]["success_panel_rule_priority"]
+            | null
+          quantidade_cnpjs_atraso_venda: number | null
+          quantidade_cnpjs_sem_sincronizacao: number | null
+          quantidade_empresas: number | null
+          quantidade_empresas_ativas: number | null
+          razao_social: string | null
+          receita_campanhas: number | null
+          receita_ordem_pagamento: number | null
+          receita_servicos_outros: number | null
+          receita_transferencias: number | null
+          segmento: string | null
+          status_campanha: string | null
+          survey_month: string | null
+          tipo_contratante: string | null
+          uf: string | null
+          updated_at: string | null
+          venda_premiada: number | null
+          venda_total: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       complete_lead_by_token: {
@@ -1835,6 +2045,7 @@ export type Database = {
         | "contrato_assinado"
         | "reuniao_realizada"
         | "lead_perdido"
+      success_panel_rule_priority: "baixa" | "media" | "alta" | "critica"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1975,6 +2186,7 @@ export const Constants = {
         "reuniao_realizada",
         "lead_perdido",
       ],
+      success_panel_rule_priority: ["baixa", "media", "alta", "critica"],
     },
   },
 } as const
