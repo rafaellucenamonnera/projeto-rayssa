@@ -40,6 +40,7 @@ export function AdminSidebar() {
     { title: "Financeiro", url: "/admin/financeiro", icon: DollarSign },
     { title: "Embaixadores Monnera", url: "/admin/parceiros", icon: Users },
     { title: "Contatos", url: "/admin/contatos", icon: Contact },
+    { title: "Painel Sucesso", url: "/admin/painel-sucesso", icon: HeartPulse },
     { title: "Atualizar Kit e Redes Sociais", url: "/admin/kit-vendas", icon: Briefcase },
   ];
 
