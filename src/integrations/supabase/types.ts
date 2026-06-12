@@ -1703,6 +1703,7 @@ export type Database = {
           receita_transferencias: number
           segmento: string | null
           source_updated_at: string | null
+          stage_id: string
           status_campanha: string | null
           tipo_contratante: string | null
           uf: string | null
@@ -1737,6 +1738,7 @@ export type Database = {
           receita_transferencias?: number
           segmento?: string | null
           source_updated_at?: string | null
+          stage_id?: string
           status_campanha?: string | null
           tipo_contratante?: string | null
           uf?: string | null
@@ -1771,6 +1773,7 @@ export type Database = {
           receita_transferencias?: number
           segmento?: string | null
           source_updated_at?: string | null
+          stage_id?: string
           status_campanha?: string | null
           tipo_contratante?: string | null
           uf?: string | null
@@ -1893,6 +1896,7 @@ export type Database = {
           receita_servicos_outros: number | null
           receita_transferencias: number | null
           segmento: string | null
+          stage_id: string | null
           status_campanha: string | null
           survey_month: string | null
           tipo_contratante: string | null
