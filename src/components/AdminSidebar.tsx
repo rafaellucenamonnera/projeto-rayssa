@@ -48,6 +48,7 @@ export function AdminSidebar() {
     () =>
       panels
         .filter((panel) => isAdmin || canAccessPanel(panel.id))
+        .filter((panel) => !/sucesso/i.test(panel.name))
         .map((panel) => ({ title: panel.name, url: `/admin/painel/${panel.id}`, icon: FileText })),
     [panels, isAdmin, canAccessPanel],
   );
