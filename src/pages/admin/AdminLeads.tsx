@@ -72,7 +72,7 @@ const AdminLeads = () => {
   const painelTitleMap: Record<string, string> = {
     "/admin/painel-comercial": "Painel Comercial",
     "/admin/painel-onboarding": "Painel Onboarding / Integração",
-    "/admin/painel-sucesso": "Painel Sucesso",
+    
     "/admin/painel-campanhas": "Painel Criação Campanhas",
     "/admin/leads": "Painel Comercial",
   };
