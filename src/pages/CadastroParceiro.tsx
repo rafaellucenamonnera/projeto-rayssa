@@ -70,89 +70,54 @@ const CadastroParceiro = () => {
 
     setLoading(true);
     try {
-      let userId: string;
-
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: form.email.trim().toLowerCase(),
-        password: form.senha,
-      });
-
-      if (authError) {
-        const msg = authError.message || "";
-        const code = (authError as any).code || "";
-        if (msg.toLowerCase().includes("already registered") || msg.toLowerCase().includes("user already")) {
-          setErrors({ email: "Este e-mail já possui cadastro." });
-          toast.error("Este e-mail já possui cadastro. Acesse seu painel ou recupere sua senha.");
-          return;
-        }
-        if (code === "weak_password" || msg.toLowerCase().includes("weak")) {
-          setErrors({ senha: "Senha muito fraca. Escolha uma senha mais segura." });
-          toast.error("Senha muito fraca. Escolha uma senha mais segura.");
-          return;
-        }
-        console.error("signUp error:", authError);
-        toast.error("Não foi possível concluir seu cadastro agora. Tente novamente ou contate o suporte.");
-        return;
-      }
-
-      if (!authData.user) {
-        toast.error("Não foi possível concluir seu cadastro agora. Tente novamente ou contate o suporte.");
-        return;
-      }
-      userId = authData.user.id;
-
-      const { data: codeData, error: codeError } = await supabase.rpc("generate_partner_code");
-      if (codeError) {
-        console.error("generate_partner_code error:", codeError);
-        toast.error("Não foi possível concluir seu cadastro agora. Tente novamente ou contate o suporte.");
-        return;
-      }
-
-      const codigo_parceiro = codeData as string;
       const cpfClean = form.cpf.replace(/\D/g, "");
       const clienteCnpjClean = form.cliente_monnera === "sim" ? form.cliente_monnera_cnpj.replace(/\D/g, "") : null;
       const slug = generateSlug(form.nome.trim());
 
-      const { data: parceiroData, error: insertError } = await supabase.rpc("register_parceiro", {
-        p_user_id: userId,
-        p_codigo_parceiro: codigo_parceiro,
-        p_nome: form.nome.trim(),
-        p_cpf: cpfClean,
-        p_email: form.email.trim().toLowerCase(),
-        p_telefone_ddd: form.telefone_ddd,
-        p_telefone_numero: form.telefone_numero,
-        p_slug_consultor: slug,
-        p_cliente_monnera: form.cliente_monnera === "sim",
-        p_cliente_monnera_cnpj: clienteCnpjClean,
+      const { data: resp, error: fnError } = await supabase.functions.invoke("register-partner", {
+        body: {
+          nome: form.nome.trim(),
+          cpf: cpfClean,
+          email: form.email.trim().toLowerCase(),
+          senha: form.senha,
+          telefone_ddd: form.telefone_ddd,
+          telefone_numero: form.telefone_numero,
+          slug_consultor: slug,
+          cliente_monnera: form.cliente_monnera === "sim",
+          cliente_monnera_cnpj: clienteCnpjClean,
+        },
       });
 
-      if (insertError) {
-        try {
-          await supabase.functions.invoke("delete-orphan-user", {
-            body: { user_id: userId },
-          });
-        } catch (cleanupErr) {
-          console.error("Failed to cleanup orphan user:", cleanupErr);
-        }
-        await supabase.auth.signOut();
+      const errCode = (resp as any)?.error;
+      const errMsg = (resp as any)?.message;
 
-        const msg = insertError.message || "";
-        if (msg.includes("parceiros_comerciais_cpf_key") || msg.toLowerCase().includes("\"cpf\"")) {
-          setErrors({ cpf: "Este CPF ou CNPJ já está vinculado a um cadastro existente." });
-          toast.error("Este CPF ou CNPJ já está vinculado a um cadastro existente.");
+      if (fnError || errCode) {
+        if (errCode === "already_approved") {
+          setErrors({ email: errMsg || "Cadastro já aprovado para este e-mail." });
+          toast.error(errMsg || "Já existe cadastro aprovado. Acesse seu painel ou redefina a senha.");
           return;
         }
-        if (msg.includes("parceiros_comerciais_email_key") || msg.toLowerCase().includes("\"email\"")) {
-          setErrors({ email: "Este e-mail já possui cadastro." });
-          toast.error("Este e-mail já possui cadastro. Acesse seu painel ou recupere sua senha.");
+        if (errCode === "weak_password") {
+          setErrors({ senha: errMsg || "Senha muito fraca." });
+          toast.error(errMsg || "Senha muito fraca.");
           return;
         }
-        console.error("register_parceiro error:", insertError);
-        toast.error("Não foi possível concluir seu cadastro agora. Tente novamente ou contate o suporte.");
+        if (errCode === "cpf_taken") {
+          setErrors({ cpf: errMsg });
+          toast.error(errMsg);
+          return;
+        }
+        if (errCode === "email_taken") {
+          setErrors({ email: errMsg });
+          toast.error(errMsg);
+          return;
+        }
+        console.error("register-partner error:", fnError || resp);
+        toast.error(errMsg || "Não foi possível concluir seu cadastro agora. Tente novamente ou contate o suporte.");
         return;
       }
 
-      const parceiro = parceiroData as any;
+      const parceiro = (resp as any)?.parceiro;
       toast.success("Cadastro enviado com sucesso. Agora aguarde a aprovação para acessar o painel.");
       navigate("/confirmacao", { state: { parceiro } });
     } catch (error: any) {
