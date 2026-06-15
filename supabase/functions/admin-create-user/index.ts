@@ -2,6 +2,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const allowedOrigins = [
   'https://monneracomercial.lovable.app',
+  'https://monneraparceiros.lovable.app',
+  'https://parceiros.monnera.com.br',
 ]
 
 function isAllowedOrigin(origin: string) {
