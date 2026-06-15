@@ -39,6 +39,7 @@ interface KanbanLeadCardData {
   revenue_variation?: number | null;
   revenue_current_month?: string | null;
   revenue_previous_month?: string | null;
+  partner_code?: string | null;
 }
 
 interface PipelineStage {
@@ -326,6 +327,9 @@ export const PipelineKanban = ({
                       <div className="min-w-0 flex-1">
                         {!showCsInsteadOfPartner && (
                           <p className="text-xs font-medium truncate">{l.nome_fantasia}</p>
+                        )}
+                        {l.partner_code && (
+                          <p className="text-[10px] font-mono text-primary truncate">{l.partner_code}</p>
                         )}
                         {showCsInsteadOfPartner ? (
                           l.nome_responsavel && (

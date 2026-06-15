@@ -343,7 +343,18 @@ const AdminLeads = () => {
       supabase.from("reunioes").select("*").eq("realizada", false).order("data_reuniao", { ascending: true }),
       supabase.from("profiles").select("user_id,nome,ativo,can_be_responsible").eq("ativo", true).order("nome", { ascending: true }),
     ]);
-    setLeads(leadsRes.data || []);
+    const rawLeads = leadsRes.data || [];
+    const mappedLeads = isCustomCrmPanel
+      ? rawLeads.map((r: any) => ({
+          ...r,
+          nome_fantasia: r.full_name,
+          nome_responsavel: r.full_name,
+          telefone_responsavel: r.phone,
+          email_responsavel: r.email,
+          data_cadastro: r.created_at,
+        }))
+      : rawLeads;
+    setLeads(mappedLeads);
     const map: Record<string, string> = {};
     const list = parceirosRes.data || [];
     list.forEach((p: any) => { map[p.id] = p.nome; });
@@ -2024,7 +2035,14 @@ const AdminLeads = () => {
               {/* Embaixador Monnera */}
               <div className="border-t border-border pt-4">
                 <h3 className="text-sm font-semibold mb-3">Embaixador Monnera</h3>
-                <p className="text-sm">{parceiros[detailLead.parceiro_id] || "—"}</p>
+                {detailLead.partner_code ? (
+                  <div className="space-y-1">
+                    <p className="text-sm">{detailLead.full_name || parceiros[detailLead.parceiro_id] || "—"}</p>
+                    <p className="text-xs font-mono text-primary">Código: {detailLead.partner_code}</p>
+                  </div>
+                ) : (
+                  <p className="text-sm">{parceiros[detailLead.parceiro_id] || "—"}</p>
+                )}
               </div>
 
               {/* Pipeline Status */}
