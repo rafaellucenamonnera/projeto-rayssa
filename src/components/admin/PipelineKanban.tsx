@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { ArrowDown, ArrowRight, ArrowUp, ChevronDown, ChevronUp, Copy, GripVertical, Pencil, Trash2, UserRound, Info } from "lucide-react";
+import { DragEvent, useMemo, useState } from "react";
+import { ArrowDown, ArrowRight, ArrowUp, ChevronDown, ChevronUp, Copy, GripVertical, Pencil, Trash2, UserRound, Info, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { healthStatusColor, impactColor, normalizeHealthStatus, normalizeImpact } from "@/lib/healthStatusColors";
 
@@ -7,6 +7,7 @@ interface KanbanLeadCardData {
   id: string;
   stage_id?: string;
   nome_fantasia: string;
+  razao_social?: string | null;
   nome_responsavel?: string;
   status_lead?: string;
   status?: string;
@@ -22,6 +23,9 @@ interface KanbanLeadCardData {
   valor_campanhas_anterior?: number | null;
   valor_pagamento?: number | null;
   valor_pagamento_anterior?: number | null;
+  juros_recebidos?: number | null;
+  multas_recebidas?: number | null;
+  receita_taxa_boleto?: number | null;
   revenue_total?: number | null;
   campaign_status_current?: string | null;
   campaign_status_previous?: string | null;
@@ -61,6 +65,8 @@ interface PipelineKanbanProps {
   onAssignResponsible?: (lead: KanbanLeadCardData) => void;
   showCampaignStatus?: boolean;
   showCsInsteadOfPartner?: boolean;
+  preserveInputOrder?: boolean;
+  stageMap?: Record<string, string>;
 }
 
 const campaignStatusClass = (status?: string | null) => {
@@ -161,11 +167,26 @@ export const PipelineKanban = ({
   stages,
   showCampaignStatus = false,
   showCsInsteadOfPartner = false,
+  preserveInputOrder = false,
+  stageMap,
 }: PipelineKanbanProps) => {
   const [dragId, setDragId] = useState<string | null>(null);
   const [overStage, setOverStage] = useState<string | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+  const [expandedSuccessLabel, setExpandedSuccessLabel] = useState<string | null>(null);
+  const getDaysInCurrentStage = (leadId: string) => daysSince(stageMap?.[leadId]);
+  const stageAgeTitleClass = (days: number) => {
+    if (!stageMap) return "";
+    if (days >= 10) return "rounded-sm bg-red-600 px-1.5 py-0.5 text-white";
+    if (days >= 5) return "rounded-sm bg-amber-300 px-1.5 py-0.5 text-amber-950";
+    return "";
+  };
+  const stageAgeBadgeClass = (days: number) => {
+    if (days >= 10) return "bg-red-600 text-white";
+    if (days >= 5) return "bg-amber-300 text-amber-950";
+    return "bg-secondary text-muted-foreground";
+  };
 
   const grouped = useMemo(() => {
     const g: Record<string, KanbanLeadCardData[]> = {};
@@ -174,11 +195,17 @@ export const PipelineKanban = ({
       const s = l.stage_id || l.status_lead || l.status || "novo_lead";
       if (g[s]) g[s].push(l);
     });
-    Object.keys(g).forEach((stageKey) => {
-      g[stageKey] = g[stageKey].sort((a, b) => leadPriorityScore(b) - leadPriorityScore(a));
-    });
+    if (!preserveInputOrder) {
+      Object.keys(g).forEach((stageKey) => {
+        g[stageKey] = g[stageKey].sort((a, b) => {
+          const daysDiff = getDaysInCurrentStage(b.id) - getDaysInCurrentStage(a.id);
+          if (daysDiff !== 0) return daysDiff;
+          return leadPriorityScore(b) - leadPriorityScore(a);
+        });
+      });
+    }
     return g;
-  }, [leads, stages]);
+  }, [leads, preserveInputOrder, stages, stageMap]);
 
   const totals = useMemo(() => {
     const t: Record<string, number> = {};
@@ -191,36 +218,56 @@ export const PipelineKanban = ({
     return t;
   }, [grouped, stages]);
 
+  const renderColumnDropHandlers = (stageValue: string) => ({
+    onDragOver: (e: DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      setOverStage(stageValue);
+    },
+    onDragLeave: () => setOverStage((cur) => (cur === stageValue ? null : cur)),
+    onDrop: (e: DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      setOverStage(null);
+      const id = dragId || e.dataTransfer.getData("text/plain");
+      setDragId(null);
+      if (!id) return;
+      const lead = leads.find((l) => l.id === id);
+      const cur = lead?.stage_id || lead?.status_lead || lead?.status;
+      if (cur === stageValue) return;
+      onMoveLead(id, stageValue);
+    },
+  });
+
   return (
-    <div className="flex gap-3 overflow-x-auto pb-3">
-      {stages.map((s) => {
-        const items = grouped[s.value] || [];
-        const isOver = overStage === s.value;
-        return (
-          <div
-            key={s.value}
-            className={`shrink-0 w-[260px] rounded-lg border bg-card/40 transition-colors ${isOver ? "border-primary ring-1 ring-primary/40" : "border-border"}`}
-            onDragOver={(e) => { e.preventDefault(); setOverStage(s.value); }}
-            onDragLeave={() => setOverStage((cur) => (cur === s.value ? null : cur))}
-            onDrop={(e) => {
-              e.preventDefault();
-              setOverStage(null);
-              const id = dragId || e.dataTransfer.getData("text/plain");
-              setDragId(null);
-              if (!id) return;
-              const lead = leads.find((l) => l.id === id);
-              const cur = lead?.stage_id || lead?.status_lead || lead?.status;
-              if (cur === s.value) return;
-              onMoveLead(id, s.value);
-            }}
-          >
-            <div className="px-3 py-2 border-b border-border/60 sticky top-0 bg-card/80 backdrop-blur z-10">
+    <div className="overflow-x-auto pb-3">
+      <div className="min-w-max">
+        <div className="sticky top-0 z-20 flex gap-3 bg-background/95 pb-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+          {stages.map((s) => {
+            const items = grouped[s.value] || [];
+            return (
+              <div
+                key={s.value}
+                className="shrink-0 w-[260px] rounded-lg border border-border bg-card px-3 py-2 shadow-sm"
+              >
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-semibold uppercase tracking-wide truncate">{s.label}</p>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{items.length}</span>
               </div>
               <p className="text-[11px] text-muted-foreground mt-0.5">Total: <span className="font-medium text-foreground">{fmt(totals[s.value])}</span></p>
-            </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex gap-3">
+          {stages.map((s) => {
+            const items = grouped[s.value] || [];
+            const isOver = overStage === s.value;
+            return (
+              <div
+                key={s.value}
+                className={`shrink-0 w-[260px] rounded-lg border bg-card/40 transition-colors ${isOver ? "border-primary ring-1 ring-primary/40" : "border-border"}`}
+                {...renderColumnDropHandlers(s.value)}
+              >
 
             <div className="p-2 space-y-2 min-h-[120px]">
               {items.map((l) => {
@@ -230,10 +277,192 @@ export const PipelineKanban = ({
                 const hasStatus = showCsInsteadOfPartner && normalizeHealthStatus(l.health_status) !== "SEM_STATUS_CLIENTE";
                 const hasImpact = showCsInsteadOfPartner && normalizeImpact(l.impact_level) !== "SEM_IMPACTO";
                 const isExpanded = expandedCardId === l.id;
+                const expandedLabel = expandedSuccessLabel?.startsWith(`${l.id}:`) ? expandedSuccessLabel.split(":")[1] : null;
                 const revVar = typeof l.revenue_variation === "number" ? l.revenue_variation : null;
                 const revTrend = revVar == null ? null : revVar > EPSILON ? "up" : revVar < -EPSILON ? "down" : "neutral";
                 const RevIcon = revTrend === "up" ? ArrowUp : revTrend === "down" ? ArrowDown : ArrowRight;
                 const revColor = revTrend === "up" ? "text-[#00624b]" : revTrend === "down" ? "text-red-600" : "text-muted-foreground";
+                const revenueBreakdown = [
+                  { label: "Receita Campanha", value: l.valor_campanhas },
+                  { label: "Receita Ordem Pagamento", value: l.valor_pagamento },
+                  { label: "Receitas - Mensalidades", value: l.valor_mensalidade },
+                  { label: "Receita Taxa Boleto", value: l.receita_taxa_boleto },
+                ];
+                const revenueTotal = revenueBreakdown.reduce((sum, item) => sum + Number(item.value || 0), 0);
+                const daysInStage = getDaysInCurrentStage(l.id);
+                const titleAgeClass = stageAgeTitleClass(daysInStage);
+                const ageBadgeClass = stageAgeBadgeClass(daysInStage);
+                const toggleSuccessLabel = (label: string) => {
+                  const key = `${l.id}:${label}`;
+                  setExpandedSuccessLabel((current) => (current === key ? null : key));
+                };
+                const selectedActions = selectedCardId === l.id && (canEditCard || canDeleteCard || canCloneCard) && (
+                  <div className="flex justify-end gap-1 flex-wrap">
+                    {canEditCard && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-6 px-2 text-[10px]"
+                        onClick={(e) => { e.stopPropagation(); onEditCard?.(l); }}
+                      >
+                        <Pencil className="mr-1 h-3 w-3" /> Editar
+                      </Button>
+                    )}
+                    {canDeleteCard && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-6 px-2 text-[10px]"
+                        onClick={(e) => { e.stopPropagation(); onDeleteCard?.(l); }}
+                      >
+                        <Trash2 className="mr-1 h-3 w-3" /> Excluir
+                      </Button>
+                    )}
+                    {canCloneCard && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-6 px-2 text-[10px]"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onCloneCard?.(l);
+                        }}
+                      >
+                        <Copy className="mr-1 h-3 w-3" /> Clonar
+                      </Button>
+                    )}
+                    {canEditCard && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-6 px-2 text-[10px]"
+                        onClick={(e) => { e.stopPropagation(); onAssignResponsible?.(l); }}
+                        title="Definir responsável"
+                      >
+                        <UserRound className="mr-1 h-3 w-3" /> Responsável
+                      </Button>
+                    )}
+                  </div>
+                );
+                if (showCsInsteadOfPartner) {
+                  return (
+                    <div
+                      key={l.id}
+                      draggable
+                      onDragStart={(e) => {
+                        setDragId(l.id);
+                        e.dataTransfer.setData("text/plain", l.id);
+                        e.dataTransfer.effectAllowed = "move";
+                      }}
+                      onDragEnd={() => { setDragId(null); setOverStage(null); }}
+                      onClick={() => {
+                        if (selectedCardId === l.id) {
+                          onOpenLead(l);
+                          return;
+                        }
+                        setSelectedCardId(l.id);
+                      }}
+                      className={`group rounded-md border border-border bg-background overflow-hidden cursor-pointer hover:border-primary/60 transition-colors ${dragId === l.id ? "opacity-50" : ""} ${selectedCardId === l.id ? "ring-1 ring-primary/60" : ""}`}
+                      title={selectedCardId === l.id ? "Clique para abrir" : "Clique para selecionar"}
+                    >
+                      <div className="px-2.5 py-2">
+                        <div className="flex items-start gap-1.5">
+                          <GripVertical className="h-3.5 w-3.5 text-muted-foreground/60 mt-1 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className={`text-xs font-bold uppercase leading-tight truncate ${titleAgeClass}`} title={l.razao_social || l.nome_fantasia}>
+                                {l.razao_social || l.nome_fantasia}
+                              </p>
+                              {stageMap && (
+                                <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none ${ageBadgeClass}`}>
+                                  {daysInStage}d
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] font-medium text-muted-foreground truncate" title={l.nome_fantasia}>
+                              {l.nome_fantasia}
+                            </p>
+                            <div className="mt-2 space-y-1.5">
+                              <div>
+                                <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Status da campanha</p>
+                                <span className={`inline-block text-[10px] px-1.5 py-0.5 rounded border ${campaignStatusClass(l.campaign_status_current)}`}>
+                                  {l.campaign_status_current || "Sem status"}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); toggleSuccessLabel("impact"); }}
+                                onDoubleClick={(e) => { e.stopPropagation(); toggleSuccessLabel("impact"); }}
+                                className={`w-full text-left rounded-sm border-l-2 p-1 ${impactTokens?.softBgClass || "bg-secondary/30"} ${impactTokens?.borderClass || "border-border"}`}
+                              >
+                                <span className="text-[9px] uppercase tracking-wide text-muted-foreground">
+                                  Impacto: <span className="font-semibold text-foreground">{hasImpact ? impactTokens?.label : "—"}</span>
+                                </span>
+                              </button>
+                              {expandedLabel === "impact" && (
+                                <div className={`rounded-md border p-2 text-[10px] ${impactTokens?.softBgClass || "bg-secondary/30"}`} onClick={(e) => e.stopPropagation()}>
+                                  <div className="mb-1 flex items-center justify-between gap-2">
+                                    <span className="font-semibold">Receita Total</span>
+                                    <button type="button" onClick={() => setExpandedSuccessLabel(null)} className="rounded p-0.5 hover:bg-background/70">
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                  <p className="text-sm font-bold">{fmt(revenueTotal)}</p>
+                                  <div className="mt-1 space-y-0.5">
+                                    {revenueBreakdown.map((item) => (
+                                      <div key={item.label} className="flex justify-between gap-2">
+                                        <span className="truncate text-muted-foreground">{item.label}</span>
+                                        <span className="font-medium">{fmt(Number(item.value || 0))}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); toggleSuccessLabel("status"); }}
+                                onDoubleClick={(e) => { e.stopPropagation(); toggleSuccessLabel("status"); }}
+                                className={`w-full text-left rounded-sm border-l-2 p-1 ${statusTokens?.softBgClass || "bg-secondary/30"} ${statusTokens?.borderClass || "border-border"}`}
+                              >
+                                <span className="text-[9px] uppercase tracking-wide text-muted-foreground">
+                                  Status: <span className="font-semibold text-foreground">{hasStatus ? statusTokens?.label : "—"}</span>
+                                </span>
+                              </button>
+                              {expandedLabel === "status" && (
+                                <div className={`rounded-md border p-2 text-[10px] ${statusTokens?.softBgClass || "bg-secondary/30"}`} onClick={(e) => e.stopPropagation()}>
+                                  <div className="mb-1 flex items-center justify-between gap-2">
+                                    <span className="font-semibold">Receita por saúde</span>
+                                    <button type="button" onClick={() => setExpandedSuccessLabel(null)} className="rounded p-0.5 hover:bg-background/70">
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                  <div className="flex justify-between gap-2">
+                                    <span className="text-muted-foreground">{l.revenue_previous_month || "Anterior"}</span>
+                                    <span className="font-medium">{l.revenue_previous != null ? fmt(Number(l.revenue_previous)) : "—"}</span>
+                                  </div>
+                                  <div className="flex justify-between gap-2">
+                                    <span className="text-muted-foreground">{l.revenue_current_month || "Atual"}</span>
+                                    <span className="font-medium">{l.revenue_current != null ? fmt(Number(l.revenue_current)) : "—"}</span>
+                                  </div>
+                                  {revVar != null && (
+                                    <div className={`mt-1 flex items-center justify-end gap-1 font-semibold ${revColor}`}>
+                                      <RevIcon className="h-3 w-3" /> {pct(revVar)}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              <div className="rounded-sm bg-secondary/30 px-1.5 py-1 text-[10px]">
+                                <span className="text-muted-foreground">CS: </span>
+                                <span className="font-semibold">{l.consultor || "—"}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      {selectedActions && <div className="border-t border-border/70 px-2.5 py-2">{selectedActions}</div>}
+                    </div>
+                  );
+                }
                 return (
                   <div
                     key={l.id}
@@ -325,7 +554,14 @@ export const PipelineKanban = ({
                       <GripVertical className="h-3.5 w-3.5 text-muted-foreground/60 mt-0.5 shrink-0" />
                       <div className="min-w-0 flex-1">
                         {!showCsInsteadOfPartner && (
-                          <p className="text-xs font-medium truncate">{l.nome_fantasia}</p>
+                          <div className="flex items-start justify-between gap-2">
+                            <p className={`text-xs font-medium truncate ${titleAgeClass}`}>{l.nome_fantasia}</p>
+                            {stageMap && (
+                              <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none ${ageBadgeClass}`}>
+                                {daysInStage}d
+                              </span>
+                            )}
+                          </div>
                         )}
                         {showCsInsteadOfPartner ? (
                           l.nome_responsavel && (
@@ -435,9 +671,11 @@ export const PipelineKanban = ({
                 <p className="text-[11px] text-muted-foreground/70 text-center py-4">Solte um lead aqui</p>
               )}
             </div>
-          </div>
-        );
-      })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 };

@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
@@ -33,9 +34,59 @@ import { LeadTasks } from "@/components/admin/LeadTasks";
 import { DaysInStage } from "@/components/admin/DaysInStage";
 import { PipelineKanban } from "@/components/admin/PipelineKanban";
 import { PIPELINE_STAGES, PIPELINE_LABELS } from "@/lib/pipelineConstants";
-import { cardActionUrl, createNotification } from "@/lib/notifications";
+import { createNotification } from "@/lib/notifications";
 
 type PipelineStage = { value: string; label: string; sort_order: number };
+
+const normalizeStageLabel = (value?: string | null) =>
+  (value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/gi, " ")
+    .trim()
+    .toUpperCase();
+
+const addBusinessHours = (start: Date, hours: number) => {
+  const result = new Date(start);
+  const startHour = 9;
+  const endHour = 18;
+  const isBusinessDay = (date: Date) => date.getDay() >= 1 && date.getDay() <= 5;
+  const moveToNextBusinessWindow = () => {
+    while (!isBusinessDay(result)) result.setDate(result.getDate() + 1);
+    if (result.getHours() < startHour) result.setHours(startHour, 0, 0, 0);
+    if (result.getHours() >= endHour) {
+      result.setDate(result.getDate() + 1);
+      result.setHours(startHour, 0, 0, 0);
+      while (!isBusinessDay(result)) result.setDate(result.getDate() + 1);
+    }
+  };
+  let remaining = hours;
+  moveToNextBusinessWindow();
+  while (remaining > 0) {
+    moveToNextBusinessWindow();
+    const endOfDay = new Date(result);
+    endOfDay.setHours(endHour, 0, 0, 0);
+    const available = Math.max(0, (endOfDay.getTime() - result.getTime()) / 3600000);
+    const used = Math.min(remaining, available);
+    result.setTime(result.getTime() + used * 3600000);
+    remaining -= used;
+    if (remaining > 0) {
+      result.setDate(result.getDate() + 1);
+      result.setHours(startHour, 0, 0, 0);
+    }
+  }
+  return result;
+};
+
+const impactRank = (impact?: string | null) => {
+  const normalized = normalizeImpact(impact);
+  return { ALTO: 4, MEDIO: 3, BAIXO: 2, MINIMO: 1, SEM_IMPACTO: 0 }[normalized] || 0;
+};
+
+const healthRank = (health?: string | null) => {
+  const normalized = normalizeHealthStatus(health);
+  return { CHURN: 8, CRITICO: 7, RISCO: 6, ATENCAO: 5, EVENTUAL: 4, MONITORAR: 3, RECENTE: 2, SAUDAVEL: 1, SEM_STATUS_CLIENTE: 0 }[normalized] || 0;
+};
 
 // Etapas a partir das quais é obrigatório ter financeiro preenchido
 const FINANCEIRO_REQUIRED_FROM = [
@@ -166,6 +217,21 @@ const AdminLeads = () => {
   const [targetStageId, setTargetStageId] = useState("");
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>(PIPELINE_STAGES.map((s, i) => ({ ...s, sort_order: i + 1 })));
   const [syncingDrive, setSyncingDrive] = useState(false);
+  const [campaignTaskOpen, setCampaignTaskOpen] = useState(false);
+  const [campaignTaskSaving, setCampaignTaskSaving] = useState(false);
+  const [campaignTaskContext, setCampaignTaskContext] = useState<{
+    kind: "success_to_campaigns" | "awaiting_client";
+    leadId: string;
+    leadName: string;
+    newStatus: string;
+    dueHours: number;
+  } | null>(null);
+  const [campaignTaskForm, setCampaignTaskForm] = useState({ title: "", assigned_to: "" });
+  const [campaignResponsibleUsers, setCampaignResponsibleUsers] = useState<{ user_id: string; nome: string }[]>([]);
+  const [campaignCompletionOpen, setCampaignCompletionOpen] = useState(false);
+  const [campaignCompletionSaving, setCampaignCompletionSaving] = useState(false);
+  const [campaignCompletionContext, setCampaignCompletionContext] = useState<{ leadId: string; leadName: string; newStatus: string } | null>(null);
+  const [campaignCompletionForm, setCampaignCompletionForm] = useState({ url: "", comment: "" });
 
   const panelIdByPath: Record<string, string> = {
     "/admin/painel-comercial": "comercial",
@@ -176,6 +242,9 @@ const AdminLeads = () => {
   };
   const currentPanelId = dynamicPanelId || panelIdByPath[location.pathname] || "comercial";
   const painelTitleNormalized = painelTitle.toLowerCase();
+  const isCommercialPanel =
+    ["comercial", "comerc"].includes(currentPanelId) ||
+    painelTitleNormalized.includes("comercial");
   const isRepresentantesOuEmbaixadoresPanel =
     painelTitleNormalized.includes("representante") || painelTitleNormalized.includes("embaixador");
   const isCustomCrmPanel =
@@ -254,6 +323,44 @@ const AdminLeads = () => {
     setTargetStageId(stages[0]?.value || "");
   };
 
+  const loadCampaignResponsibleUsers = async () => {
+    const [{ data: profileUsers }, { data: panelUsers }, { data: roles }] = await Promise.all([
+      supabase.from("profiles").select("user_id,nome,ativo").eq("ativo", true).order("nome", { ascending: true }),
+      (supabase as any).from("user_panel_permissions").select("user_id,can_access").eq("panel_id", "campanhas").eq("can_access", true),
+      (supabase as any).from("user_roles").select("user_id,role").eq("role", "admin"),
+    ]);
+    const allowedIds = new Set(((panelUsers as any[]) || []).map((row) => row.user_id));
+    ((roles as any[]) || []).forEach((row) => allowedIds.add(row.user_id));
+    const users = ((profileUsers as any[]) || [])
+      .filter((user) => allowedIds.has(user.user_id))
+      .map((user) => ({ user_id: user.user_id, nome: user.nome }));
+    setCampaignResponsibleUsers(users);
+    if (users.length > 0) {
+      setCampaignTaskForm((prev) => ({ ...prev, assigned_to: prev.assigned_to || users[0].user_id }));
+    }
+    return users;
+  };
+
+  const openCampaignTaskDialog = async (
+    kind: "success_to_campaigns" | "awaiting_client",
+    leadId: string,
+    leadName: string,
+    newStatus: string,
+    dueHours: number,
+  ) => {
+    const users = await loadCampaignResponsibleUsers();
+    if (users.length === 0) {
+      toast.error("Nenhum responsável com acesso ao painel Criação de Campanhas.");
+      return;
+    }
+    setCampaignTaskContext({ kind, leadId, leadName, newStatus, dueHours });
+    setCampaignTaskForm({
+      title: kind === "success_to_campaigns" ? "Criar campanha" : "Solicitar retorno do cliente",
+      assigned_to: users[0].user_id,
+    });
+    setCampaignTaskOpen(true);
+  };
+
   const handleCloneCard = async () => {
     if (!cloneLead || !targetPanelId || !targetStageId) return;
     setCloning(true);
@@ -286,15 +393,143 @@ const AdminLeads = () => {
     loadData();
   };
 
+  const createCampaignTask = async (leadId: string, title: string, assignedTo: string, dueHours: number) => {
+    const { data: auth } = await supabase.auth.getUser();
+    const dueAt = addBusinessHours(new Date(), dueHours).toISOString();
+    const { data, error } = await (supabase as any)
+      .from("lead_tasks")
+      .insert({
+        lead_id: leadId,
+        titulo: title.trim(),
+        due_at: dueAt,
+        due_date: dueAt.slice(0, 10),
+        assigned_to: assignedTo,
+        created_by: auth.user?.id || null,
+      })
+      .select("id,created_by")
+      .single();
+    if (error) throw error;
+    await createNotification({
+      recipientUserId: assignedTo,
+      type: "task_assigned",
+      title: "Tarefa",
+      message: `Tarefa "${title.trim()}" criada no card ${campaignTaskContext?.leadName || "Campanha"}, com prazo em ${new Date(dueAt).toLocaleString("pt-BR")}.`,
+      leadId,
+      taskId: data.id,
+      actionUrl: `/admin/painel-campanhas?card=${leadId}`,
+      metadata: { due_at: dueAt, assigned_to: assignedTo },
+      deliveryKey: `campaign-task-${data.id}-${assignedTo}`,
+    });
+    return data as { id: string; created_by: string | null };
+  };
+
+  const ensureCampaignLinkedCard = async (successLead: any) => {
+    const { data: existingLink } = await (supabase as any)
+      .from("lead_campaign_links")
+      .select("campaign_lead_id")
+      .eq("success_lead_id", successLead.id)
+      .maybeSingle();
+    if (existingLink?.campaign_lead_id) return existingLink.campaign_lead_id as string;
+
+    const { data: stages } = await (supabase as any)
+      .from("pipeline_stages_config")
+      .select("value,sort_order")
+      .eq("panel_key", "campanhas")
+      .order("sort_order", { ascending: true })
+      .limit(1);
+    const firstCampaignStage = stages?.[0]?.value || "construcao_campanha";
+    const payload = { ...successLead };
+    delete payload.id;
+    delete payload.created_at;
+    delete payload.updated_at;
+    payload.panel_id = "campanhas";
+    payload.status = successLead.status || "sucesso";
+    payload.status_lead = firstCampaignStage;
+    payload.origem = `Cópia vinculada ao Painel Sucesso: ${successLead.nome_fantasia}`;
+
+    const { data: campaignLead, error } = await supabase
+      .from("leads")
+      .insert(payload as any)
+      .select("id")
+      .single();
+    if (error) throw error;
+    const { data: auth } = await supabase.auth.getUser();
+    const { error: linkError } = await (supabase as any)
+      .from("lead_campaign_links")
+      .insert({
+        success_lead_id: successLead.id,
+        campaign_lead_id: campaignLead.id,
+        requested_by_user_id: auth.user?.id || null,
+      });
+    if (linkError) throw linkError;
+    return campaignLead.id as string;
+  };
+
+  const handleCampaignTaskConfirm = async () => {
+    if (!campaignTaskContext) return;
+    const title = campaignTaskForm.title.trim();
+    if (!title) return toast.error("Informe a tarefa.");
+    if (!campaignTaskForm.assigned_to) return toast.error("Selecione o responsável.");
+    const lead = leads.find((item) => item.id === campaignTaskContext.leadId);
+    if (!lead) return toast.error("Card não encontrado.");
+    setCampaignTaskSaving(true);
+    try {
+      if (campaignTaskContext.kind === "success_to_campaigns") {
+        const campaignLeadId = await ensureCampaignLinkedCard(lead);
+        const task = await createCampaignTask(campaignLeadId, title, campaignTaskForm.assigned_to, campaignTaskContext.dueHours);
+        await (supabase as any)
+          .from("lead_campaign_links")
+          .update({ opening_task_id: task.id })
+          .eq("success_lead_id", campaignTaskContext.leadId);
+        await updateStatus(campaignTaskContext.leadId, campaignTaskContext.newStatus, undefined, undefined, { silent: true });
+        toast.success("Card enviado para Criação de Campanhas");
+      } else {
+        await updateStatus(campaignTaskContext.leadId, campaignTaskContext.newStatus, undefined, undefined, { silent: true });
+        await createCampaignTask(campaignTaskContext.leadId, title, campaignTaskForm.assigned_to, campaignTaskContext.dueHours);
+        toast.success("Tarefa para retorno do cliente criada");
+      }
+      setCampaignTaskOpen(false);
+      setCampaignTaskContext(null);
+      setCampaignTaskForm({ title: "", assigned_to: "" });
+      await loadData();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao executar fluxo de campanha");
+    } finally {
+      setCampaignTaskSaving(false);
+    }
+  };
+
   const handleSyncDriveClients = async () => {
     setSyncingDrive(true);
     toast.loading("Atualizando dados do Drive...", { id: "sync-drive-clients" });
     try {
       const { data, error } = await supabase.functions.invoke("sync-drive-clients", { method: "POST" });
-      if (error) throw error;
+      if (error) {
+        console.error("Erro retornado pela Edge Function sync-drive-clients:", error);
+        const context = (error as any)?.context;
+        let contextMessage = "";
+        if (context instanceof Response) {
+          try {
+            const body = await context.clone().json();
+            contextMessage = body?.error || body?.message || JSON.stringify(body);
+          } catch {
+            try {
+              contextMessage = await context.clone().text();
+            } catch {
+              contextMessage = "";
+            }
+          }
+        }
+        const baseMessage = (error as any)?.message || (error as any)?.name || "Erro ao chamar Edge Function";
+        throw new Error(contextMessage ? `${baseMessage}: ${contextMessage}` : baseMessage);
+      }
+      if (data?.success === false) {
+        console.error("Falha operacional na sincronização Drive:", data);
+        throw new Error(data.error || "Falha operacional ao sincronizar Drive");
+      }
       const summary = [
-        `Linhas lidas: ${data?.total_rows_read ?? 0}`,
-        `Clientes válidos: ${data?.valid_clients ?? 0}`,
+        `Linhas lidas: ${data?.clients_in_sheet ?? data?.total_rows_read ?? 0}`,
+        `Clientes válidos: ${data?.processed ?? data?.valid_clients ?? 0}`,
         `Criados: ${data?.created ?? 0}`,
         `Atualizados: ${data?.updated ?? 0}`,
         `Ignorados: ${data?.skipped ?? 0}`,
@@ -307,7 +542,7 @@ const AdminLeads = () => {
       await loadData();
     } catch (error) {
       console.error("Erro técnico ao sincronizar Drive:", error);
-      const message = error instanceof Error ? error.message : "Erro desconhecido";
+      const message = error instanceof Error ? error.message : JSON.stringify(error);
       toast.error(`Falha ao sincronizar Drive: ${message}`, { id: "sync-drive-clients" });
     } finally {
       setSyncingDrive(false);
@@ -315,10 +550,11 @@ const AdminLeads = () => {
   };
 
   const loadData = async () => {
+    const leadsQuery = isCustomCrmPanel
+      ? (supabase as any).from("representative_cards").select("*").eq("panel_id", currentPanelId).order("created_at", { ascending: false })
+      : supabase.from("leads").select("*").eq("panel_id", currentPanelId).order("data_cadastro", { ascending: false });
     const [leadsRes, parceirosRes, stageRes, reunioesRes, usersRes, slackUsersRes] = await Promise.all([
-      isCustomCrmPanel
-        ? (supabase as any).from("representative_cards").select("*").eq("panel_id", currentPanelId).order("created_at", { ascending: false })
-        : supabase.from("leads").select("*").order("data_cadastro", { ascending: false }),
+      leadsQuery,
       supabase.from("parceiros_comerciais").select("id, nome"),
       supabase.from("lead_stage_history").select("lead_id, data_entrada").is("data_saida", null),
       supabase.from("reunioes").select("*").eq("realizada", false).order("data_reuniao", { ascending: true }),
@@ -459,6 +695,25 @@ const AdminLeads = () => {
 
   const handleStatusChange = (leadId: string, leadName: string, newStatus: string) => {
     const lead = leads.find((l) => l.id === leadId);
+    const targetStage = pipelineStages.find((stage) => stage.value === newStatus);
+    const targetLabel = normalizeStageLabel(targetStage?.label || newStatus);
+
+    if (currentPanelId === "sucesso" && targetLabel.includes("CRIACAO DE CAMPANHAS")) {
+      void openCampaignTaskDialog("success_to_campaigns", leadId, leadName, newStatus, 48);
+      return;
+    }
+
+    if (currentPanelId === "campanhas" && targetLabel.includes("AGUARDANDO CLIENTE")) {
+      void openCampaignTaskDialog("awaiting_client", leadId, leadName, newStatus, 24);
+      return;
+    }
+
+    if (currentPanelId === "campanhas" && targetLabel.includes("CONCLUIDA")) {
+      setCampaignCompletionContext({ leadId, leadName, newStatus });
+      setCampaignCompletionForm({ url: "", comment: "" });
+      setCampaignCompletionOpen(true);
+      return;
+    }
 
     // Bloqueio financeiro: a partir de "Proposta Enviada" exigir dados completos
     if (FINANCEIRO_REQUIRED_FROM.includes(newStatus) && lead && !hasValidFinanceiro(lead)) {
@@ -568,6 +823,7 @@ const AdminLeads = () => {
       .eq("id", pendingPerdido.leadId);
     if (error) {
       toast.error("Erro ao atualizar status");
+      if (options.silent) throw error;
       return;
     }
     setLeads((prev) =>
@@ -669,7 +925,13 @@ const AdminLeads = () => {
     }
   };
 
-  const updateStatus = async (leadId: string, newStatus: string, propostaUrl?: string, numeroProposta?: string) => {
+  const updateStatus = async (
+    leadId: string,
+    newStatus: string,
+    propostaUrl?: string,
+    numeroProposta?: string,
+    options: { silent?: boolean } = {},
+  ) => {
     const updateData: any = { status_lead: newStatus };
     if (propostaUrl) updateData.proposta_url = propostaUrl;
     if (numeroProposta) updateData.numero_proposta = numeroProposta;
@@ -694,7 +956,7 @@ const AdminLeads = () => {
     setLeads((prev) =>
       prev.map((l) => (l.id === leadId ? { ...l, ...updateData } : l))
     );
-    toast.success("Status atualizado");
+    if (!options.silent) toast.success("Status atualizado");
 
     if (newStatus === "lead_convertido") {
       const lead = leads.find((l) => l.id === leadId);
@@ -708,6 +970,69 @@ const AdminLeads = () => {
     if (newStatus === "contrato_assinado") {
       autoGenerateDossie(leadId);
       autoSyncJiraContractSigned(leadId);
+    }
+  };
+
+  const handleCampaignCompletionConfirm = async () => {
+    if (!campaignCompletionContext) return;
+    const campaignUrl = campaignCompletionForm.url.trim();
+    const comment = campaignCompletionForm.comment.trim();
+    if (!campaignUrl) return toast.error("Informe a URL da campanha criada.");
+    if (!/^https?:\/\//i.test(campaignUrl)) return toast.error("Informe uma URL válida iniciando com http:// ou https://.");
+    if (!comment) return toast.error("Informe o comentário do responsável.");
+    setCampaignCompletionSaving(true);
+    try {
+      await updateStatus(campaignCompletionContext.leadId, campaignCompletionContext.newStatus, undefined, undefined, { silent: true });
+      const { data: auth } = await supabase.auth.getUser();
+      const { data: createdComment, error: commentError } = await supabase
+        .from("lead_comments")
+        .insert({
+          lead_id: campaignCompletionContext.leadId,
+          etapa: campaignCompletionContext.newStatus,
+          usuario: currentUserName,
+          user_id: auth.user?.id || null,
+          comentario: `Campanha criada\nURL: ${campaignUrl}\nComentário: ${comment}`.slice(0, 500),
+        } as any)
+        .select("id")
+        .single();
+      if (commentError) throw commentError;
+
+      const { data: link } = await (supabase as any)
+        .from("lead_campaign_links")
+        .select("opening_task_id,requested_by_user_id")
+        .eq("campaign_lead_id", campaignCompletionContext.leadId)
+        .maybeSingle();
+      let recipientUserId = link?.requested_by_user_id || null;
+      if (link?.opening_task_id) {
+        const { data: openingTask } = await (supabase as any)
+          .from("lead_tasks")
+          .select("created_by")
+          .eq("id", link.opening_task_id)
+          .maybeSingle();
+        recipientUserId = openingTask?.created_by || recipientUserId;
+      }
+      if (recipientUserId) {
+        await createNotification({
+          recipientUserId,
+          type: "comment_mention",
+          title: "Nota",
+          message: `A campanha do card ${campaignCompletionContext.leadName} foi concluída.`,
+          leadId: campaignCompletionContext.leadId,
+          commentId: createdComment?.id,
+          actionUrl: `/admin/painel-campanhas?card=${campaignCompletionContext.leadId}`,
+          metadata: { campaign_url: campaignUrl, comment_preview: comment.slice(0, 140) },
+          deliveryKey: `campaign-completed-${campaignCompletionContext.leadId}-${recipientUserId}-${Date.now()}`,
+        });
+      }
+      toast.success("Conclusão da campanha registrada");
+      setCampaignCompletionOpen(false);
+      setCampaignCompletionContext(null);
+      setCampaignCompletionForm({ url: "", comment: "" });
+      await loadData();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao concluir campanha");
+    } finally {
+      setCampaignCompletionSaving(false);
     }
   };
 
@@ -982,7 +1307,7 @@ const AdminLeads = () => {
         title: "Você foi definido como responsável",
         message: `Você agora é responsável pelo card ${payload.nome_fantasia}.`,
         leadId: detailLead.id,
-        actionUrl: cardActionUrl(detailLead.id),
+        actionUrl: `${location.pathname}?card=${detailLead.id}`,
         metadata: { previous_responsible_user_id: previousResponsibleUserId },
         deliveryKey: `lead-${detailLead.id}-responsible-${payload.responsible_user_id}-${Date.now()}`,
       });
@@ -995,7 +1320,7 @@ const AdminLeads = () => {
           registration_status: slackUser?.registration_status || "pending",
           title: "Você foi definido como responsável",
           message: `Você agora é responsável pelo card ${payload.nome_fantasia}.`,
-          action_url: cardActionUrl(detailLead.id),
+          action_url: `${location.pathname}?card=${detailLead.id}`,
           event_type: "card_responsible_assigned",
           entity_type: "lead",
           entity_id: detailLead.id,
@@ -1067,8 +1392,8 @@ const AdminLeads = () => {
     if (filterEmpresa && !((l.full_name || l.nome_fantasia) || "").toLowerCase().includes(filterEmpresa.toLowerCase())) return false;
     if (isCustomCrmPanel && filterResponsibleUser !== "all" && l.responsible_user_id !== filterResponsibleUser) return false;
     if (currentPanelId === "sucesso" && filterCampaignStatus !== "all" && (l.campaign_status_current || "SEM_STATUS") !== filterCampaignStatus) return false;
-    if (currentPanelId === "sucesso" && filterImpactLevel !== "all" && normalizeImpact(l.impact_level) !== filterImpactLevel) return false;
-    if (currentPanelId === "sucesso" && filterHealthStatus !== "all" && normalizeHealthStatus(l.health_status) !== filterHealthStatus) return false;
+    if ((currentPanelId === "sucesso" || currentPanelId === "campanhas") && filterImpactLevel !== "all" && normalizeImpact(l.impact_level) !== filterImpactLevel) return false;
+    if ((currentPanelId === "sucesso" || currentPanelId === "campanhas") && filterHealthStatus !== "all" && normalizeHealthStatus(l.health_status) !== filterHealthStatus) return false;
     if (filterDataInicio) {
       const d = new Date(l.data_cadastro);
       if (d < new Date(filterDataInicio)) return false;
@@ -1081,6 +1406,23 @@ const AdminLeads = () => {
     }
     return true;
   });
+  const sortedFiltered = currentPanelId === "campanhas"
+    ? [...filtered].sort((a, b) => {
+        const aStatus = a.stage_id || a.status_lead || a.status || "";
+        const bStatus = b.stage_id || b.status_lead || b.status || "";
+        const firstStage = pipelineStages[0]?.value || "";
+        if (aStatus === firstStage && bStatus === firstStage) {
+          return new Date(stageMap[b.id] || b.updated_at || b.data_cadastro || 0).getTime()
+            - new Date(stageMap[a.id] || a.updated_at || a.data_cadastro || 0).getTime();
+        }
+        const impactDiff = impactRank(b.impact_level) - impactRank(a.impact_level);
+        if (impactDiff !== 0) return impactDiff;
+        const healthDiff = healthRank(b.health_status) - healthRank(a.health_status);
+        if (healthDiff !== 0) return healthDiff;
+        return new Date(stageMap[a.id] || a.updated_at || a.data_cadastro || 0).getTime()
+          - new Date(stageMap[b.id] || b.updated_at || b.data_cadastro || 0).getTime();
+      })
+    : filtered;
 
   // Status counts (refletem todos os filtros, exceto o próprio filterStatus)
   const filteredExceptStatus = leads.filter((l) => {
@@ -1089,8 +1431,8 @@ const AdminLeads = () => {
     if (filterEmpresa && !((l.full_name || l.nome_fantasia) || "").toLowerCase().includes(filterEmpresa.toLowerCase())) return false;
     if (isCustomCrmPanel && filterResponsibleUser !== "all" && l.responsible_user_id !== filterResponsibleUser) return false;
     if (currentPanelId === "sucesso" && filterCampaignStatus !== "all" && (l.campaign_status_current || "SEM_STATUS") !== filterCampaignStatus) return false;
-    if (currentPanelId === "sucesso" && filterImpactLevel !== "all" && normalizeImpact(l.impact_level) !== filterImpactLevel) return false;
-    if (currentPanelId === "sucesso" && filterHealthStatus !== "all" && normalizeHealthStatus(l.health_status) !== filterHealthStatus) return false;
+    if ((currentPanelId === "sucesso" || currentPanelId === "campanhas") && filterImpactLevel !== "all" && normalizeImpact(l.impact_level) !== filterImpactLevel) return false;
+    if ((currentPanelId === "sucesso" || currentPanelId === "campanhas") && filterHealthStatus !== "all" && normalizeHealthStatus(l.health_status) !== filterHealthStatus) return false;
     if (filterDataInicio) {
       const d = new Date(l.data_cadastro);
       if (d < new Date(filterDataInicio)) return false;
@@ -1248,20 +1590,24 @@ const AdminLeads = () => {
               className={`px-3 py-1.5 transition-colors ${view === "lista" ? "bg-primary text-primary-foreground" : "bg-card hover:bg-secondary"}`}
             >Lista</button>
           </div>
-          <LeadExportButton
-            leads={filtered}
-            parceiros={parceiros}
-            customCrmMode={isCustomCrmPanel}
-            users={Object.fromEntries(allActiveUsers.map((u) => [u.user_id, u.nome]))}
-          />
-          <LeadImportDialog
-            parceiros={parceirosAll}
-            onImported={loadData}
-            customCrmMode={isCustomCrmPanel}
-            users={usersAll}
-            panelId={currentPanelId}
-            firstStageId={pipelineStages[0]?.value}
-          />
+          {currentPanelId !== "sucesso" && (
+            <>
+              <LeadExportButton
+                leads={sortedFiltered}
+                parceiros={parceiros}
+                customCrmMode={isCustomCrmPanel}
+                users={Object.fromEntries(allActiveUsers.map((u) => [u.user_id, u.nome]))}
+              />
+              <LeadImportDialog
+                parceiros={parceirosAll}
+                onImported={loadData}
+                customCrmMode={isCustomCrmPanel}
+                users={usersAll}
+                panelId={currentPanelId}
+                firstStageId={pipelineStages[0]?.value}
+              />
+            </>
+          )}
           {isCustomCrmPanel && (
             <Button onClick={() => setNewCardOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
               + Card
@@ -1343,7 +1689,7 @@ const AdminLeads = () => {
             </SelectContent>
           </Select>
         )}
-        {currentPanelId === "sucesso" && (
+        {(currentPanelId === "sucesso" || currentPanelId === "campanhas") && (
           <Select value={filterImpactLevel} onValueChange={setFilterImpactLevel}>
             <SelectTrigger><SelectValue placeholder="Impacto" /></SelectTrigger>
             <SelectContent>
@@ -1362,7 +1708,7 @@ const AdminLeads = () => {
             </SelectContent>
           </Select>
         )}
-        {currentPanelId === "sucesso" && (
+        {(currentPanelId === "sucesso" || currentPanelId === "campanhas") && (
           <Select value={filterHealthStatus} onValueChange={setFilterHealthStatus}>
             <SelectTrigger><SelectValue placeholder="Status Cliente" /></SelectTrigger>
             <SelectContent>
@@ -1387,7 +1733,7 @@ const AdminLeads = () => {
 
       {/* Mobile card view */}
       <div className="space-y-3 lg:hidden">
-        {filtered.map((l) => (
+        {sortedFiltered.map((l) => (
           <Card key={l.id} className="border-border">
             <CardContent className="p-3 sm:p-4 space-y-2">
               <div className="flex items-start justify-between gap-2">
@@ -1479,7 +1825,7 @@ const AdminLeads = () => {
             </CardContent>
           </Card>
         ))}
-        {filtered.length === 0 && (
+        {sortedFiltered.length === 0 && (
           <p className="text-center py-8 text-muted-foreground text-sm">Nenhum lead encontrado.</p>
         )}
       </div>
@@ -1488,11 +1834,13 @@ const AdminLeads = () => {
       {view === "kanban" && (
         <div className="hidden lg:block">
           <PipelineKanban
-            leads={filtered}
+            leads={sortedFiltered}
             stages={pipelineStages}
             parceirosMap={parceiros}
+            stageMap={isCommercialPanel ? stageMap : undefined}
             showCampaignStatus={currentPanelId === "sucesso"}
             showCsInsteadOfPartner={currentPanelId === "sucesso"}
+            preserveInputOrder={currentPanelId === "campanhas"}
             canCloneCard={canCloneCard}
             canEditCard={canEditCard}
             canDeleteCard={canDeleteCard}
@@ -1537,7 +1885,7 @@ const AdminLeads = () => {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((l) => (
+                {sortedFiltered.map((l) => (
                   <tr key={l.id} className="border-b border-border/50 hover:bg-secondary/50">
                     <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">{new Date(l.data_cadastro).toLocaleDateString("pt-BR")}</td>
                     <td className="py-3 px-4">
@@ -1594,7 +1942,7 @@ const AdminLeads = () => {
                 ))}
               </tbody>
             </table>
-            {filtered.length === 0 && (
+            {sortedFiltered.length === 0 && (
               <p className="text-center py-8 text-muted-foreground">Nenhum lead encontrado.</p>
             )}
           </div>
@@ -1630,6 +1978,93 @@ const AdminLeads = () => {
         onConfirm={handleReuniaoConfirm}
         onCancel={handleReuniaoCancel}
       />
+
+      <Dialog open={campaignTaskOpen} onOpenChange={(open) => {
+        if (!campaignTaskSaving) setCampaignTaskOpen(open);
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {campaignTaskContext?.kind === "success_to_campaigns" ? "Criar tarefa de campanha" : "Tarefa para retorno do cliente"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Card: <strong>{campaignTaskContext?.leadName || "—"}</strong>
+            </p>
+            <div className="space-y-1.5">
+              <Label>Tarefa *</Label>
+              <Textarea
+                value={campaignTaskForm.title}
+                onChange={(e) => setCampaignTaskForm((prev) => ({ ...prev, title: e.target.value }))}
+                placeholder="Descreva a tarefa que deve ser executada."
+                rows={3}
+                maxLength={500}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Responsável *</Label>
+              <Select value={campaignTaskForm.assigned_to} onValueChange={(value) => setCampaignTaskForm((prev) => ({ ...prev, assigned_to: value }))}>
+                <SelectTrigger><SelectValue placeholder="Responsável" /></SelectTrigger>
+                <SelectContent>
+                  {campaignResponsibleUsers.map((user) => (
+                    <SelectItem key={user.user_id} value={user.user_id}>{user.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Prazo automático: {campaignTaskContext?.dueHours === 48 ? "48 horas úteis" : "24 horas úteis"}.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setCampaignTaskOpen(false)} disabled={campaignTaskSaving}>Cancelar</Button>
+              <Button onClick={handleCampaignTaskConfirm} disabled={campaignTaskSaving}>
+                {campaignTaskSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={campaignCompletionOpen} onOpenChange={(open) => {
+        if (!campaignCompletionSaving) setCampaignCompletionOpen(open);
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Concluir campanha</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Card: <strong>{campaignCompletionContext?.leadName || "—"}</strong>
+            </p>
+            <div className="space-y-1.5">
+              <Label>URL da campanha criada *</Label>
+              <Input
+                value={campaignCompletionForm.url}
+                onChange={(e) => setCampaignCompletionForm((prev) => ({ ...prev, url: e.target.value }))}
+                placeholder="https://..."
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Comentário do responsável *</Label>
+              <Textarea
+                value={campaignCompletionForm.comment}
+                onChange={(e) => setCampaignCompletionForm((prev) => ({ ...prev, comment: e.target.value }))}
+                rows={4}
+                maxLength={500}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setCampaignCompletionOpen(false)} disabled={campaignCompletionSaving}>Cancelar</Button>
+              <Button onClick={handleCampaignCompletionConfirm} disabled={campaignCompletionSaving}>
+                {campaignCompletionSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Salvar conclusão
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={reuniaoRealizadaOpen} onOpenChange={setReuniaoRealizadaOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -1785,6 +2220,15 @@ const AdminLeads = () => {
                 </div>
               </div>
 
+              {currentPanelId === "sucesso" && (
+                <details className="border-t border-border pt-4">
+                  <summary className="cursor-pointer list-none text-sm font-semibold">Contatos do lead</summary>
+                  <div className="mt-3">
+                    <LeadContatos leadId={detailLead.id} />
+                  </div>
+                </details>
+              )}
+
               {(detailLead.modelo_campanha || detailLead.volume_premiacao_comissao || detailLead.participantes_reuniao || detailLead.cargo_participante) && (
                 <div className="border-t border-border pt-4">
                   <h3 className="text-sm font-semibold mb-3">Dados da reunião comercial</h3>
@@ -1872,6 +2316,7 @@ const AdminLeads = () => {
                 )}
               </div>
 
+              {currentPanelId !== "sucesso" && (
               <div className="border-t border-border pt-4">
                 <h3 className="text-sm font-semibold mb-2">Título e descrição</h3>
                 {isEditingCard ? (
@@ -1923,9 +2368,10 @@ const AdminLeads = () => {
                   <p className="text-sm text-muted-foreground">{detailLead.descricao_necessidade || "—"}</p>
                 )}
               </div>
+              )}
 
               {/* Valor Campanhas */}
-              {detailLead.valor_campanhas != null && (
+              {currentPanelId !== "sucesso" && detailLead.valor_campanhas != null && (
                 <div className="border-t border-border pt-4">
                   <h3 className="text-sm font-semibold mb-2">Valor Médio de Campanhas</h3>
                   <p className="text-lg font-bold font-display">{fmt(detailLead.valor_campanhas)}</p>
@@ -1933,7 +2379,7 @@ const AdminLeads = () => {
               )}
 
               {/* Financial Info */}
-              {detailLead.valor_mensalidade != null && (
+              {currentPanelId !== "sucesso" && detailLead.valor_mensalidade != null && (
                 <div className="border-t border-border pt-4 space-y-3">
                   <h3 className="text-sm font-semibold">Informações Financeiras</h3>
                   <div className="grid grid-cols-2 gap-3 text-sm">
@@ -2109,13 +2555,15 @@ const AdminLeads = () => {
               </div>
 
               {/* Contatos do Lead */}
+              {currentPanelId !== "sucesso" && (
               <div className="border-t border-border pt-4">
                 <LeadContatos leadId={detailLead.id} />
               </div>
+              )}
 
               <div className="border-t border-border pt-4">
                 <h3 className="text-sm font-semibold mb-3">Tarefas do card</h3>
-                <LeadTasks leadId={detailLead.id} leadName={detailLead.nome_fantasia} />
+                <LeadTasks leadId={detailLead.id} leadName={detailLead.nome_fantasia} actionBasePath={location.pathname} />
               </div>
 
               {/* Histórico de Conversa */}
@@ -2124,6 +2572,7 @@ const AdminLeads = () => {
                   leadId={detailLead.id}
                   currentStage={detailLead.status_lead || "novo_lead"}
                   userName={currentUserName}
+                  actionBasePath={location.pathname}
                 />
               </div>
             </div>
