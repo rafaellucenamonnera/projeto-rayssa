@@ -2035,7 +2035,14 @@ const AdminLeads = () => {
               {/* Embaixador Monnera */}
               <div className="border-t border-border pt-4">
                 <h3 className="text-sm font-semibold mb-3">Embaixador Monnera</h3>
-                <p className="text-sm">{parceiros[detailLead.parceiro_id] || "—"}</p>
+                {detailLead.partner_code ? (
+                  <div className="space-y-1">
+                    <p className="text-sm">{detailLead.full_name || parceiros[detailLead.parceiro_id] || "—"}</p>
+                    <p className="text-xs font-mono text-primary">Código: {detailLead.partner_code}</p>
+                  </div>
+                ) : (
+                  <p className="text-sm">{parceiros[detailLead.parceiro_id] || "—"}</p>
+                )}
               </div>
 
               {/* Pipeline Status */}
