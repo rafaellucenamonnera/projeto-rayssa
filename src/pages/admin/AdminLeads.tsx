@@ -1674,6 +1674,8 @@ const AdminLeads = () => {
             parceirosMap={parceiros}
             showCampaignStatus={currentPanelId === "sucesso"}
             showCsInsteadOfPartner={currentPanelId === "sucesso"}
+            stageEntryMap={stageMap}
+            commercialMode={["comercial", "comerc"].includes(currentPanelId)}
             canCloneCard={canCloneCard}
             canEditCard={canEditCard}
             canDeleteCard={canDeleteCard}
