@@ -343,7 +343,18 @@ const AdminLeads = () => {
       supabase.from("reunioes").select("*").eq("realizada", false).order("data_reuniao", { ascending: true }),
       supabase.from("profiles").select("user_id,nome,ativo,can_be_responsible").eq("ativo", true).order("nome", { ascending: true }),
     ]);
-    setLeads(leadsRes.data || []);
+    const rawLeads = leadsRes.data || [];
+    const mappedLeads = isCustomCrmPanel
+      ? rawLeads.map((r: any) => ({
+          ...r,
+          nome_fantasia: r.full_name,
+          nome_responsavel: r.full_name,
+          telefone_responsavel: r.phone,
+          email_responsavel: r.email,
+          data_cadastro: r.created_at,
+        }))
+      : rawLeads;
+    setLeads(mappedLeads);
     const map: Record<string, string> = {};
     const list = parceirosRes.data || [];
     list.forEach((p: any) => { map[p.id] = p.nome; });
