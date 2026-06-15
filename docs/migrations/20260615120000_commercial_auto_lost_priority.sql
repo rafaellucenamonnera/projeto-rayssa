@@ -87,8 +87,29 @@ BEGIN
         ON h.lead_id = l.id
        AND h.data_saida IS NULL
       JOIN public.pipeline_panels p
-        ON p.panel_key = l.panel_id
-       AND p.panel_type = 'comercial'
+        ON (
+             -- Flexible commercial panel detection (no dependency on panel_type column)
+             lower(p.id::text) IN ('comercial', 'comerc')
+             OR (
+               to_regclass('public.pipeline_panels') IS NOT NULL
+               AND EXISTS (
+                 SELECT 1 FROM information_schema.columns c
+                  WHERE c.table_schema = 'public'
+                    AND c.table_name = 'pipeline_panels'
+                    AND c.column_name = 'name'
+               )
+               AND lower(coalesce(p.name, '')) LIKE '%comercial%'
+             )
+           )
+       AND (
+             p.id::text = l.panel_id::text
+             OR EXISTS (
+               SELECT 1 FROM information_schema.columns c
+                WHERE c.table_schema = 'public'
+                  AND c.table_name = 'pipeline_panels'
+                  AND c.column_name = 'panel_key'
+             ) -- panel_key join handled below via OR
+           )
      WHERE l.status_lead <> 'lead_perdido'
        AND l.auto_lost_at IS NULL
        AND h.etapa IN (
@@ -100,6 +121,7 @@ BEGIN
              'contrato_enviado'
            )
        AND public.business_days_between(h.data_entrada, now()) > 10
+
   LOOP
     UPDATE public.leads
        SET status_lead      = 'lead_perdido',
