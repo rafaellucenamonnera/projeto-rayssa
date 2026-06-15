@@ -1,4 +1,7 @@
 project_id = "bapxuzodzgahscatvofs"
 
+[functions.admin-create-user]
+verify_jwt = true
+
 [functions.register-partner]
 verify_jwt = false
