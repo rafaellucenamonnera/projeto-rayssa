@@ -605,6 +605,8 @@ export type Database = {
       }
       leads: {
         Row: {
+          auto_lost_at: string | null
+          auto_lost_reason: string | null
           campaign_status_current: string | null
           campaign_status_current_month: string | null
           campaign_status_previous: string | null
@@ -694,6 +696,8 @@ export type Database = {
           volume_premiacao_comissao: number | null
         }
         Insert: {
+          auto_lost_at?: string | null
+          auto_lost_reason?: string | null
           campaign_status_current?: string | null
           campaign_status_current_month?: string | null
           campaign_status_previous?: string | null
@@ -783,6 +787,8 @@ export type Database = {
           volume_premiacao_comissao?: number | null
         }
         Update: {
+          auto_lost_at?: string | null
+          auto_lost_reason?: string | null
           campaign_status_current?: string | null
           campaign_status_current_month?: string | null
           campaign_status_previous?: string | null
@@ -1926,6 +1932,10 @@ export type Database = {
         Args: { p_from: string; p_to: string }
         Returns: number
       }
+      business_days_between_dates: {
+        Args: { p_end: string; p_start: string }
+        Returns: number
+      }
       complete_lead_by_token: {
         Args: { p_data: Json; p_lojas?: Json; p_token: string }
         Returns: Json
@@ -2001,6 +2011,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_commercial_panel: { Args: { p_panel_id: string }; Returns: boolean }
       is_valid_parceiro: { Args: { p_id: string }; Returns: boolean }
       lookup_parceiro_by_code: {
         Args: { code: string }
