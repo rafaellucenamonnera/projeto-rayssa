@@ -60,6 +60,10 @@ interface PipelineKanbanProps {
   onEditCard?: (lead: KanbanLeadCardData) => void;
   onDeleteCard?: (lead: KanbanLeadCardData) => void;
   onAssignResponsible?: (lead: KanbanLeadCardData) => void;
+  /** Mapa lead_id -> ISO date de entrada no estágio atual (lead_stage_history.data_entrada). */
+  stageEntryMap?: Record<string, string>;
+  /** Ativa regras do painel comercial: contador de dias, tarja amarela/vermelha e ordenação por dias. */
+  commercialMode?: boolean;
   showCampaignStatus?: boolean;
   showCsInsteadOfPartner?: boolean;
 }
@@ -162,11 +166,21 @@ export const PipelineKanban = ({
   stages,
   showCampaignStatus = false,
   showCsInsteadOfPartner = false,
+  stageEntryMap,
+  commercialMode = false,
 }: PipelineKanbanProps) => {
   const [dragId, setDragId] = useState<string | null>(null);
   const [overStage, setOverStage] = useState<string | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+
+  const daysInStage = (leadId: string): number | null => {
+    const iso = stageEntryMap?.[leadId];
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return null;
+    return Math.max(0, Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24)));
+  };
 
   const grouped = useMemo(() => {
     const g: Record<string, KanbanLeadCardData[]> = {};
@@ -176,10 +190,16 @@ export const PipelineKanban = ({
       if (g[s]) g[s].push(l);
     });
     Object.keys(g).forEach((stageKey) => {
-      g[stageKey] = g[stageKey].sort((a, b) => leadPriorityScore(b) - leadPriorityScore(a));
+      if (commercialMode) {
+        g[stageKey] = g[stageKey].sort(
+          (a, b) => (daysInStage(b.id) ?? -1) - (daysInStage(a.id) ?? -1),
+        );
+      } else {
+        g[stageKey] = g[stageKey].sort((a, b) => leadPriorityScore(b) - leadPriorityScore(a));
+      }
     });
     return g;
-  }, [leads, stages]);
+  }, [leads, stages, commercialMode, stageEntryMap]);
 
   const totals = useMemo(() => {
     const t: Record<string, number> = {};
@@ -235,6 +255,16 @@ export const PipelineKanban = ({
                 const revTrend = revVar == null ? null : revVar > EPSILON ? "up" : revVar < -EPSILON ? "down" : "neutral";
                 const RevIcon = revTrend === "up" ? ArrowUp : revTrend === "down" ? ArrowDown : ArrowRight;
                 const revColor = revTrend === "up" ? "text-[#00624b]" : revTrend === "down" ? "text-red-600" : "text-muted-foreground";
+                const days = commercialMode ? daysInStage(l.id) : null;
+                const stripeClass =
+                  days == null ? "" :
+                  days >= 10 ? "bg-red-500" :
+                  days >= 5 ? "bg-yellow-400" : "";
+                const badgeClass =
+                  days == null ? "bg-secondary text-foreground border-border" :
+                  days >= 10 ? "bg-red-500 text-white border-red-600" :
+                  days >= 5 ? "bg-yellow-400 text-black border-yellow-500" :
+                  "bg-secondary text-foreground border-border";
                 return (
                   <div
                     key={l.id}
@@ -258,9 +288,19 @@ export const PipelineKanban = ({
                       e.preventDefault();
                       setExpandedCardId((prev) => (prev === l.id ? null : l.id));
                     }}
-                    className={`group rounded-md border border-border bg-background overflow-hidden cursor-pointer hover:border-primary/60 transition-colors ${showCsInsteadOfPartner ? "p-0" : "p-2.5"} ${dragId === l.id ? "opacity-50" : ""} ${selectedCardId === l.id ? "ring-1 ring-primary/60" : ""}`}
-                    title={showCsInsteadOfPartner ? (isExpanded ? "Duplo clique para recolher" : "Duplo clique para expandir") : (selectedCardId === l.id ? "Clique para abrir" : "Clique para selecionar")}
+                    className={`group relative rounded-md border border-border bg-background overflow-hidden cursor-pointer hover:border-primary/60 transition-colors ${showCsInsteadOfPartner ? "p-0" : "p-2.5"} ${dragId === l.id ? "opacity-50" : ""} ${selectedCardId === l.id ? "ring-1 ring-primary/60" : ""}`}
+                    title={commercialMode && days != null ? `${days} dia${days === 1 ? "" : "s"} nesta coluna` : (showCsInsteadOfPartner ? (isExpanded ? "Duplo clique para recolher" : "Duplo clique para expandir") : (selectedCardId === l.id ? "Clique para abrir" : "Clique para selecionar"))}
                   >
+                    {commercialMode && stripeClass && (
+                      <div className={`absolute top-0 left-0 right-0 h-1 ${stripeClass}`} />
+                    )}
+                    {commercialMode && days != null && (
+                      <span
+                        className={`absolute top-1 right-1 z-10 text-[10px] font-semibold px-1.5 py-0.5 rounded border ${badgeClass}`}
+                      >
+                        {days}d
+                      </span>
+                    )}
                     {showCsInsteadOfPartner && statusTokens && (
                       <div className={`px-2.5 py-1 ${statusTokens.bgClass} ${statusTokens.textOnClass} flex items-center justify-between gap-2`}>
                         <div className="min-w-0">

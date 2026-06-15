@@ -1922,6 +1922,10 @@ export type Database = {
       }
     }
     Functions: {
+      business_days_between: {
+        Args: { p_from: string; p_to: string }
+        Returns: number
+      }
       complete_lead_by_token: {
         Args: { p_data: Json; p_lojas?: Json; p_token: string }
         Returns: Json
@@ -2017,6 +2021,7 @@ export type Database = {
         Args: { p_notification_id: string }
         Returns: undefined
       }
+      move_inactive_commercial_leads_to_lost: { Args: never; Returns: number }
       register_lead_public: {
         Args: {
           p_canal_tracao?: string
