@@ -238,9 +238,9 @@ export const PipelineKanban = ({
   });
 
   return (
-    <div className="overflow-x-auto pb-3">
+    <div className="max-h-[calc(100vh-220px)] overflow-auto pb-3">
       <div className="min-w-max">
-        <div className="sticky top-0 z-20 flex gap-3 bg-background/95 pb-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="sticky top-0 z-20 flex gap-3 bg-background pb-2">
           {stages.map((s) => {
             const items = grouped[s.value] || [];
             return (
