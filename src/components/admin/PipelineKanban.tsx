@@ -166,11 +166,21 @@ export const PipelineKanban = ({
   stages,
   showCampaignStatus = false,
   showCsInsteadOfPartner = false,
+  stageEntryMap,
+  commercialMode = false,
 }: PipelineKanbanProps) => {
   const [dragId, setDragId] = useState<string | null>(null);
   const [overStage, setOverStage] = useState<string | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+
+  const daysInStage = (leadId: string): number | null => {
+    const iso = stageEntryMap?.[leadId];
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return null;
+    return Math.max(0, Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24)));
+  };
 
   const grouped = useMemo(() => {
     const g: Record<string, KanbanLeadCardData[]> = {};
@@ -180,10 +190,16 @@ export const PipelineKanban = ({
       if (g[s]) g[s].push(l);
     });
     Object.keys(g).forEach((stageKey) => {
-      g[stageKey] = g[stageKey].sort((a, b) => leadPriorityScore(b) - leadPriorityScore(a));
+      if (commercialMode) {
+        g[stageKey] = g[stageKey].sort(
+          (a, b) => (daysInStage(b.id) ?? -1) - (daysInStage(a.id) ?? -1),
+        );
+      } else {
+        g[stageKey] = g[stageKey].sort((a, b) => leadPriorityScore(b) - leadPriorityScore(a));
+      }
     });
     return g;
-  }, [leads, stages]);
+  }, [leads, stages, commercialMode, stageEntryMap]);
 
   const totals = useMemo(() => {
     const t: Record<string, number> = {};
