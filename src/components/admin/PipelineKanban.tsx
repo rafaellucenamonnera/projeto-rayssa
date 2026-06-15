@@ -255,6 +255,16 @@ export const PipelineKanban = ({
                 const revTrend = revVar == null ? null : revVar > EPSILON ? "up" : revVar < -EPSILON ? "down" : "neutral";
                 const RevIcon = revTrend === "up" ? ArrowUp : revTrend === "down" ? ArrowDown : ArrowRight;
                 const revColor = revTrend === "up" ? "text-[#00624b]" : revTrend === "down" ? "text-red-600" : "text-muted-foreground";
+                const days = commercialMode ? daysInStage(l.id) : null;
+                const stripeClass =
+                  days == null ? "" :
+                  days >= 10 ? "bg-red-500" :
+                  days >= 5 ? "bg-yellow-400" : "";
+                const badgeClass =
+                  days == null ? "bg-secondary text-foreground border-border" :
+                  days >= 10 ? "bg-red-500 text-white border-red-600" :
+                  days >= 5 ? "bg-yellow-400 text-black border-yellow-500" :
+                  "bg-secondary text-foreground border-border";
                 return (
                   <div
                     key={l.id}
@@ -278,9 +288,19 @@ export const PipelineKanban = ({
                       e.preventDefault();
                       setExpandedCardId((prev) => (prev === l.id ? null : l.id));
                     }}
-                    className={`group rounded-md border border-border bg-background overflow-hidden cursor-pointer hover:border-primary/60 transition-colors ${showCsInsteadOfPartner ? "p-0" : "p-2.5"} ${dragId === l.id ? "opacity-50" : ""} ${selectedCardId === l.id ? "ring-1 ring-primary/60" : ""}`}
-                    title={showCsInsteadOfPartner ? (isExpanded ? "Duplo clique para recolher" : "Duplo clique para expandir") : (selectedCardId === l.id ? "Clique para abrir" : "Clique para selecionar")}
+                    className={`group relative rounded-md border border-border bg-background overflow-hidden cursor-pointer hover:border-primary/60 transition-colors ${showCsInsteadOfPartner ? "p-0" : "p-2.5"} ${dragId === l.id ? "opacity-50" : ""} ${selectedCardId === l.id ? "ring-1 ring-primary/60" : ""}`}
+                    title={commercialMode && days != null ? `${days} dia${days === 1 ? "" : "s"} nesta coluna` : (showCsInsteadOfPartner ? (isExpanded ? "Duplo clique para recolher" : "Duplo clique para expandir") : (selectedCardId === l.id ? "Clique para abrir" : "Clique para selecionar"))}
                   >
+                    {commercialMode && stripeClass && (
+                      <div className={`absolute top-0 left-0 right-0 h-1 ${stripeClass}`} />
+                    )}
+                    {commercialMode && days != null && (
+                      <span
+                        className={`absolute top-1 right-1 z-10 text-[10px] font-semibold px-1.5 py-0.5 rounded border ${badgeClass}`}
+                      >
+                        {days}d
+                      </span>
+                    )}
                     {showCsInsteadOfPartner && statusTokens && (
                       <div className={`px-2.5 py-1 ${statusTokens.bgClass} ${statusTokens.textOnClass} flex items-center justify-between gap-2`}>
                         <div className="min-w-0">
