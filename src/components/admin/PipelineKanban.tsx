@@ -213,7 +213,7 @@ export const PipelineKanban = ({
   }, [grouped, stages]);
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-3">
+    <div className="flex gap-3 overflow-auto max-h-[calc(100vh-220px)] pb-3">
       {stages.map((s) => {
         const items = grouped[s.value] || [];
         const isOver = overStage === s.value;
