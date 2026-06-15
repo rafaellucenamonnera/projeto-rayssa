@@ -328,6 +328,9 @@ export const PipelineKanban = ({
                         {!showCsInsteadOfPartner && (
                           <p className="text-xs font-medium truncate">{l.nome_fantasia}</p>
                         )}
+                        {l.partner_code && (
+                          <p className="text-[10px] font-mono text-primary truncate">{l.partner_code}</p>
+                        )}
                         {showCsInsteadOfPartner ? (
                           l.nome_responsavel && (
                             <p className="text-[10px] text-muted-foreground truncate">Ação: {l.nome_responsavel}</p>
