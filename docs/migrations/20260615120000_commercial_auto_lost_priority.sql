@@ -75,31 +75,54 @@ DECLARE
   v_count     integer := 0;
   v_dkey      text;
 BEGIN
+  -- Flexible commercial panel detection: panel id/key equals 'comercial'|'comerc'
+  -- OR (when the column exists) panel name contains 'comercial'. Does not depend
+  -- on a panel_type column, which may not exist in every environment.
   FOR v_lead IN
-    SELECT l.id,
-           l.nome_fantasia,
-           l.created_by_user_id,
-           l.responsible_user_id,
-           h.etapa,
-           h.data_entrada
-      FROM public.leads l
-      JOIN public.lead_stage_history h
-        ON h.lead_id = l.id
-       AND h.data_saida IS NULL
-      JOIN public.pipeline_panels p
-        ON p.panel_key = l.panel_id
-       AND p.panel_type = 'comercial'
-     WHERE l.status_lead <> 'lead_perdido'
-       AND l.auto_lost_at IS NULL
-       AND h.etapa IN (
-             'novo_lead',
-             'contato_realizado',
-             'reuniao_agendada',
-             'reuniao_realizada',
-             'proposta_enviada',
-             'contrato_enviado'
-           )
-       AND public.business_days_between(h.data_entrada, now()) > 10
+    EXECUTE format($q$
+      SELECT l.id,
+             l.nome_fantasia,
+             l.created_by_user_id,
+             l.responsible_user_id,
+             h.etapa,
+             h.data_entrada
+        FROM public.leads l
+        JOIN public.lead_stage_history h
+          ON h.lead_id = l.id
+         AND h.data_saida IS NULL
+        JOIN public.pipeline_panels p
+          ON p.%I::text = l.panel_id::text
+       WHERE l.status_lead <> 'lead_perdido'
+         AND l.auto_lost_at IS NULL
+         AND h.etapa IN (
+               'novo_lead','contato_realizado','reuniao_agendada',
+               'reuniao_realizada','proposta_enviada','contrato_enviado'
+             )
+         AND public.business_days_between(h.data_entrada, now()) > 10
+         AND (
+               lower(p.%I::text) IN ('comercial','comerc')
+               %s
+             )
+    $q$,
+      -- prefer panel_key when present, otherwise id
+      CASE WHEN EXISTS (
+        SELECT 1 FROM information_schema.columns
+         WHERE table_schema='public' AND table_name='pipeline_panels'
+           AND column_name='panel_key'
+      ) THEN 'panel_key' ELSE 'id' END,
+      CASE WHEN EXISTS (
+        SELECT 1 FROM information_schema.columns
+         WHERE table_schema='public' AND table_name='pipeline_panels'
+           AND column_name='panel_key'
+      ) THEN 'panel_key' ELSE 'id' END,
+      CASE WHEN EXISTS (
+        SELECT 1 FROM information_schema.columns
+         WHERE table_schema='public' AND table_name='pipeline_panels'
+           AND column_name='name'
+      ) THEN $$OR lower(coalesce(p.name,'')) LIKE '%comercial%'$$ ELSE '' END
+    )
+
+
   LOOP
     UPDATE public.leads
        SET status_lead      = 'lead_perdido',
