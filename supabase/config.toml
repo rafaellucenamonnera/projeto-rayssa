@@ -1,1 +1,4 @@
 project_id = "bapxuzodzgahscatvofs"
+
+[functions.register-partner]
+verify_jwt = false
