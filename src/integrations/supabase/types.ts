@@ -1478,6 +1478,8 @@ export type Database = {
           id: string
           notes: string | null
           panel_id: string
+          parceiro_id: string | null
+          partner_code: string | null
           phone: string
           region: string | null
           responsible_user_id: string
@@ -1497,6 +1499,8 @@ export type Database = {
           id?: string
           notes?: string | null
           panel_id: string
+          parceiro_id?: string | null
+          partner_code?: string | null
           phone: string
           region?: string | null
           responsible_user_id: string
@@ -1516,6 +1520,8 @@ export type Database = {
           id?: string
           notes?: string | null
           panel_id?: string
+          parceiro_id?: string | null
+          partner_code?: string | null
           phone?: string
           region?: string | null
           responsible_user_id?: string
@@ -1546,6 +1552,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "pipeline_stages_config"
             referencedColumns: ["panel_key", "value"]
+          },
+          {
+            foreignKeyName: "representative_cards_parceiro_id_fkey"
+            columns: ["parceiro_id"]
+            isOneToOne: false
+            referencedRelation: "parceiros_comerciais"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "representative_cards_responsible_user_id_fkey"
