@@ -213,7 +213,7 @@ export const PipelineKanban = ({
   }, [grouped, stages]);
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-3">
+    <div className="flex gap-3 overflow-auto max-h-[calc(100vh-220px)] pb-3">
       {stages.map((s) => {
         const items = grouped[s.value] || [];
         const isOver = overStage === s.value;
@@ -235,7 +235,7 @@ export const PipelineKanban = ({
               onMoveLead(id, s.value);
             }}
           >
-            <div className="px-3 py-2 border-b border-border/60 sticky top-0 bg-card/80 backdrop-blur z-10">
+            <div className="px-3 py-2 border-b border-border/60 sticky top-0 bg-card z-10">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-semibold uppercase tracking-wide truncate">{s.label}</p>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{items.length}</span>
