@@ -39,6 +39,7 @@ interface KanbanLeadCardData {
   revenue_variation?: number | null;
   revenue_current_month?: string | null;
   revenue_previous_month?: string | null;
+  partner_code?: string | null;
 }
 
 interface PipelineStage {
