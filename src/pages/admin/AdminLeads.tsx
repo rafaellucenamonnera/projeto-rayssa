@@ -342,7 +342,7 @@ const AdminLeads = () => {
   const loadData = async () => {
     const [leadsRes, parceirosRes, stageRes, reunioesRes, usersRes] = await Promise.all([
       isCustomCrmPanel
-        ? (supabase as any).from("representative_cards").select("*").eq("panel_id", currentPanelId).order("created_at", { ascending: false })
+        ? (supabase as any).from(isAmbassadorPanel ? "ambassador_cards" : "representative_cards").select("*").eq("panel_id", currentPanelId).order("created_at", { ascending: false })
         : supabase.from("leads").select("*").order("data_cadastro", { ascending: false }),
       supabase.from("parceiros_comerciais").select("id, nome"),
       supabase.from("lead_stage_history").select("lead_id, data_entrada").is("data_saida", null),
@@ -357,6 +357,7 @@ const AdminLeads = () => {
           nome_responsavel: r.full_name,
           telefone_responsavel: r.phone,
           email_responsavel: r.email,
+          descricao_necessidade: r.notes,
           data_cadastro: r.created_at,
         }))
       : rawLeads;
@@ -486,6 +487,17 @@ const AdminLeads = () => {
 
   const handleStatusChange = (leadId: string, leadName: string, newStatus: string) => {
     const lead = leads.find((l) => l.id === leadId);
+
+    if (isCustomCrmPanel) {
+      moveRepresentativeCard(leadId, newStatus).then(({ error }: any) => {
+        if (error) return toast.error("Erro ao mover card: " + error.message);
+        setLeads((prev) => prev.map((p) => (p.id === leadId ? { ...p, stage_id: newStatus, status_lead: newStatus } : p)));
+        if (detailLead?.id === leadId) setDetailLead((prev: any) => ({ ...prev, stage_id: newStatus, status_lead: newStatus }));
+        toast.success("Card movido com sucesso");
+      });
+      return;
+    }
+
 
     // Sucesso → Criação Campanha: abrir modal de briefing obrigatório
     if (currentPanelId === "sucesso" && newStatus === SUCESSO_STAGE_CRIACAO_CAMPANHA) {
@@ -954,13 +966,15 @@ const AdminLeads = () => {
   };
 
   const handleDelete = async (id: string, nome: string) => {
-    if (!confirm(`Excluir o lead ${nome}?`)) return;
-    const { error } = await supabase.from("leads").delete().eq("id", id);
+    const entityLabel = isCustomCrmPanel ? "card" : "lead";
+    if (!confirm(`Excluir o ${entityLabel} ${nome}?`)) return;
+    const tableName = isAmbassadorPanel ? "ambassador_cards" : isCustomCrmPanel ? "representative_cards" : "leads";
+    const { error } = await (supabase as any).from(tableName).delete().eq("id", id);
     if (error) {
-      toast.error("Erro ao excluir lead: " + error.message);
+      toast.error(`Erro ao excluir ${entityLabel}: ` + error.message);
       return;
     }
-    toast.success("Lead excluído");
+    toast.success(`${entityLabel === "lead" ? "Lead" : "Card"} excluído`);
     setLeads((prev) => prev.filter((lead) => lead.id !== id));
     if (detailLead?.id === id) {
       setDetailOpen(false);
@@ -1237,7 +1251,7 @@ const AdminLeads = () => {
   };
 
   const updateRepresentativeCard = async (id: string, payload: Record<string, any>) =>
-    (supabase as any).from("representative_cards").update(payload).eq("id", id);
+    (supabase as any).from(isAmbassadorPanel ? "ambassador_cards" : "representative_cards").update(payload).eq("id", id);
 
   const moveRepresentativeCard = async (id: string, stageId: string) =>
     updateRepresentativeCard(id, { stage_id: stageId });
