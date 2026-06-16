@@ -135,8 +135,10 @@ const AdminLeads = () => {
     status_lead: string;
     cidade: string;
     nome_responsavel: string;
+    cnpj: string;
     responsible_user_id: string;
-  }>({ nome_fantasia: "", descricao_necessidade: "", status_lead: "novo_lead", cidade: "", nome_responsavel: "", responsible_user_id: "" });
+    responsible_slack_user_id: string;
+  }>({ nome_fantasia: "", descricao_necessidade: "", status_lead: "novo_lead", cidade: "", nome_responsavel: "", cnpj: "", responsible_user_id: "", responsible_slack_user_id: "" });
 
   // Reunião dialog
   const [reuniaoDialogOpen, setReuniaoDialogOpen] = useState(false);
