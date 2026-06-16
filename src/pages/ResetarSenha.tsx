@@ -134,7 +134,8 @@ const ResetarSenha = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label htmlFor="password">Nova Senha</Label>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Crie sua nova senha" />
+              <PasswordRequirements password={password} />
             </div>
             <div>
               <Label htmlFor="confirm">Confirmar Senha</Label>
