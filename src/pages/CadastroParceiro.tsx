@@ -9,6 +9,8 @@ import { formatCNPJ, formatDocumento, validateCNPJ, validateDocumento, validateE
 import { toast } from "sonner";
 import { ArrowRight, CheckCircle2, Loader2, Network, ShieldCheck, Sparkles } from "lucide-react";
 import logoMonnera from "@/assets/logo-monnera.jpg";
+import PasswordRequirements from "@/components/PasswordRequirements";
+import { validatePassword, isWeakPasswordError, PASSWORD_INVALID_MSG, PASSWORD_WEAK_MSG } from "@/lib/passwordPolicy";
 
 function generateSlug(name: string): string {
   return name
@@ -51,7 +53,7 @@ const CadastroParceiro = () => {
     if (!/^\d{2}$/.test(form.telefone_ddd)) errs.telefone_ddd = "DDD inválido";
     if (!/^\d{9}$/.test(form.telefone_numero)) errs.telefone_numero = "Número inválido";
     if (!validateEmail(form.email)) errs.email = "Email inválido";
-    if (!form.senha || form.senha.length < 6) errs.senha = "Mínimo 6 caracteres";
+    if (!validatePassword(form.senha)) errs.senha = PASSWORD_INVALID_MSG;
     if (form.senha !== form.confirmar_senha) errs.confirmar_senha = "Senhas não coincidem";
     if (!form.cliente_monnera) errs.cliente_monnera = "Selecione uma opção";
     if (form.cliente_monnera === "sim" && !validateCNPJ(form.cliente_monnera_cnpj)) {
@@ -98,8 +100,8 @@ const CadastroParceiro = () => {
           return;
         }
         if (errCode === "weak_password") {
-          setErrors({ senha: errMsg || "Senha muito fraca." });
-          toast.error(errMsg || "Senha muito fraca.");
+          setErrors({ senha: PASSWORD_WEAK_MSG });
+          toast.error(PASSWORD_WEAK_MSG);
           return;
         }
         if (errCode === "cpf_taken") {
@@ -257,7 +259,8 @@ const CadastroParceiro = () => {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="senha">Senha</Label>
-                  <Input id="senha" type="password" value={form.senha} onChange={(e) => setForm({ ...form, senha: e.target.value })} placeholder="Mínimo 6 caracteres" />
+                  <Input id="senha" type="password" value={form.senha} onChange={(e) => setForm({ ...form, senha: e.target.value })} placeholder="Crie sua senha" />
+                  <PasswordRequirements password={form.senha} />
                   {errors.senha && <p className="mt-1 text-sm text-red-700">{errors.senha}</p>}
                 </div>
                 <div>
