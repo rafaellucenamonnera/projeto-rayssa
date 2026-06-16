@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import logoMonnera from "@/assets/logo-monnera.jpg";
+import PasswordRequirements from "@/components/PasswordRequirements";
+import { validatePassword, isWeakPasswordError, PASSWORD_INVALID_MSG, PASSWORD_WEAK_MSG } from "@/lib/passwordPolicy";
 
 const ResetarSenha = () => {
   const navigate = useNavigate();
@@ -65,8 +67,8 @@ const ResetarSenha = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 6) {
-      toast.error("A senha deve ter pelo menos 6 caracteres");
+    if (!validatePassword(password)) {
+      toast.error(PASSWORD_INVALID_MSG);
       return;
     }
     if (password !== confirmPassword) {
