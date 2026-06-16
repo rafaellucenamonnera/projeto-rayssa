@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -1504,14 +1505,16 @@ const AdminLeads = () => {
                 customCrmMode={isCustomCrmPanel}
                 users={Object.fromEntries(allActiveUsers.map((u) => [u.user_id, u.nome]))}
               />
-              <LeadImportDialog
-                parceiros={parceirosAll}
-                onImported={loadData}
-                customCrmMode={isCustomCrmPanel}
-                users={usersAll}
-                panelId={currentPanelId}
-                firstStageId={pipelineStages[0]?.value}
-              />
+              {!isAmbassadorPanel && (
+                <LeadImportDialog
+                  parceiros={parceirosAll}
+                  onImported={loadData}
+                  customCrmMode={isCustomCrmPanel}
+                  users={usersAll}
+                  panelId={currentPanelId}
+                  firstStageId={pipelineStages[0]?.value}
+                />
+              )}
             </>
           )}
           {isCustomCrmPanel && (
@@ -1550,7 +1553,7 @@ const AdminLeads = () => {
 
       {/* Filters */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2 sm:gap-3">
-        <Input placeholder="Filtrar por empresa..." value={filterEmpresa} onChange={(e) => setFilterEmpresa(e.target.value)} />
+        <Input placeholder={isCustomCrmPanel ? "Filtrar por nome..." : "Filtrar por empresa..."} value={filterEmpresa} onChange={(e) => setFilterEmpresa(e.target.value)} />
         {currentPanelId === "sucesso" ? (
           <Select value={filterCs} onValueChange={setFilterCs}>
             <SelectTrigger><SelectValue placeholder="CS" /></SelectTrigger>
@@ -1659,18 +1662,20 @@ const AdminLeads = () => {
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   )}
-                  {canCloneCard && (
+                  {!isAmbassadorPanel && canCloneCard && (
                     <Button variant="ghost" size="icon" onClick={() => openCloneDialog(l)} title="Clonar card" className="h-8 w-8">
                       <Copy className="h-4 w-4" />
                     </Button>
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] shrink-0">
-                  {parceiros[l.parceiro_id] || '-'}
-                </span>
-              </div>
+              {!isCustomCrmPanel && (
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] shrink-0">
+                    {parceiros[l.parceiro_id] || '-'}
+                  </span>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-1 text-xs">
                 <div>
                   <span className="text-muted-foreground">Responsável: </span>
@@ -1682,7 +1687,7 @@ const AdminLeads = () => {
                 </div>
               </div>
               <DaysInStage dataEntrada={stageMap[l.id]} />
-              <MeetingInfo lead={l} />
+              {!isCustomCrmPanel && <MeetingInfo lead={l} />}
               <div>
                 <Select
                   value={l.status_lead || l.status || "novo_lead"}
@@ -1697,7 +1702,7 @@ const AdminLeads = () => {
                 </Select>
               </div>
               {/* Conversion link button */}
-              {isConvertedOrBeyond(l.status_lead) && l.completion_token && !l.dados_completos && (
+              {!isCustomCrmPanel && isConvertedOrBeyond(l.status_lead) && l.completion_token && !l.dados_completos && (
                 <Button size="sm" variant="outline" className="w-full h-7 text-xs" onClick={() => {
                   const link = `${window.location.origin}/completar-cadastro/${l.completion_token}`;
                   navigator.clipboard.writeText(link);
@@ -1706,9 +1711,9 @@ const AdminLeads = () => {
                   <Copy className="mr-1 h-3 w-3" /> Copiar link de cadastro
                 </Button>
               )}
-              <FinancialInfo lead={l} />
+              {!isCustomCrmPanel && <FinancialInfo lead={l} />}
               {/* Document buttons */}
-              {(l.proposta_url || l.contrato_url) && (
+              {!isCustomCrmPanel && (l.proposta_url || l.contrato_url) && (
                 <div className="flex items-center gap-2 pt-1">
                   {l.proposta_url && (
                     <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openSignedUrl(l.proposta_url, `proposta-${l.nome_fantasia}.pdf`)}>
@@ -1723,7 +1728,7 @@ const AdminLeads = () => {
                 </div>
               )}
               {/* Dossie button */}
-              {l.status_lead === "contrato_assinado" && (
+              {!isCustomCrmPanel && l.status_lead === "contrato_assinado" && (
                 <Button size="sm" variant="outline" className="w-full h-7 text-xs" onClick={() => handleDownloadDossie(l.id, l.nome_fantasia)}>
                   <BookOpen className="mr-1 h-3 w-3" /> Baixar dossiê completo
                 </Button>
@@ -1747,7 +1752,7 @@ const AdminLeads = () => {
             showCsInsteadOfPartner={currentPanelId === "sucesso"}
             stageEntryMap={stageMap}
             commercialMode={["comercial", "comerc"].includes(currentPanelId)}
-            canCloneCard={canCloneCard}
+            canCloneCard={!isAmbassadorPanel && canCloneCard}
             canEditCard={canEditCard}
             canDeleteCard={canDeleteCard}
             onCloneCard={(lead) => openCloneDialog(lead)}
@@ -1780,23 +1785,25 @@ const AdminLeads = () => {
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Data</th>
-                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Embaixador Monnera</th>
-                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Empresa</th>
+                  {!isCustomCrmPanel && <th className="text-left py-3 px-4 text-muted-foreground font-medium">Embaixador Monnera</th>}
+                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">{isCustomCrmPanel ? "Nome" : "Empresa"}</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Cidade</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Responsável</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Telefone</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Pipeline</th>
-                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Docs</th>
-                  {(isAdmin || canCloneCard) && <th className="text-left py-3 px-4 text-muted-foreground font-medium"></th>}
+                  {!isCustomCrmPanel && <th className="text-left py-3 px-4 text-muted-foreground font-medium">Docs</th>}
+                  {(isAdmin || (!isAmbassadorPanel && canCloneCard)) && <th className="text-left py-3 px-4 text-muted-foreground font-medium"></th>}
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((l) => (
                   <tr key={l.id} className="border-b border-border/50 hover:bg-secondary/50">
                     <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">{new Date(l.data_cadastro).toLocaleDateString("pt-BR")}</td>
-                    <td className="py-3 px-4">
-                      <span className="px-2 py-1 rounded bg-primary/10 text-primary text-xs">{parceiros[l.parceiro_id] || '-'}</span>
-                    </td>
+                    {!isCustomCrmPanel && (
+                      <td className="py-3 px-4">
+                        <span className="px-2 py-1 rounded bg-primary/10 text-primary text-xs">{parceiros[l.parceiro_id] || '-'}</span>
+                      </td>
+                    )}
                     <td className="py-3 px-4">
                       <button onClick={() => openLeadDetail(l)} className="hover:text-primary transition-colors text-left">
                         {l.nome_fantasia}
@@ -1811,29 +1818,31 @@ const AdminLeads = () => {
                         <DaysInStage dataEntrada={stageMap[l.id]} compact />
                       </div>
                     </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-1">
-                        {l.proposta_url && (
-                          <button onClick={() => openSignedUrl(l.proposta_url, `proposta-${l.nome_fantasia}.pdf`)} className="p-1 hover:bg-primary/10 rounded" title="Download Proposta">
-                            <FileText className="h-4 w-4 text-primary" />
-                          </button>
-                        )}
-                        {l.contrato_url && (
-                          <button onClick={() => openSignedUrl(l.contrato_url, `contrato-${l.nome_fantasia}.docx`)} className="p-1 hover:bg-primary/10 rounded" title="Download Contrato">
-                            <Download className="h-4 w-4 text-emerald-500" />
-                          </button>
-                        )}
-                        {l.status_lead === "contrato_assinado" && (
-                          <button onClick={() => handleDownloadDossie(l.id, l.nome_fantasia)} className="p-1 hover:bg-primary/10 rounded" title="Baixar dossiê">
-                            <BookOpen className="h-4 w-4 text-blue-500" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                    {(isAdmin || canCloneCard) && (
+                    {!isCustomCrmPanel && (
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-1">
-                          {canCloneCard && (
+                          {l.proposta_url && (
+                            <button onClick={() => openSignedUrl(l.proposta_url, `proposta-${l.nome_fantasia}.pdf`)} className="p-1 hover:bg-primary/10 rounded" title="Download Proposta">
+                              <FileText className="h-4 w-4 text-primary" />
+                            </button>
+                          )}
+                          {l.contrato_url && (
+                            <button onClick={() => openSignedUrl(l.contrato_url, `contrato-${l.nome_fantasia}.docx`)} className="p-1 hover:bg-primary/10 rounded" title="Download Contrato">
+                              <Download className="h-4 w-4 text-emerald-500" />
+                            </button>
+                          )}
+                          {l.status_lead === "contrato_assinado" && (
+                            <button onClick={() => handleDownloadDossie(l.id, l.nome_fantasia)} className="p-1 hover:bg-primary/10 rounded" title="Baixar dossiê">
+                              <BookOpen className="h-4 w-4 text-blue-500" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                    {(isAdmin || (!isAmbassadorPanel && canCloneCard)) && (
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-1">
+                          {!isAmbassadorPanel && canCloneCard && (
                             <Button variant="ghost" size="icon" onClick={() => openCloneDialog(l)} title="Clonar card">
                               <Copy className="h-4 w-4" />
                             </Button>
@@ -2365,17 +2374,28 @@ const AdminLeads = () => {
 
               <div className="border-t border-border pt-4">
                 <h3 className="text-sm font-semibold mb-3">Tarefas do card</h3>
-                <LeadTasks leadId={detailLead.id} leadName={detailLead.nome_fantasia} />
+                {isAmbassadorPanel ? (
+                  <AmbassadorCardTasks
+                    cardId={detailLead.id}
+                    cardName={detailLead.nome_fantasia}
+                    panelId={currentPanelId}
+                    actionUrl={cardActionUrl(detailLead.id)}
+                  />
+                ) : (
+                  <LeadTasks leadId={detailLead.id} leadName={detailLead.nome_fantasia} />
+                )}
               </div>
 
               {/* Histórico de Conversa */}
-              <div className="border-t border-border pt-4">
-                <LeadComments
-                  leadId={detailLead.id}
-                  currentStage={detailLead.status_lead || "novo_lead"}
-                  userName={currentUserName}
-                />
-              </div>
+              {!isAmbassadorPanel && (
+                <div className="border-t border-border pt-4">
+                  <LeadComments
+                    leadId={detailLead.id}
+                    currentStage={detailLead.status_lead || "novo_lead"}
+                    userName={currentUserName}
+                  />
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
@@ -2390,19 +2410,11 @@ const AdminLeads = () => {
             <Input className="sm:col-span-2" placeholder="Nome completo *" value={newCardData.full_name} onChange={(e) => setNewCardData((p) => ({ ...p, full_name: e.target.value }))} />
             <Input placeholder="Telefone *" value={newCardData.phone} onChange={(e) => setNewCardData((p) => ({ ...p, phone: e.target.value }))} />
             <Input placeholder="E-mail *" value={newCardData.email} onChange={(e) => setNewCardData((p) => ({ ...p, email: e.target.value }))} />
+            <Input className="sm:col-span-2" placeholder="CNPJ opcional" value={newCardData.cnpj} onChange={(e) => setNewCardData((p) => ({ ...p, cnpj: e.target.value }))} />
             <Input placeholder="Cidade" value={newCardData.city} onChange={(e) => setNewCardData((p) => ({ ...p, city: e.target.value }))} />
             <Input placeholder="Estado" value={newCardData.state} onChange={(e) => setNewCardData((p) => ({ ...p, state: e.target.value }))} />
             <Input placeholder="Região de atuação" value={newCardData.region} onChange={(e) => setNewCardData((p) => ({ ...p, region: e.target.value }))} />
-            <Input className="sm:col-span-2" placeholder="Canal de tração" value={(newCardData as any).canal_tracao || ""} onChange={(e) => setNewCardData((p) => ({ ...(p as any), canal_tracao: e.target.value }))} />
-            
-            <Select value={(newCardData as any).responsible_user_id || ""} onValueChange={(v) => setNewCardData((p) => ({ ...(p as any), responsible_user_id: v }))}>
-              <SelectTrigger className="sm:col-span-2"><SelectValue placeholder="Responsável" /></SelectTrigger>
-              <SelectContent>
-                {usersAll.map((u) => (
-                  <SelectItem key={u.user_id} value={u.user_id}>{u.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Textarea className="sm:col-span-2" placeholder="Observações" value={newCardData.notes} onChange={(e) => setNewCardData((p) => ({ ...p, notes: e.target.value }))} />
           </div>
           <Button onClick={createRepresentativeCard} disabled={savingNewCard} className="w-full">
             {savingNewCard ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
