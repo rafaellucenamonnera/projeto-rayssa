@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import logoMonnera from "@/assets/logo-monnera.jpg";
+import PasswordRequirements from "@/components/PasswordRequirements";
+import { validatePassword, isWeakPasswordError, PASSWORD_INVALID_MSG, PASSWORD_WEAK_MSG } from "@/lib/passwordPolicy";
 
 const ResetarSenha = () => {
   const navigate = useNavigate();
@@ -65,8 +67,8 @@ const ResetarSenha = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 6) {
-      toast.error("A senha deve ter pelo menos 6 caracteres");
+    if (!validatePassword(password)) {
+      toast.error(PASSWORD_INVALID_MSG);
       return;
     }
     if (password !== confirmPassword) {
@@ -83,7 +85,7 @@ const ResetarSenha = () => {
       await supabase.auth.signOut();
       navigate("/login");
     } catch (error: any) {
-      toast.error("Erro ao redefinir senha. Tente novamente.");
+      toast.error(isWeakPasswordError(error?.message) ? PASSWORD_WEAK_MSG : "Erro ao redefinir senha. Tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -132,7 +134,8 @@ const ResetarSenha = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label htmlFor="password">Nova Senha</Label>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Crie sua nova senha" />
+              <PasswordRequirements password={password} />
             </div>
             <div>
               <Label htmlFor="confirm">Confirmar Senha</Label>

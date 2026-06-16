@@ -9,6 +9,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import logoMonnera from "@/assets/logo-monnera.jpg";
+import PasswordRequirements from "@/components/PasswordRequirements";
+import { validatePassword, isWeakPasswordError, PASSWORD_INVALID_MSG, PASSWORD_WEAK_MSG } from "@/lib/passwordPolicy";
 
 const PrimeiroAcesso = () => {
   const navigate = useNavigate();
@@ -25,8 +27,8 @@ const PrimeiroAcesso = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 6) {
-      toast.error("A senha deve ter pelo menos 6 caracteres");
+    if (!validatePassword(password)) {
+      toast.error(PASSWORD_INVALID_MSG);
       return;
     }
     if (password !== confirmPassword) {
@@ -49,7 +51,7 @@ const PrimeiroAcesso = () => {
       toast.success("Senha definida com sucesso!");
       navigate("/admin");
     } catch (error: any) {
-      toast.error("Erro: " + error.message);
+      toast.error(isWeakPasswordError(error?.message) ? PASSWORD_WEAK_MSG : "Erro: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -75,7 +77,8 @@ const PrimeiroAcesso = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label htmlFor="password">Nova Senha</Label>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Crie sua senha" />
+              <PasswordRequirements password={password} />
             </div>
             <div>
               <Label htmlFor="confirm">Confirmar Senha</Label>
