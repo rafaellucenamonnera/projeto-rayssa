@@ -1,13 +1,18 @@
-## Contexto
-O arquivo `src/components/admin/AmbassadorCardTasks.tsx` não existe no codebase. O usuário forneceu o conteúdo completo do componente e deseja que ele seja criado.
+Plan: AdminLeads.tsx — Block 5A (of 5+)
 
-## O que será feito
+Context
+AdminLeads.tsx drives the commercial pipeline UI (kanban/list, card creation, editing, detail dialogs, filters, and panel routing). It already supports both the standard leads table and custom CRM panels via isCustomCrmPanel branching. This block wires in the new Ambassador Panel ("Painel Embaixadores") and prepares the component for upcoming task/crud changes.
 
-1. Criar o arquivo `src/components/admin/AmbassadorCardTasks.tsx` com o conteúdo completo fornecido.
+Changes in  1. Add import for AmbassadorCardTasks below the existing LeadTasks import.
+  2. Add a constant AMBASSADOR_PANEL_ID = "painel_mp5q4du9" immediately after the PipelineStage type.
+  3. Update the newCardData state shape: replace responsible_user_id and canal_tracao with cnpj and notes.
+  4. Update the editFormData type and initial value: add cnpj between nome_responsavel and responsible_user_id.
+  5. Add isAmbassadorPanel detector below the isCustomCrmPanel check.
 
-2. Verificar se os tipos e imports estão alinhados com o projeto existente (shadcn/ui, Supabase, notificações).
+Out of scope for 5A
+- Query changes, manual card creation logic, editing logic, and card movement handling for the ambassador panel will be covered in Block 5B (to follow).
 
-3. Validar a compilação para garantir que não há erros de TypeScript.
-
-### Nota sobre o conteúdo fornecido
-O trecho JSX está truncado e corrompido no conteúdo enviado (tags vazias, atributos ausentes). Será necessário o JSX completo e funcional para criar o arquivo. O usuário deve confirmar se possui a versão íntegra ou se deseja que eu reconstrua o bloco `return (...)` a partir do snippet funcional que foi fornecido em mensagem anterior.
+Implementation notes
+- All edits are surgical line-level replacements/additions in AdminLeads.tsx.
+- No structural refactors; existing flows for comercial/onboarding/campanhas panels remain untouched.
+- After 5A is applied, the component will compile and behave identically for existing panels, with the new ambassador detector ready for 5B.

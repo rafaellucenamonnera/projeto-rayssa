@@ -30,6 +30,7 @@ import {
 } from "@/lib/healthStatusColors";
 import { LeadContatos } from "@/components/admin/LeadContatos";
 import { LeadTasks } from "@/components/admin/LeadTasks";
+import { AmbassadorCardTasks } from "@/components/admin/AmbassadorCardTasks";
 import { DaysInStage } from "@/components/admin/DaysInStage";
 import { PipelineKanban } from "@/components/admin/PipelineKanban";
 import { PIPELINE_STAGES, PIPELINE_LABELS } from "@/lib/pipelineConstants";
