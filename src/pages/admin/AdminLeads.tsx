@@ -1247,7 +1247,13 @@ const AdminLeads = () => {
       .limit(1);
     if (duplicate && duplicate.length > 0) return toast.error("Já existe cadastro com este telefone ou e-mail.");
 
-    const firstStage = isAmbassadorPanel ? "prospeccao" : pipelineStages[0]?.value;
+    const firstStage =
+      (isAmbassadorPanel
+        ? pipelineStages.find((s: any) => {
+            const label = String(s.label || "").toLowerCase();
+            return label === "prospecção" || label === "prospeccao";
+          })?.value
+        : undefined) || pipelineStages[0]?.value;
     if (!firstStage) return toast.error("Não há colunas configuradas para este painel.");
 
     setSavingNewCard(true);

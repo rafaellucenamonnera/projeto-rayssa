@@ -14,6 +14,178 @@ export type Database = {
   }
   public: {
     Tables: {
+      ambassador_card_tasks: {
+        Row: {
+          ambassador_card_id: string
+          assigned_to: string
+          completed_at: string | null
+          completed_note: string | null
+          created_at: string
+          created_by: string | null
+          due_at: string
+          due_date: string | null
+          id: string
+          status: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          ambassador_card_id: string
+          assigned_to: string
+          completed_at?: string | null
+          completed_note?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_at: string
+          due_date?: string | null
+          id?: string
+          status?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          ambassador_card_id?: string
+          assigned_to?: string
+          completed_at?: string | null
+          completed_note?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_at?: string
+          due_date?: string | null
+          id?: string
+          status?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ambassador_card_tasks_ambassador_card_id_fkey"
+            columns: ["ambassador_card_id"]
+            isOneToOne: false
+            referencedRelation: "ambassador_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ambassador_card_tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "ambassador_card_tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      ambassador_cards: {
+        Row: {
+          city: string | null
+          cnpj: string | null
+          created_at: string
+          created_by_user_id: string
+          csv_import_batch_id: string | null
+          email: string
+          full_name: string
+          id: string
+          notes: string | null
+          panel_id: string
+          parceiro_id: string | null
+          partner_code: string | null
+          phone: string
+          region: string | null
+          responsible_user_id: string
+          source: string | null
+          stage_id: string
+          state: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          city?: string | null
+          cnpj?: string | null
+          created_at?: string
+          created_by_user_id: string
+          csv_import_batch_id?: string | null
+          email: string
+          full_name: string
+          id?: string
+          notes?: string | null
+          panel_id: string
+          parceiro_id?: string | null
+          partner_code?: string | null
+          phone: string
+          region?: string | null
+          responsible_user_id: string
+          source?: string | null
+          stage_id: string
+          state?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          city?: string | null
+          cnpj?: string | null
+          created_at?: string
+          created_by_user_id?: string
+          csv_import_batch_id?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          notes?: string | null
+          panel_id?: string
+          parceiro_id?: string | null
+          partner_code?: string | null
+          phone?: string
+          region?: string | null
+          responsible_user_id?: string
+          source?: string | null
+          stage_id?: string
+          state?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ambassador_cards_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "ambassador_cards_panel_id_fkey"
+            columns: ["panel_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_panels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ambassador_cards_panel_stage_fk"
+            columns: ["panel_id", "stage_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_stages_config"
+            referencedColumns: ["panel_key", "value"]
+          },
+          {
+            foreignKeyName: "ambassador_cards_parceiro_id_fkey"
+            columns: ["parceiro_id"]
+            isOneToOne: false
+            referencedRelation: "parceiros_comerciais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ambassador_cards_responsible_user_id_fkey"
+            columns: ["responsible_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       contracts: {
         Row: {
           arquivo_proposta_url: string | null
