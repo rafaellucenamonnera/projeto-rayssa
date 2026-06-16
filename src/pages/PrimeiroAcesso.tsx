@@ -51,7 +51,7 @@ const PrimeiroAcesso = () => {
       toast.success("Senha definida com sucesso!");
       navigate("/admin");
     } catch (error: any) {
-      toast.error("Erro: " + error.message);
+      toast.error(isWeakPasswordError(error?.message) ? PASSWORD_WEAK_MSG : "Erro: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -77,7 +77,8 @@ const PrimeiroAcesso = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label htmlFor="password">Nova Senha</Label>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Crie sua senha" />
+              <PasswordRequirements password={password} />
             </div>
             <div>
               <Label htmlFor="confirm">Confirmar Senha</Label>
