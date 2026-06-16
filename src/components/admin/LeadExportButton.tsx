@@ -4,13 +4,6 @@ import { toast } from "sonner";
 import { PIPELINE_LABELS } from "@/lib/pipelineConstants";
 
 interface Lead {
-  full_name?: string;
-  phone?: string;
-  email?: string;
-  state?: string;
-  region?: string;
-  responsible_user_id?: string | null;
-
   id: string;
   data_cadastro: string;
   nome_fantasia: string;
@@ -27,6 +20,7 @@ interface Lead {
   descricao_necessidade: string | null;
   status_lead: string;
   parceiro_id: string;
+  responsible_user_id?: string | null;
 }
 
 interface LeadExportButtonProps {
@@ -36,9 +30,9 @@ interface LeadExportButtonProps {
   users?: Record<string, string>;
 }
 
-const CSV_HEADERS_DEFAULT = [
+const CSV_HEADERS = [
   "Data Cadastro",
-  "Embaixador Monnera",
+  "Consultor",
   "Nome Fantasia",
   "Razão Social",
   "CNPJ",
@@ -54,17 +48,6 @@ const CSV_HEADERS_DEFAULT = [
   "Status",
 ];
 
-const CSV_HEADERS_REPRESENTATIVE = [
-  "Nome completo",
-  "Telefone",
-  "E-mail",
-  "Cidade",
-  "Estado",
-  "Região de atuação",
-  "Responsável",
-  "Status",
-];
-
 const STATUS_LABELS = PIPELINE_LABELS;
 
 function escapeCsvField(value: string | number | null | undefined): string {
@@ -76,23 +59,33 @@ function escapeCsvField(value: string | number | null | undefined): string {
   return str;
 }
 
-export const LeadExportButton = ({ leads, parceiros, customCrmMode = false, users = {} }: LeadExportButtonProps) => {
+export const LeadExportButton = ({
+  leads,
+  parceiros,
+  customCrmMode = false,
+  users = {},
+}: LeadExportButtonProps) => {
   const handleExport = () => {
     if (leads.length === 0) {
-      toast.error("Nenhum lead para exportar");
+      toast.error(`Nenhum ${customCrmMode ? "card" : "lead"} para exportar`);
       return;
     }
 
+    const headers = customCrmMode
+      ? ["Data Cadastro", "Nome", "CNPJ", "Cidade", "Responsável", "Telefone", "Email", "Observações", "Status"]
+      : CSV_HEADERS;
+
     const rows = customCrmMode
       ? leads.map((l) => [
-          l.full_name || l.nome_fantasia || "",
-          l.phone || l.telefone_responsavel || "",
-          l.email || l.email_responsavel || "",
-          l.cidade || "",
-          l.state || "",
-          l.region || "",
-          users[l.responsible_user_id || ""] || "-",
-          STATUS_LABELS[l.status_lead] || l.status_lead,
+          new Date(l.data_cadastro).toLocaleDateString("pt-BR"),
+          l.nome_fantasia,
+          l.cnpj,
+          l.cidade,
+          users[l.responsible_user_id || ""] || l.nome_responsavel || "-",
+          l.telefone_responsavel,
+          l.email_responsavel,
+          l.descricao_necessidade,
+          l.status_lead,
         ])
       : leads.map((l) => [
           new Date(l.data_cadastro).toLocaleDateString("pt-BR"),
@@ -114,7 +107,7 @@ export const LeadExportButton = ({ leads, parceiros, customCrmMode = false, user
 
     const csvContent =
       "\uFEFF" +
-      [(customCrmMode ? CSV_HEADERS_REPRESENTATIVE : CSV_HEADERS_DEFAULT).map(escapeCsvField).join(",")]
+      [headers.map(escapeCsvField).join(",")]
         .concat(rows.map((row) => row.map(escapeCsvField).join(",")))
         .join("\n");
 
@@ -122,11 +115,11 @@ export const LeadExportButton = ({ leads, parceiros, customCrmMode = false, user
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${customCrmMode ? "representantes" : "leads"}_monnera_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `${customCrmMode ? "embaixadores_monnera" : "leads_monnera"}_${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(url);
 
-    toast.success(`${leads.length} registros exportados`);
+    toast.success(`${leads.length} ${customCrmMode ? "cards exportados" : "leads exportados"}`);
   };
 
   return (
