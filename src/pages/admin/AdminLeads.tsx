@@ -1125,7 +1125,9 @@ const AdminLeads = () => {
       status_lead: lead.status_lead || lead.status || "novo_lead",
       cidade: lead.cidade || "",
       nome_responsavel: lead.nome_responsavel || "",
+      cnpj: lead.cnpj || "",
       responsible_user_id: lead.responsible_user_id || "",
+      responsible_slack_user_id: lead.responsible_slack_user_id || "",
     });
     setDetailOpen(true);
   };
@@ -1139,7 +1141,9 @@ const AdminLeads = () => {
       status_lead: lead.status_lead || lead.status || "novo_lead",
       cidade: lead.cidade || "",
       nome_responsavel: lead.nome_responsavel || "",
+      cnpj: lead.cnpj || "",
       responsible_user_id: lead.responsible_user_id || "",
+      responsible_slack_user_id: lead.responsible_slack_user_id || "",
     });
     setIsEditingCard(true);
     setDetailOpen(true);
@@ -1153,7 +1157,9 @@ const AdminLeads = () => {
       status_lead: detailLead.status_lead || detailLead.status || "novo_lead",
       cidade: detailLead.cidade || "",
       nome_responsavel: detailLead.nome_responsavel || "",
+      cnpj: detailLead.cnpj || "",
       responsible_user_id: detailLead.responsible_user_id || "",
+      responsible_slack_user_id: detailLead.responsible_slack_user_id || "",
     });
     setIsEditingCard(false);
   };
@@ -1207,8 +1213,8 @@ const AdminLeads = () => {
     const fullName = newCardData.full_name.trim();
     const phone = newCardData.phone.trim();
     const email = newCardData.email.trim().toLowerCase();
-    if (!fullName || !phone || !email || !newCardData.responsible_user_id) return toast.error("Nome completo, telefone, e-mail e responsável são obrigatórios.");
-    if (!usersAll.some((u) => u.user_id === newCardData.responsible_user_id)) return toast.error("Usuário selecionado não possui permissão para ser responsável.");
+    if (!fullName || !phone || !email || !(newCardData as any).responsible_user_id) return toast.error("Nome completo, telefone, e-mail e responsável são obrigatórios.");
+    if (!usersAll.some((u) => u.user_id === (newCardData as any).responsible_user_id)) return toast.error("Usuário selecionado não possui permissão para ser responsável.");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return toast.error("Formato de e-mail inválido.");
 
     const { data: duplicate } = await (supabase as any)
@@ -1233,8 +1239,8 @@ const AdminLeads = () => {
       city: newCardData.city.trim() || null,
       state: newCardData.state.trim() || null,
       region: newCardData.region.trim() || null,
-      source: newCardData.canal_tracao.trim() || null,
-      responsible_user_id: newCardData.responsible_user_id,
+      source: (newCardData as any).canal_tracao?.trim() || null,
+      responsible_user_id: (newCardData as any).responsible_user_id,
       created_by_user_id: auth.data.user?.id,
     };
     const { data, error } = await (supabase as any).from("representative_cards").insert(payload).select("*").single();
@@ -1242,7 +1248,7 @@ const AdminLeads = () => {
     if (error) return toast.error("Erro ao salvar cadastro: " + error.message);
     toast.success("Cadastro salvo com sucesso.");
     setNewCardOpen(false);
-    setNewCardData({ full_name: "", phone: "", email: "", city: "", state: "", region: "", responsible_user_id: "", canal_tracao: "" });
+    setNewCardData({ full_name: "", phone: "", email: "", cnpj: "", city: "", state: "", region: "", notes: "" });
     if (data) {
       setLeads((prev) => [{ ...payload, id: data.id, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }, ...prev]);
     } else {
@@ -2342,9 +2348,9 @@ const AdminLeads = () => {
             <Input placeholder="Cidade" value={newCardData.city} onChange={(e) => setNewCardData((p) => ({ ...p, city: e.target.value }))} />
             <Input placeholder="Estado" value={newCardData.state} onChange={(e) => setNewCardData((p) => ({ ...p, state: e.target.value }))} />
             <Input placeholder="Região de atuação" value={newCardData.region} onChange={(e) => setNewCardData((p) => ({ ...p, region: e.target.value }))} />
-            <Input className="sm:col-span-2" placeholder="Canal de tração" value={newCardData.canal_tracao} onChange={(e) => setNewCardData((p) => ({ ...p, canal_tracao: e.target.value }))} />
+            <Input className="sm:col-span-2" placeholder="Canal de tração" value={(newCardData as any).canal_tracao || ""} onChange={(e) => setNewCardData((p) => ({ ...(p as any), canal_tracao: e.target.value }))} />
             
-            <Select value={newCardData.responsible_user_id} onValueChange={(v) => setNewCardData((p) => ({ ...p, responsible_user_id: v }))}>
+            <Select value={(newCardData as any).responsible_user_id || ""} onValueChange={(v) => setNewCardData((p) => ({ ...(p as any), responsible_user_id: v }))}>
               <SelectTrigger className="sm:col-span-2"><SelectValue placeholder="Responsável" /></SelectTrigger>
               <SelectContent>
                 {usersAll.map((u) => (
