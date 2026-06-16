@@ -1176,34 +1176,54 @@ const AdminLeads = () => {
       return;
     }
     setSavingCard(true);
-    const payload = {
-      nome_fantasia: nome,
-      descricao_necessidade: editFormData.descricao_necessidade.trim(),
-      cidade: editFormData.cidade.trim(),
-      nome_responsavel: editFormData.nome_responsavel?.trim() || null,
-      responsible_user_id: editFormData.responsible_user_id || null,
-    };
+    const payload = isCustomCrmPanel
+      ? {
+          full_name: nome,
+          notes: editFormData.descricao_necessidade.trim() || null,
+          city: editFormData.cidade.trim() || null,
+          cnpj: editFormData.cnpj.replace(/\D/g, "") || null,
+          responsible_user_id: editFormData.responsible_user_id || null,
+        }
+      : {
+          nome_fantasia: nome,
+          descricao_necessidade: editFormData.descricao_necessidade.trim(),
+          cidade: editFormData.cidade.trim(),
+          nome_responsavel: editFormData.nome_responsavel?.trim() || null,
+          responsible_user_id: editFormData.responsible_user_id || null,
+          responsible_slack_user_id: editFormData.responsible_slack_user_id || null,
+        };
     const previousResponsibleUserId = detailLead.responsible_user_id || null;
-    const { error } = await supabase.from("leads").update(payload).eq("id", detailLead.id);
+    const tableName = isAmbassadorPanel ? "ambassador_cards" : isCustomCrmPanel ? "representative_cards" : "leads";
+    const { error } = await (supabase as any).from(tableName).update(payload as any).eq("id", detailLead.id);
     setSavingCard(false);
     if (error) {
       toast.error("Erro ao salvar card");
       return;
     }
-    const merged = { ...detailLead, ...payload };
+    const normalizedPayload: any = isCustomCrmPanel
+      ? {
+          ...payload,
+          nome_fantasia: (payload as any).full_name,
+          descricao_necessidade: (payload as any).notes,
+          cidade: (payload as any).city,
+          nome_responsavel: usersAll.find((u) => u.user_id === (payload as any).responsible_user_id)?.nome || detailLead.nome_responsavel || "",
+        }
+      : payload;
+
+    const merged = { ...detailLead, ...normalizedPayload };
     setDetailLead(merged);
-    setLeads((prev) => prev.map((l) => (l.id === detailLead.id ? { ...l, ...payload } : l)));
+    setLeads((prev) => prev.map((l) => (l.id === detailLead.id ? { ...l, ...normalizedPayload } : l)));
     setIsEditingCard(false);
     if (payload.responsible_user_id && payload.responsible_user_id !== previousResponsibleUserId) {
       await createNotification({
         recipientUserId: payload.responsible_user_id,
         type: "card_responsible_assigned",
         title: "Você foi definido como responsável",
-        message: `Você agora é responsável pelo card ${payload.nome_fantasia}.`,
-        leadId: detailLead.id,
+        message: `Você agora é responsável pelo card ${nome}.`,
+        leadId: isCustomCrmPanel ? null : detailLead.id,
         actionUrl: cardActionUrl(detailLead.id),
         metadata: { previous_responsible_user_id: previousResponsibleUserId },
-        deliveryKey: `lead-${detailLead.id}-responsible-${payload.responsible_user_id}-${Date.now()}`,
+        deliveryKey: `${isCustomCrmPanel ? "card" : "lead"}-${detailLead.id}-responsible-${payload.responsible_user_id}-${Date.now()}`,
       });
     }
     toast.success("Card atualizado");
@@ -1213,23 +1233,36 @@ const AdminLeads = () => {
     const fullName = newCardData.full_name.trim();
     const phone = newCardData.phone.trim();
     const email = newCardData.email.trim().toLowerCase();
-    if (!fullName || !phone || !email || !(newCardData as any).responsible_user_id) return toast.error("Nome completo, telefone, e-mail e responsável são obrigatórios.");
-    if (!usersAll.some((u) => u.user_id === (newCardData as any).responsible_user_id)) return toast.error("Usuário selecionado não possui permissão para ser responsável.");
+    const cnpj = newCardData.cnpj.replace(/\D/g, "");
+    if (!fullName || !phone || !email) return toast.error("Nome completo, telefone e e-mail são obrigatórios.");
+    if (cnpj && cnpj.length !== 14) return toast.error("CNPJ deve conter 14 dígitos.");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return toast.error("Formato de e-mail inválido.");
 
     const { data: duplicate } = await (supabase as any)
-      .from("representative_cards")
+      .from(isAmbassadorPanel ? "ambassador_cards" : "representative_cards")
       .select("id")
       .eq("panel_id", currentPanelId)
       .or(`email.eq.${email},phone.eq.${phone}`)
       .limit(1);
     if (duplicate && duplicate.length > 0) return toast.error("Já existe cadastro com este telefone ou e-mail.");
 
-    const firstStage = pipelineStages[0]?.value;
+    const firstStage = isAmbassadorPanel ? "prospeccao" : pipelineStages[0]?.value;
     if (!firstStage) return toast.error("Não há colunas configuradas para este painel.");
 
     setSavingNewCard(true);
     const auth = await supabase.auth.getUser();
+    const currentUserId = auth.data.user?.id;
+
+    if (!currentUserId) {
+      setSavingNewCard(false);
+      return toast.error("Usuário autenticado não identificado.");
+    }
+
+    if (!usersAll.some((u) => u.user_id === currentUserId)) {
+      setSavingNewCard(false);
+      return toast.error("Seu usuário não possui permissão para ser responsável por cards.");
+    }
+
     const payload: any = {
       panel_id: currentPanelId,
       stage_id: firstStage,
@@ -1239,18 +1272,30 @@ const AdminLeads = () => {
       city: newCardData.city.trim() || null,
       state: newCardData.state.trim() || null,
       region: newCardData.region.trim() || null,
-      source: (newCardData as any).canal_tracao?.trim() || null,
-      responsible_user_id: (newCardData as any).responsible_user_id,
-      created_by_user_id: auth.data.user?.id,
+      cnpj: cnpj || null,
+      notes: newCardData.notes.trim() || null,
+      source: "Cadastro manual",
+      responsible_user_id: currentUserId,
+      created_by_user_id: currentUserId,
     };
-    const { data, error } = await (supabase as any).from("representative_cards").insert(payload).select("*").single();
+    const { data, error } = await (supabase as any).from(isAmbassadorPanel ? "ambassador_cards" : "representative_cards").insert(payload).select("*").single();
     setSavingNewCard(false);
     if (error) return toast.error("Erro ao salvar cadastro: " + error.message);
     toast.success("Cadastro salvo com sucesso.");
     setNewCardOpen(false);
     setNewCardData({ full_name: "", phone: "", email: "", cnpj: "", city: "", state: "", region: "", notes: "" });
     if (data) {
-      setLeads((prev) => [{ ...payload, id: data.id, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }, ...prev]);
+      const normalizedCard = {
+        ...data,
+        nome_fantasia: data.full_name,
+        nome_responsavel: data.full_name,
+        telefone_responsavel: data.phone,
+        email_responsavel: data.email,
+        cidade: data.city,
+        descricao_necessidade: data.notes,
+        data_cadastro: data.created_at,
+      };
+      setLeads((prev) => [normalizedCard, ...prev]);
     } else {
       loadData();
     }
