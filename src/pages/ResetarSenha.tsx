@@ -85,7 +85,7 @@ const ResetarSenha = () => {
       await supabase.auth.signOut();
       navigate("/login");
     } catch (error: any) {
-      toast.error("Erro ao redefinir senha. Tente novamente.");
+      toast.error(isWeakPasswordError(error?.message) ? PASSWORD_WEAK_MSG : "Erro ao redefinir senha. Tente novamente.");
     } finally {
       setLoading(false);
     }
