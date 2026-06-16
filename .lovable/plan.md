@@ -1,26 +1,50 @@
-## Objetivo
-Fechar a entrega do painel Embaixadores: validar build, aplicar migration e validar comportamento no preview.
+# Validação de senha — criação e troca apenas
 
-## Passos
+## Escopo
+Não tocar em `/login` (`src/pages/admin/AdminLogin.tsx` e equivalente parceiro). Mensagens lá permanecem:
+- "Preencha email e senha"
+- "Email ou senha incorretos"
 
-1. **Rodar `npm run build`**
-   - Se falhar, colar o log completo e corrigir antes de seguir.
+Aplicar validação de força de senha em:
+- `/primeiro-acesso` → `src/pages/PrimeiroAcesso.tsx`
+- `/resetar-senha` → `src/pages/ResetarSenha.tsx`
+- `/cadastro` → `src/pages/CadastroParceiro.tsx` (se houver campo de senha)
 
-2. **Aplicar migration no Supabase conectado**
-   - Executar `npx supabase db push` (NUNCA `db reset` no remoto).
-   - Migration cria as tabelas `ambassador_cards` e `ambassador_card_tasks`, com grants, RLS, policies e **trigger de criação de card no auto-cadastro de parceiro/embaixador** (`AFTER INSERT ON public.parceiros_comerciais`).
-   - Se o push falhar, colar o erro completo antes de ajustar.
+## Regras
+- Mínimo 6 caracteres
+- Pelo menos 1 letra maiúscula
+- Pelo menos 1 caractere especial (não alfanumérico)
 
-3. **Validação manual no preview**
-   - Sidebar mostra **Painel Embaixadores**.
-   - Painel lê de `ambassador_cards` (não `representative_cards`).
-   - Botão **+ Card** cria card na etapa **Prospecção**.
-   - Rota pública `/cadastro` cria card na etapa **Embaixador em ativação**.
-   - Tarefas dentro do card usam `ambassador_card_tasks` (componente `AmbassadorCardTasks`).
-   - Botão **Importar CSV** não aparece nesse painel.
+## Implementação
 
-## Critério de pronto
-Build verde, migration aplicada sem erros e os 6 pontos de validação confirmados no preview.
+### 1. Helper compartilhado
+Criar `src/lib/passwordPolicy.ts`:
+- `validatePassword(pw: string): { valid: boolean }`
+- `PASSWORD_RULES_TEXT = "Mínimo de 6 caracteres, uma letra maiúscula e um caractere especial"`
+- `PASSWORD_INVALID_MSG = "Sua senha ainda não atende aos requisitos. Use no mínimo 6 caracteres, uma letra maiúscula e um caractere especial."`
+- `PASSWORD_WEAK_MSG = "Essa senha não foi aceita. Use no mínimo 6 caracteres, uma letra maiúscula e um caractere especial."`
+- Regex: `/[A-Z]/` e `/[^A-Za-z0-9]/` + `length >= 6`
 
-## Fora de escopo
-Qualquer ajuste corretivo — se algum item falhar, abrir bloco separado com o log completo.
+### 2. `/primeiro-acesso`
+- Substituir checagem `password.length < 6` por `validatePassword(password)`; toast com `PASSWORD_INVALID_MSG`.
+- Abaixo do input "Nova Senha", lista de requisitos (3 linhas) com check verde quando cumprido (texto: "Mínimo de 6 caracteres", "Uma letra maiúscula", "Um caractere especial").
+- No catch, mapear erros do Supabase contendo "weak" / "password" / "Password should" → `PASSWORD_WEAK_MSG`.
+
+### 3. `/resetar-senha`
+- Mesma validação e mesmo bloco de requisitos abaixo do campo.
+- Mesmo mapeamento de erro do Supabase.
+
+### 4. `/cadastro` (`CadastroParceiro.tsx`)
+- Se o fluxo tem campo de senha, aplicar mesma validação + lista de requisitos.
+- Se não tem (cadastro só envia link de primeiro acesso), nenhuma mudança.
+
+## Não fazer
+- Nada em `/login`.
+- Não alterar políticas no backend.
+- Não habilitar HIBP agora.
+
+## Critério de aceite
+- Login segue com mensagens atuais.
+- Em `/primeiro-acesso` e `/resetar-senha` a lista de requisitos aparece e atualiza ao digitar.
+- Senha fraca bloqueia o submit com a mensagem amigável.
+- Erro do Supabase nunca aparece cru ao usuário.
