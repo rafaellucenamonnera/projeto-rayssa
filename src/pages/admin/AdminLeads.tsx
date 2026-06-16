@@ -200,6 +200,7 @@ const AdminLeads = () => {
   const isCustomCrmPanel =
     isRepresentantesOuEmbaixadoresPanel &&
     !["comercial", "sucesso", "onboarding", "campanhas"].includes(currentPanelId);
+  const isAmbassadorPanel = currentPanelId === AMBASSADOR_PANEL_ID;
 
   useEffect(() => {
     const fetchUserName = async () => {
