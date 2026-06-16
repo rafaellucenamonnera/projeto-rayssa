@@ -30,6 +30,7 @@ import {
 } from "@/lib/healthStatusColors";
 import { LeadContatos } from "@/components/admin/LeadContatos";
 import { LeadTasks } from "@/components/admin/LeadTasks";
+import { AmbassadorCardTasks } from "@/components/admin/AmbassadorCardTasks";
 import { DaysInStage } from "@/components/admin/DaysInStage";
 import { PipelineKanban } from "@/components/admin/PipelineKanban";
 import { PIPELINE_STAGES, PIPELINE_LABELS } from "@/lib/pipelineConstants";
@@ -46,6 +47,8 @@ import {
 import { CampaignMoveDialog, CampanhaConcluidaDialog } from "@/components/admin/CampaignFlowDialogs";
 
 type PipelineStage = { value: string; label: string; sort_order: number };
+
+const AMBASSADOR_PANEL_ID = "painel_mp5q4du9";
 
 // Etapas a partir das quais é obrigatório ter financeiro preenchido
 const FINANCEIRO_REQUIRED_FROM = [
@@ -87,7 +90,7 @@ const AdminLeads = () => {
   const [allActiveUsers, setAllActiveUsers] = useState<{ user_id: string; nome: string }[]>([]);
   const [newCardOpen, setNewCardOpen] = useState(false);
   const [savingNewCard, setSavingNewCard] = useState(false);
-  const [newCardData, setNewCardData] = useState({ full_name: "", phone: "", email: "", city: "", state: "", region: "", responsible_user_id: "", canal_tracao: "" });
+  const [newCardData, setNewCardData] = useState({ full_name: "", phone: "", email: "", cnpj: "", city: "", state: "", region: "", notes: "" });
   const [reunioesMap, setReunioesMap] = useState<Record<string, any>>({});
 
   // Filters
@@ -132,8 +135,10 @@ const AdminLeads = () => {
     status_lead: string;
     cidade: string;
     nome_responsavel: string;
+    cnpj: string;
     responsible_user_id: string;
-  }>({ nome_fantasia: "", descricao_necessidade: "", status_lead: "novo_lead", cidade: "", nome_responsavel: "", responsible_user_id: "" });
+    responsible_slack_user_id: string;
+  }>({ nome_fantasia: "", descricao_necessidade: "", status_lead: "novo_lead", cidade: "", nome_responsavel: "", cnpj: "", responsible_user_id: "", responsible_slack_user_id: "" });
 
   // Reunião dialog
   const [reuniaoDialogOpen, setReuniaoDialogOpen] = useState(false);
@@ -195,6 +200,7 @@ const AdminLeads = () => {
   const isCustomCrmPanel =
     isRepresentantesOuEmbaixadoresPanel &&
     !["comercial", "sucesso", "onboarding", "campanhas"].includes(currentPanelId);
+  const isAmbassadorPanel = currentPanelId === AMBASSADOR_PANEL_ID;
 
   useEffect(() => {
     const fetchUserName = async () => {
