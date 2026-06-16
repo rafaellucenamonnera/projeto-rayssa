@@ -48,6 +48,8 @@ import { CampaignMoveDialog, CampanhaConcluidaDialog } from "@/components/admin/
 
 type PipelineStage = { value: string; label: string; sort_order: number };
 
+const AMBASSADOR_PANEL_ID = "painel_mp5q4du9";
+
 // Etapas a partir das quais é obrigatório ter financeiro preenchido
 const FINANCEIRO_REQUIRED_FROM = [
   "proposta_enviada",
