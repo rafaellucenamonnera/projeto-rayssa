@@ -110,7 +110,7 @@ export const CadastroFinanceiroDialog = ({
           valor_campanhas: campanhas,
           quantidade_lojas: qtdLojas,
           percentual_consultor: percentualEfetivo,
-          qtd_parcelas: form.comissao_vitalicia ? null : parcelas,
+          qtd_parcelas: form.comissao_vitalicia || parcelas <= 0 ? null : parcelas,
           parcelas_pagas: 0,
           comissao_vitalicia: form.comissao_vitalicia,
         } as any)
