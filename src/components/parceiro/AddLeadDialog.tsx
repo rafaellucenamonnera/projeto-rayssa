@@ -44,10 +44,7 @@ export const AddLeadDialog = ({ open, onOpenChange, parceiroId, parceiroNome, on
     const errs: Record<string, string> = {};
     if (!form.nome_responsavel.trim()) errs.nome_responsavel = "Obrigatório";
     if (!form.telefone_responsavel.trim()) errs.telefone_responsavel = "Obrigatório";
-    if (!validateEmail(form.email_responsavel)) errs.email_responsavel = "Email inválido";
-    if (!form.nome_fantasia.trim()) errs.nome_fantasia = "Obrigatório";
-    if (!form.quantidade_lojas || parseInt(form.quantidade_lojas) < 1) errs.quantidade_lojas = "Obrigatório";
-    if (!form.erp_utilizado.trim()) errs.erp_utilizado = "Obrigatório";
+    if (form.email_responsavel.trim() && !validateEmail(form.email_responsavel)) errs.email_responsavel = "Email inválido";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
