@@ -1,50 +1,45 @@
-# Validação de senha — criação e troca apenas
+## Tornar campos de comissão e parcelas opcionais no modal financeiro
 
-## Escopo
-Não tocar em `/login` (`src/pages/admin/AdminLogin.tsx` e equivalente parceiro). Mensagens lá permanecem:
-- "Preencha email e senha"
-- "Email ou senha incorretos"
+Arquivo a alterar:
+`src/components/admin/CadastroFinanceiroDialog.tsx`
 
-Aplicar validação de força de senha em:
-- `/primeiro-acesso` → `src/pages/PrimeiroAcesso.tsx`
-- `/resetar-senha` → `src/pages/ResetarSenha.tsx`
-- `/cadastro` → `src/pages/CadastroParceiro.tsx` (se houver campo de senha)
+Não alterar outros arquivos.
 
-## Regras
-- Mínimo 6 caracteres
-- Pelo menos 1 letra maiúscula
-- Pelo menos 1 caractere especial (não alfanumérico)
+Contexto:
+No modal "Dados financeiros do contrato", aberto ao mover um lead de "Reunião realizada" para "Proposta enviada", os campos de comissão e parcelas devem continuar visíveis, mas não podem ser obrigatórios.
 
-## Implementação
+Mudanças em `handleSave`:
+Remover as validações que bloqueiam o salvamento quando estes campos estão vazios ou zerados:
 
-### 1. Helper compartilhado
-Criar `src/lib/passwordPolicy.ts`:
-- `validatePassword(pw: string): { valid: boolean }`
-- `PASSWORD_RULES_TEXT = "Mínimo de 6 caracteres, uma letra maiúscula e um caractere especial"`
-- `PASSWORD_INVALID_MSG = "Sua senha ainda não atende aos requisitos. Use no mínimo 6 caracteres, uma letra maiúscula e um caractere especial."`
-- `PASSWORD_WEAK_MSG = "Essa senha não foi aceita. Use no mínimo 6 caracteres, uma letra maiúscula e um caractere especial."`
-- Regex: `/[A-Z]/` e `/[^A-Za-z0-9]/` + `length >= 6`
+- validação de `parcelas <= 0`
+- validação de percentual de comissão quando `tipoComissao === "percentual"`
+- validação de valor fixo de comissão quando `tipoComissao === "fixo"`
 
-### 2. `/primeiro-acesso`
-- Substituir checagem `password.length < 6` por `validatePassword(password)`; toast com `PASSWORD_INVALID_MSG`.
-- Abaixo do input "Nova Senha", lista de requisitos (3 linhas) com check verde quando cumprido (texto: "Mínimo de 6 caracteres", "Uma letra maiúscula", "Um caractere especial").
-- No catch, mapear erros do Supabase contendo "weak" / "password" / "Password should" → `PASSWORD_WEAK_MSG`.
+Manter apenas as validações dos campos centrais:
+- `setup >= 0`
+- `mensalidade >= 0`
+- `qtdLojas > 0`
+- `campanhas >= 0`
 
-### 3. `/resetar-senha`
-- Mesma validação e mesmo bloco de requisitos abaixo do campo.
-- Mesmo mapeamento de erro do Supabase.
+Persistência no Supabase:
+No `.update({...})`, ajustar `qtd_parcelas` para:
+qtd_parcelas: form.comissao_vitalicia || parcelas <= 0 ? null : parcelas
 
-### 4. `/cadastro` (`CadastroParceiro.tsx`)
-- Se o fluxo tem campo de senha, aplicar mesma validação + lista de requisitos.
-- Se não tem (cadastro só envia link de primeiro acesso), nenhuma mudança.
+Manter percentual_consultor: percentualEfetivo como já está. Quando os campos de comissão estiverem vazios, percentualEfetivo deve continuar caindo para 0, sem exibir erro.
 
-## Não fazer
-- Nada em `/login`.
-- Não alterar políticas no backend.
-- Não habilitar HIBP agora.
+Callback onSaved:
+Ajustar qtd_parcelas para:
+qtd_parcelas: form.comissao_vitalicia || parcelas <= 0 ? 0 : parcelas
 
-## Critério de aceite
-- Login segue com mensagens atuais.
-- Em `/primeiro-acesso` e `/resetar-senha` a lista de requisitos aparece e atualiza ao digitar.
-- Senha fraca bloqueia o submit com a mensagem amigável.
-- Erro do Supabase nunca aparece cru ao usuário.
+Não alterar:
+- Alerta amarelo
+- Checkbox "Comissão vitalícia"
+- UI dos campos de comissão/parcelas
+- Preview de cálculos automáticos
+- Textos do modal
+- Layout
+
+Critério de aceite:
+- O build deve passar.
+- Ao mover um lead de "Reunião realizada" para "Proposta enviada", deve ser possível salvar preenchendo apenas Setup, Mensalidade, Quantidade de lojas e Receita de campanhas.
+- O salvamento não deve exigir tipo de comissão, percentual de comissão, valor fixo de comissão, quantidade de parcelas ou comissão vitalícia.

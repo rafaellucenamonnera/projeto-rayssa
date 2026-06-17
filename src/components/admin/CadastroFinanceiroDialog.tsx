@@ -98,14 +98,7 @@ export const CadastroFinanceiroDialog = ({
     if (setup < 0) { toast.error("Valor de setup inválido"); return; }
     if (mensalidade < 0) { toast.error("Mensalidade inválida"); return; }
     if (qtdLojas <= 0) { toast.error("Quantidade de lojas deve ser ao menos 1"); return; }
-    if (!form.comissao_vitalicia && parcelas <= 0) { toast.error("Informe a quantidade de parcelas"); return; }
     if (campanhas < 0) { toast.error("Receita de campanhas inválida"); return; }
-    if (tipoComissao === "percentual" && (parseFloat(form.percentual_comissao) || 0) <= 0) {
-      toast.error("Informe o percentual de comissão"); return;
-    }
-    if (tipoComissao === "fixo" && (parseFloat(form.valor_comissao_fixo) || 0) <= 0) {
-      toast.error("Informe o valor da comissão"); return;
-    }
 
     setLoading(true);
     try {
@@ -117,7 +110,7 @@ export const CadastroFinanceiroDialog = ({
           valor_campanhas: campanhas,
           quantidade_lojas: qtdLojas,
           percentual_consultor: percentualEfetivo,
-          qtd_parcelas: form.comissao_vitalicia ? null : parcelas,
+          qtd_parcelas: form.comissao_vitalicia || parcelas <= 0 ? null : parcelas,
           parcelas_pagas: 0,
           comissao_vitalicia: form.comissao_vitalicia,
         } as any)
@@ -130,7 +123,7 @@ export const CadastroFinanceiroDialog = ({
         valor_mensalidade: mensalidade,
         valor_campanhas: campanhas,
         percentual_consultor: percentualEfetivo,
-        qtd_parcelas: form.comissao_vitalicia ? 0 : parcelas,
+        qtd_parcelas: form.comissao_vitalicia || parcelas <= 0 ? 0 : parcelas,
         comissao_vitalicia: form.comissao_vitalicia,
       });
       onOpenChange(false);
