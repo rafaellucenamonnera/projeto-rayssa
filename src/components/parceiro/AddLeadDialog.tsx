@@ -44,10 +44,7 @@ export const AddLeadDialog = ({ open, onOpenChange, parceiroId, parceiroNome, on
     const errs: Record<string, string> = {};
     if (!form.nome_responsavel.trim()) errs.nome_responsavel = "Obrigatório";
     if (!form.telefone_responsavel.trim()) errs.telefone_responsavel = "Obrigatório";
-    if (!validateEmail(form.email_responsavel)) errs.email_responsavel = "Email inválido";
-    if (!form.nome_fantasia.trim()) errs.nome_fantasia = "Obrigatório";
-    if (!form.quantidade_lojas || parseInt(form.quantidade_lojas) < 1) errs.quantidade_lojas = "Obrigatório";
-    if (!form.erp_utilizado.trim()) errs.erp_utilizado = "Obrigatório";
+    if (form.email_responsavel.trim() && !validateEmail(form.email_responsavel)) errs.email_responsavel = "Email inválido";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -62,10 +59,10 @@ export const AddLeadDialog = ({ open, onOpenChange, parceiroId, parceiroNome, on
         parceiro_id: parceiroId,
         nome_responsavel: form.nome_responsavel.trim(),
         telefone_responsavel: form.telefone_responsavel.trim(),
-        email_responsavel: form.email_responsavel.trim().toLowerCase(),
-        nome_fantasia: form.nome_fantasia.trim(),
-        quantidade_lojas: parseInt(form.quantidade_lojas),
-        erp_utilizado: form.erp_utilizado.trim(),
+        email_responsavel: form.email_responsavel.trim() ? form.email_responsavel.trim().toLowerCase() : null,
+        nome_fantasia: form.nome_fantasia.trim() || null,
+        quantidade_lojas: form.quantidade_lojas ? parseInt(form.quantidade_lojas) : null,
+        erp_utilizado: form.erp_utilizado.trim() || null,
         valor_campanhas: form.valor_campanhas ? parseFloat(form.valor_campanhas) : null,
         canal_tracao: form.canal_tracao.trim() || null,
         origem: "consultor_manual",
@@ -129,26 +126,23 @@ export const AddLeadDialog = ({ open, onOpenChange, parceiroId, parceiroNome, on
               {errors.telefone_responsavel && <p className="text-destructive text-xs">{errors.telefone_responsavel}</p>}
             </div>
             <div className={fieldClass}>
-              <Label>E-mail *</Label>
+              <Label>E-mail</Label>
               <Input type="email" value={form.email_responsavel} onChange={(e) => setForm({ ...form, email_responsavel: e.target.value })} placeholder="email@exemplo.com" />
               {errors.email_responsavel && <p className="text-destructive text-xs">{errors.email_responsavel}</p>}
             </div>
           </div>
           <div className={fieldClass}>
-            <Label>Nome da Empresa *</Label>
+            <Label>Nome da Empresa</Label>
             <Input value={form.nome_fantasia} onChange={(e) => setForm({ ...form, nome_fantasia: e.target.value })} placeholder="Nome da Empresa" />
-            {errors.nome_fantasia && <p className="text-destructive text-xs">{errors.nome_fantasia}</p>}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className={fieldClass}>
-              <Label>Número de lojas *</Label>
+              <Label>Número de lojas</Label>
               <Input type="number" min="1" value={form.quantidade_lojas} onChange={(e) => setForm({ ...form, quantidade_lojas: e.target.value })} placeholder="1" />
-              {errors.quantidade_lojas && <p className="text-destructive text-xs">{errors.quantidade_lojas}</p>}
             </div>
             <div className={fieldClass}>
-              <Label>Sistema de loja *</Label>
+              <Label>Sistema de loja</Label>
               <Input value={form.erp_utilizado} onChange={(e) => setForm({ ...form, erp_utilizado: e.target.value })} placeholder="Ex: Trier, Linx" />
-              {errors.erp_utilizado && <p className="text-destructive text-xs">{errors.erp_utilizado}</p>}
             </div>
           </div>
           <div className={fieldClass}>
