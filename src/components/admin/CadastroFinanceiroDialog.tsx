@@ -123,7 +123,7 @@ export const CadastroFinanceiroDialog = ({
         valor_mensalidade: mensalidade,
         valor_campanhas: campanhas,
         percentual_consultor: percentualEfetivo,
-        qtd_parcelas: form.comissao_vitalicia ? 0 : parcelas,
+        qtd_parcelas: form.comissao_vitalicia || parcelas <= 0 ? 0 : parcelas,
         comissao_vitalicia: form.comissao_vitalicia,
       });
       onOpenChange(false);
