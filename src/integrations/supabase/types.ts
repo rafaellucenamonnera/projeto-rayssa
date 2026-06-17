@@ -2236,6 +2236,10 @@ export type Database = {
         }
         Returns: Json
       }
+      reset_commercial_lead_stage_timer: {
+        Args: { p_lead_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "gestor_conta"
