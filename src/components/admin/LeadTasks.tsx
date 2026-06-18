@@ -49,7 +49,7 @@ const dueMeta = (dueAt: string, status: string) => {
   return { label: "No prazo", className: "bg-secondary text-muted-foreground border-border" };
 };
 
-export const LeadTasks = ({ leadId, leadName = "card" }: LeadTasksProps) => {
+export const LeadTasks = ({ leadId, leadName = "card", canCreateTask = true, canCompleteTask = true }: LeadTasksProps) => {
   const [tasks, setTasks] = useState<LeadTask[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
