@@ -12,6 +12,10 @@ interface LeadCommentsProps {
   leadId: string;
   currentStage: string;
   userName: string;
+  canInsertMessage?: boolean;
+  canEditMessage?: boolean;
+  canDeleteMessage?: boolean;
+  canInsertFile?: boolean;
 }
 
 interface Comment {
@@ -28,7 +32,15 @@ type MentionUser = {
   nome: string;
 };
 
-export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsProps) => {
+export const LeadComments = ({
+  leadId,
+  currentStage,
+  userName,
+  canInsertMessage = true,
+  canEditMessage = true,
+  canDeleteMessage = true,
+  canInsertFile = true,
+}: LeadCommentsProps) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(false);
