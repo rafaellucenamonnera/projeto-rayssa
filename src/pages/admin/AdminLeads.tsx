@@ -1576,7 +1576,7 @@ const AdminLeads = () => {
                 customCrmMode={isCustomCrmPanel}
                 users={Object.fromEntries(allActiveUsers.map((u) => [u.user_id, u.nome]))}
               />
-              {!isAmbassadorPanel && (
+              {!isAmbassadorPanel && (isAdmin || canCreate) && (
                 <LeadImportDialog
                   parceiros={parceirosAll}
                   onImported={loadData}
@@ -1588,7 +1588,7 @@ const AdminLeads = () => {
               )}
             </>
           )}
-          {isCustomCrmPanel && (
+          {isCustomCrmPanel && (isAdmin || canCreate) && (
             <Button onClick={() => setNewCardOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
               + Card
             </Button>
