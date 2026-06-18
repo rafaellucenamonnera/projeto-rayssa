@@ -24,7 +24,7 @@ const AdminPermissoes = () => {
 
   const modules = useMemo(
     () => [
-      { key: "leads", label: "LEADS", actions: ["acessar", "criar", "editar", "excluir", "mover_pipeline", "editar_financeiro"] },
+      { key: "leads", label: "LEADS", actions: ["acessar", "criar", "editar", "excluir", "mover_pipeline", "editar_pipeline", "criar_tarefa", "concluir_tarefa", "inserir_mensagem", "editar_mensagem", "excluir_mensagem", "inserir_arquivo", "editar_financeiro", "receber_notificacao_lead_perdido"] },
       { key: "contatos", label: "CONTATOS", actions: ["acessar", "criar", "editar", "excluir", "vincular_lead"] },
       { key: "atividades", label: "ATIVIDADES", actions: ["acessar", "criar", "editar", "excluir"] },
       { key: "email", label: "E-MAIL", actions: ["acessar", "enviar", "receber", "configurar_gmail"] },
