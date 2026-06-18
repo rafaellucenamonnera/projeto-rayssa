@@ -2453,7 +2453,12 @@ const AdminLeads = () => {
                     actionUrl={cardActionUrl(detailLead.id)}
                   />
                 ) : (
-                  <LeadTasks leadId={detailLead.id} leadName={detailLead.nome_fantasia} />
+                  <LeadTasks
+                    leadId={detailLead.id}
+                    leadName={detailLead.nome_fantasia}
+                    canCreateTask={isAdmin || canCreateTask}
+                    canCompleteTask={isAdmin || canCompleteTask}
+                  />
                 )}
               </div>
 
@@ -2464,6 +2469,10 @@ const AdminLeads = () => {
                     leadId={detailLead.id}
                     currentStage={detailLead.status_lead || "novo_lead"}
                     userName={currentUserName}
+                    canInsertMessage={isAdmin || canInsertMessage}
+                    canEditMessage={isAdmin || canEditMessage}
+                    canDeleteMessage={isAdmin || canDeleteMessage}
+                    canInsertFile={isAdmin || canInsertFile}
                   />
                 </div>
               )}
