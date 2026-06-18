@@ -24,11 +24,12 @@ const AdminPermissoes = () => {
 
   const modules = useMemo(
     () => [
-      { key: "leads", label: "LEADS", actions: ["acessar", "criar", "editar", "excluir", "mover_pipeline", "editar_financeiro"] },
+      { key: "leads", label: "LEADS", actions: ["acessar", "criar", "editar", "excluir", "mover_pipeline", "criar_tarefa", "concluir_tarefa", "inserir_mensagem", "editar_mensagem", "excluir_mensagem", "inserir_arquivo", "editar_financeiro", "receber_notificacao_lead_perdido"] },
       { key: "contatos", label: "CONTATOS", actions: ["acessar", "criar", "editar", "excluir", "vincular_lead"] },
       { key: "atividades", label: "ATIVIDADES", actions: ["acessar", "criar", "editar", "excluir"] },
       { key: "email", label: "E-MAIL", actions: ["acessar", "enviar", "receber", "configurar_gmail"] },
       { key: "pipeline", label: "PIPELINE", actions: ["criar_etapa", "editar_etapa", "excluir_etapa", "clonar_card"] },
+      { key: "integracoes", label: "INTEGRAÇÕES", actions: ["notificacao_via_slack"] },
       { key: "configuracao_painel", label: "CONFIGURAÇÃO PAINEL", actions: ["visualizar", "editar", "criar_estagio", "excluir_estagio"] },
       { key: "configuracoes", label: "CONFIGURAÇÕES", actions: ["acessar", "gerenciar_permissoes", "gerenciar_usuarios"] },
     ],
@@ -207,19 +208,14 @@ const AdminPermissoes = () => {
       .from("user_panel_permissions")
       .upsert(panelRows, { onConflict: "user_id,panel_id" });
 
-    const selected = users.find((u) => u.user_id === selectedUserId);
-    const { error: responsibleError } = await (supabase as any)
-      .from("profiles")
-      .upsert(
-        {
-          user_id: selectedUserId,
-          nome: selected?.nome?.trim() || selected?.email || "Sem nome",
-          can_be_responsible: canBeResponsible,
-          ativo: selected?.ativo ?? true,
-        },
-        { onConflict: "user_id" },
-      );
-    if (panelError || responsibleError) {
+    const { data: responsibleData, error: responsibleError } = await supabase.functions.invoke("admin-create-user", {
+      method: "PATCH",
+      body: {
+        user_id: selectedUserId,
+        can_be_responsible: canBeResponsible,
+      },
+    });
+    if (panelError || responsibleError || responsibleData?.error) {
       toast.error("Não foi possível salvar as permissões.");
       setSaving(false);
       return;
@@ -312,7 +308,7 @@ const AdminPermissoes = () => {
                     onCheckedChange={(checked) => setCanBeResponsible(!!checked)}
                   />
                   <Label htmlFor="can_be_responsible" className="text-sm cursor-pointer">
-                    Pode ser Responsável por Cards
+                    Responsáveis por tarefas
                   </Label>
                 </div>
               </div>

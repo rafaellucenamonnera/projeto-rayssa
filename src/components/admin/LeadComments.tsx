@@ -3,14 +3,19 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, MessageSquare, Send, Pencil, Trash2, X, Check } from "lucide-react";
+import { Download, Loader2, MessageSquare, Paperclip, Send, Pencil, Trash2, X, Check } from "lucide-react";
 import { PIPELINE_LABELS } from "@/lib/pipelineConstants";
-import { cardActionUrl, createNotifications } from "@/lib/notifications";
+import { createNotifications } from "@/lib/notifications";
 
 interface LeadCommentsProps {
   leadId: string;
   currentStage: string;
   userName: string;
+  actionBasePath?: string;
+  canInsertMessage?: boolean;
+  canEditMessage?: boolean;
+  canDeleteMessage?: boolean;
+  canInsertFile?: boolean;
 }
 
 interface Comment {
@@ -20,6 +25,15 @@ interface Comment {
   comentario: string;
   data_comentario: string;
   user_id: string;
+  lead_comment_attachments?: CommentAttachment[];
+}
+
+interface CommentAttachment {
+  id: string;
+  storage_path: string;
+  file_name: string;
+  mime_type: string;
+  size_bytes: number;
 }
 
 type MentionUser = {
@@ -29,7 +43,16 @@ type MentionUser = {
   registration_status?: string | null;
 };
 
-export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsProps) => {
+export const LeadComments = ({
+  leadId,
+  currentStage,
+  userName,
+  actionBasePath = "/admin/painel-comercial",
+  canInsertMessage = true,
+  canEditMessage = true,
+  canDeleteMessage = true,
+  canInsertFile = true,
+}: LeadCommentsProps) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(false);
@@ -42,34 +65,37 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
   const [selectedMentionIds, setSelectedMentionIds] = useState<string[]>([]);
   const [selectedSlackMentions, setSelectedSlackMentions] = useState<MentionUser[]>([]);
   const [mentionQuery, setMentionQuery] = useState("");
+  const [attachments, setAttachments] = useState<File[]>([]);
+
+  const allowedMimeTypes = new Set([
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "application/pdf",
+    "text/csv",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setCurrentUserId(user.id);
     });
     const loadMentionUsers = async () => {
-      const [{ data: profileUsers }, { data: slackUsers }] = await Promise.all([
+      const [{ data: profileUsers }, { data: roles }] = await Promise.all([
         supabase
       .from("profiles")
-      .select("user_id,nome,ativo")
+      .select("user_id,nome,ativo,can_be_responsible")
       .eq("ativo", true)
           .order("nome", { ascending: true }),
-        (supabase as any)
-          .from("slack_users")
-          .select("slack_user_id,name,real_name,email,registration_status,is_active,profile_user_id")
-          .eq("is_active", true)
-          .order("name", { ascending: true }),
+        (supabase as any).from("user_roles").select("user_id,role").eq("role", "admin"),
       ]);
-      const internalUsers = ((profileUsers as any) || []).map((u: any) => ({ user_id: u.user_id, nome: u.nome }));
-      const internalIds = new Set(internalUsers.map((u: MentionUser) => u.user_id));
-      const slackOnlyUsers = ((slackUsers as any) || [])
-        .filter((u: any) => !u.profile_user_id || !internalIds.has(u.profile_user_id))
-        .map((u: any) => ({
-          slack_user_id: u.slack_user_id,
-          nome: u.real_name || u.name || u.email || u.slack_user_id,
-          registration_status: u.registration_status || "pending",
-        }));
-      setUsers([...internalUsers, ...slackOnlyUsers]);
+      const adminIds = new Set(((roles as any[]) || []).map((role) => role.user_id));
+      const internalUsers = ((profileUsers as any) || [])
+        .filter((u: any) => u.can_be_responsible || adminIds.has(u.user_id))
+        .map((u: any) => ({ user_id: u.user_id, nome: u.nome }));
+      setUsers(internalUsers);
     };
     loadMentionUsers();
   }, []);
@@ -78,7 +104,7 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
     setLoading(true);
     const { data, error } = await supabase
       .from("lead_comments")
-      .select("*")
+      .select("*,lead_comment_attachments(id,storage_path,file_name,mime_type,size_bytes)")
       .eq("lead_id", leadId)
       .order("data_comentario", { ascending: false });
     if (!error) setComments((data as any) || []);
@@ -90,7 +116,11 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
   }, [leadId]);
 
   const handleSubmit = async () => {
-    if (!newComment.trim()) return;
+    if (!canInsertMessage) {
+      toast.error("Sem permissão para inserir mensagem");
+      return;
+    }
+    if (!newComment.trim() && attachments.length === 0) return;
     setSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -105,6 +135,30 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
       } as any).select("id").single();
 
       if (error) throw error;
+      if (attachments.length > 0 && comment?.id) {
+        const attachmentRows = [];
+        for (const file of attachments) {
+          const extension = file.name.includes(".") ? file.name.split(".").pop() : "bin";
+          const storagePath = `${leadId}/${comment.id}/${crypto.randomUUID()}.${extension}`;
+          const { error: uploadError } = await supabase.storage
+            .from("lead-comment-attachments")
+            .upload(storagePath, file, { contentType: file.type || "application/octet-stream", upsert: false });
+          if (uploadError) throw uploadError;
+          attachmentRows.push({
+            comment_id: comment.id,
+            lead_id: leadId,
+            storage_path: storagePath,
+            file_name: file.name,
+            mime_type: file.type || "application/octet-stream",
+            size_bytes: file.size,
+            created_by: user.id,
+          });
+        }
+        const { error: attachmentError } = await (supabase as any)
+          .from("lead_comment_attachments")
+          .insert(attachmentRows);
+        if (attachmentError) throw attachmentError;
+      }
       const mentionedIds = Array.from(new Set(selectedMentionIds)).filter((id) => id !== user.id);
       if (mentionedIds.length > 0 && comment?.id) {
         await (supabase as any).from("lead_comment_mentions").insert(
@@ -119,11 +173,11 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
           mentionedIds.map((recipientUserId) => ({
             recipientUserId,
             type: "comment_mention",
-            title: "Você foi mencionado em um comentário",
+            title: "Nota",
             message: `${userName} mencionou você no card.`,
             leadId,
             commentId: comment.id,
-            actionUrl: cardActionUrl(leadId),
+            actionUrl: `${actionBasePath}?card=${leadId}`,
             metadata: { comment_preview: newComment.trim().slice(0, 140) },
             deliveryKey: `comment-${comment.id}-mention-${recipientUserId}`,
           })),
@@ -137,7 +191,7 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
               registration_status: mentioned.registration_status || "pending",
               title: "Você foi mencionado em um comentário",
               message: `${userName} mencionou você no card: "${newComment.trim().slice(0, 180)}"`,
-              action_url: cardActionUrl(leadId),
+              action_url: `${actionBasePath}?card=${leadId}`,
               event_type: "comment_mention",
               entity_type: "lead_comment",
               entity_id: comment.id,
@@ -146,9 +200,17 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
           }),
         ));
       }
+      await (supabase as any)
+        .from("notifications")
+        .update({ read_at: new Date().toISOString() })
+        .eq("recipient_user_id", user.id)
+        .eq("lead_id", leadId)
+        .eq("type", "comment_mention")
+        .is("read_at", null);
       setNewComment("");
       setSelectedMentionIds([]);
       setSelectedSlackMentions([]);
+      setAttachments([]);
       setMentionQuery("");
       loadComments();
     } catch {
@@ -178,6 +240,57 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
     setMentionQuery("");
   };
 
+  const handleAttachmentSelect = (files: FileList | null) => {
+    if (!canInsertFile) {
+      toast.error("Sem permissão para inserir arquivo");
+      return;
+    }
+    if (!files) return;
+    const next = [...attachments];
+    for (const file of Array.from(files)) {
+      if (next.length >= 5) {
+        toast.error("Limite de 5 anexos por comentário.");
+        break;
+      }
+      const spreadsheetByName = /\.(csv|xls|xlsx)$/i.test(file.name);
+      if (!allowedMimeTypes.has(file.type) && !spreadsheetByName) {
+        toast.error(`Tipo de arquivo não permitido: ${file.name}`);
+        continue;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`Arquivo acima de 10 MB: ${file.name}`);
+        continue;
+      }
+      next.push(file);
+    }
+    setAttachments(next);
+  };
+
+  const openAttachment = async (attachment: CommentAttachment) => {
+    const { data, error } = await supabase.storage
+      .from("lead-comment-attachments")
+      .createSignedUrl(attachment.storage_path, 3600);
+    if (error || !data?.signedUrl) {
+      toast.error("Erro ao abrir anexo");
+      return;
+    }
+    try {
+      const response = await fetch(data.signedUrl);
+      if (!response.ok) throw new Error("download_failed");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = attachment.file_name;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Erro ao baixar anexo");
+    }
+  };
+
   const renderCommentText = (text: string) => {
     const parts = text.split(/(@[\p{L}\p{N}À-ÿ._ -]+)/gu);
     return parts.map((part, index) =>
@@ -194,6 +307,10 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
     : [];
 
   const handleEdit = async (commentId: string) => {
+    if (!canEditMessage) {
+      toast.error("Sem permissão para editar mensagem");
+      return;
+    }
     if (!editingText.trim()) return;
     try {
       const { error } = await supabase
@@ -211,6 +328,10 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
   };
 
   const handleDelete = async (commentId: string) => {
+    if (!canDeleteMessage) {
+      toast.error("Sem permissão para excluir mensagem");
+      return;
+    }
     try {
       const { error } = await supabase
         .from("lead_comments")
@@ -233,6 +354,7 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
       </h3>
 
       {/* Add comment */}
+      {canInsertMessage && (
       <div className="space-y-2">
         <Textarea
           value={newComment}
@@ -241,6 +363,32 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
           rows={2}
           maxLength={500}
         />
+        <div className="flex flex-wrap items-center gap-2">
+          {canInsertFile && (
+          <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-secondary">
+            <Paperclip className="h-3.5 w-3.5" />
+            Anexar
+            <input
+              type="file"
+              multiple
+              accept="image/*,.pdf,.csv,.xls,.xlsx"
+              className="hidden"
+              onChange={(event) => {
+                handleAttachmentSelect(event.target.files);
+                event.currentTarget.value = "";
+              }}
+            />
+          </label>
+          )}
+          {attachments.map((file, index) => (
+            <span key={`${file.name}-${index}`} className="inline-flex max-w-[220px] items-center gap-1 rounded bg-secondary px-2 py-1 text-xs">
+              <span className="truncate">{file.name}</span>
+              <button type="button" onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== index))}>
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
         {mentionSuggestions.length > 0 && (
           <div className="rounded-md border border-border bg-popover p-1 shadow-sm">
             {mentionSuggestions.map((u) => (
@@ -262,12 +410,13 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
         )}
         <div className="flex items-center justify-between">
           <span className="text-xs text-muted-foreground">{newComment.length}/500</span>
-          <Button size="sm" onClick={handleSubmit} disabled={submitting || !newComment.trim()}>
+          <Button size="sm" onClick={handleSubmit} disabled={submitting || (!newComment.trim() && attachments.length === 0)}>
             {submitting ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-3 w-3" />}
             Enviar
           </Button>
         </div>
       </div>
+      )}
 
       {/* Comments list */}
       {loading ? (
@@ -291,22 +440,26 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
                     <span className="text-[10px] text-muted-foreground">
                       {new Date(c.data_comentario).toLocaleDateString("pt-BR")} {new Date(c.data_comentario).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                     </span>
-                    {isOwner && !isEditing && !isDeleting && (
+                    {isOwner && !isEditing && !isDeleting && (canEditMessage || canDeleteMessage) && (
                       <>
-                        <button
-                          onClick={() => { setEditingId(c.id); setEditingText(c.comentario); }}
-                          className="p-0.5 hover:bg-primary/10 rounded"
-                          title="Editar comentário"
-                        >
-                          <Pencil className="h-3 w-3 text-muted-foreground" />
-                        </button>
-                        <button
-                          onClick={() => setDeletingId(c.id)}
-                          className="p-0.5 hover:bg-destructive/10 rounded"
-                          title="Excluir comentário"
-                        >
-                          <Trash2 className="h-3 w-3 text-muted-foreground" />
-                        </button>
+                        {canEditMessage && (
+                          <button
+                            onClick={() => { setEditingId(c.id); setEditingText(c.comentario); }}
+                            className="p-0.5 hover:bg-primary/10 rounded"
+                            title="Editar comentário"
+                          >
+                            <Pencil className="h-3 w-3 text-muted-foreground" />
+                          </button>
+                        )}
+                        {canDeleteMessage && (
+                          <button
+                            onClick={() => setDeletingId(c.id)}
+                            className="p-0.5 hover:bg-destructive/10 rounded"
+                            title="Excluir comentário"
+                          >
+                            <Trash2 className="h-3 w-3 text-muted-foreground" />
+                          </button>
+                        )}
                       </>
                     )}
                   </div>
@@ -345,7 +498,24 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm">{renderCommentText(c.comentario)}</p>
+                  <>
+                    <p className="text-sm">{renderCommentText(c.comentario)}</p>
+                    {c.lead_comment_attachments && c.lead_comment_attachments.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {c.lead_comment_attachments.map((attachment) => (
+                          <button
+                            key={attachment.id}
+                            type="button"
+                            onClick={() => openAttachment(attachment)}
+                            className="inline-flex max-w-full items-center gap-1 rounded border border-border bg-background px-2 py-1 text-xs hover:border-primary/50"
+                          >
+                            <Download className="h-3 w-3" />
+                            <span className="truncate">{attachment.file_name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             );

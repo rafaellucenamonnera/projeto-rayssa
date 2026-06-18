@@ -97,6 +97,99 @@ const FINANCEIRO_REQUIRED_FROM = [
   "contrato_assinado",
 ];
 
+const LEAD_PERMISSION_ACTIONS = [
+  "acessar",
+  "criar",
+  "editar",
+  "excluir",
+  "mover_pipeline",
+  "criar_tarefa",
+  "concluir_tarefa",
+  "inserir_mensagem",
+  "editar_mensagem",
+  "excluir_mensagem",
+  "inserir_arquivo",
+  "editar_financeiro",
+  "receber_notificacao_lead_perdido",
+] as const;
+
+const emptyEditFormData = {
+  nome_fantasia: "",
+  razao_social: "",
+  cnpj: "",
+  descricao_necessidade: "",
+  status_lead: "novo_lead",
+  cidade: "",
+  quantidade_lojas: "",
+  erp_utilizado: "",
+  numero_funcionarios: "",
+  tipo_empresa: "",
+  canal_tracao: "",
+  nome_responsavel: "",
+  telefone_responsavel: "",
+  email_responsavel: "",
+  responsible_user_id: "",
+  responsible_slack_user_id: "",
+};
+
+const leadToEditFormData = (lead: any) => ({
+  nome_fantasia: lead?.nome_fantasia || "",
+  razao_social: lead?.razao_social || "",
+  cnpj: lead?.cnpj || "",
+  descricao_necessidade: lead?.descricao_necessidade || "",
+  status_lead: lead?.status_lead || lead?.status || "novo_lead",
+  cidade: lead?.cidade || "",
+  quantidade_lojas: lead?.quantidade_lojas ? String(lead.quantidade_lojas) : "",
+  erp_utilizado: lead?.erp_utilizado || "",
+  numero_funcionarios: lead?.numero_funcionarios || lead?.quantidade_funcionarios ? String(lead.numero_funcionarios || lead.quantidade_funcionarios) : "",
+  tipo_empresa: lead?.tipo_empresa || "",
+  canal_tracao: lead?.canal_tracao || "",
+  nome_responsavel: lead?.nome_responsavel || "",
+  telefone_responsavel: lead?.telefone_responsavel || "",
+  email_responsavel: lead?.email_responsavel || "",
+  responsible_user_id: lead?.responsible_user_id || "",
+  responsible_slack_user_id: lead?.responsible_slack_user_id || "",
+});
+
+type LeadEditFormData = typeof emptyEditFormData;
+
+const useLeadsPermissions = (isAdmin: boolean) => {
+  const [permissions, setPermissions] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    let active = true;
+    const loadPermissions = async () => {
+      if (isAdmin) {
+        if (active) setPermissions(new Set(LEAD_PERMISSION_ACTIONS));
+        return;
+      }
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) {
+        if (active) setPermissions(new Set());
+        return;
+      }
+      const { data, error } = await (supabase as any)
+        .from("module_permissions")
+        .select("acao")
+        .eq("user_id", auth.user.id)
+        .eq("modulo", "leads")
+        .eq("permitido", true);
+      if (!active) return;
+      if (error) {
+        setPermissions(new Set());
+        return;
+      }
+      setPermissions(new Set(((data as any[]) || []).map((permission) => permission.acao)));
+    };
+    loadPermissions();
+    return () => {
+      active = false;
+    };
+  }, [isAdmin]);
+
+  return permissions;
+};
+
 const hasValidFinanceiro = (lead: any) =>
   Number(lead?.valor_setup ?? 0) >= 0 &&
   Number(lead?.valor_mensalidade ?? 0) >= 0 &&
@@ -110,6 +203,18 @@ const AdminLeads = () => {
   const { panelId: dynamicPanelId } = useParams();
   const location = useLocation();
   const { isAdmin } = useAuth();
+  const leadPermissions = useLeadsPermissions(isAdmin);
+  const canCreateLead = isAdmin || leadPermissions.has("criar");
+  const canEditLead = isAdmin || leadPermissions.has("editar");
+  const canDeleteLead = isAdmin || leadPermissions.has("excluir");
+  const canMovePipeline = isAdmin || leadPermissions.has("mover_pipeline");
+  const canEditFinanceiro = isAdmin || leadPermissions.has("editar_financeiro");
+  const canCreateTask = isAdmin || leadPermissions.has("criar_tarefa");
+  const canCompleteTask = isAdmin || leadPermissions.has("concluir_tarefa");
+  const canInsertMessage = isAdmin || leadPermissions.has("inserir_mensagem");
+  const canEditMessage = isAdmin || leadPermissions.has("editar_mensagem");
+  const canDeleteMessage = isAdmin || leadPermissions.has("excluir_mensagem");
+  const canInsertFile = isAdmin || leadPermissions.has("inserir_arquivo");
   const painelTitleMap: Record<string, string> = {
     "/admin/painel-comercial": "Painel Comercial",
     "/admin/painel-onboarding": "Painel Onboarding / Integração",
@@ -168,15 +273,7 @@ const AdminLeads = () => {
   const [conversionLeadName, setConversionLeadName] = useState("");
   const [isEditingCard, setIsEditingCard] = useState(false);
   const [savingCard, setSavingCard] = useState(false);
-  const [editFormData, setEditFormData] = useState<{
-    nome_fantasia: string;
-    descricao_necessidade: string;
-    status_lead: string;
-    cidade: string;
-    nome_responsavel: string;
-    responsible_user_id: string;
-    responsible_slack_user_id: string;
-  }>({ nome_fantasia: "", descricao_necessidade: "", status_lead: "novo_lead", cidade: "", nome_responsavel: "", responsible_user_id: "", responsible_slack_user_id: "" });
+  const [editFormData, setEditFormData] = useState<LeadEditFormData>(emptyEditFormData);
 
   // Reunião dialog
   const [reuniaoDialogOpen, setReuniaoDialogOpen] = useState(false);
@@ -278,15 +375,9 @@ const AdminLeads = () => {
           .eq("modulo", "pipeline")
           .eq("acao", "clonar_card")
           .maybeSingle();
-        const { data: leadPermissions } = await (supabase as any)
-          .from("module_permissions")
-          .select("acao,permitido")
-          .eq("user_id", auth.user.id)
-          .eq("modulo", "leads")
-          .in("acao", ["editar", "excluir"]);
         setCanCloneCard(!!clonePermission?.permitido);
-        setCanEditCard(!!(leadPermissions || []).find((p: any) => p.acao === "editar" && p.permitido));
-        setCanDeleteCard(!!(leadPermissions || []).find((p: any) => p.acao === "excluir" && p.permitido));
+        setCanEditCard(canEditLead);
+        setCanDeleteCard(canDeleteLead);
       }
       const { data: panels } = await (supabase as any)
         .from("pipeline_panels")
@@ -297,7 +388,7 @@ const AdminLeads = () => {
       setAllPanels(loadedPanels);
     };
     loadClonePermissionAndPanels();
-  }, [isAdmin]);
+  }, [isAdmin, canEditLead, canDeleteLead]);
 
   const openCloneDialog = (lead: any) => {
     setCloneLead(lead);
@@ -694,6 +785,10 @@ const AdminLeads = () => {
   };
 
   const handleStatusChange = (leadId: string, leadName: string, newStatus: string) => {
+    if (!canMovePipeline) {
+      toast.error("Sem permissão para mover pipeline");
+      return;
+    }
     const lead = leads.find((l) => l.id === leadId);
     const targetStage = pipelineStages.find((stage) => stage.value === newStatus);
     const targetLabel = normalizeStageLabel(targetStage?.label || newStatus);
@@ -717,6 +812,10 @@ const AdminLeads = () => {
 
     // Bloqueio financeiro: a partir de "Proposta Enviada" exigir dados completos
     if (FINANCEIRO_REQUIRED_FROM.includes(newStatus) && lead && !hasValidFinanceiro(lead)) {
+      if (!canEditFinanceiro) {
+        toast.warning("Preencha o financeiro para avançar este lead. Você não tem permissão para editar financeiro.");
+        return;
+      }
       toast.warning("Preencha o financeiro para avançar este lead.");
       setPendingFinanceiro({ leadId, leadName, parceiroId: lead.parceiro_id || "", nextStatus: newStatus, lead });
       setFinanceiroDialogOpen(true);
@@ -745,6 +844,10 @@ const AdminLeads = () => {
     if (newStatus === "contrato_assinado") {
       if (lead && !lead.dados_completos) {
         toast.error("O cliente precisa preencher o formulário de cadastro completo antes de avançar para Contrato Assinado.");
+        return;
+      }
+      if (!canEditFinanceiro) {
+        toast.warning("Sem permissão para revisar financeiro");
         return;
       }
       // Reabrir modal financeiro para revisão (já tem dados válidos aqui)
@@ -1075,6 +1178,10 @@ const AdminLeads = () => {
   };
 
   const handleDelete = async (id: string, nome: string) => {
+    if (!canDeleteLead) {
+      toast.error("Sem permissão para excluir");
+      return;
+    }
     if (!confirm(`Excluir o lead ${nome}?`)) return;
     const { error } = await supabase.from("leads").delete().eq("id", id);
     if (error) {
@@ -1160,9 +1267,9 @@ const AdminLeads = () => {
       // List files in dossies folder for this lead
       const { data: files } = await supabase.storage
         .from("propostas")
-        .list(`dossies`, { search: leadId });
+        .list(`dossies/${leadId}`);
 
-      const dossieFile = files?.find((f) => f.name.includes(leadId));
+      const dossieFile = files?.find((f) => f.name.startsWith("dossie-") && f.name.endsWith(".txt"));
       if (!dossieFile) {
         toast.error("Dossiê não encontrado. Tente gerar novamente.");
         return;
@@ -1170,7 +1277,7 @@ const AdminLeads = () => {
 
       const { data, error } = await supabase.storage
         .from("propostas")
-        .createSignedUrl(`dossies/${dossieFile.name}`, 3600);
+        .createSignedUrl(`dossies/${leadId}/${dossieFile.name}`, 3600);
       if (error || !data?.signedUrl) {
         toast.error("Erro ao gerar link do dossiê");
         return;
@@ -1226,51 +1333,30 @@ const AdminLeads = () => {
     setDetailLead(lead);
     setEditingNumProposta(lead.numero_proposta || "");
     setIsEditingCard(false);
-    setEditFormData({
-      nome_fantasia: lead.nome_fantasia || "",
-      descricao_necessidade: lead.descricao_necessidade || "",
-      status_lead: lead.status_lead || lead.status || "novo_lead",
-      cidade: lead.cidade || "",
-      nome_responsavel: lead.nome_responsavel || "",
-      responsible_user_id: lead.responsible_user_id || "",
-      responsible_slack_user_id: lead.responsible_slack_user_id || "",
-    });
+    setEditFormData(leadToEditFormData(lead));
     setDetailOpen(true);
   };
 
   const startEditCard = (lead: any) => {
-    if (!canEditCard && !isAdmin) return;
+    if (!canEditLead) {
+      toast.error("Sem permissão para editar");
+      return;
+    }
     setDetailLead(lead);
-    setEditFormData({
-      nome_fantasia: lead.nome_fantasia || "",
-      descricao_necessidade: lead.descricao_necessidade || "",
-      status_lead: lead.status_lead || lead.status || "novo_lead",
-      cidade: lead.cidade || "",
-      nome_responsavel: lead.nome_responsavel || "",
-      responsible_user_id: lead.responsible_user_id || "",
-      responsible_slack_user_id: lead.responsible_slack_user_id || "",
-    });
+    setEditFormData(leadToEditFormData(lead));
     setIsEditingCard(true);
     setDetailOpen(true);
   };
 
   const cancelEditCard = () => {
     if (!detailLead) return;
-    setEditFormData({
-      nome_fantasia: detailLead.nome_fantasia || "",
-      descricao_necessidade: detailLead.descricao_necessidade || "",
-      status_lead: detailLead.status_lead || detailLead.status || "novo_lead",
-      cidade: detailLead.cidade || "",
-      nome_responsavel: detailLead.nome_responsavel || "",
-      responsible_user_id: detailLead.responsible_user_id || "",
-      responsible_slack_user_id: detailLead.responsible_slack_user_id || "",
-    });
+    setEditFormData(leadToEditFormData(detailLead));
     setIsEditingCard(false);
   };
 
   const saveEditedCard = async () => {
     if (!detailLead) return;
-    if (!canEditCard && !isAdmin) {
+    if (!canEditLead) {
       toast.error("Sem permissão para editar");
       return;
     }
@@ -1280,11 +1366,33 @@ const AdminLeads = () => {
       return;
     }
     setSavingCard(true);
+    const quantidadeLojas = editFormData.quantidade_lojas.trim() ? Number(editFormData.quantidade_lojas) : null;
+    const numeroFuncionarios = editFormData.numero_funcionarios.trim() ? Number(editFormData.numero_funcionarios) : null;
+    if (quantidadeLojas !== null && (!Number.isInteger(quantidadeLojas) || quantidadeLojas < 0)) {
+      toast.error("Quantidade de lojas inválida");
+      setSavingCard(false);
+      return;
+    }
+    if (numeroFuncionarios !== null && (!Number.isInteger(numeroFuncionarios) || numeroFuncionarios < 0)) {
+      toast.error("Quantidade de funcionários inválida");
+      setSavingCard(false);
+      return;
+    }
     const payload = {
       nome_fantasia: nome,
-      descricao_necessidade: editFormData.descricao_necessidade.trim(),
-      cidade: editFormData.cidade.trim(),
+      razao_social: editFormData.razao_social.trim() || null,
+      cnpj: editFormData.cnpj.trim() || null,
+      descricao_necessidade: editFormData.descricao_necessidade.trim() || null,
+      cidade: editFormData.cidade.trim() || null,
+      quantidade_lojas: quantidadeLojas,
+      erp_utilizado: editFormData.erp_utilizado.trim() || null,
+      numero_funcionarios: numeroFuncionarios,
+      quantidade_funcionarios: numeroFuncionarios,
+      tipo_empresa: editFormData.tipo_empresa || null,
+      canal_tracao: editFormData.canal_tracao.trim() || null,
       nome_responsavel: editFormData.nome_responsavel?.trim() || null,
+      telefone_responsavel: editFormData.telefone_responsavel.trim() || null,
+      email_responsavel: editFormData.email_responsavel.trim().toLowerCase() || null,
       responsible_user_id: editFormData.responsible_user_id || null,
       responsible_slack_user_id: editFormData.responsible_slack_user_id || null,
     };
@@ -1332,6 +1440,10 @@ const AdminLeads = () => {
   };
 
   const createRepresentativeCard = async () => {
+    if (!canCreateLead) {
+      toast.error("Sem permissão para criar card");
+      return;
+    }
     const fullName = newCardData.full_name.trim();
     const phone = newCardData.phone.trim();
     const email = newCardData.email.trim().toLowerCase();
@@ -1466,6 +1578,7 @@ const AdminLeads = () => {
         <Select
           value={currentStatus}
           onValueChange={(val) => handleStatusChange(lead.id, lead.nome_fantasia, val)}
+          disabled={!canMovePipeline}
         >
           <SelectTrigger className="h-8 w-[180px] text-xs">
             <SelectValue />
@@ -1590,7 +1703,7 @@ const AdminLeads = () => {
               className={`px-3 py-1.5 transition-colors ${view === "lista" ? "bg-primary text-primary-foreground" : "bg-card hover:bg-secondary"}`}
             >Lista</button>
           </div>
-          {currentPanelId !== "sucesso" && (
+          {currentPanelId !== "sucesso" && canCreateLead && (
             <>
               <LeadExportButton
                 leads={sortedFiltered}
@@ -1608,7 +1721,7 @@ const AdminLeads = () => {
               />
             </>
           )}
-          {isCustomCrmPanel && (
+          {isCustomCrmPanel && canCreateLead && (
             <Button onClick={() => setNewCardOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
               + Card
             </Button>
@@ -1748,7 +1861,7 @@ const AdminLeads = () => {
                   <button onClick={() => openLeadDetail(l)} className="p-1 hover:bg-primary/10 rounded">
                     <Eye className="h-4 w-4 text-muted-foreground" />
                   </button>
-                  {isAdmin && (
+                  {canDeleteLead && (
                     <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id, l.nome_fantasia)} className="text-destructive hover:text-destructive h-8 w-8">
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -1781,6 +1894,7 @@ const AdminLeads = () => {
                 <Select
                   value={l.status_lead || l.status || "novo_lead"}
                   onValueChange={(val) => handleStatusChange(l.id, l.nome_fantasia, val)}
+                  disabled={!canMovePipeline}
                 >
                   <SelectTrigger className="h-8 w-full text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -1842,13 +1956,17 @@ const AdminLeads = () => {
             showCsInsteadOfPartner={currentPanelId === "sucesso"}
             preserveInputOrder={currentPanelId === "campanhas"}
             canCloneCard={canCloneCard}
-            canEditCard={canEditCard}
-            canDeleteCard={canDeleteCard}
+            canEditCard={canEditLead}
+            canDeleteCard={canDeleteLead}
             onCloneCard={(lead) => openCloneDialog(lead)}
             onEditCard={(lead) => startEditCard(lead)}
             onDeleteCard={(lead) => handleDelete(lead.id, lead.nome_fantasia)}
             onAssignResponsible={(lead) => startEditCard(lead)}
             onMoveLead={(id, newStage) => {
+              if (!canMovePipeline) {
+                toast.error("Sem permissão para mover pipeline");
+                return;
+              }
               const lead = leads.find((l) => l.id === id);
               if (!lead) return;
               if (isCustomCrmPanel) {
@@ -1881,7 +1999,7 @@ const AdminLeads = () => {
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Telefone</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Pipeline</th>
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Docs</th>
-                  {(isAdmin || canCloneCard) && <th className="text-left py-3 px-4 text-muted-foreground font-medium"></th>}
+                  {(canCloneCard || canDeleteLead) && <th className="text-left py-3 px-4 text-muted-foreground font-medium"></th>}
                 </tr>
               </thead>
               <tbody>
@@ -1924,7 +2042,7 @@ const AdminLeads = () => {
                         )}
                       </div>
                     </td>
-                    {(isAdmin || canCloneCard) && (
+                    {(canCloneCard || canDeleteLead) && (
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-1">
                           {canCloneCard && (
@@ -1932,9 +2050,11 @@ const AdminLeads = () => {
                               <Copy className="h-4 w-4" />
                             </Button>
                           )}
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id, l.nome_fantasia)} className="text-destructive hover:text-destructive">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {canDeleteLead && (
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id, l.nome_fantasia)} className="text-destructive hover:text-destructive">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     )}
@@ -2171,7 +2291,7 @@ const AdminLeads = () => {
           </DialogHeader>
           {detailLead && (
             <div className="space-y-6">
-              {isEditingCard && (
+              {isEditingCard ? (
                 <div className="flex items-center justify-end gap-2">
                   <Button size="sm" variant="outline" onClick={cancelEditCard} disabled={savingCard}>Cancelar</Button>
                   <Button size="sm" onClick={saveEditedCard} disabled={savingCard}>
@@ -2179,16 +2299,30 @@ const AdminLeads = () => {
                     Salvar
                   </Button>
                 </div>
+              ) : canEditLead && (
+                <div className="flex items-center justify-end gap-2">
+                  <Button size="sm" onClick={() => startEditCard(detailLead)}>
+                    Editar
+                  </Button>
+                </div>
               )}
               {/* Lead Data */}
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">Razão Social</p>
-                  <p className="font-medium">{detailLead.razao_social || "—"}</p>
+                  {isEditingCard ? (
+                    <Input value={editFormData.razao_social} onChange={(e) => setEditFormData((prev) => ({ ...prev, razao_social: e.target.value }))} />
+                  ) : (
+                    <p className="font-medium">{detailLead.razao_social || "—"}</p>
+                  )}
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">CNPJ</p>
-                  <p className="font-mono">{detailLead.cnpj || "—"}</p>
+                  {isEditingCard ? (
+                    <Input value={editFormData.cnpj} onChange={(e) => setEditFormData((prev) => ({ ...prev, cnpj: e.target.value }))} />
+                  ) : (
+                    <p className="font-mono">{detailLead.cnpj || "—"}</p>
+                  )}
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">Cidade</p>
@@ -2200,23 +2334,51 @@ const AdminLeads = () => {
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">Qtd Lojas</p>
-                  <p>{detailLead.quantidade_lojas}</p>
+                  {isEditingCard ? (
+                    <Input type="number" min="0" value={editFormData.quantidade_lojas} onChange={(e) => setEditFormData((prev) => ({ ...prev, quantidade_lojas: e.target.value }))} />
+                  ) : (
+                    <p>{detailLead.quantidade_lojas || "—"}</p>
+                  )}
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">ERP / Sistema</p>
-                  <p>{detailLead.erp_utilizado}</p>
+                  {isEditingCard ? (
+                    <Input value={editFormData.erp_utilizado} onChange={(e) => setEditFormData((prev) => ({ ...prev, erp_utilizado: e.target.value }))} />
+                  ) : (
+                    <p>{detailLead.erp_utilizado || "—"}</p>
+                  )}
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">Qtd Funcionários</p>
-                  <p>{detailLead.numero_funcionarios || detailLead.quantidade_funcionarios || "—"}</p>
+                  {isEditingCard ? (
+                    <Input type="number" min="0" value={editFormData.numero_funcionarios} onChange={(e) => setEditFormData((prev) => ({ ...prev, numero_funcionarios: e.target.value }))} />
+                  ) : (
+                    <p>{detailLead.numero_funcionarios || detailLead.quantidade_funcionarios || "—"}</p>
+                  )}
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">Tipo de empresa</p>
-                  <p>{getTipoEmpresaLabel(detailLead.tipo_empresa)}</p>
+                  {isEditingCard ? (
+                    <Select value={editFormData.tipo_empresa || "nao_informado"} onValueChange={(value) => setEditFormData((prev) => ({ ...prev, tipo_empresa: value === "nao_informado" ? "" : value }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="nao_informado">Não informado</SelectItem>
+                        <SelectItem value="varejo">Varejo</SelectItem>
+                        <SelectItem value="distribuidor">Distribuidor</SelectItem>
+                        <SelectItem value="industria">Indústria</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p>{getTipoEmpresaLabel(detailLead.tipo_empresa)}</p>
+                  )}
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">Canal de tração</p>
-                  <p>{detailLead.canal_tracao || "—"}</p>
+                  {isEditingCard ? (
+                    <Input value={editFormData.canal_tracao} onChange={(e) => setEditFormData((prev) => ({ ...prev, canal_tracao: e.target.value }))} />
+                  ) : (
+                    <p>{detailLead.canal_tracao || "—"}</p>
+                  )}
                 </div>
               </div>
 
@@ -2271,11 +2433,19 @@ const AdminLeads = () => {
                   </div>
                   <div>
                     <p className="text-muted-foreground text-xs mb-1">Telefone</p>
-                    <p>{detailLead.telefone_responsavel}</p>
+                    {isEditingCard ? (
+                      <Input value={editFormData.telefone_responsavel} onChange={(e) => setEditFormData((prev) => ({ ...prev, telefone_responsavel: e.target.value }))} />
+                    ) : (
+                      <p>{detailLead.telefone_responsavel || "—"}</p>
+                    )}
                   </div>
                   <div className="col-span-2">
                     <p className="text-muted-foreground text-xs mb-1">Email</p>
-                    <p>{detailLead.email_responsavel}</p>
+                    {isEditingCard ? (
+                      <Input type="email" value={editFormData.email_responsavel} onChange={(e) => setEditFormData((prev) => ({ ...prev, email_responsavel: e.target.value }))} />
+                    ) : (
+                      <p>{detailLead.email_responsavel || "—"}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -2563,7 +2733,13 @@ const AdminLeads = () => {
 
               <div className="border-t border-border pt-4">
                 <h3 className="text-sm font-semibold mb-3">Tarefas do card</h3>
-                <LeadTasks leadId={detailLead.id} leadName={detailLead.nome_fantasia} actionBasePath={location.pathname} />
+                <LeadTasks
+                  leadId={detailLead.id}
+                  leadName={detailLead.nome_fantasia}
+                  actionBasePath={location.pathname}
+                  canCreateTask={canCreateTask}
+                  canCompleteTask={canCompleteTask}
+                />
               </div>
 
               {/* Histórico de Conversa */}
@@ -2573,6 +2749,10 @@ const AdminLeads = () => {
                   currentStage={detailLead.status_lead || "novo_lead"}
                   userName={currentUserName}
                   actionBasePath={location.pathname}
+                  canInsertMessage={canInsertMessage}
+                  canEditMessage={canEditMessage}
+                  canDeleteMessage={canDeleteMessage}
+                  canInsertFile={canInsertFile}
                 />
               </div>
             </div>
