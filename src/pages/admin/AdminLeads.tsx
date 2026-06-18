@@ -537,7 +537,20 @@ const AdminLeads = () => {
   };
 
   const handleStatusChange = (leadId: string, leadName: string, newStatus: string) => {
+    if (!isAdmin && !canMove) {
+      toast.error("Sem permissão para mover pipeline");
+      return;
+    }
     const lead = leads.find((l) => l.id === leadId);
+
+    const willOpenFinanceiro =
+      (FINANCEIRO_REQUIRED_FROM.includes(newStatus) && lead && !hasValidFinanceiro(lead)) ||
+      newStatus === "contrato_assinado";
+    if (willOpenFinanceiro && !isAdmin && !canEditFinanceiro) {
+      toast.error("Sem permissão para editar financeiro");
+      return;
+    }
+
 
     if (isCustomCrmPanel) {
       moveRepresentativeCard(leadId, newStatus).then(({ error }: any) => {
