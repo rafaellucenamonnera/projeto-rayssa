@@ -5,13 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, MessageSquare, Send, Pencil, Trash2, X, Check } from "lucide-react";
 import { PIPELINE_LABELS } from "@/lib/pipelineConstants";
-import { cardActionUrl, createNotifications } from "@/lib/notifications";
+import { createNotifications } from "@/lib/notifications";
 import { AttachmentPicker, CommentAttachmentList, StagedAttachment, uploadStagedAttachments } from "./CommentAttachments";
 
 interface LeadCommentsProps {
   leadId: string;
   currentStage: string;
   userName: string;
+  actionBasePath?: string;
   canInsertMessage?: boolean;
   canEditMessage?: boolean;
   canDeleteMessage?: boolean;
@@ -25,6 +26,15 @@ interface Comment {
   comentario: string;
   data_comentario: string;
   user_id: string;
+  lead_comment_attachments?: CommentAttachment[];
+}
+
+interface CommentAttachment {
+  id: string;
+  storage_path: string;
+  file_name: string;
+  mime_type: string;
+  size_bytes: number;
 }
 
 type MentionUser = {
@@ -36,6 +46,7 @@ export const LeadComments = ({
   leadId,
   currentStage,
   userName,
+  actionBasePath = "/admin/painel-comercial",
   canInsertMessage = true,
   canEditMessage = true,
   canDeleteMessage = true,
@@ -58,19 +69,29 @@ export const LeadComments = ({
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setCurrentUserId(user.id);
     });
-    supabase
+    const loadMentionUsers = async () => {
+      const [{ data: profileUsers }, { data: roles }] = await Promise.all([
+        supabase
       .from("profiles")
-      .select("user_id,nome,ativo")
+      .select("user_id,nome,ativo,can_be_responsible")
       .eq("ativo", true)
-      .order("nome", { ascending: true })
-      .then(({ data }) => setUsers(((data as any) || []).map((u: any) => ({ user_id: u.user_id, nome: u.nome }))));
+          .order("nome", { ascending: true }),
+        (supabase as any).from("user_roles").select("user_id,role").eq("role", "admin"),
+      ]);
+      const adminIds = new Set(((roles as any[]) || []).map((role) => role.user_id));
+      const internalUsers = ((profileUsers as any) || [])
+        .filter((u: any) => u.can_be_responsible || adminIds.has(u.user_id))
+        .map((u: any) => ({ user_id: u.user_id, nome: u.nome }));
+      setUsers(internalUsers);
+    };
+    loadMentionUsers();
   }, []);
 
   const loadComments = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("lead_comments")
-      .select("*")
+      .select("*,lead_comment_attachments(id,storage_path,file_name,mime_type,size_bytes)")
       .eq("lead_id", leadId)
       .order("data_comentario", { ascending: false });
     if (!error) setComments((data as any) || []);
@@ -82,6 +103,10 @@ export const LeadComments = ({
   }, [leadId]);
 
   const handleSubmit = async () => {
+    if (!canInsertMessage) {
+      toast.error("Sem permissão para inserir mensagem");
+      return;
+    }
     if (!newComment.trim() && stagedAttachments.length === 0) return;
     if (!newComment.trim()) {
       toast.error("Escreva um comentário antes de anexar arquivos");
@@ -128,16 +153,23 @@ export const LeadComments = ({
           mentionedIds.map((recipientUserId) => ({
             recipientUserId,
             type: "comment_mention",
-            title: "Você foi mencionado em um comentário",
+            title: "Nota",
             message: `${userName} mencionou você no card.`,
             leadId,
             commentId: comment.id,
-            actionUrl: cardActionUrl(leadId),
+            actionUrl: `${actionBasePath}?card=${leadId}`,
             metadata: { comment_preview: newComment.trim().slice(0, 140) },
             deliveryKey: `comment-${comment.id}-mention-${recipientUserId}`,
           })),
         );
       }
+      await (supabase as any)
+        .from("notifications")
+        .update({ read_at: new Date().toISOString() })
+        .eq("recipient_user_id", user.id)
+        .eq("lead_id", leadId)
+        .eq("type", "comment_mention")
+        .is("read_at", null);
       setNewComment("");
       setSelectedMentionIds([]);
       setMentionQuery("");
@@ -180,6 +212,10 @@ export const LeadComments = ({
     : [];
 
   const handleEdit = async (commentId: string) => {
+    if (!canEditMessage) {
+      toast.error("Sem permissão para editar mensagem");
+      return;
+    }
     if (!editingText.trim()) return;
     try {
       const { error } = await supabase
@@ -197,6 +233,10 @@ export const LeadComments = ({
   };
 
   const handleDelete = async (commentId: string) => {
+    if (!canDeleteMessage) {
+      toast.error("Sem permissão para excluir mensagem");
+      return;
+    }
     try {
       const { error } = await supabase
         .from("lead_comments")
@@ -252,7 +292,7 @@ export const LeadComments = ({
           )}
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">{newComment.length}/500</span>
-            <Button size="sm" onClick={handleSubmit} disabled={submitting || !newComment.trim()}>
+            <Button size="sm" onClick={handleSubmit} disabled={submitting || (!newComment.trim() && stagedAttachments.length === 0)}>
               {submitting ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-3 w-3" />}
               Enviar
             </Button>
@@ -282,7 +322,7 @@ export const LeadComments = ({
                     <span className="text-[10px] text-muted-foreground">
                       {new Date(c.data_comentario).toLocaleDateString("pt-BR")} {new Date(c.data_comentario).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                     </span>
-                    {isOwner && !isEditing && !isDeleting && (
+                    {isOwner && !isEditing && !isDeleting && (canEditMessage || canDeleteMessage) && (
                       <>
                         {canEditMessage && (
                           <button
