@@ -271,7 +271,7 @@ export const LeadTasks = ({ leadId, leadName = "card", canCreateTask = true, can
                     {task.participants && task.participants.length > 0 ? ` · Envolvidos: ${task.participants.map((id) => usersById[id]).filter(Boolean).join(", ")}` : ""}
                   </p>
                 </div>
-                {task.status !== "concluida" && (
+                {task.status !== "concluida" && canCompleteTask && (
                   <Button size="sm" variant="outline" onClick={() => completeTask(task)}>
                     <Check className="mr-1 h-3.5 w-3.5" />
                     Concluir
