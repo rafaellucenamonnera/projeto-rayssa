@@ -284,20 +284,24 @@ export const LeadComments = ({
                     </span>
                     {isOwner && !isEditing && !isDeleting && (
                       <>
-                        <button
-                          onClick={() => { setEditingId(c.id); setEditingText(c.comentario); }}
-                          className="p-0.5 hover:bg-primary/10 rounded"
-                          title="Editar comentário"
-                        >
-                          <Pencil className="h-3 w-3 text-muted-foreground" />
-                        </button>
-                        <button
-                          onClick={() => setDeletingId(c.id)}
-                          className="p-0.5 hover:bg-destructive/10 rounded"
-                          title="Excluir comentário"
-                        >
-                          <Trash2 className="h-3 w-3 text-muted-foreground" />
-                        </button>
+                        {canEditMessage && (
+                          <button
+                            onClick={() => { setEditingId(c.id); setEditingText(c.comentario); }}
+                            className="p-0.5 hover:bg-primary/10 rounded"
+                            title="Editar comentário"
+                          >
+                            <Pencil className="h-3 w-3 text-muted-foreground" />
+                          </button>
+                        )}
+                        {canDeleteMessage && (
+                          <button
+                            onClick={() => setDeletingId(c.id)}
+                            className="p-0.5 hover:bg-destructive/10 rounded"
+                            title="Excluir comentário"
+                          >
+                            <Trash2 className="h-3 w-3 text-muted-foreground" />
+                          </button>
+                        )}
                       </>
                     )}
                   </div>
