@@ -30,6 +30,8 @@ type LeadTask = {
 interface LeadTasksProps {
   leadId: string;
   leadName?: string;
+  canCreateTask?: boolean;
+  canCompleteTask?: boolean;
 }
 
 const toLocalInputValue = (iso: string) => {
