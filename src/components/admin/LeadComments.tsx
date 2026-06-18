@@ -253,7 +253,7 @@ export const LeadComments = ({
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">{newComment.length}/500</span>
             <Button size="sm" onClick={handleSubmit} disabled={submitting || !newComment.trim()}>
-              {submitting ? <Loader1 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-3 w-3" />}
+              {submitting ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-3 w-3" />}
               Enviar
             </Button>
           </div>
