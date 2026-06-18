@@ -1,45 +1,30 @@
-## Tornar campos de comissão e parcelas opcionais no modal financeiro
+## Corrigir download do dossiê em AdminLeads.tsx
 
-Arquivo a alterar:
-`src/components/admin/CadastroFinanceiroDialog.tsx`
+**Arquivo:** `src/pages/admin/AdminLeads.tsx` (função `handleDownloadDossie`, linhas 1052–1087)
 
-Não alterar outros arquivos.
+**Problema:** A função lista `dossies/` na raiz com `search: leadId`, mas a edge `generate-dossie` salva em `dossies/{leadId}/dossie-{nome}.txt`. O `list` retorna vazio e o botão sempre falha.
 
-Contexto:
-No modal "Dados financeiros do contrato", aberto ao mover um lead de "Reunião realizada" para "Proposta enviada", os campos de comissão e parcelas devem continuar visíveis, mas não podem ser obrigatórios.
+**Correção:**
 
-Mudanças em `handleSave`:
-Remover as validações que bloqueiam o salvamento quando estes campos estão vazios ou zerados:
+1. Listar a pasta correta do lead:
+   ```ts
+   const { data: files } = await supabase.storage
+     .from("propostas")
+     .list(`dossies/${leadId}`);
+   ```
 
-- validação de `parcelas <= 0`
-- validação de percentual de comissão quando `tipoComissao === "percentual"`
-- validação de valor fixo de comissão quando `tipoComissao === "fixo"`
+2. Encontrar o arquivo que começa com `dossie-` e termina com `.txt`:
+   ```ts
+   const dossieFile = files?.find(
+     (f) => f.name.startsWith("dossie-") && f.name.endsWith(".txt")
+   );
+   ```
 
-Manter apenas as validações dos campos centrais:
-- `setup >= 0`
-- `mensalidade >= 0`
-- `qtdLojas > 0`
-- `campanhas >= 0`
+3. Gerar signed URL com o caminho completo:
+   ```ts
+   .createSignedUrl(`dossies/${leadId}/${dossieFile.name}`, 3600)
+   ```
 
-Persistência no Supabase:
-No `.update({...})`, ajustar `qtd_parcelas` para:
-qtd_parcelas: form.comissao_vitalicia || parcelas <= 0 ? null : parcelas
+O restante do fluxo (fetch + blob download) permanece igual.
 
-Manter percentual_consultor: percentualEfetivo como já está. Quando os campos de comissão estiverem vazios, percentualEfetivo deve continuar caindo para 0, sem exibir erro.
-
-Callback onSaved:
-Ajustar qtd_parcelas para:
-qtd_parcelas: form.comissao_vitalicia || parcelas <= 0 ? 0 : parcelas
-
-Não alterar:
-- Alerta amarelo
-- Checkbox "Comissão vitalícia"
-- UI dos campos de comissão/parcelas
-- Preview de cálculos automáticos
-- Textos do modal
-- Layout
-
-Critério de aceite:
-- O build deve passar.
-- Ao mover um lead de "Reunião realizada" para "Proposta enviada", deve ser possível salvar preenchendo apenas Setup, Mensalidade, Quantidade de lojas e Receita de campanhas.
-- O salvamento não deve exigir tipo de comissão, percentual de comissão, valor fixo de comissão, quantidade de parcelas ou comissão vitalícia.
+**Fora de escopo:** edge function `generate-dossie`, bucket `propostas`, formato `.txt`.

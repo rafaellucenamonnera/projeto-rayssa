@@ -1054,9 +1054,11 @@ const AdminLeads = () => {
       // List files in dossies folder for this lead
       const { data: files } = await supabase.storage
         .from("propostas")
-        .list(`dossies`, { search: leadId });
+        .list(`dossies/${leadId}`);
 
-      const dossieFile = files?.find((f) => f.name.includes(leadId));
+      const dossieFile = files?.find(
+        (f) => f.name.startsWith("dossie-") && f.name.endsWith(".txt")
+      );
       if (!dossieFile) {
         toast.error("Dossiê não encontrado. Tente gerar novamente.");
         return;
@@ -1064,7 +1066,7 @@ const AdminLeads = () => {
 
       const { data, error } = await supabase.storage
         .from("propostas")
-        .createSignedUrl(`dossies/${dossieFile.name}`, 3600);
+        .createSignedUrl(`dossies/${leadId}/${dossieFile.name}`, 3600);
       if (error || !data?.signedUrl) {
         toast.error("Erro ao gerar link do dossiê");
         return;
