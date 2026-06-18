@@ -68,6 +68,44 @@ const hasValidFinanceiro = (lead: any) =>
   Number(lead?.valor_campanhas ?? 0) >= 0 &&
   lead?.valor_campanhas !== null && lead?.valor_campanhas !== undefined;
 
+const LEADS_PERMISSION_ACTIONS = [
+  "acessar", "criar", "editar", "excluir", "mover_pipeline", "editar_pipeline",
+  "criar_tarefa", "concluir_tarefa", "inserir_mensagem", "editar_mensagem",
+  "excluir_mensagem", "inserir_arquivo", "editar_financeiro",
+  "receber_notificacao_lead_perdido",
+] as const;
+
+function useLeadsPermissions(isAdmin: boolean) {
+  const [permissions, setPermissions] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      if (isAdmin) {
+        if (!cancelled) setPermissions(new Set(LEADS_PERMISSION_ACTIONS));
+        return;
+      }
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) {
+        if (!cancelled) setPermissions(new Set());
+        return;
+      }
+      const { data } = await (supabase as any)
+        .from("module_permissions")
+        .select("acao")
+        .eq("user_id", auth.user.id)
+        .eq("modulo", "leads")
+        .eq("permitido", true);
+      if (cancelled) return;
+      setPermissions(new Set(((data as any[]) || []).map((row) => row.acao as string)));
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [isAdmin]);
+
+  return permissions;
+}
+
 const AdminLeads = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { panelId: dynamicPanelId } = useParams();
