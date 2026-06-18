@@ -12,6 +12,10 @@ interface LeadCommentsProps {
   leadId: string;
   currentStage: string;
   userName: string;
+  canInsertMessage?: boolean;
+  canEditMessage?: boolean;
+  canDeleteMessage?: boolean;
+  canInsertFile?: boolean;
 }
 
 interface Comment {
@@ -28,7 +32,15 @@ type MentionUser = {
   nome: string;
 };
 
-export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsProps) => {
+export const LeadComments = ({
+  leadId,
+  currentStage,
+  userName,
+  canInsertMessage = true,
+  canEditMessage = true,
+  canDeleteMessage = true,
+  canInsertFile = true,
+}: LeadCommentsProps) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(false);
@@ -207,42 +219,46 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
       </h3>
 
       {/* Add comment */}
-      <div className="space-y-2">
-        <Textarea
-          value={newComment}
-          onChange={(e) => handleCommentChange(e.target.value)}
-          placeholder="Adicionar comentário..."
-          rows={2}
-          maxLength={500}
-        />
-        {mentionSuggestions.length > 0 && (
-          <div className="rounded-md border border-border bg-popover p-1 shadow-sm">
-            {mentionSuggestions.map((u) => (
-              <button
-                key={u.user_id}
-                type="button"
-                onClick={() => addMention(u)}
-                className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-secondary"
-              >
-                @{u.nome}
-              </button>
-            ))}
+      {canInsertMessage && (
+        <div className="space-y-2">
+          <Textarea
+            value={newComment}
+            onChange={(e) => handleCommentChange(e.target.value)}
+            placeholder="Adicionar comentário..."
+            rows={2}
+            maxLength={500}
+          />
+          {mentionSuggestions.length > 0 && (
+            <div className="rounded-md border border-border bg-popover p-1 shadow-sm">
+              {mentionSuggestions.map((u) => (
+                <button
+                  key={u.user_id}
+                  type="button"
+                  onClick={() => addMention(u)}
+                  className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-secondary"
+                >
+                  @{u.nome}
+                </button>
+              ))}
+            </div>
+          )}
+          {selectedMentionIds.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Mencionando: {selectedMentionIds.map((id) => users.find((u) => u.user_id === id)?.nome).filter(Boolean).join(", ")}
+            </p>
+          )}
+          {canInsertFile && (
+            <AttachmentPicker staged={stagedAttachments} onChange={setStagedAttachments} disabled={submitting} />
+          )}
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">{newComment.length}/500</span>
+            <Button size="sm" onClick={handleSubmit} disabled={submitting || !newComment.trim()}>
+              {submitting ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-3 w-3" />}
+              Enviar
+            </Button>
           </div>
-        )}
-        {selectedMentionIds.length > 0 && (
-          <p className="text-xs text-muted-foreground">
-            Mencionando: {selectedMentionIds.map((id) => users.find((u) => u.user_id === id)?.nome).filter(Boolean).join(", ")}
-          </p>
-        )}
-        <AttachmentPicker staged={stagedAttachments} onChange={setStagedAttachments} disabled={submitting} />
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">{newComment.length}/500</span>
-          <Button size="sm" onClick={handleSubmit} disabled={submitting || !newComment.trim()}>
-            {submitting ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-3 w-3" />}
-            Enviar
-          </Button>
         </div>
-      </div>
+      )}
 
       {/* Comments list */}
       {loading ? (
@@ -268,20 +284,24 @@ export const LeadComments = ({ leadId, currentStage, userName }: LeadCommentsPro
                     </span>
                     {isOwner && !isEditing && !isDeleting && (
                       <>
-                        <button
-                          onClick={() => { setEditingId(c.id); setEditingText(c.comentario); }}
-                          className="p-0.5 hover:bg-primary/10 rounded"
-                          title="Editar comentário"
-                        >
-                          <Pencil className="h-3 w-3 text-muted-foreground" />
-                        </button>
-                        <button
-                          onClick={() => setDeletingId(c.id)}
-                          className="p-0.5 hover:bg-destructive/10 rounded"
-                          title="Excluir comentário"
-                        >
-                          <Trash2 className="h-3 w-3 text-muted-foreground" />
-                        </button>
+                        {canEditMessage && (
+                          <button
+                            onClick={() => { setEditingId(c.id); setEditingText(c.comentario); }}
+                            className="p-0.5 hover:bg-primary/10 rounded"
+                            title="Editar comentário"
+                          >
+                            <Pencil className="h-3 w-3 text-muted-foreground" />
+                          </button>
+                        )}
+                        {canDeleteMessage && (
+                          <button
+                            onClick={() => setDeletingId(c.id)}
+                            className="p-0.5 hover:bg-destructive/10 rounded"
+                            title="Excluir comentário"
+                          >
+                            <Trash2 className="h-3 w-3 text-muted-foreground" />
+                          </button>
+                        )}
                       </>
                     )}
                   </div>

@@ -148,13 +148,28 @@ export const CommentAttachmentList = ({ commentId }: CommentAttachmentListProps)
 
   const open = async (row: AttachmentRow) => {
     setBusy(row.id);
-    const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(row.storage_path, 300);
-    setBusy(null);
-    if (error || !data?.signedUrl) {
-      toast.error("Não foi possível abrir o anexo");
-      return;
+    try {
+      const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(row.storage_path, 3600);
+      if (error || !data?.signedUrl) {
+        toast.error("Não foi possível abrir o anexo");
+        return;
+      }
+      const response = await fetch(data.signedUrl);
+      if (!response.ok) throw new Error("Falha ao baixar");
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = row.file_name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch (err: any) {
+      toast.error("Erro ao baixar anexo: " + (err?.message || ""));
+    } finally {
+      setBusy(null);
     }
-    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   };
 
   if (items.length === 0) return null;

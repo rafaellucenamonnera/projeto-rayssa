@@ -2176,6 +2176,10 @@ export type Database = {
       }
       get_pipeline_stage_metrics: { Args: never; Returns: Json }
       has_any_admin: { Args: never; Returns: boolean }
+      has_module_permission: {
+        Args: { _acao: string; _modulo: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

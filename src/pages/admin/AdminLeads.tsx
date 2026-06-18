@@ -68,11 +68,61 @@ const hasValidFinanceiro = (lead: any) =>
   Number(lead?.valor_campanhas ?? 0) >= 0 &&
   lead?.valor_campanhas !== null && lead?.valor_campanhas !== undefined;
 
+const LEADS_PERMISSION_ACTIONS = [
+  "acessar", "criar", "editar", "excluir", "mover_pipeline", "editar_pipeline",
+  "criar_tarefa", "concluir_tarefa", "inserir_mensagem", "editar_mensagem",
+  "excluir_mensagem", "inserir_arquivo", "editar_financeiro",
+  "receber_notificacao_lead_perdido",
+] as const;
+
+function useLeadsPermissions(isAdmin: boolean) {
+  const [permissions, setPermissions] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      if (isAdmin) {
+        if (!cancelled) setPermissions(new Set(LEADS_PERMISSION_ACTIONS));
+        return;
+      }
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) {
+        if (!cancelled) setPermissions(new Set());
+        return;
+      }
+      const { data } = await (supabase as any)
+        .from("module_permissions")
+        .select("acao")
+        .eq("user_id", auth.user.id)
+        .eq("modulo", "leads")
+        .eq("permitido", true);
+      if (cancelled) return;
+      setPermissions(new Set(((data as any[]) || []).map((row) => row.acao as string)));
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [isAdmin]);
+
+  return permissions;
+}
+
 const AdminLeads = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { panelId: dynamicPanelId } = useParams();
   const location = useLocation();
   const { isAdmin } = useAuth();
+  const leadsPermissions = useLeadsPermissions(isAdmin);
+  const canCreate = leadsPermissions.has("criar");
+  const canEdit = leadsPermissions.has("editar");
+  const canDelete = leadsPermissions.has("excluir");
+  const canMove = leadsPermissions.has("mover_pipeline") || leadsPermissions.has("editar_pipeline");
+  const canEditFinanceiro = leadsPermissions.has("editar_financeiro");
+  const canCreateTask = leadsPermissions.has("criar_tarefa");
+  const canCompleteTask = leadsPermissions.has("concluir_tarefa");
+  const canInsertMessage = leadsPermissions.has("inserir_mensagem");
+  const canEditMessage = leadsPermissions.has("editar_mensagem");
+  const canDeleteMessage = leadsPermissions.has("excluir_mensagem");
+  const canInsertFile = leadsPermissions.has("inserir_arquivo");
   const painelTitleMap: Record<string, string> = {
     "/admin/painel-comercial": "Painel Comercial",
     "/admin/painel-onboarding": "Painel Onboarding / Integração",
@@ -487,7 +537,20 @@ const AdminLeads = () => {
   };
 
   const handleStatusChange = (leadId: string, leadName: string, newStatus: string) => {
+    if (!isAdmin && !canMove) {
+      toast.error("Sem permissão para mover pipeline");
+      return;
+    }
     const lead = leads.find((l) => l.id === leadId);
+
+    const willOpenFinanceiro =
+      (FINANCEIRO_REQUIRED_FROM.includes(newStatus) && lead && !hasValidFinanceiro(lead)) ||
+      newStatus === "contrato_assinado";
+    if (willOpenFinanceiro && !isAdmin && !canEditFinanceiro) {
+      toast.error("Sem permissão para editar financeiro");
+      return;
+    }
+
 
     if (isCustomCrmPanel) {
       moveRepresentativeCard(leadId, newStatus).then(({ error }: any) => {
@@ -1513,7 +1576,7 @@ const AdminLeads = () => {
                 customCrmMode={isCustomCrmPanel}
                 users={Object.fromEntries(allActiveUsers.map((u) => [u.user_id, u.nome]))}
               />
-              {!isAmbassadorPanel && (
+              {!isAmbassadorPanel && (isAdmin || canCreate) && (
                 <LeadImportDialog
                   parceiros={parceirosAll}
                   onImported={loadData}
@@ -1525,7 +1588,7 @@ const AdminLeads = () => {
               )}
             </>
           )}
-          {isCustomCrmPanel && (
+          {isCustomCrmPanel && (isAdmin || canCreate) && (
             <Button onClick={() => setNewCardOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
               + Card
             </Button>
@@ -2390,7 +2453,12 @@ const AdminLeads = () => {
                     actionUrl={cardActionUrl(detailLead.id)}
                   />
                 ) : (
-                  <LeadTasks leadId={detailLead.id} leadName={detailLead.nome_fantasia} />
+                  <LeadTasks
+                    leadId={detailLead.id}
+                    leadName={detailLead.nome_fantasia}
+                    canCreateTask={isAdmin || canCreateTask}
+                    canCompleteTask={isAdmin || canCompleteTask}
+                  />
                 )}
               </div>
 
@@ -2401,6 +2469,10 @@ const AdminLeads = () => {
                     leadId={detailLead.id}
                     currentStage={detailLead.status_lead || "novo_lead"}
                     userName={currentUserName}
+                    canInsertMessage={isAdmin || canInsertMessage}
+                    canEditMessage={isAdmin || canEditMessage}
+                    canDeleteMessage={isAdmin || canDeleteMessage}
+                    canInsertFile={isAdmin || canInsertFile}
                   />
                 </div>
               )}

@@ -30,6 +30,8 @@ type LeadTask = {
 interface LeadTasksProps {
   leadId: string;
   leadName?: string;
+  canCreateTask?: boolean;
+  canCompleteTask?: boolean;
 }
 
 const toLocalInputValue = (iso: string) => {
@@ -47,7 +49,7 @@ const dueMeta = (dueAt: string, status: string) => {
   return { label: "No prazo", className: "bg-secondary text-muted-foreground border-border" };
 };
 
-export const LeadTasks = ({ leadId, leadName = "card" }: LeadTasksProps) => {
+export const LeadTasks = ({ leadId, leadName = "card", canCreateTask = true, canCompleteTask = true }: LeadTasksProps) => {
   const [tasks, setTasks] = useState<LeadTask[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -193,34 +195,38 @@ export const LeadTasks = ({ leadId, leadName = "card" }: LeadTasksProps) => {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_190px_180px_auto]">
-        <Input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Nova tarefa" maxLength={120} />
-        <Input type="datetime-local" value={dueAt} onChange={(e) => setDueAt(e.target.value)} />
-        <Select value={assignedTo} onValueChange={setAssignedTo}>
-          <SelectTrigger><SelectValue placeholder="Responsável" /></SelectTrigger>
-          <SelectContent>
-            {users.filter((u) => u.can_be_responsible).map((u) => (
-              <SelectItem key={u.user_id} value={u.user_id}>{u.nome}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button onClick={createTask} disabled={saving} className="shrink-0">
-          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-          Criar
-        </Button>
-      </div>
+      {canCreateTask && (
+        <>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_190px_180px_auto]">
+            <Input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Nova tarefa" maxLength={120} />
+            <Input type="datetime-local" value={dueAt} onChange={(e) => setDueAt(e.target.value)} />
+            <Select value={assignedTo} onValueChange={setAssignedTo}>
+              <SelectTrigger><SelectValue placeholder="Responsável" /></SelectTrigger>
+              <SelectContent>
+                {users.filter((u) => u.can_be_responsible).map((u) => (
+                  <SelectItem key={u.user_id} value={u.user_id}>{u.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button onClick={createTask} disabled={saving} className="shrink-0">
+              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+              Criar
+            </Button>
+          </div>
 
-      <div className="rounded-md border border-border p-2">
-        <p className="mb-2 text-xs font-medium text-muted-foreground">Envolvidos</p>
-        <div className="grid max-h-28 grid-cols-1 gap-1 overflow-y-auto sm:grid-cols-2">
-          {users.map((u) => (
-            <label key={u.user_id} className="flex items-center gap-2 rounded px-2 py-1 text-xs hover:bg-secondary/60">
-              <Checkbox checked={participants.includes(u.user_id)} onCheckedChange={() => toggleParticipant(u.user_id)} />
-              <span className="truncate">{u.nome}</span>
-            </label>
-          ))}
-        </div>
-      </div>
+          <div className="rounded-md border border-border p-2">
+            <p className="mb-2 text-xs font-medium text-muted-foreground">Envolvidos</p>
+            <div className="grid max-h-28 grid-cols-1 gap-1 overflow-y-auto sm:grid-cols-2">
+              {users.map((u) => (
+                <label key={u.user_id} className="flex items-center gap-2 rounded px-2 py-1 text-xs hover:bg-secondary/60">
+                  <Checkbox checked={participants.includes(u.user_id)} onCheckedChange={() => toggleParticipant(u.user_id)} />
+                  <span className="truncate">{u.nome}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {[
@@ -265,7 +271,7 @@ export const LeadTasks = ({ leadId, leadName = "card" }: LeadTasksProps) => {
                     {task.participants && task.participants.length > 0 ? ` · Envolvidos: ${task.participants.map((id) => usersById[id]).filter(Boolean).join(", ")}` : ""}
                   </p>
                 </div>
-                {task.status !== "concluida" && (
+                {task.status !== "concluida" && canCompleteTask && (
                   <Button size="sm" variant="outline" onClick={() => completeTask(task)}>
                     <Check className="mr-1 h-3.5 w-3.5" />
                     Concluir
