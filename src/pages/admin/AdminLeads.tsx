@@ -111,6 +111,18 @@ const AdminLeads = () => {
   const { panelId: dynamicPanelId } = useParams();
   const location = useLocation();
   const { isAdmin } = useAuth();
+  const leadsPermissions = useLeadsPermissions(isAdmin);
+  const canCreate = leadsPermissions.has("criar");
+  const canEdit = leadsPermissions.has("editar");
+  const canDelete = leadsPermissions.has("excluir");
+  const canMove = leadsPermissions.has("mover_pipeline") || leadsPermissions.has("editar_pipeline");
+  const canEditFinanceiro = leadsPermissions.has("editar_financeiro");
+  const canCreateTask = leadsPermissions.has("criar_tarefa");
+  const canCompleteTask = leadsPermissions.has("concluir_tarefa");
+  const canInsertMessage = leadsPermissions.has("inserir_mensagem");
+  const canEditMessage = leadsPermissions.has("editar_mensagem");
+  const canDeleteMessage = leadsPermissions.has("excluir_mensagem");
+  const canInsertFile = leadsPermissions.has("inserir_arquivo");
   const painelTitleMap: Record<string, string> = {
     "/admin/painel-comercial": "Painel Comercial",
     "/admin/painel-onboarding": "Painel Onboarding / Integração",
