@@ -219,42 +219,46 @@ export const LeadComments = ({
       </h3>
 
       {/* Add comment */}
-      <div className="space-y-2">
-        <Textarea
-          value={newComment}
-          onChange={(e) => handleCommentChange(e.target.value)}
-          placeholder="Adicionar comentário..."
-          rows={2}
-          maxLength={500}
-        />
-        {mentionSuggestions.length > 0 && (
-          <div className="rounded-md border border-border bg-popover p-1 shadow-sm">
-            {mentionSuggestions.map((u) => (
-              <button
-                key={u.user_id}
-                type="button"
-                onClick={() => addMention(u)}
-                className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-secondary"
-              >
-                @{u.nome}
-              </button>
-            ))}
+      {canInsertMessage && (
+        <div className="space-y-2">
+          <Textarea
+            value={newComment}
+            onChange={(e) => handleCommentChange(e.target.value)}
+            placeholder="Adicionar comentário..."
+            rows={2}
+            maxLength={500}
+          />
+          {mentionSuggestions.length > 0 && (
+            <div className="rounded-md border border-border bg-popover p-1 shadow-sm">
+              {mentionSuggestions.map((u) => (
+                <button
+                  key={u.user_id}
+                  type="button"
+                  onClick={() => addMention(u)}
+                  className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-secondary"
+                >
+                  @{u.nome}
+                </button>
+              ))}
+            </div>
+          )}
+          {selectedMentionIds.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Mencionando: {selectedMentionIds.map((id) => users.find((u) => u.user_id === id)?.nome).filter(Boolean).join(", ")}
+            </p>
+          )}
+          {canInsertFile && (
+            <AttachmentPicker staged={stagedAttachments} onChange={setStagedAttachments} disabled={submitting} />
+          )}
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">{newComment.length}/500</span>
+            <Button size="sm" onClick={handleSubmit} disabled={submitting || !newComment.trim()}>
+              {submitting ? <Loader1 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-3 w-3" />}
+              Enviar
+            </Button>
           </div>
-        )}
-        {selectedMentionIds.length > 0 && (
-          <p className="text-xs text-muted-foreground">
-            Mencionando: {selectedMentionIds.map((id) => users.find((u) => u.user_id === id)?.nome).filter(Boolean).join(", ")}
-          </p>
-        )}
-        <AttachmentPicker staged={stagedAttachments} onChange={setStagedAttachments} disabled={submitting} />
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">{newComment.length}/500</span>
-          <Button size="sm" onClick={handleSubmit} disabled={submitting || !newComment.trim()}>
-            {submitting ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-3 w-3" />}
-            Enviar
-          </Button>
         </div>
-      </div>
+      )}
 
       {/* Comments list */}
       {loading ? (
