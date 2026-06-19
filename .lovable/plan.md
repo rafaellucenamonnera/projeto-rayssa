@@ -1,64 +1,32 @@
-## Objetivo
-Eliminar o erro "Erro ao salvar card" no Painel Comercial quando o usuário com permissão `leads.editar` (mas sem role `admin`/`gestor_conta`) edita campos gerais do card. A causa é a trigger `trg_protect_lead_responsible_user` rejeitando o update porque o frontend envia `responsible_user_id` no payload mesmo sem alterá-lo, e a função SQL só libera para admin/gestor.
+## Sincronizar com a main
 
-## Mudanças
+Não consigo executar comandos git (merge, push, pull, checkout) a partir do ambiente Lovable — git é gerenciado internamente. Mas a sincronização entre Lovable e GitHub é bidirecional e automática:
 
-### 1. Frontend — `src/pages/admin/AdminLeads.tsx` (`saveEditedCard`)
-- Calcular `responsibleChanged` e `slackChanged` comparando `editFormData.responsible_user_id` / `responsible_slack_user_id` com `detailLead.responsible_user_id` / `responsible_slack_user_id`.
-- Só incluir `responsible_user_id` no payload (tanto no ramo `isCustomCrmPanel` quanto no ramo padrão de `leads`) quando `responsibleChanged` for `true`.
-- Só incluir `responsible_slack_user_id` no payload do ramo `leads` quando `slackChanged` for `true`.
-- Substituir o tratamento de erro por log detalhado:
-  ```ts
-  console.error("Erro ao salvar card", error);
-  toast.error(`Erro ao salvar card: ${error.message}`);
-  ```
-- Ajustar o bloco de notificação para usar o novo `responsibleChanged` (em vez de checar `payload.responsible_user_id`) preservando o comportamento atual.
+### O que já está sincronizado
 
-Nenhuma outra função, layout, pipeline, edge function ou bucket será alterado.
+- Toda alteração feita aqui no Lovable é enviada automaticamente para a branch padrão do repositório GitHub conectado.
+- Toda alteração feita direto no GitHub (push ou merge na branch padrão) é puxada automaticamente para o Lovable.
 
-### 2. Migration Supabase — `public.protect_lead_responsible_user()`
-Recriar a função (mantendo a mesma assinatura/trigger `trg_protect_lead_responsible_user`) para permitir alteração de `responsible_user_id` quando o usuário autenticado satisfaz **qualquer** uma das condições:
+### Para sincronizar a main agora
 
-- `has_role(auth.uid(), 'admin')`
-- `has_role(auth.uid(), 'gestor_conta')`
-- `public.has_module_permission(auth.uid(), 'leads', 'editar')`
+Faça uma das opções no GitHub:
 
-Comportamento preservado:
-- Caminho anônimo (`auth.uid() IS NULL`) continua forçando `NEW.responsible_user_id := OLD.responsible_user_id`.
-- Se `NEW.responsible_user_id` não mudar, segue passando direto.
-- Se mudar e o usuário não atender a nenhuma das três condições acima, mantém o `RAISE EXCEPTION` atual.
+1. **Se você tem uma branch de feature aberta e quer trazer para a main:**
+   - Abra um Pull Request da branch → `main`
+   - Faça o merge no GitHub
+   - O Lovable detecta o novo commit na `main` em poucos segundos e atualiza o preview
 
-SQL (resumo):
-```sql
-CREATE OR REPLACE FUNCTION public.protect_lead_responsible_user()
-RETURNS trigger
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
-AS $$
-BEGIN
-  IF auth.uid() IS NULL THEN
-    NEW.responsible_user_id := OLD.responsible_user_id;
-    RETURN NEW;
-  END IF;
+2. **Se a main do GitHub está à frente do Lovable (commits feitos fora):**
+   - Não precisa fazer nada — o Lovable sincroniza automaticamente
+   - Se não atualizar em ~1 min, abra o menu (+) → GitHub → reconecte o projeto
 
-  IF NEW.responsible_user_id IS DISTINCT FROM OLD.responsible_user_id THEN
-    IF NOT (
-      has_role(auth.uid(), 'admin'::app_role)
-      OR has_role(auth.uid(), 'gestor_conta'::app_role)
-      OR public.has_module_permission(auth.uid(), 'leads', 'editar')
-    ) THEN
-      RAISE EXCEPTION 'Apenas administradores, gestores ou usuários com permissão leads.editar podem alterar o responsável pelo lead';
-    END IF;
-  END IF;
+3. **Se você quer publicar a versão atual da main:**
+   - Use o botão Publish no canto superior direito do Lovable
 
-  RETURN NEW;
-END;
-$$;
-```
+### O que eu posso fazer aqui
 
-## Validação
-- Logar como usuário com `leads.editar` (Rafael Lucena) e salvar edição geral do card no painel comercial → sucesso, sem erro.
-- Alterar o responsável com o mesmo usuário → sucesso e notificação enviada.
-- Usuário sem nenhuma das três permissões tentando alterar responsável → continua bloqueado pela trigger.
+- Aplicar novas migrations / código direto no Lovable (vai para a `main` automaticamente)
+- Validar permissões, queries e estado do banco
+- Revisar diffs de arquivos
 
-## Fora do escopo
-Sem mudanças em layout, pipeline, outras edge functions, buckets ou permissões de outros módulos.
+Me diga qual desses cenários é o seu caso (PR pendente, commits externos na main, ou publicar) que eu sigo a partir daí.
