@@ -1883,7 +1883,7 @@ const AdminLeads = () => {
 
       {/* Desktop Kanban */}
       {view === "kanban" && (
-        <div className="hidden lg:block">
+        <div className="hidden min-h-0 lg:block">
           <PipelineKanban
             leads={filtered}
             stages={pipelineStages}

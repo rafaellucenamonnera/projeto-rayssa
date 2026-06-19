@@ -213,14 +213,14 @@ export const PipelineKanban = ({
   }, [grouped, stages]);
 
   return (
-    <div className="flex gap-3 overflow-auto max-h-[calc(100vh-220px)] pb-3">
+    <div className="flex h-[calc(100vh-230px)] min-h-[360px] gap-3 overflow-auto pb-3">
       {stages.map((s) => {
         const items = grouped[s.value] || [];
         const isOver = overStage === s.value;
         return (
           <div
             key={s.value}
-            className={`shrink-0 w-[260px] rounded-lg border bg-card/40 transition-colors ${isOver ? "border-primary ring-1 ring-primary/40" : "border-border"}`}
+            className={`min-h-full shrink-0 w-[260px] rounded-lg border bg-card/40 transition-colors ${isOver ? "border-primary ring-1 ring-primary/40" : "border-border"}`}
             onDragOver={(e) => { e.preventDefault(); setOverStage(s.value); }}
             onDragLeave={() => setOverStage((cur) => (cur === s.value ? null : cur))}
             onDrop={(e) => {
@@ -235,7 +235,7 @@ export const PipelineKanban = ({
               onMoveLead(id, s.value);
             }}
           >
-            <div className="px-3 py-2 border-b border-border/60 sticky top-0 bg-card z-10">
+            <div className="px-3 py-2 border-b border-border/60 sticky top-0 bg-card z-20">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-semibold uppercase tracking-wide truncate">{s.label}</p>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{items.length}</span>
