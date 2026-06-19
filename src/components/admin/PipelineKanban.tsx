@@ -226,7 +226,7 @@ export const PipelineKanban = memo(({
         return (
           <div
             key={s.value}
-            className={`min-h-full shrink-0 w-[260px] rounded-lg border bg-card/40 transition-colors ${isOver ? "border-primary ring-1 ring-primary/40" : "border-border"}`}
+            className={`flex h-full min-h-full shrink-0 w-[260px] flex-col rounded-lg border bg-card/40 transition-colors ${isOver ? "border-primary ring-1 ring-primary/40" : "border-border"}`}
             onDragOver={(e) => { e.preventDefault(); setOverStage(s.value); }}
             onDragLeave={() => setOverStage((cur) => (cur === s.value ? null : cur))}
             onDrop={(e) => {
@@ -241,7 +241,7 @@ export const PipelineKanban = memo(({
               onMoveLead(id, s.value);
             }}
           >
-            <div className="sticky top-0 z-50 border-b border-border/70 bg-card px-3 py-2 shadow-sm">
+            <div className="sticky top-0 z-50 shrink-0 border-b border-border/70 bg-card px-3 py-2 shadow-sm">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-semibold uppercase tracking-wide truncate">{s.label}</p>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{items.length}</span>
@@ -249,7 +249,7 @@ export const PipelineKanban = memo(({
               <p className="text-[11px] text-muted-foreground mt-0.5">Total: <span className="font-medium text-foreground">{fmt(totals[s.value])}</span></p>
             </div>
 
-            <div className="p-2 space-y-2 min-h-[120px]">
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
               {items.map((l) => {
                 const valor = leadContractValue(l);
                 const statusTokens = showCsInsteadOfPartner ? healthStatusColor(l.health_status) : null;
