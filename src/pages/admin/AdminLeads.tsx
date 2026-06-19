@@ -1282,13 +1282,19 @@ const AdminLeads = () => {
       setSavingCard(false);
       return;
     }
+    const previousResponsibleUserId = detailLead.responsible_user_id || null;
+    const previousResponsibleSlackUserId = (detailLead as any).responsible_slack_user_id || null;
+    const nextResponsibleUserId = editFormData.responsible_user_id || null;
+    const nextResponsibleSlackUserId = editFormData.responsible_slack_user_id || null;
+    const responsibleChanged = nextResponsibleUserId !== previousResponsibleUserId;
+    const slackChanged = nextResponsibleSlackUserId !== previousResponsibleSlackUserId;
+
     const payload: any = isCustomCrmPanel
       ? {
           full_name: nome,
           notes: editFormData.descricao_necessidade.trim() || null,
           city: editFormData.cidade.trim() || null,
           cnpj: editFormData.cnpj.replace(/\D/g, "") || null,
-          responsible_user_id: editFormData.responsible_user_id || null,
         }
       : {
           nome_fantasia: nome,
@@ -1305,15 +1311,19 @@ const AdminLeads = () => {
           nome_responsavel: editFormData.nome_responsavel?.trim() || null,
           telefone_responsavel: editFormData.telefone_responsavel.trim() || null,
           email_responsavel: editFormData.email_responsavel.trim().toLowerCase() || null,
-          responsible_user_id: editFormData.responsible_user_id || null,
-          responsible_slack_user_id: editFormData.responsible_slack_user_id || null,
         };
-    const previousResponsibleUserId = detailLead.responsible_user_id || null;
+    if (responsibleChanged) {
+      payload.responsible_user_id = nextResponsibleUserId;
+    }
+    if (!isCustomCrmPanel && slackChanged) {
+      payload.responsible_slack_user_id = nextResponsibleSlackUserId;
+    }
     const tableName = isAmbassadorPanel ? "ambassador_cards" : isCustomCrmPanel ? "representative_cards" : "leads";
     const { error } = await (supabase as any).from(tableName).update(payload as any).eq("id", detailLead.id);
     setSavingCard(false);
     if (error) {
-      toast.error("Erro ao salvar card");
+      console.error("Erro ao salvar card", error);
+      toast.error(`Erro ao salvar card: ${error.message}`);
       return;
     }
     const normalizedPayload: any = isCustomCrmPanel
@@ -1322,7 +1332,9 @@ const AdminLeads = () => {
           nome_fantasia: (payload as any).full_name,
           descricao_necessidade: (payload as any).notes,
           cidade: (payload as any).city,
-          nome_responsavel: usersAll.find((u) => u.user_id === (payload as any).responsible_user_id)?.nome || detailLead.nome_responsavel || "",
+          nome_responsavel: responsibleChanged
+            ? usersAll.find((u) => u.user_id === nextResponsibleUserId)?.nome || detailLead.nome_responsavel || ""
+            : detailLead.nome_responsavel || "",
         }
       : payload;
 
@@ -1330,20 +1342,21 @@ const AdminLeads = () => {
     setDetailLead(merged);
     setLeads((prev) => prev.map((l) => (l.id === detailLead.id ? { ...l, ...normalizedPayload } : l)));
     setIsEditingCard(false);
-    if (payload.responsible_user_id && payload.responsible_user_id !== previousResponsibleUserId) {
+    if (responsibleChanged && nextResponsibleUserId) {
       await createNotification({
-        recipientUserId: payload.responsible_user_id,
+        recipientUserId: nextResponsibleUserId,
         type: "card_responsible_assigned",
         title: "Você foi definido como responsável",
         message: `Você agora é responsável pelo card ${nome}.`,
         leadId: isCustomCrmPanel ? null : detailLead.id,
         actionUrl: cardActionUrl(detailLead.id),
         metadata: { previous_responsible_user_id: previousResponsibleUserId },
-        deliveryKey: `${isCustomCrmPanel ? "card" : "lead"}-${detailLead.id}-responsible-${payload.responsible_user_id}-${Date.now()}`,
+        deliveryKey: `${isCustomCrmPanel ? "card" : "lead"}-${detailLead.id}-responsible-${nextResponsibleUserId}-${Date.now()}`,
       });
     }
     toast.success("Card atualizado");
   };
+
 
   const createRepresentativeCard = async () => {
     if (!canCreateLead) {
