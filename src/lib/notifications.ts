@@ -30,11 +30,6 @@ export const createNotification = async (payload: NotificationPayload) => {
   });
 
   if (error) throw error;
-  if (data) {
-    void supabase.functions.invoke("send-notification-email", {
-      body: { notification_id: data },
-    });
-  }
   return data as string | null;
 };
 

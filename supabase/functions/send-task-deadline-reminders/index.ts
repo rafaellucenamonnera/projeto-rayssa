@@ -79,9 +79,5 @@ Deno.serve(async (req) => {
     }
   }
 
-  if (created.length > 0) {
-    await supabase.functions.invoke("send-notification-email", { body: {} });
-  }
-
   return json({ created: created.length, notification_ids: created });
 });
