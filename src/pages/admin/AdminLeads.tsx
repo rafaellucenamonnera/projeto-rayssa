@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useDeferredValue, useMemo, useState, useEffect } from "react";
 import { useLocation, useParams, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -204,6 +204,7 @@ const AdminLeads = () => {
   const [filterConsultor, setFilterConsultor] = useState<string>("all");
   const [filterCs, setFilterCs] = useState<string>("all");
   const [filterEmpresa, setFilterEmpresa] = useState("");
+  const deferredFilterEmpresa = useDeferredValue(filterEmpresa);
   const [filterResponsibleUser, setFilterResponsibleUser] = useState<string>("all");
   const [filterCampaignStatus, setFilterCampaignStatus] = useState<string>("all");
   const [filterImpactLevel, setFilterImpactLevel] = useState<string>("all");
@@ -341,13 +342,13 @@ const AdminLeads = () => {
     loadClonePermissionAndPanels();
   }, [isAdmin, canEditLead, canDeleteLead]);
 
-  const openCloneDialog = (lead: any) => {
+  const openCloneDialog = useCallback((lead: any) => {
     setCloneLead(lead);
     setTargetPanelId("");
     setTargetStageId("");
     setAvailableTargetStages([]);
     setCloneDialogOpen(true);
-  };
+  }, []);
 
   const loadTargetStages = async (panelId: string) => {
     if (!panelId) {
@@ -1077,7 +1078,7 @@ const AdminLeads = () => {
     setPendingStatusChange(null);
   };
 
-  const handleDelete = async (id: string, nome: string) => {
+  const handleDelete = useCallback(async (id: string, nome: string) => {
     if (!canDeleteLead) {
       toast.error("Sem permissão para excluir");
       return;
@@ -1096,7 +1097,7 @@ const AdminLeads = () => {
       setDetailOpen(false);
       setDetailLead(null);
     }
-  };
+  }, [canDeleteLead, isCustomCrmPanel, isAmbassadorPanel, detailLead?.id]);
 
   const handleSaveNumeroProposta = async (leadId: string) => {
     const { error } = await supabase
@@ -1233,15 +1234,15 @@ const AdminLeads = () => {
     }
   };
 
-  const openLeadDetail = (lead: any) => {
+  const openLeadDetail = useCallback((lead: any) => {
     setDetailLead(lead);
     setEditingNumProposta(lead.numero_proposta || "");
     setIsEditingCard(false);
     setEditFormData(leadToEditFormData(lead));
     setDetailOpen(true);
-  };
+  }, []);
 
-  const startEditCard = (lead: any) => {
+  const startEditCard = useCallback((lead: any) => {
     if (!canEditLead) {
       toast.error("Sem permissão para editar");
       return;
@@ -1250,7 +1251,7 @@ const AdminLeads = () => {
     setEditFormData(leadToEditFormData(lead));
     setIsEditingCard(true);
     setDetailOpen(true);
-  };
+  }, [canEditLead]);
 
   const cancelEditCard = () => {
     if (!detailLead) return;
@@ -1440,62 +1441,97 @@ const AdminLeads = () => {
     }
   };
 
-  const updateRepresentativeCard = async (id: string, payload: Record<string, any>) =>
-    (supabase as any).from(isAmbassadorPanel ? "ambassador_cards" : "representative_cards").update(payload).eq("id", id);
+  const updateRepresentativeCard = useCallback(async (id: string, payload: Record<string, any>) =>
+    (supabase as any).from(isAmbassadorPanel ? "ambassador_cards" : "representative_cards").update(payload).eq("id", id), [isAmbassadorPanel]);
 
-  const moveRepresentativeCard = async (id: string, stageId: string) =>
-    updateRepresentativeCard(id, { stage_id: stageId });
+  const moveRepresentativeCard = useCallback(async (id: string, stageId: string) =>
+    updateRepresentativeCard(id, { stage_id: stageId }), [updateRepresentativeCard]);
 
-  // Apply filters
-  const filtered = leads.filter((l) => {
-    if (filterStatus !== "all" && (l.status_lead || l.status) !== filterStatus) return false;
+  const filterEmpresaLower = useMemo(() => deferredFilterEmpresa.trim().toLowerCase(), [deferredFilterEmpresa]);
+  const filterStartDate = useMemo(() => (filterDataInicio ? new Date(filterDataInicio) : null), [filterDataInicio]);
+  const filterEndDate = useMemo(() => {
+    if (!filterDataFim) return null;
+    const fim = new Date(filterDataFim);
+    fim.setHours(23, 59, 59);
+    return fim;
+  }, [filterDataFim]);
+
+  const filteredExceptStatus = useMemo(() => leads.filter((l) => {
     if (currentPanelId !== "sucesso" && filterConsultor !== "all" && l.parceiro_id !== filterConsultor) return false;
     if (currentPanelId === "sucesso" && filterCs !== "all" && (l.consultor || "") !== filterCs) return false;
-    if (filterEmpresa && !((l.full_name || l.nome_fantasia) || "").toLowerCase().includes(filterEmpresa.toLowerCase())) return false;
+    if (filterEmpresaLower && !((l.full_name || l.nome_fantasia) || "").toLowerCase().includes(filterEmpresaLower)) return false;
     if (isCustomCrmPanel && filterResponsibleUser !== "all" && l.responsible_user_id !== filterResponsibleUser) return false;
     if (currentPanelId === "sucesso" && filterCampaignStatus !== "all" && (l.campaign_status_current || "SEM_STATUS") !== filterCampaignStatus) return false;
     if ((currentPanelId === "sucesso" || currentPanelId === "campanhas") && filterImpactLevel !== "all" && normalizeImpact(l.impact_level) !== filterImpactLevel) return false;
     if ((currentPanelId === "sucesso" || currentPanelId === "campanhas") && filterHealthStatus !== "all" && normalizeHealthStatus(l.health_status) !== filterHealthStatus) return false;
-    if (filterDataInicio) {
+    if (filterStartDate) {
       const d = new Date(l.data_cadastro);
-      if (d < new Date(filterDataInicio)) return false;
+      if (d < filterStartDate) return false;
     }
-    if (filterDataFim) {
+    if (filterEndDate) {
       const d = new Date(l.data_cadastro);
-      const fim = new Date(filterDataFim);
-      fim.setHours(23, 59, 59);
-      if (d > fim) return false;
+      if (d > filterEndDate) return false;
     }
     return true;
-  });
+  }), [
+    leads,
+    currentPanelId,
+    filterConsultor,
+    filterCs,
+    filterEmpresaLower,
+    isCustomCrmPanel,
+    filterResponsibleUser,
+    filterCampaignStatus,
+    filterImpactLevel,
+    filterHealthStatus,
+    filterStartDate,
+    filterEndDate,
+  ]);
 
-  // Status counts (refletem todos os filtros, exceto o próprio filterStatus)
-  const filteredExceptStatus = leads.filter((l) => {
-    if (currentPanelId !== "sucesso" && filterConsultor !== "all" && l.parceiro_id !== filterConsultor) return false;
-    if (currentPanelId === "sucesso" && filterCs !== "all" && (l.consultor || "") !== filterCs) return false;
-    if (filterEmpresa && !((l.full_name || l.nome_fantasia) || "").toLowerCase().includes(filterEmpresa.toLowerCase())) return false;
-    if (isCustomCrmPanel && filterResponsibleUser !== "all" && l.responsible_user_id !== filterResponsibleUser) return false;
-    if (currentPanelId === "sucesso" && filterCampaignStatus !== "all" && (l.campaign_status_current || "SEM_STATUS") !== filterCampaignStatus) return false;
-    if ((currentPanelId === "sucesso" || currentPanelId === "campanhas") && filterImpactLevel !== "all" && normalizeImpact(l.impact_level) !== filterImpactLevel) return false;
-    if ((currentPanelId === "sucesso" || currentPanelId === "campanhas") && filterHealthStatus !== "all" && normalizeHealthStatus(l.health_status) !== filterHealthStatus) return false;
-    if (filterDataInicio) {
-      const d = new Date(l.data_cadastro);
-      if (d < new Date(filterDataInicio)) return false;
+  const filtered = useMemo(() => {
+    if (filterStatus === "all") return filteredExceptStatus;
+    return filteredExceptStatus.filter((l) => (l.status_lead || l.status) === filterStatus);
+  }, [filteredExceptStatus, filterStatus]);
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    pipelineStages.forEach((s) => { counts[s.value] = 0; });
+    filteredExceptStatus.forEach((l) => {
+      const s = l.status_lead || l.status || "novo_lead";
+      if (counts[s] !== undefined) counts[s]++;
+    });
+    return counts;
+  }, [filteredExceptStatus, pipelineStages]);
+
+  const handleKanbanCloneCard = useCallback((lead: any) => {
+    openCloneDialog(lead);
+  }, [openCloneDialog]);
+
+  const handleKanbanEditCard = useCallback((lead: any) => {
+    startEditCard(lead);
+  }, [startEditCard]);
+
+  const handleKanbanDeleteCard = useCallback((lead: any) => {
+    handleDelete(lead.id, lead.nome_fantasia);
+  }, [handleDelete]);
+
+  const handleKanbanMoveLead = useCallback((id: string, newStage: string) => {
+    if (!canMovePipeline) {
+      toast.error("Sem permissão para mover pipeline");
+      return;
     }
-    if (filterDataFim) {
-      const d = new Date(l.data_cadastro);
-      const fim = new Date(filterDataFim);
-      fim.setHours(23, 59, 59);
-      if (d > fim) return false;
+    const lead = leads.find((l) => l.id === id);
+    if (!lead) return;
+    if (isCustomCrmPanel) {
+      moveRepresentativeCard(id, newStage).then(({ error }: any) => {
+        if (error) return toast.error("Erro ao mover card: " + error.message);
+        setLeads((prev) => prev.map((p) => (p.id === id ? { ...p, stage_id: newStage } : p)));
+        toast.success("Card movido com sucesso");
+      });
+      return;
     }
-    return true;
-  });
-  const statusCounts: Record<string, number> = {};
-  pipelineStages.forEach((s) => { statusCounts[s.value] = 0; });
-  filteredExceptStatus.forEach((l) => {
-    const s = l.status_lead || l.status || "novo_lead";
-    if (statusCounts[s] !== undefined) statusCounts[s]++;
-  });
+    handleStatusChange(id, lead.nome_fantasia, newStage);
+  }, [canMovePipeline, leads, isCustomCrmPanel, moveRepresentativeCard, handleStatusChange]);
 
   const isConvertedOrBeyond = (status: string) =>
     ["lead_convertido", "contrato_enviado", "contrato_assinado"].includes(status);
@@ -1895,120 +1931,106 @@ const AdminLeads = () => {
             canCloneCard={!isAmbassadorPanel && canCloneCard}
             canEditCard={canEditLead}
             canDeleteCard={canDeleteLead}
-            onCloneCard={(lead) => openCloneDialog(lead)}
-            onEditCard={(lead) => startEditCard(lead)}
-            onDeleteCard={(lead) => handleDelete(lead.id, lead.nome_fantasia)}
-            onAssignResponsible={(lead) => startEditCard(lead)}
-            onMoveLead={(id, newStage) => {
-              if (!canMovePipeline) {
-                toast.error("Sem permissão para mover pipeline");
-                return;
-              }
-              const lead = leads.find((l) => l.id === id);
-              if (!lead) return;
-              if (isCustomCrmPanel) {
-                moveRepresentativeCard(id, newStage).then(({ error }: any) => {
-                  if (error) return toast.error("Erro ao mover card: " + error.message);
-                  setLeads((prev) => prev.map((p) => (p.id === id ? { ...p, stage_id: newStage } : p)));
-                  toast.success("Card movido com sucesso");
-                });
-                return;
-              }
-              handleStatusChange(id, lead.nome_fantasia, newStage);
-            }}
-            onOpenLead={(l) => openLeadDetail(l)}
+            onCloneCard={handleKanbanCloneCard}
+            onEditCard={handleKanbanEditCard}
+            onDeleteCard={handleKanbanDeleteCard}
+            onAssignResponsible={handleKanbanEditCard}
+            onMoveLead={handleKanbanMoveLead}
+            onOpenLead={openLeadDetail}
           />
         </div>
       )}
 
       {/* Desktop table */}
-      <Card className={`border-border hidden ${view === "lista" ? "lg:block" : ""}`}>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Data</th>
-                  {!isCustomCrmPanel && <th className="text-left py-3 px-4 text-muted-foreground font-medium">Embaixador Monnera</th>}
-                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">{isCustomCrmPanel ? "Nome" : "Empresa"}</th>
-                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Cidade</th>
-                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Responsável</th>
-                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Telefone</th>
-                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Pipeline</th>
-                  {!isCustomCrmPanel && <th className="text-left py-3 px-4 text-muted-foreground font-medium">Docs</th>}
-                  {(!isAmbassadorPanel && (canCloneCard || canDeleteLead)) && <th className="text-left py-3 px-4 text-muted-foreground font-medium"></th>}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((l) => (
-                  <tr key={l.id} className="border-b border-border/50 hover:bg-secondary/50">
-                    <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">{new Date(l.data_cadastro).toLocaleDateString("pt-BR")}</td>
-                    {!isCustomCrmPanel && (
-                      <td className="py-3 px-4">
-                        <span className="px-2 py-1 rounded bg-primary/10 text-primary text-xs">{parceiros[l.parceiro_id] || '-'}</span>
-                      </td>
-                    )}
-                    <td className="py-3 px-4">
-                      <button onClick={() => openLeadDetail(l)} className="hover:text-primary transition-colors text-left">
-                        {l.nome_fantasia}
-                      </button>
-                    </td>
-                    <td className="py-3 px-4">{l.cidade}</td>
-                    <td className="py-3 px-4">{l.nome_responsavel}</td>
-                    <td className="py-3 px-4">{l.telefone_responsavel}</td>
-                    <td className="py-3 px-4">
-                      <div className="space-y-1">
-                        <StatusSelect lead={l} />
-                        <DaysInStage dataEntrada={stageMap[l.id]} compact />
-                      </div>
-                    </td>
-                    {!isCustomCrmPanel && (
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-1">
-                          {l.proposta_url && (
-                            <button onClick={() => openSignedUrl(l.proposta_url, `proposta-${l.nome_fantasia}.pdf`)} className="p-1 hover:bg-primary/10 rounded" title="Download Proposta">
-                              <FileText className="h-4 w-4 text-primary" />
-                            </button>
-                          )}
-                          {l.contrato_url && (
-                            <button onClick={() => openSignedUrl(l.contrato_url, `contrato-${l.nome_fantasia}.docx`)} className="p-1 hover:bg-primary/10 rounded" title="Download Contrato">
-                              <Download className="h-4 w-4 text-emerald-500" />
-                            </button>
-                          )}
-                          {l.status_lead === "contrato_assinado" && (
-                            <button onClick={() => handleDownloadDossie(l.id, l.nome_fantasia)} className="p-1 hover:bg-primary/10 rounded" title="Baixar dossiê">
-                              <BookOpen className="h-4 w-4 text-blue-500" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    )}
-                    {(!isAmbassadorPanel && (canCloneCard || canDeleteLead)) && (
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-1">
-                          {!isAmbassadorPanel && canCloneCard && (
-                            <Button variant="ghost" size="icon" onClick={() => openCloneDialog(l)} title="Clonar card">
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {canDeleteLead && (
-                            <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id, l.nome_fantasia)} className="text-destructive hover:text-destructive">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    )}
+      {view === "lista" && (
+        <Card className="border-border hidden lg:block">
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-3 px-4 text-muted-foreground font-medium">Data</th>
+                    {!isCustomCrmPanel && <th className="text-left py-3 px-4 text-muted-foreground font-medium">Embaixador Monnera</th>}
+                    <th className="text-left py-3 px-4 text-muted-foreground font-medium">{isCustomCrmPanel ? "Nome" : "Empresa"}</th>
+                    <th className="text-left py-3 px-4 text-muted-foreground font-medium">Cidade</th>
+                    <th className="text-left py-3 px-4 text-muted-foreground font-medium">Responsável</th>
+                    <th className="text-left py-3 px-4 text-muted-foreground font-medium">Telefone</th>
+                    <th className="text-left py-3 px-4 text-muted-foreground font-medium">Pipeline</th>
+                    {!isCustomCrmPanel && <th className="text-left py-3 px-4 text-muted-foreground font-medium">Docs</th>}
+                    {(!isAmbassadorPanel && (canCloneCard || canDeleteLead)) && <th className="text-left py-3 px-4 text-muted-foreground font-medium"></th>}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            {filtered.length === 0 && (
-              <p className="text-center py-8 text-muted-foreground">Nenhum lead encontrado.</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+                </thead>
+                <tbody>
+                  {filtered.map((l) => (
+                    <tr key={l.id} className="border-b border-border/50 hover:bg-secondary/50">
+                      <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">{new Date(l.data_cadastro).toLocaleDateString("pt-BR")}</td>
+                      {!isCustomCrmPanel && (
+                        <td className="py-3 px-4">
+                          <span className="px-2 py-1 rounded bg-primary/10 text-primary text-xs">{parceiros[l.parceiro_id] || '-'}</span>
+                        </td>
+                      )}
+                      <td className="py-3 px-4">
+                        <button onClick={() => openLeadDetail(l)} className="hover:text-primary transition-colors text-left">
+                          {l.nome_fantasia}
+                        </button>
+                      </td>
+                      <td className="py-3 px-4">{l.cidade}</td>
+                      <td className="py-3 px-4">{l.nome_responsavel}</td>
+                      <td className="py-3 px-4">{l.telefone_responsavel}</td>
+                      <td className="py-3 px-4">
+                        <div className="space-y-1">
+                          <StatusSelect lead={l} />
+                          <DaysInStage dataEntrada={stageMap[l.id]} compact />
+                        </div>
+                      </td>
+                      {!isCustomCrmPanel && (
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-1">
+                            {l.proposta_url && (
+                              <button onClick={() => openSignedUrl(l.proposta_url, `proposta-${l.nome_fantasia}.pdf`)} className="p-1 hover:bg-primary/10 rounded" title="Download Proposta">
+                                <FileText className="h-4 w-4 text-primary" />
+                              </button>
+                            )}
+                            {l.contrato_url && (
+                              <button onClick={() => openSignedUrl(l.contrato_url, `contrato-${l.nome_fantasia}.docx`)} className="p-1 hover:bg-primary/10 rounded" title="Download Contrato">
+                                <Download className="h-4 w-4 text-emerald-500" />
+                              </button>
+                            )}
+                            {l.status_lead === "contrato_assinado" && (
+                              <button onClick={() => handleDownloadDossie(l.id, l.nome_fantasia)} className="p-1 hover:bg-primary/10 rounded" title="Baixar dossiê">
+                                <BookOpen className="h-4 w-4 text-blue-500" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                      {(!isAmbassadorPanel && (canCloneCard || canDeleteLead)) && (
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-1">
+                            {!isAmbassadorPanel && canCloneCard && (
+                              <Button variant="ghost" size="icon" onClick={() => openCloneDialog(l)} title="Clonar card">
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {canDeleteLead && (
+                              <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id, l.nome_fantasia)} className="text-destructive hover:text-destructive">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {filtered.length === 0 && (
+                <p className="text-center py-8 text-muted-foreground">Nenhum lead encontrado.</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Proposta Upload Dialog */}
       <PropostaUploadDialog

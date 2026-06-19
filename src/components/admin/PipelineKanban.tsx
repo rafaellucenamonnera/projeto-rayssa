@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { ArrowDown, ArrowRight, ArrowUp, ChevronDown, ChevronUp, Copy, GripVertical, Pencil, Trash2, UserRound, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { healthStatusColor, impactColor, normalizeHealthStatus, normalizeImpact } from "@/lib/healthStatusColors";
@@ -151,7 +151,7 @@ const leadPriorityScore = (l: KanbanLeadCardData): number => {
   return receitaDrop * 100 + diasSemInteracao * 1.5 + Math.log10(valorFinanceiro + 1) * 12;
 };
 
-export const PipelineKanban = ({
+export const PipelineKanban = memo(({
   leads,
   parceirosMap,
   onMoveLead,
@@ -174,13 +174,19 @@ export const PipelineKanban = ({
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
 
-  const daysInStage = (leadId: string): number | null => {
-    const iso = stageEntryMap?.[leadId];
-    if (!iso) return null;
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return null;
-    return Math.max(0, Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24)));
-  };
+  const stageDaysByLead = useMemo(() => {
+    if (!stageEntryMap) return {};
+    const now = Date.now();
+    return Object.fromEntries(
+      Object.entries(stageEntryMap).map(([leadId, iso]) => {
+        const d = new Date(iso);
+        const days = Number.isNaN(d.getTime())
+          ? null
+          : Math.max(0, Math.floor((now - d.getTime()) / (1000 * 60 * 60 * 24)));
+        return [leadId, days];
+      }),
+    ) as Record<string, number | null>;
+  }, [stageEntryMap]);
 
   const grouped = useMemo(() => {
     const g: Record<string, KanbanLeadCardData[]> = {};
@@ -192,14 +198,14 @@ export const PipelineKanban = ({
     Object.keys(g).forEach((stageKey) => {
       if (commercialMode) {
         g[stageKey] = g[stageKey].sort(
-          (a, b) => (daysInStage(b.id) ?? -1) - (daysInStage(a.id) ?? -1),
+          (a, b) => (stageDaysByLead[b.id] ?? -1) - (stageDaysByLead[a.id] ?? -1),
         );
       } else {
         g[stageKey] = g[stageKey].sort((a, b) => leadPriorityScore(b) - leadPriorityScore(a));
       }
     });
     return g;
-  }, [leads, stages, commercialMode, stageEntryMap]);
+  }, [leads, stages, commercialMode, stageDaysByLead]);
 
   const totals = useMemo(() => {
     const t: Record<string, number> = {};
@@ -255,7 +261,7 @@ export const PipelineKanban = ({
                 const revTrend = revVar == null ? null : revVar > EPSILON ? "up" : revVar < -EPSILON ? "down" : "neutral";
                 const RevIcon = revTrend === "up" ? ArrowUp : revTrend === "down" ? ArrowDown : ArrowRight;
                 const revColor = revTrend === "up" ? "text-[#00624b]" : revTrend === "down" ? "text-red-600" : "text-muted-foreground";
-                const days = commercialMode ? daysInStage(l.id) : null;
+                const days = commercialMode ? (stageDaysByLead[l.id] ?? null) : null;
                 const stripeClass =
                   days == null ? "" :
                   days >= 10 ? "bg-red-500" :
@@ -484,4 +490,4 @@ export const PipelineKanban = ({
       })}
     </div>
   );
-};
+});
