@@ -1,30 +1,24 @@
-## Corrigir download do dossiê em AdminLeads.tsx
+## Resultado da verificação
 
-**Arquivo:** `src/pages/admin/AdminLeads.tsx` (função `handleDownloadDossie`, linhas 1052–1087)
+A migration `supabase/migrations/20260618120000_lead_module_permissions_card_actions.sql` **já está aplicada** no banco do Lovable Cloud (mesmo projeto do app publicado). Não há nada a executar.
 
-**Problema:** A função lista `dossies/` na raiz com `search: leadId`, mas a edge `generate-dossie` salva em `dossies/{leadId}/dossie-{nome}.txt`. O `list` retorna vazio e o botão sempre falha.
+### Checagens realizadas
 
-**Correção:**
+| Verificação | Resultado |
+|---|---|
+| `to_regclass('public.module_permissions')` | ✅ existe |
+| `to_regclass('public.leads')` | ✅ existe |
+| `to_regclass('public.lead_tasks')` | ✅ existe |
+| `to_regclass('public.lead_comments')` | ✅ existe |
+| `to_regclass('public.lead_comment_attachments')` | ✅ existe |
+| `public.has_module_permission(rafael, 'leads', 'editar')` | ✅ `true` |
+| Rafael Lucena em `public.profiles` | ✅ `d8e99940-2d3a-45e6-8170-0bf2f5fc98a9` |
+| Registros em `module_permissions` para `modulo='leads'` | ✅ 114 linhas, 14 ações |
 
-1. Listar a pasta correta do lead:
-   ```ts
-   const { data: files } = await supabase.storage
-     .from("propostas")
-     .list(`dossies/${leadId}`);
-   ```
+### Permissões atuais do Rafael Lucena (`modulo='leads'`)
 
-2. Encontrar o arquivo que começa com `dossie-` e termina com `.txt`:
-   ```ts
-   const dossieFile = files?.find(
-     (f) => f.name.startsWith("dossie-") && f.name.endsWith(".txt")
-   );
-   ```
+Todas as 14 ações com `permitido=true`: `acessar`, `criar`, `editar`, `excluir`, `mover_pipeline`, `editar_pipeline`, `criar_tarefa`, `concluir_tarefa`, `inserir_mensagem`, `editar_mensagem`, `excluir_mensagem`, `inserir_arquivo`, `editar_financeiro`, `receber_notificacao_lead_perdido`.
 
-3. Gerar signed URL com o caminho completo:
-   ```ts
-   .createSignedUrl(`dossies/${leadId}/${dossieFile.name}`, 3600)
-   ```
+### Plano
 
-O restante do fluxo (fetch + blob download) permanece igual.
-
-**Fora de escopo:** edge function `generate-dossie`, bucket `propostas`, formato `.txt`.
+Nenhuma ação no banco é necessária. Se você aprovar este plano, eu apenas confirmo o estado e encerro sem mudanças. Caso queira que eu force a reaplicação de algum trecho (ex.: recriar `has_module_permission` ou redefinir policies de `lead-comment-attachments`), me diga qual parte e eu preparo uma migration específica.
