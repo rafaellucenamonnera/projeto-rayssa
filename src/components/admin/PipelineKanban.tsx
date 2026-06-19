@@ -235,7 +235,7 @@ export const PipelineKanban = ({
               onMoveLead(id, s.value);
             }}
           >
-            <div className="px-3 py-2 border-b border-border/60 sticky top-0 bg-card z-20">
+            <div className="sticky top-0 z-50 border-b border-border/70 bg-card px-3 py-2 shadow-sm">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-semibold uppercase tracking-wide truncate">{s.label}</p>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{items.length}</span>
