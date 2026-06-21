@@ -892,7 +892,7 @@ const partnerLogos = [
   { id: "02", name: "Parceiro comercial Monnera 02", variant: "logo-wide" },
   { id: "03", name: "Parceiro comercial Monnera 03", variant: "logo-wide" },
   { id: "04", name: "Santa Lucia Drogarias", variant: "logo-wide" },
-  { id: "05", name: "Parceiro comercial Monnera 05", variant: "logo-wide" },
+  { id: "05", name: "Baston", variant: "logo-wide" },
   { id: "06", name: "Parceiro comercial Monnera 06", variant: "logo-wide" },
   { id: "07", name: "Parceiro comercial Monnera 07", variant: "logo-wide" },
   { id: "08", name: "Parceiro comercial Monnera 08", variant: "logo-wide" },

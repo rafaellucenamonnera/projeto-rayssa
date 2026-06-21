@@ -1,0 +1,259 @@
+{
+  "schemaVersion": 1,
+  "repository": "monnera-parceiros-comerciais",
+  "purpose": "Repositorio de logomarcas de parceiros comerciais Monnera para uso como prova social em landing pages, apresentacoes, documentos comerciais e materiais institucionais.",
+  "lastUpdated": "2026-06-21",
+  "sourceDirectory": "public/assets-clientes-monnera/parceiros-comerciais",
+  "publicBasePath": "/assets-clientes-monnera/parceiros-comerciais",
+  "normalization": {
+    "script": "scripts/normalize_partner_logos.py",
+    "rules": [
+      "Cortar excesso de areas chapadas nas bordas quando nao fizerem parte do conteudo real da marca.",
+      "Manter cor chapada quando ela for parte da identidade visual da logo.",
+      "Redimensionar a logo para ocupar a maior extensao possivel do card sem distorcer proporcao.",
+      "Preservar margem visual curta para evitar corte do conteudo."
+    ]
+  },
+  "display": {
+    "component": "src/pages/IndexFigma.tsx",
+    "listName": "partnerLogos",
+    "cardClass": "authority-logo-card",
+    "defaultVariant": "logo-wide"
+  },
+  "logos": [
+    {
+      "id": "01",
+      "name": "Preco Baixo",
+      "file": "parceiro-01.png",
+      "publicPath": "/assets-clientes-monnera/parceiros-comerciais/parceiro-01.png",
+      "variant": "logo-wide",
+      "identified": true,
+      "status": "active"
+    },
+    {
+      "id": "02",
+      "name": "Parceiro comercial Monnera 02",
+      "file": "parceiro-02.png",
+      "publicPath": "/assets-clientes-monnera/parceiros-comerciais/parceiro-02.png",
+      "variant": "logo-wide",
+      "identified": false,
+      "status": "active"
+    },
+    {
+      "id": "03",
+      "name": "Parceiro comercial Monnera 03",
+      "file": "parceiro-03.png",
+      "publicPath": "/assets-clientes-monnera/parceiros-comerciais/parceiro-03.png",
+      "variant": "logo-wide",
+      "identified": false,
+      "status": "active"
+    },
+    {
+      "id": "04",
+      "name": "Santa Lucia Drogarias",
+      "file": "parceiro-04.png",
+      "publicPath": "/assets-clientes-monnera/parceiros-comerciais/parceiro-04.png",
+      "variant": "logo-wide",
+      "identified": true,
+      "status": "active"
+    },
+    {
+      "id": "05",
+      "name": "Baston",
+      "file": "parceiro-05.png",
+      "publicPath": "/assets-clientes-monnera/parceiros-comerciais/parceiro-05.png",
+      "variant": "logo-wide",
+      "identified": true,
+      "status": "active"
+    },
+    {
+      "id": "06",
+      "name": "Parceiro comercial Monnera 06",
+      "file": "parceiro-06.png",
+      "publicPath": "/assets-clientes-monnera/parceiros-comerciais/parceiro-06.png",
+      "variant": "logo-wide",
+      "identified": false,
+      "status": "active"
+    },
+    {
+      "id": "07",
+      "name": "Parceiro comercial Monnera 07",
+      "file": "parceiro-07.png",
+      "publicPath": "/assets-clientes-monnera/parceiros-comerciais/parceiro-07.png",
+      "variant": "logo-wide",
+      "identified": false,
+      "status": "active"
+    },
+    {
+      "id": "08",
+      "name": "Parceiro comercial Monnera 08",
+      "file": "parceiro-08.png",
+      "publicPath": "/assets-clientes-monnera/parceiros-comerciais/parceiro-08.png",
+      "variant": "logo-wide",
+      "identified": false,
+      "status": "active"
+    },
+    {
+      "id": "09",
+      "name": "Parceiro comercial Monnera 09",
+      "file": "parceiro-09.png",
+      "publicPath": "/assets-clientes-monnera/parceiros-comerciais/parceiro-09.png",
+      "variant": "logo-wide",
+      "identified": false,
+      "status": "active"
+    },
+    {
+      "id": "10",
+      "name": "Parceiro comercial Monnera 10",
+      "file": "parceiro-10.png",
+      "publicPath": "/assets-clientes-monnera/parceiros-comerciais/parceiro-10.png",
+      "variant": "logo-wide",
+      "identified": false,
+      "status": "active"
+    },
+    {
+      "id": "11",
+      "name": "Parceiro comercial Monnera 11",
+      "file": "parceiro-11.png",
+      "publicPath": "/assets-clientes-monnera/parceiros-comerciais/parceiro-11.png",
+      "variant": "logo-wide",
+      "identified": false,
+      "status": "active"
+    },
+    {
+      "id": "12",
+      "name": "Parceiro comercial Monnera 12",
+      "file": "parceiro-12.png",
+      "publicPath": "/assets-clientes-monnera/parceiros-comerciais/parceiro-12.png",
+      "variant": "logo-wide",
+      "identified": false,
+      "status": "active"
+    },
+    {
+      "id": "13",
+      "name": "Farmacias Unipreco",
+      "file": "parceiro-13.png",
+      "publicPath": "/assets-clientes-monnera/parceiros-comerciais/parceiro-13.png",
+      "variant": "logo-wide",
+      "identified": true,
+      "status": "active"
+    },
+    {
+      "id": "14",
+      "name": "Parceiro comercial Monnera 14",
+      "file": "parceiro-14.png",
+      "publicPath": "/assets-clientes-monnera/parceiros-comerciais/parceiro-14.png",
+      "variant": "logo-wide",
+      "identified": false,
+      "status": "active"
+    },
+    {
+      "id": "15",
+      "name": "Parceiro comercial Monnera 15",
+      "file": "parceiro-15.png",
+      "publicPath": "/assets-clientes-monnera/parceiros-comerciais/parceiro-15.png",
+      "variant": "logo-wide",
+      "identified": false,
+      "status": "active"
+    },
+    {
+      "id": "16",
+      "name": "Parceiro comercial Monnera 16",
+      "file": "parceiro-16.png",
+      "publicPath": "/assets-clientes-monnera/parceiros-comerciais/parceiro-16.png",
+      "variant": "logo-wide",
+      "identified": false,
+      "status": "active"
+    },
+    {
+      "id": "17",
+      "name": "Parceiro comercial Monnera 17",
+      "file": "parceiro-17.png",
+      "publicPath": "/assets-clientes-monnera/parceiros-comerciais/parceiro-17.png",
+      "variant": "logo-wide",
+      "identified": false,
+      "status": "active"
+    },
+    {
+      "id": "18",
+      "name": "Parceiro comercial Monnera 18",
+      "file": "parceiro-18.png",
+      "publicPath": "/assets-clientes-monnera/parceiros-comerciais/parceiro-18.png",
+      "variant": "logo-wide",
+      "identified": false,
+      "status": "active"
+    },
+    {
+      "id": "19",
+      "name": "Parceiro comercial Monnera 19",
+      "file": "parceiro-19.png",
+      "publicPath": "/assets-clientes-monnera/parceiros-comerciais/parceiro-19.png",
+      "variant": "logo-wide",
+      "identified": false,
+      "status": "active"
+    },
+    {
+      "id": "20",
+      "name": "Parceiro comercial Monnera 20",
+      "file": "parceiro-20.png",
+      "publicPath": "/assets-clientes-monnera/parceiros-comerciais/parceiro-20.png",
+      "variant": "logo-wide",
+      "identified": false,
+      "status": "active"
+    },
+    {
+      "id": "21",
+      "name": "Parceiro comercial Monnera 21",
+      "file": "parceiro-21.png",
+      "publicPath": "/assets-clientes-monnera/parceiros-comerciais/parceiro-21.png",
+      "variant": "logo-compact",
+      "identified": false,
+      "status": "active"
+    },
+    {
+      "id": "22",
+      "name": "Parceiro comercial Monnera 22",
+      "file": "parceiro-22.png",
+      "publicPath": "/assets-clientes-monnera/parceiros-comerciais/parceiro-22.png",
+      "variant": "logo-compact",
+      "identified": false,
+      "status": "active"
+    },
+    {
+      "id": "23",
+      "name": "Parceiro comercial Monnera 23",
+      "file": "parceiro-23.png",
+      "publicPath": "/assets-clientes-monnera/parceiros-comerciais/parceiro-23.png",
+      "variant": "logo-wide",
+      "identified": false,
+      "status": "active"
+    },
+    {
+      "id": "24",
+      "name": "Parceiro comercial Monnera 24",
+      "file": "parceiro-24.png",
+      "publicPath": "/assets-clientes-monnera/parceiros-comerciais/parceiro-24.png",
+      "variant": "logo-compact",
+      "identified": false,
+      "status": "active"
+    },
+    {
+      "id": "25",
+      "name": "Rede de Farmacias Biomax",
+      "file": "parceiro-25.png",
+      "publicPath": "/assets-clientes-monnera/parceiros-comerciais/parceiro-25.png",
+      "variant": "logo-wide",
+      "identified": true,
+      "status": "active"
+    },
+    {
+      "id": "26",
+      "name": "Farmacias Cruzeiro",
+      "file": "parceiro-26.png",
+      "publicPath": "/assets-clientes-monnera/parceiros-comerciais/parceiro-26.png",
+      "variant": "logo-wide",
+      "identified": true,
+      "status": "active"
+    }
+  ]
+}
