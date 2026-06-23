@@ -258,7 +258,7 @@ const AdminLeads = () => {
 
   // Financial dialog
   const [financeiroDialogOpen, setFinanceiroDialogOpen] = useState(false);
-  const [pendingFinanceiro, setPendingFinanceiro] = useState<{ leadId: string; leadName: string; parceiroId: string; nextStatus?: string; lead?: any } | null>(null);
+  const [pendingFinanceiro, setPendingFinanceiro] = useState<{ leadId: string; leadName: string; parceiroId: string; nextStatus?: string; lead?: any; allowSkipValidation?: boolean } | null>(null);
 
   // Campaign flow dialogs
   const [campaignMoveOpen, setCampaignMoveOpen] = useState(false);
@@ -625,7 +625,26 @@ const AdminLeads = () => {
     }
 
 
-    // Bloqueio financeiro: a partir de "Proposta Enviada" exigir dados completos
+    // Proposta Enviada / Proposta Comercial: sempre abrir o financeiro primeiro,
+    // permitindo dispensar a obrigatoriedade dos campos (allowSkipValidation).
+    if (newStatus === "proposta_enviada" || newStatus === "proposta_comercial") {
+      if (!canEditFinanceiro && lead && !hasValidFinanceiro(lead)) {
+        toast.warning("Preencha o financeiro para avançar este lead. Você não tem permissão para editar financeiro.");
+        return;
+      }
+      setPendingFinanceiro({
+        leadId,
+        leadName,
+        parceiroId: lead?.parceiro_id || "",
+        nextStatus: newStatus,
+        lead,
+        allowSkipValidation: true,
+      });
+      setFinanceiroDialogOpen(true);
+      return;
+    }
+
+    // Bloqueio financeiro: para demais etapas (lead_convertido, contrato_enviado, contrato_assinado) exigir dados completos
     if (FINANCEIRO_REQUIRED_FROM.includes(newStatus) && lead && !hasValidFinanceiro(lead)) {
       if (!canEditFinanceiro) {
         toast.warning("Preencha o financeiro para avançar este lead. Você não tem permissão para editar financeiro.");
@@ -637,11 +656,6 @@ const AdminLeads = () => {
       return;
     }
 
-    if (newStatus === "proposta_enviada" || newStatus === "proposta_comercial") {
-      setPendingStatusChange({ leadId, leadName });
-      setUploadDialogOpen(true);
-      return;
-    }
     if (newStatus === "lead_perdido") {
       setPendingPerdido({ leadId, leadName });
       setPerdidoDialogOpen(true);
@@ -2172,6 +2186,7 @@ const AdminLeads = () => {
         } : undefined}
         onSaved={handleFinanceiroSaved}
         onCancel={handleFinanceiroCancel}
+        allowSkipValidation={pendingFinanceiro?.allowSkipValidation || false}
       />
 
       {/* Lead Detail Dialog */}

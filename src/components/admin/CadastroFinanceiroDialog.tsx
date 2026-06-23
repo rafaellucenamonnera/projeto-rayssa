@@ -31,6 +31,8 @@ interface CadastroFinanceiroDialogProps {
     editado_por_nome?: string | null;
     editado_em?: string | null;
   };
+  /** Quando true, exibe checkbox para dispensar a obrigatoriedade dos campos financeiros (usado no fluxo de Proposta Comercial). */
+  allowSkipValidation?: boolean;
   onSaved: (data: {
     valor_setup: number;
     valor_mensalidade: number;
@@ -43,10 +45,11 @@ interface CadastroFinanceiroDialogProps {
 }
 
 export const CadastroFinanceiroDialog = ({
-  open, onOpenChange, leadId, leadName, parceiroId, parceiros, initialData, audit, onSaved, onCancel,
+  open, onOpenChange, leadId, leadName, parceiroId, parceiros, initialData, audit, allowSkipValidation, onSaved, onCancel,
 }: CadastroFinanceiroDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [tipoComissao, setTipoComissao] = useState<"percentual" | "fixo">("percentual");
+  const [skipValidation, setSkipValidation] = useState(false);
   const [form, setForm] = useState({
     consultor_id: parceiroId,
     valor_setup: "",
@@ -95,39 +98,89 @@ export const CadastroFinanceiroDialog = ({
       : 0;
 
   const handleSave = async () => {
+    // Valores negativos são sempre inválidos, mesmo com obrigatoriedade dispensada
     if (setup < 0) { toast.error("Valor de setup inválido"); return; }
     if (mensalidade < 0) { toast.error("Mensalidade inválida"); return; }
-    if (qtdLojas <= 0) { toast.error("Quantidade de lojas deve ser ao menos 1"); return; }
     if (campanhas < 0) { toast.error("Receita de campanhas inválida"); return; }
+
+    const skip = allowSkipValidation && skipValidation;
+
+    if (!skip) {
+      if (qtdLojas <= 0) { toast.error("Quantidade de lojas deve ser ao menos 1"); return; }
+    }
+
+    // Helpers para flags de "usuário digitou algo" (vs apenas herdou de initialData)
+    const touched = {
+      setup: form.valor_setup.trim() !== "",
+      mensalidade: form.valor_mensalidade.trim() !== "",
+      campanhas: form.valor_campanhas.trim() !== "",
+      qtdLojas: form.quantidade_lojas.trim() !== "",
+      parcelas: form.qtd_parcelas.trim() !== "",
+      percentual: form.percentual_comissao.trim() !== "" || form.valor_comissao_fixo.trim() !== "",
+    };
+
+    // Valores efetivos: usuário digitou → usa o novo; senão, preserva initialData; com fallback 1 para qtdLojas quando pulando validação.
+    const initSetup = Number(initialData?.valor_setup ?? 0);
+    const initMensalidade = Number(initialData?.valor_mensalidade ?? 0);
+    const initCampanhas = Number(initialData?.valor_campanhas ?? 0);
+    const initLojas = Number(initialData?.quantidade_lojas ?? 0);
+    const initParcelas = Number(initialData?.qtd_parcelas ?? 0);
+    const initPercentual = Number(initialData?.percentual_consultor ?? 0);
+
+    const effectiveSetup = touched.setup ? setup : initSetup;
+    const effectiveMensalidade = touched.mensalidade ? mensalidade : initMensalidade;
+    const effectiveCampanhas = touched.campanhas ? campanhas : initCampanhas;
+    const effectiveLojas = touched.qtdLojas
+      ? qtdLojas
+      : (initLojas > 0 ? initLojas : (skip ? 1 : qtdLojas));
+    const effectiveParcelas = touched.parcelas ? parcelas : initParcelas;
+    const effectivePercentual = touched.percentual ? percentualEfetivo : initPercentual;
 
     setLoading(true);
     try {
+      // Payload condicional: quando pulando validação, só envia campos preenchidos pelo usuário
+      // ou que já existiam (preserva valores existentes em vez de sobrescrever com 0).
+      const updateData: any = {
+        comissao_vitalicia: form.comissao_vitalicia,
+      };
+
+      const include = (key: string, touchedFlag: boolean, value: any, hadInitial: boolean) => {
+        if (!skip) {
+          updateData[key] = value;
+        } else if (touchedFlag || hadInitial) {
+          updateData[key] = value;
+        }
+      };
+
+      include("valor_setup", touched.setup, effectiveSetup, initSetup > 0);
+      include("valor_mensalidade", touched.mensalidade, effectiveMensalidade, initMensalidade > 0);
+      include("valor_campanhas", touched.campanhas, effectiveCampanhas, initCampanhas > 0);
+      include("quantidade_lojas", touched.qtdLojas || skip, effectiveLojas, initLojas > 0);
+      include("percentual_consultor", touched.percentual, effectivePercentual, initPercentual > 0);
+
+      const qtdParcelasFinal = form.comissao_vitalicia || effectiveParcelas <= 0 ? null : effectiveParcelas;
+      if (!skip || touched.parcelas || initParcelas > 0 || form.comissao_vitalicia) {
+        updateData.qtd_parcelas = qtdParcelasFinal;
+        updateData.parcelas_pagas = 0;
+      }
+
       const { error } = await supabase
         .from("leads")
-        .update({
-          valor_setup: setup,
-          valor_mensalidade: mensalidade,
-          valor_campanhas: campanhas,
-          quantidade_lojas: qtdLojas,
-          percentual_consultor: percentualEfetivo,
-          qtd_parcelas: form.comissao_vitalicia || parcelas <= 0 ? null : parcelas,
-          parcelas_pagas: 0,
-          comissao_vitalicia: form.comissao_vitalicia,
-        } as any)
+        .update(updateData)
         .eq("id", leadId);
 
       if (error) throw error;
 
       onSaved({
-        valor_setup: setup,
-        valor_mensalidade: mensalidade,
-        valor_campanhas: campanhas,
-        percentual_consultor: percentualEfetivo,
-        qtd_parcelas: form.comissao_vitalicia || parcelas <= 0 ? 0 : parcelas,
+        valor_setup: effectiveSetup,
+        valor_mensalidade: effectiveMensalidade,
+        valor_campanhas: effectiveCampanhas,
+        percentual_consultor: effectivePercentual,
+        qtd_parcelas: form.comissao_vitalicia || effectiveParcelas <= 0 ? 0 : effectiveParcelas,
         comissao_vitalicia: form.comissao_vitalicia,
       });
       onOpenChange(false);
-      toast.success("Dados financeiros salvos!");
+      toast.success(skip ? "Dados financeiros salvos (sem obrigatoriedade)" : "Dados financeiros salvos!");
     } catch (e: any) {
       toast.error("Erro ao salvar: " + (e.message || ""));
     } finally {
@@ -147,10 +200,35 @@ export const CadastroFinanceiroDialog = ({
 
         <div className="rounded-md bg-amber-500/10 border border-amber-500/30 p-3 flex gap-2 text-xs">
           <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-          <p>Para avançar este lead você precisa preencher <strong>Setup, Mensalidade, Quantidade de lojas e Receita de campanhas</strong>. Mensalidade pode ser zero quando a negociação exigir.</p>
+          <p>
+            Para avançar este lead você precisa preencher <strong>Setup, Mensalidade, Quantidade de lojas e Receita de campanhas</strong>. Mensalidade pode ser zero quando a negociação exigir.
+            {allowSkipValidation && (
+              <span className="block mt-1">
+                Em propostas comerciais, os dados podem ser dispensados quando a negociação ainda não exigir valores fechados — marque a opção abaixo para seguir sem preencher tudo.
+              </span>
+            )}
+          </p>
         </div>
 
+        {allowSkipValidation && (
+          <label className="flex items-start gap-3 rounded-md border border-border bg-secondary/40 p-3 text-sm">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={skipValidation}
+              onChange={(e) => setSkipValidation(e.target.checked)}
+            />
+            <span>
+              <span className="font-medium">Dados financeiros não obrigatórios nesta proposta</span>
+              <span className="block text-xs text-muted-foreground">
+                Permite salvar e continuar para a proposta comercial sem preencher todos os campos financeiros. Valores já existentes serão preservados.
+              </span>
+            </span>
+          </label>
+        )}
+
         <p className="text-sm text-muted-foreground">Lead: <strong>{leadName}</strong></p>
+
 
         <div className="space-y-4">
           <div className="space-y-1.5">
