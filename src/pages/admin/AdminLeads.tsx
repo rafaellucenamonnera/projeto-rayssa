@@ -2186,6 +2186,7 @@ const AdminLeads = () => {
         } : undefined}
         onSaved={handleFinanceiroSaved}
         onCancel={handleFinanceiroCancel}
+        allowSkipValidation={pendingFinanceiro?.allowSkipValidation || false}
       />
 
       {/* Lead Detail Dialog */}
