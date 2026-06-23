@@ -1,5 +1,5 @@
 import { useCallback, useDeferredValue, useMemo, useState, useEffect } from "react";
-import { useLocation, useParams, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { LeadExportButton } from "@/components/admin/LeadExportButton";
 import { LeadImportDialog } from "@/components/admin/LeadImportDialog";
-import { PropostaComercialDialog } from "@/components/admin/PropostaComercialDialog";
+
 import { LeadPerdidoDialog } from "@/components/admin/LeadPerdidoDialog";
 import { AgendarReuniaoDialog } from "@/components/admin/AgendarReuniaoDialog";
 import { CadastroFinanceiroDialog } from "@/components/admin/CadastroFinanceiroDialog";
@@ -165,6 +165,7 @@ const AdminLeads = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { panelId: dynamicPanelId } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const { isAdmin } = useAuth();
   const leadsPermissions = useLeadsPermissions(isAdmin);
   const canCreateLead = isAdmin || leadsPermissions.has("criar");
@@ -212,9 +213,8 @@ const AdminLeads = () => {
   const [filterDataInicio, setFilterDataInicio] = useState("");
   const [filterDataFim, setFilterDataFim] = useState("");
 
-  // Proposta upload dialog state
-  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-  const [pendingStatusChange, setPendingStatusChange] = useState<{ leadId: string; leadName: string; replaceOnly?: boolean } | null>(null);
+  // (Removido) Proposta dialog state — fluxo migrou para /admin/gerador-proposta/:leadId
+
 
   // Lead detail dialog
   const [detailLead, setDetailLead] = useState<any>(null);
@@ -967,8 +967,7 @@ const AdminLeads = () => {
     if (nextStatus === "contrato_assinado") {
       setTimeout(() => updateStatus(leadId, "contrato_assinado"), 0);
     } else if (nextStatus === "proposta_enviada" || nextStatus === "proposta_comercial") {
-      setPendingStatusChange({ leadId, leadName });
-      setUploadDialogOpen(true);
+      navigate(`/admin/gerador-proposta/${leadId}`);
     } else if (nextStatus) {
       setTimeout(() => updateStatus(leadId, nextStatus), 0);
     }
@@ -1054,18 +1053,6 @@ const AdminLeads = () => {
     }
   };
 
-  const handlePropostaGerada = (propostaUrl: string, numeroProposta: string) => {
-    if (pendingStatusChange) {
-      if (pendingStatusChange.replaceOnly) {
-        updatePropostaUrl(pendingStatusChange.leadId, propostaUrl, numeroProposta);
-
-      } else {
-        updateStatus(pendingStatusChange.leadId, "proposta_enviada", propostaUrl, numeroProposta);
-      }
-      setPendingStatusChange(null);
-    }
-  };
-
   const updatePropostaUrl = async (leadId: string, propostaUrl: string, numeroProposta?: string) => {
     const updateData: any = { proposta_url: propostaUrl };
     if (numeroProposta) updateData.numero_proposta = numeroProposta;
@@ -1084,14 +1071,10 @@ const AdminLeads = () => {
     toast.success("Proposta substituída com sucesso");
   };
 
-  const handleReplaceProposta = (leadId: string, leadName: string) => {
-    setPendingStatusChange({ leadId, leadName, replaceOnly: true });
-    setUploadDialogOpen(true);
+  const handleReplaceProposta = (leadId: string, _leadName: string) => {
+    navigate(`/admin/gerador-proposta/${leadId}?mode=replace`);
   };
 
-  const handlePropostaUploadCancel = () => {
-    setPendingStatusChange(null);
-  };
 
   const handleDelete = useCallback(async (id: string, nome: string) => {
     if (!canDeleteLead) {
@@ -2047,14 +2030,9 @@ const AdminLeads = () => {
         </Card>
       )}
 
-      {/* Proposta Comercial Dialog (gerador editável) */}
-      <PropostaComercialDialog
-        open={uploadDialogOpen}
-        onOpenChange={setUploadDialogOpen}
-        lead={leads.find((l) => l.id === pendingStatusChange?.leadId)}
-        onSuccess={handlePropostaGerada}
-        onCancel={handlePropostaUploadCancel}
-      />
+      {/* Gerador de Proposta migrou para rota /admin/gerador-proposta/:leadId */}
+
+
 
       {/* Lead Perdido Dialog */}
       <LeadPerdidoDialog
