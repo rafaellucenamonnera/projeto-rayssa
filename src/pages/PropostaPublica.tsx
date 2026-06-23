@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PropostaMonneraTemplate } from "@/components/proposta/PropostaMonneraTemplate";
 import {
   Dialog,
   DialogContent,
@@ -32,9 +31,9 @@ type ProposalData = {
 };
 
 const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-
 const ACCEPT_TEXT =
   "Declaro que li e aceito a proposta comercial Monnera, incluindo escopo, condições comerciais, valores, prazos e demais termos apresentados. Ao confirmar, o aceite será registrado no painel Monnera para acompanhamento do time comercial.";
+const IFRAME_SRC = "/gerador-proposta/index.html";
 
 function formatDate(value?: string | null) {
   if (!value) return "";
@@ -51,17 +50,6 @@ function formatDate(value?: string | null) {
   }
 }
 
-function resolveClientName(p: ProposalData | null): string {
-  if (!p) return "Cliente Monnera";
-  return (
-    p.proposal_name ||
-    p.payload?.company ||
-    p.payload?.leadName ||
-    p.lead?.nome_fantasia ||
-    "Cliente Monnera"
-  );
-}
-
 export default function PropostaPublica() {
   const { token } = useParams<{ token: string }>();
   const [loading, setLoading] = useState(true);
@@ -72,6 +60,9 @@ export default function PropostaPublica() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [accepting, setAccepting] = useState(false);
+
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const proposalRef = useRef<ProposalData | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -92,7 +83,9 @@ export default function PropostaPublica() {
         setError("Proposta não encontrada ou link inválido.");
         setProposal(null);
       } else {
-        setProposal(data as ProposalData);
+        const p = data as ProposalData;
+        setProposal(p);
+        proposalRef.current = p;
       }
       setLoading(false);
     }
@@ -101,6 +94,36 @@ export default function PropostaPublica() {
       cancelled = true;
     };
   }, [token]);
+
+  // Bridge: hidrata o iframe quando ele sinaliza ready
+  useEffect(() => {
+    function onMessage(e: MessageEvent) {
+      if (e.origin !== window.location.origin) return;
+      if (e.source !== iframeRef.current?.contentWindow) return;
+      const data = e.data;
+      if (!data || typeof data !== "object") return;
+      if (data.type === "ready") {
+        const iframe = iframeRef.current;
+        if (!iframe?.contentWindow) return;
+        try {
+          iframe.contentWindow.postMessage(
+            { type: "setMode", mode: "view", readonly: true },
+            window.location.origin,
+          );
+          if (proposalRef.current?.payload) {
+            iframe.contentWindow.postMessage(
+              { type: "prefill", payload: proposalRef.current.payload },
+              window.location.origin,
+            );
+          }
+        } catch {
+          /* noop */
+        }
+      }
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
 
   const isAccepted = Boolean(proposal?.accepted || proposal?.accepted_at);
 
@@ -168,31 +191,24 @@ export default function PropostaPublica() {
     );
   }
 
-  const clientName = resolveClientName(proposal);
-  const payload = (proposal.payload || {}) as any;
-
   return (
-    <div className="min-h-screen bg-background pb-32">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-6">
-        {isAccepted && (
-          <div className="flex items-center gap-3 rounded-lg border border-primary/40 bg-primary/10 px-4 py-3 text-primary">
-            <CheckCircle2 className="h-5 w-5" />
-            <span className="font-medium">
-              Proposta aceita em {formatDate(proposal.accepted_at)}
-            </span>
-          </div>
-        )}
+    <div className="min-h-screen bg-white flex flex-col">
+      {isAccepted && (
+        <div className="flex items-center gap-3 border-b border-primary/40 bg-primary/10 px-4 py-2 text-primary text-sm">
+          <CheckCircle2 className="h-4 w-4" />
+          <span className="font-medium">
+            Proposta aceita em {formatDate(proposal.accepted_at)}
+          </span>
+        </div>
+      )}
 
-        <PropostaMonneraTemplate
-          proposalName={proposal.proposal_name}
-          clientName={clientName}
-          createdAt={proposal.created_at}
-          payload={payload}
-          omitFinancials={proposal.omit_financials}
-          omitFinancialsReason={proposal.omit_financials_reason}
-        />
-      </div>
-
+      <iframe
+        ref={iframeRef}
+        src={IFRAME_SRC}
+        title="Proposta Monnera"
+        className="flex-1 w-full border-0 bg-white"
+        style={{ minHeight: "calc(100vh - 0px)" }}
+      />
 
       {!isAccepted && (
         <div className="fixed bottom-6 right-6 z-50">
