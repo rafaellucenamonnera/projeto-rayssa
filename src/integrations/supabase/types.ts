@@ -186,6 +186,87 @@ export type Database = {
           },
         ]
       }
+      commercial_proposals: {
+        Row: {
+          accepted_at: string | null
+          accepted_by_email: string | null
+          accepted_by_name: string | null
+          accepted_ip: string | null
+          accepted_user_agent: string | null
+          created_at: string
+          created_by_user_id: string | null
+          id: string
+          last_opened_at: string | null
+          lead_id: string
+          omit_financials: boolean
+          omit_financials_reason: string | null
+          open_count: number
+          opened_at: string | null
+          payload: Json
+          proposal_name: string | null
+          public_url: string | null
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by_email?: string | null
+          accepted_by_name?: string | null
+          accepted_ip?: string | null
+          accepted_user_agent?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          id?: string
+          last_opened_at?: string | null
+          lead_id: string
+          omit_financials?: boolean
+          omit_financials_reason?: string | null
+          open_count?: number
+          opened_at?: string | null
+          payload?: Json
+          proposal_name?: string | null
+          public_url?: string | null
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by_email?: string | null
+          accepted_by_name?: string | null
+          accepted_ip?: string | null
+          accepted_user_agent?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          id?: string
+          last_opened_at?: string | null
+          lead_id?: string
+          omit_financials?: boolean
+          omit_financials_reason?: string | null
+          open_count?: number
+          opened_at?: string | null
+          payload?: Json
+          proposal_name?: string | null
+          public_url?: string | null
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commercial_proposals_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "commercial_proposals_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contracts: {
         Row: {
           arquivo_proposta_url: string | null
@@ -2100,6 +2181,16 @@ export type Database = {
       }
     }
     Functions: {
+      accept_commercial_proposal: {
+        Args: {
+          p_accepted_by_email: string
+          p_accepted_by_name: string
+          p_accepted_ip?: string
+          p_accepted_user_agent?: string
+          p_token: string
+        }
+        Returns: Json
+      }
       business_days_between: {
         Args: { p_from: string; p_to: string }
         Returns: number
@@ -2175,6 +2266,10 @@ export type Database = {
         }[]
       }
       get_pipeline_stage_metrics: { Args: never; Returns: Json }
+      get_public_commercial_proposal: {
+        Args: { p_token: string }
+        Returns: Json
+      }
       has_any_admin: { Args: never; Returns: boolean }
       has_module_permission: {
         Args: { _acao: string; _modulo: string; _user_id: string }
