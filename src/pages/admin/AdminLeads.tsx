@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { LeadExportButton } from "@/components/admin/LeadExportButton";
 import { LeadImportDialog } from "@/components/admin/LeadImportDialog";
-import { PropostaUploadDialog } from "@/components/admin/PropostaUploadDialog";
+import { PropostaComercialDialog } from "@/components/admin/PropostaComercialDialog";
 import { LeadPerdidoDialog } from "@/components/admin/LeadPerdidoDialog";
 import { AgendarReuniaoDialog } from "@/components/admin/AgendarReuniaoDialog";
 import { CadastroFinanceiroDialog } from "@/components/admin/CadastroFinanceiroDialog";
@@ -1054,10 +1054,11 @@ const AdminLeads = () => {
     }
   };
 
-  const handlePropostaUploadSuccess = (propostaUrl: string, numeroProposta: string) => {
+  const handlePropostaGerada = (propostaUrl: string, numeroProposta: string) => {
     if (pendingStatusChange) {
       if (pendingStatusChange.replaceOnly) {
         updatePropostaUrl(pendingStatusChange.leadId, propostaUrl, numeroProposta);
+
       } else {
         updateStatus(pendingStatusChange.leadId, "proposta_enviada", propostaUrl, numeroProposta);
       }
@@ -2046,14 +2047,12 @@ const AdminLeads = () => {
         </Card>
       )}
 
-      {/* Proposta Upload Dialog */}
-      <PropostaUploadDialog
+      {/* Proposta Comercial Dialog (gerador editável) */}
+      <PropostaComercialDialog
         open={uploadDialogOpen}
         onOpenChange={setUploadDialogOpen}
-        leadId={pendingStatusChange?.leadId || ""}
-        leadName={pendingStatusChange?.leadName || ""}
-        replaceMode={pendingStatusChange?.replaceOnly || false}
-        onSuccess={handlePropostaUploadSuccess}
+        lead={leads.find((l) => l.id === pendingStatusChange?.leadId)}
+        onSuccess={handlePropostaGerada}
         onCancel={handlePropostaUploadCancel}
       />
 
