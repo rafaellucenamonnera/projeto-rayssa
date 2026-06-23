@@ -5,6 +5,7 @@ import { Loader2, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PropostaMonneraTemplate } from "@/components/proposta/PropostaMonneraTemplate";
 import {
   Dialog,
   DialogContent,
@@ -168,25 +169,11 @@ export default function PropostaPublica() {
   }
 
   const clientName = resolveClientName(proposal);
-  const payload = proposal.payload || {};
+  const payload = (proposal.payload || {}) as any;
 
   return (
     <div className="min-h-screen bg-background pb-32">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 space-y-6">
-        <header className="space-y-2">
-          <p className="text-sm uppercase tracking-wider text-muted-foreground">
-            Proposta Comercial Monnera
-          </p>
-          <h1 className="text-3xl sm:text-4xl font-semibold text-foreground">
-            {clientName}
-          </h1>
-          {proposal.created_at && (
-            <p className="text-sm text-muted-foreground">
-              Emitida em {formatDate(proposal.created_at)}
-            </p>
-          )}
-        </header>
-
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-6">
         {isAccepted && (
           <div className="flex items-center gap-3 rounded-lg border border-primary/40 bg-primary/10 px-4 py-3 text-primary">
             <CheckCircle2 className="h-5 w-5" />
@@ -196,43 +183,16 @@ export default function PropostaPublica() {
           </div>
         )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Resumo da proposta</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            {proposal.proposal_name && (
-              <div>
-                <div className="text-muted-foreground">Nome da proposta</div>
-                <div className="text-foreground font-medium">
-                  {proposal.proposal_name}
-                </div>
-              </div>
-            )}
-            {payload && Object.keys(payload).length > 0 ? (
-              <div className="rounded-md border border-border bg-muted/30 p-4">
-                <pre className="text-xs text-muted-foreground whitespace-pre-wrap break-words">
-                  {JSON.stringify(payload, null, 2)}
-                </pre>
-              </div>
-            ) : (
-              <p className="text-muted-foreground">
-                O conteúdo detalhado desta proposta será disponibilizado em
-                breve. Em caso de dúvidas, entre em contato com seu consultor
-                Monnera.
-              </p>
-            )}
-            {proposal.omit_financials && (
-              <p className="text-xs text-muted-foreground">
-                Valores comerciais omitidos nesta visualização.
-                {proposal.omit_financials_reason
-                  ? ` Motivo: ${proposal.omit_financials_reason}`
-                  : ""}
-              </p>
-            )}
-          </CardContent>
-        </Card>
+        <PropostaMonneraTemplate
+          proposalName={proposal.proposal_name}
+          clientName={clientName}
+          createdAt={proposal.created_at}
+          payload={payload}
+          omitFinancials={proposal.omit_financials}
+          omitFinancialsReason={proposal.omit_financials_reason}
+        />
       </div>
+
 
       {!isAccepted && (
         <div className="fixed bottom-6 right-6 z-50">

@@ -2030,14 +2030,9 @@ const AdminLeads = () => {
         </Card>
       )}
 
-      {/* Proposta Comercial Dialog (gerador editável) */}
-      <PropostaComercialDialog
-        open={uploadDialogOpen}
-        onOpenChange={setUploadDialogOpen}
-        lead={leads.find((l) => l.id === pendingStatusChange?.leadId)}
-        onSuccess={handlePropostaGerada}
-        onCancel={handlePropostaUploadCancel}
-      />
+      {/* Gerador de Proposta migrou para rota /admin/gerador-proposta/:leadId */}
+
+
 
       {/* Lead Perdido Dialog */}
       <LeadPerdidoDialog
