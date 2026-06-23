@@ -200,10 +200,35 @@ export const CadastroFinanceiroDialog = ({
 
         <div className="rounded-md bg-amber-500/10 border border-amber-500/30 p-3 flex gap-2 text-xs">
           <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-          <p>Para avançar este lead você precisa preencher <strong>Setup, Mensalidade, Quantidade de lojas e Receita de campanhas</strong>. Mensalidade pode ser zero quando a negociação exigir.</p>
+          <p>
+            Para avançar este lead você precisa preencher <strong>Setup, Mensalidade, Quantidade de lojas e Receita de campanhas</strong>. Mensalidade pode ser zero quando a negociação exigir.
+            {allowSkipValidation && (
+              <span className="block mt-1">
+                Em propostas comerciais, os dados podem ser dispensados quando a negociação ainda não exigir valores fechados — marque a opção abaixo para seguir sem preencher tudo.
+              </span>
+            )}
+          </p>
         </div>
 
+        {allowSkipValidation && (
+          <label className="flex items-start gap-3 rounded-md border border-border bg-secondary/40 p-3 text-sm">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={skipValidation}
+              onChange={(e) => setSkipValidation(e.target.checked)}
+            />
+            <span>
+              <span className="font-medium">Dados financeiros não obrigatórios nesta proposta</span>
+              <span className="block text-xs text-muted-foreground">
+                Permite salvar e continuar para a proposta comercial sem preencher todos os campos financeiros. Valores já existentes serão preservados.
+              </span>
+            </span>
+          </label>
+        )}
+
         <p className="text-sm text-muted-foreground">Lead: <strong>{leadName}</strong></p>
+
 
         <div className="space-y-4">
           <div className="space-y-1.5">
