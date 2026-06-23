@@ -31,6 +31,8 @@ interface CadastroFinanceiroDialogProps {
     editado_por_nome?: string | null;
     editado_em?: string | null;
   };
+  /** Quando true, exibe checkbox para dispensar a obrigatoriedade dos campos financeiros (usado no fluxo de Proposta Comercial). */
+  allowSkipValidation?: boolean;
   onSaved: (data: {
     valor_setup: number;
     valor_mensalidade: number;
@@ -43,10 +45,11 @@ interface CadastroFinanceiroDialogProps {
 }
 
 export const CadastroFinanceiroDialog = ({
-  open, onOpenChange, leadId, leadName, parceiroId, parceiros, initialData, audit, onSaved, onCancel,
+  open, onOpenChange, leadId, leadName, parceiroId, parceiros, initialData, audit, allowSkipValidation, onSaved, onCancel,
 }: CadastroFinanceiroDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [tipoComissao, setTipoComissao] = useState<"percentual" | "fixo">("percentual");
+  const [skipValidation, setSkipValidation] = useState(false);
   const [form, setForm] = useState({
     consultor_id: parceiroId,
     valor_setup: "",
