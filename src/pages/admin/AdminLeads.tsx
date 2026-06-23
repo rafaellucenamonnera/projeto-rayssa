@@ -258,7 +258,7 @@ const AdminLeads = () => {
 
   // Financial dialog
   const [financeiroDialogOpen, setFinanceiroDialogOpen] = useState(false);
-  const [pendingFinanceiro, setPendingFinanceiro] = useState<{ leadId: string; leadName: string; parceiroId: string; nextStatus?: string; lead?: any } | null>(null);
+  const [pendingFinanceiro, setPendingFinanceiro] = useState<{ leadId: string; leadName: string; parceiroId: string; nextStatus?: string; lead?: any; allowSkipValidation?: boolean } | null>(null);
 
   // Campaign flow dialogs
   const [campaignMoveOpen, setCampaignMoveOpen] = useState(false);
