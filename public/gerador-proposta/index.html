@@ -1,0 +1,2909 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Monnera | Gerador interno de propostas</title>
+  <meta name="description" content="Gerador interno de propostas comerciais Monnera para intranet.">
+  <style>
+    :root {
+      --green-950: #003729;
+      --green-850: #064737;
+      --green-650: #18715d;
+      --green-500: #6bb0a1;
+      --green-120: #dceee9;
+      --green-80: #edf7f4;
+      --mint-50: #f6fbf9;
+      --paper: #ffffff;
+      --ink: #0c1d18;
+      --muted: #5f746d;
+      --line: rgba(0, 55, 41, 0.16);
+      --line-strong: rgba(0, 55, 41, 0.28);
+      --shadow: 0 22px 70px rgba(0, 55, 41, 0.14);
+      --radius: 8px;
+      font-family: "Mark Pro", Inter, Aptos, Montserrat, Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 8% 8%, rgba(107, 176, 161, 0.22), transparent 28%),
+        linear-gradient(135deg, #fbfffd 0%, #eef8f5 54%, #dceee9 100%);
+      font-family: "Mark Pro", Inter, Aptos, Montserrat, Arial, sans-serif;
+      line-height: 1.5;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+    }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: minmax(320px, 430px) minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .editor {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+      padding: 24px;
+      background: rgba(255, 255, 255, 0.92);
+      border-right: 1px solid var(--line);
+      box-shadow: 16px 0 50px rgba(0, 55, 41, 0.08);
+    }
+
+    .editor-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .brand img {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      object-fit: cover;
+      box-shadow: 0 10px 24px rgba(0, 55, 41, 0.16);
+    }
+
+    .brand strong {
+      display: block;
+      color: var(--green-950);
+      font-size: 20px;
+      line-height: 1.1;
+    }
+
+    .brand span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 30px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--green-80);
+      color: var(--green-950);
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .panel {
+      padding: 18px;
+      margin-bottom: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #ffffff;
+    }
+
+    .panel h2 {
+      margin: 0 0 12px;
+      color: var(--green-950);
+      font-size: 16px;
+      line-height: 1.2;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+      margin-bottom: 13px;
+    }
+
+    .field:last-child {
+      margin-bottom: 0;
+    }
+
+    label {
+      color: var(--green-950);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 11px;
+      color: var(--ink);
+      background: #fbfffd;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 86px;
+      resize: vertical;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus,
+    button:focus-visible {
+      border-color: var(--green-500);
+      box-shadow: 0 0 0 3px rgba(107, 176, 161, 0.24);
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .checkbox-grid {
+      display: grid;
+      gap: 9px;
+    }
+
+    .check-card {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfffd;
+      cursor: pointer;
+    }
+
+    .check-card input {
+      width: 18px;
+      min-height: 18px;
+      margin-top: 2px;
+      accent-color: var(--green-950);
+    }
+
+    .check-card strong {
+      display: block;
+      color: var(--green-950);
+      font-size: 13px;
+      line-height: 1.2;
+    }
+
+    .check-card span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .segment {
+      min-height: 46px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfffd;
+      color: var(--green-950);
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .segment.is-active {
+      color: #ffffff;
+      background: var(--green-950);
+      border-color: var(--green-950);
+      box-shadow: 0 12px 28px rgba(0, 55, 41, 0.18);
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 11px 14px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .button-primary {
+      color: #ffffff;
+      background: var(--green-950);
+      box-shadow: 0 12px 26px rgba(0, 55, 41, 0.2);
+    }
+
+    .button-secondary {
+      color: var(--green-950);
+      border: 1px solid var(--line);
+      background: #ffffff;
+    }
+
+    .table-editor {
+      display: none;
+    }
+
+    .table-editor.is-visible {
+      display: block;
+    }
+
+    .discount-editor {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8px 0 12px;
+      font-size: 12px;
+    }
+
+    .discount-editor th,
+    .discount-editor td {
+      padding: 7px 5px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .discount-editor input {
+      min-height: 34px;
+      padding: 7px;
+      font-size: 12px;
+    }
+
+    .product-values {
+      display: grid;
+      gap: 12px;
+    }
+
+    .product-value-card {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfffd;
+    }
+
+    .product-value-card h3 {
+      margin: 0 0 12px;
+      color: var(--green-950);
+      font-size: 15px;
+      line-height: 1.2;
+    }
+
+    .check-field {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-top: 10px;
+      color: var(--green-950);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .check-field input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--green-950);
+    }
+
+    .remove-row {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #f4e9e8;
+      color: #8c2f27;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .note {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .preview-wrap {
+      padding: 34px;
+    }
+
+    .proposal {
+      width: min(980px, 100%);
+      margin: 0 auto;
+      background: var(--paper);
+      border: 1px solid rgba(0, 55, 41, 0.12);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .proposal-cover {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 28px;
+      padding: 48px;
+      min-height: 560px;
+      color: #ffffff;
+      overflow: hidden;
+      background: var(--green-950);
+    }
+
+    .cover-content {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      max-width: 880px;
+      min-height: 464px;
+      align-content: center;
+      padding-right: 34px;
+    }
+
+    .cover-visual {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      min-height: 100%;
+      overflow: hidden;
+      border: 0;
+      border-radius: 0;
+      background: var(--green-950);
+    }
+
+    .cover-visual img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      min-height: 560px;
+      object-fit: cover;
+      filter: saturate(1.04) contrast(1.04);
+    }
+
+    .cover-visual::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg, rgba(0, 55, 41, 0.9) 0%, rgba(0, 55, 41, 0.7) 38%, rgba(0, 55, 41, 0.2) 100%),
+        linear-gradient(180deg, rgba(0, 55, 41, 0.12), rgba(0, 55, 41, 0.34));
+    }
+
+    .cover-logo {
+      width: 72px;
+      height: 72px;
+      margin-bottom: 34px;
+      border-radius: 16px;
+      object-fit: cover;
+      background: #ffffff;
+    }
+
+    .eyebrow {
+      margin: 0 0 12px;
+      color: var(--green-500);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .proposal h1,
+    .proposal h2,
+    .proposal h3,
+    .proposal p {
+      overflow-wrap: anywhere;
+    }
+
+    .proposal h1 {
+      margin: 0;
+      max-width: 720px;
+      font-size: clamp(34px, 5vw, 58px);
+      line-height: 0.98;
+      letter-spacing: 0;
+    }
+
+    .cover-subtitle {
+      margin: 20px 0 0;
+      max-width: 680px;
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 18px;
+    }
+
+    .cover-card {
+      align-self: start;
+      margin-top: 30px;
+      padding: 22px;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .cover-meta {
+      display: grid;
+      gap: 13px;
+    }
+
+    .meta-item span {
+      display: block;
+      color: rgba(255, 255, 255, 0.58);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .meta-item strong {
+      display: block;
+      margin-top: 3px;
+      color: #ffffff;
+      font-size: 15px;
+    }
+
+    .section {
+      padding: 42px 48px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section:last-child {
+      border-bottom: 0;
+    }
+
+    .section-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+      gap: 28px;
+      align-items: start;
+    }
+
+    .section h2 {
+      margin: 0;
+      color: var(--green-950);
+      font-size: 28px;
+      line-height: 1.12;
+    }
+
+    .section p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .section p + p {
+      margin-top: 12px;
+    }
+
+    .feature-grid,
+    .product-grid,
+    .client-grid,
+    .value-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .product-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      align-items: stretch;
+    }
+
+    .client-grid {
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    }
+
+    .feature-grid,
+    .value-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .card,
+    .client-card {
+      min-width: 0;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fbfffd;
+    }
+
+    .card strong,
+    .client-card strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--green-950);
+      font-size: 16px;
+      line-height: 1.25;
+    }
+
+    .card p,
+    .client-card p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .client-card {
+      display: flex;
+      min-height: 96px;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      text-align: center;
+      background: #ffffff;
+    }
+
+    .client-card img {
+      display: block;
+      width: 100%;
+      max-width: 150px;
+      max-height: 60px;
+      object-fit: contain;
+      filter: saturate(0.96);
+    }
+
+    .client-card strong {
+      margin: 0;
+      font-size: 13px;
+    }
+
+    .media-stage {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+      align-items: stretch;
+      margin-top: 22px;
+    }
+
+    .human-story {
+      display: grid;
+      grid-template-rows: minmax(220px, 1fr) auto;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--green-80), #ffffff);
+      box-shadow: 0 14px 34px rgba(0, 55, 41, 0.08);
+    }
+
+    .human-story-media {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: 220px;
+    }
+
+    .human-story-media img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      min-height: 220px;
+      object-fit: cover;
+      background: var(--green-80);
+    }
+
+    .human-story-media img:first-child {
+      border-right: 1px solid rgba(255, 255, 255, 0.7);
+    }
+
+    .human-story-copy {
+      padding: 18px;
+    }
+
+    .human-story-copy strong {
+      display: block;
+      color: var(--green-950);
+      font-size: 17px;
+      line-height: 1.2;
+    }
+
+    .human-story-copy p {
+      margin-top: 8px;
+      font-size: 14px;
+    }
+
+    .visual-strip,
+    .section-visual {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .visual-strip {
+      grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.7fr);
+    }
+
+    .section-visual {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .visual-tile {
+      position: relative;
+      overflow: hidden;
+      min-height: 170px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--green-80);
+      box-shadow: 0 14px 34px rgba(0, 55, 41, 0.08);
+    }
+
+    .visual-tile img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      min-height: inherit;
+      object-fit: contain;
+      background: #f6fbf9;
+    }
+
+    .visual-tile.is-tall {
+      min-height: 254px;
+    }
+
+    .visual-caption {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      color: #ffffff;
+      background: rgba(0, 55, 41, 0.86);
+      font-size: 12px;
+      font-weight: 900;
+      line-height: 1.25;
+    }
+
+    .image-fold {
+      position: relative;
+      min-height: 430px;
+      overflow: hidden;
+      color: #ffffff;
+      background: var(--green-950);
+    }
+
+    .image-fold::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: var(--fold-image);
+      background-size: cover;
+      background-position: center;
+      filter: saturate(1.05) contrast(1.04);
+      transform: scale(1.01);
+    }
+
+    .image-fold::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg, rgba(0, 55, 41, 0.88) 0%, rgba(0, 55, 41, 0.62) 46%, rgba(0, 55, 41, 0.18) 100%),
+        linear-gradient(180deg, rgba(0, 55, 41, 0.08), rgba(0, 55, 41, 0.34));
+    }
+
+    .image-fold > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .image-fold .eyebrow {
+      color: var(--green-500);
+    }
+
+    .image-fold h2 {
+      color: #ffffff;
+      max-width: 620px;
+    }
+
+    .image-fold p,
+    .image-fold .card p {
+      color: rgba(255, 255, 255, 0.84);
+    }
+
+    .image-fold .card {
+      border-color: rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(8px);
+    }
+
+    .image-fold .card strong {
+      color: #ffffff;
+    }
+
+    .product-visual {
+      display: block;
+      width: calc(100% + 36px);
+      height: auto;
+      aspect-ratio: 1 / 1.08;
+      margin: -18px -18px 14px;
+      object-fit: contain;
+      background: #f6fbf9;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .product-card {
+      display: flex;
+      min-height: 100%;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .product-card strong {
+      min-height: 42px;
+    }
+
+    .product-card p {
+      flex: 1;
+    }
+
+    .product-card.is-cross .product-visual {
+      object-fit: cover;
+      object-position: center;
+    }
+
+    .media-card-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .media-card {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #ffffff;
+      box-shadow: 0 14px 34px rgba(0, 55, 41, 0.08);
+    }
+
+    .media-card video,
+    .media-card img {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-height: 520px;
+      object-fit: contain;
+      background: var(--green-80);
+    }
+
+    .media-card img {
+      aspect-ratio: 16 / 10;
+    }
+
+    .print-media-poster {
+      display: none !important;
+    }
+
+    .media-card-caption {
+      padding: 14px 16px 16px;
+    }
+
+    .media-card-caption strong {
+      display: block;
+      color: var(--green-950);
+      font-size: 16px;
+      line-height: 1.22;
+    }
+
+    .media-card-caption p {
+      margin-top: 7px;
+      font-size: 13px;
+    }
+
+    .app-snapshot-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .app-snapshot-grid img {
+      min-height: 170px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      object-fit: cover;
+      background: var(--green-80);
+    }
+
+    .logo-rail {
+      position: relative;
+      overflow: hidden;
+      margin-top: 22px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #ffffff;
+    }
+
+    .logo-rail::before,
+    .logo-rail::after {
+      content: "";
+      position: absolute;
+      z-index: 2;
+      top: 0;
+      bottom: 0;
+      width: 72px;
+      pointer-events: none;
+    }
+
+    .logo-rail::before {
+      left: 0;
+      background: linear-gradient(90deg, #ffffff, rgba(255, 255, 255, 0));
+    }
+
+    .logo-rail::after {
+      right: 0;
+      background: linear-gradient(270deg, #ffffff, rgba(255, 255, 255, 0));
+    }
+
+    .logo-track {
+      display: flex;
+      width: max-content;
+      gap: 14px;
+      padding: 18px;
+      animation: logoRail 38s linear infinite;
+    }
+
+    .logo-rail:hover .logo-track {
+      animation-play-state: paused;
+    }
+
+    .logo-tile {
+      display: flex;
+      flex: 0 0 142px;
+      height: 74px;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fbfffd;
+    }
+
+    .logo-tile img {
+      display: block;
+      max-width: 118px;
+      max-height: 48px;
+      object-fit: contain;
+    }
+
+    .print-only-logo-grid {
+      display: none;
+    }
+
+    @keyframes logoRail {
+      from {
+        transform: translateX(0);
+      }
+
+      to {
+        transform: translateX(-50%);
+      }
+    }
+
+    .pricing-panel {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .price-item {
+      padding: 17px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--green-80);
+      text-align: center;
+    }
+
+    .price-item span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .price-item strong {
+      display: block;
+      margin-top: 8px;
+      color: var(--green-950);
+      font-size: 22px;
+      line-height: 1.1;
+    }
+
+    .discount-table {
+      width: 100%;
+      margin-top: 18px;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .discount-table th,
+    .discount-table td {
+      padding: 12px;
+      border: 1px solid var(--line);
+      text-align: left;
+    }
+
+    .discount-table th {
+      color: #ffffff;
+      background: var(--green-950);
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .table-note {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+
+    .closing {
+      background: linear-gradient(135deg, var(--green-80), #ffffff);
+    }
+
+    .signature {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 18px;
+      align-items: end;
+      margin-top: 26px;
+      padding-top: 22px;
+      border-top: 1px solid var(--line);
+    }
+
+    .signature strong {
+      color: var(--green-950);
+      font-size: 18px;
+    }
+
+    .print-cta {
+      position: fixed;
+      z-index: 12;
+      right: 24px;
+      bottom: 24px;
+      display: none;
+    }
+
+    .accept-cta {
+      position: fixed;
+      z-index: 13;
+      right: 24px;
+      bottom: 78px;
+      display: none;
+      box-shadow: 0 16px 44px rgba(0, 55, 41, 0.22);
+    }
+
+    .accept-status {
+      position: fixed;
+      z-index: 13;
+      right: 24px;
+      bottom: 78px;
+      display: none;
+      max-width: min(360px, calc(100vw - 48px));
+      border: 1px solid rgba(0, 55, 41, 0.2);
+      border-radius: var(--radius);
+      background: rgba(237, 247, 244, 0.96);
+      box-shadow: 0 16px 44px rgba(0, 55, 41, 0.16);
+      color: var(--green-950);
+      padding: 12px 14px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .accept-status span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    .accept-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(0, 24, 18, 0.54);
+    }
+
+    .accept-modal.is-open {
+      display: flex;
+    }
+
+    .accept-dialog {
+      width: min(560px, 100%);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--paper);
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+
+    .accept-dialog h2 {
+      margin: 0 0 10px;
+      color: var(--green-950);
+      font-size: 26px;
+      line-height: 1.1;
+    }
+
+    .accept-dialog p {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .accept-dialog .field-group {
+      margin-bottom: 14px;
+    }
+
+    .accept-dialog .button-row {
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+
+    .accept-note {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    @media (max-width: 1100px) {
+      .app-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .editor {
+        position: static;
+        height: auto;
+      }
+
+      .proposal-cover,
+      .section-grid,
+      .media-stage,
+      .media-card-grid,
+      .visual-strip {
+        grid-template-columns: 1fr;
+      }
+
+      .cover-content {
+        padding-right: 0;
+      }
+
+      .cover-visual,
+      .cover-visual img {
+        min-height: 280px;
+      }
+
+      .image-fold {
+        min-height: 360px;
+      }
+
+      .product-grid,
+      .client-grid,
+      .feature-grid,
+      .value-grid,
+      .pricing-panel {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 680px) {
+      .accept-cta,
+      .accept-status {
+        right: 14px;
+        left: 14px;
+        bottom: 78px;
+        width: auto;
+      }
+
+      .accept-cta {
+        justify-content: center;
+      }
+
+      .editor,
+      .preview-wrap,
+      .proposal-cover,
+      .section {
+        padding: 22px;
+      }
+
+      .field-row,
+      .product-grid,
+      .client-grid,
+      .feature-grid,
+      .value-grid,
+      .app-snapshot-grid,
+      .human-story-media,
+      .section-visual,
+      .pricing-panel,
+      .signature {
+        grid-template-columns: 1fr;
+      }
+
+      .human-story-media img:first-child {
+        border-right: 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.7);
+      }
+
+      .image-fold {
+        min-height: 420px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      .logo-track {
+        animation: none;
+      }
+    }
+
+    @media print {
+      @page {
+        size: A4;
+        margin: 12mm;
+      }
+
+      body {
+        background: #ffffff;
+      }
+
+      .editor,
+      .print-cta,
+      .accept-cta,
+      .accept-status,
+      .accept-modal {
+        display: none !important;
+      }
+
+      .app-shell,
+      .preview-wrap {
+        display: block;
+        padding: 0;
+        min-height: 0;
+      }
+
+      .proposal {
+        width: 100%;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
+
+      .proposal-cover {
+        padding: 28px;
+        break-inside: avoid;
+      }
+
+      .image-fold {
+        break-inside: avoid;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+
+      .cover-visual,
+      .cover-visual img {
+        min-height: 240px;
+      }
+
+      .media-card video,
+      .logo-rail {
+        display: none !important;
+      }
+
+      .print-media-poster {
+        display: block !important;
+      }
+
+      .client-grid,
+      .print-only-logo-grid {
+        display: grid !important;
+      }
+
+      .section {
+        padding: 24px 28px;
+        break-inside: avoid;
+      }
+
+      .section h2 {
+        font-size: 22px;
+      }
+
+      .proposal h1 {
+        font-size: 38px;
+      }
+    }
+
+    .embedded-public .accept-cta,
+    .embedded-public .accept-status,
+    .embedded-public .accept-modal {
+      display: none !important;
+    }
+  </style>
+
+  <style>
+    .gerador-save-btn {
+      background: var(--green-650);
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      box-shadow: 0 8px 22px rgba(0,55,41,0.18);
+      transition: filter .15s ease;
+    }
+    .gerador-save-btn:hover { filter: brightness(1.05); }
+    .gerador-save-btn:disabled { opacity: .6; cursor: progress; }
+    body.proposal-view-mode .editor { display: none !important; }
+    body.proposal-view-mode .app-shell { grid-template-columns: minmax(0, 1fr) !important; }
+    body.proposal-view-mode #geradorSaveBtn { display: none !important; }
+  </style>
+
+</head>
+<body>
+  <main class="app-shell">
+    <aside class="editor" aria-label="Editor da proposta">
+      <div class="editor-header">
+        <div class="brand">
+          <img src="/__l5e/assets-v1/9beada95-48f2-4b19-b590-081ca8f812e4/logomarca-monnera.jpg" alt="Monnera">
+          <div>
+            <strong>Monnera</strong>
+            <span>Gerador interno</span>
+          </div>
+        </div>
+        <button type="button" id="geradorSaveBtn" class="gerador-save-btn">Salvar e gerar link</button>
+        <span class="pill">Intranet</span>
+      </div>
+
+      <section class="panel" aria-labelledby="modelo-title">
+        <h2 id="modelo-title">1. Modelo</h2>
+        <div class="segmented" role="group" aria-label="Tipo de proposta">
+          <button class="segment is-active" type="button" data-model="geral">Geral</button>
+          <button class="segment" type="button" data-model="enterprise">Enterprise</button>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="dados-title">
+        <h2 id="dados-title">2. Dados da proposta</h2>
+        <div class="field">
+          <label for="proposalName">Nome da proposta</label>
+          <input id="proposalName" value="Proposta Comercial Monnera" data-field="proposalName">
+        </div>
+        <div class="field">
+          <label for="company">Empresa / cliente</label>
+          <input id="company" value="Cliente Monnera" data-field="company">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="contact">Contato</label>
+            <input id="contact" placeholder="Nome do contato" data-field="contact">
+          </div>
+          <div class="field">
+            <label for="stores">Qtd. de CNPJs</label>
+            <input id="stores" type="number" min="1" step="1" value="1" data-field="stores">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="validity">Validade</label>
+            <input id="validity" value="15 dias" data-field="validity">
+          </div>
+          <div class="field">
+            <label for="proposalCode">Código</label>
+            <input id="proposalCode" placeholder="Opcional" data-field="proposalCode">
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="produtos-title">
+        <h2 id="produtos-title">3. Produtos da proposta</h2>
+        <div class="checkbox-grid">
+          <label class="check-card" for="productCampaigns">
+            <input id="productCampaigns" type="checkbox" data-product="campaigns" checked>
+            <span>
+              <strong>Monnera Campanhas</strong>
+              <span>Gestão de campanhas de incentivo, regras, apuração e pagamentos.</span>
+            </span>
+          </label>
+          <label class="check-card" for="productPaymentOrder">
+            <input id="productPaymentOrder" type="checkbox" data-product="paymentOrder">
+            <span>
+              <strong>Monnera Pagamentos</strong>
+              <span>Pagamentos diretos a CPFs com boleto único e split automático.</span>
+            </span>
+          </label>
+          <label class="check-card" for="productCross">
+            <input id="productCross" type="checkbox" data-product="cross">
+            <span>
+              <strong>Monnera Cross</strong>
+              <span>Campanhas patrocinadas em parceiros comerciais com gestão compartilhada.</span>
+            </span>
+          </label>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="midias-title">
+        <h2 id="midias-title">4. Mídias da proposta</h2>
+        <div class="field">
+          <label for="showAppVideo">Vídeo do app do usuário</label>
+          <select id="showAppVideo" data-field="showAppVideo">
+            <option value="sim">Sim</option>
+            <option value="nao">Não</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="showManagerVideo">Vídeo do painel gestor</label>
+          <select id="showManagerVideo" data-field="showManagerVideo">
+            <option value="sim">Sim</option>
+            <option value="nao">Não</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="showSocialVideo">Vídeo de validação social</label>
+          <select id="showSocialVideo" data-field="showSocialVideo">
+            <option value="nao">Não</option>
+            <option value="sim">Sim, quando houver arquivo autorizado</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="showLogoRail">Régua de marcas em movimento</label>
+          <select id="showLogoRail" data-field="showLogoRail">
+            <option value="sim">Sim</option>
+            <option value="nao">Não</option>
+          </select>
+        </div>
+        <p class="note">Vídeos aparecem na tela. No PDF, a proposta usa imagens e marcas em formato estático.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="policy-title">
+        <h2 id="policy-title">5. Política comercial da proposta</h2>
+        <div class="field">
+          <label for="processingFeePayer">Cobrança da taxa de processamento</label>
+          <select id="processingFeePayer" data-field="processingFeePayer">
+            <option value="colaborador">Debitada do prêmio do colaborador</option>
+            <option value="contratante">Cobrada do contratante</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="dynamicMonthly">Mensalidade dinâmica?</label>
+          <select id="dynamicMonthly" data-field="dynamicMonthly">
+            <option value="nao">Não</option>
+            <option value="sim">Sim</option>
+          </select>
+        </div>
+        <div class="table-editor" id="discountEditor">
+          <table class="discount-editor" aria-label="Tabela de mensalidade dinâmica editável">
+            <thead>
+              <tr>
+                <th>Valor total pago em campanhas</th>
+                <th>Desconto na Mensalidade (%)</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="discountRows"></tbody>
+          </table>
+          <button class="button button-secondary" type="button" id="addDiscountRow">Adicionar linha</button>
+          <p class="note">O valor mensal por CNPJ é calculado automaticamente a partir da mensalidade, desconto e quantidade de CNPJs.</p>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="valores-title">
+        <h2 id="valores-title">6. Valores por produto</h2>
+        <div class="product-values" id="productValues"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="comercial-title">
+        <h2 id="comercial-title">7. Comercial</h2>
+        <div class="field">
+          <label for="setupPaymentTerm">Forma de pagamento do setup</label>
+          <select id="setupPaymentTerm" data-field="setupPaymentTerm">
+            <option value="30% de desconto à vista ou parcelado em 3x">30% de desconto à vista ou parcelado em 3x</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="setupNotes">Observações do setup</label>
+          <textarea id="setupNotes" data-field="setupNotes" placeholder="Opcional. Ex.: condição especial de implantação, prazo ou regra negociada."></textarea>
+        </div>
+        <div class="field">
+          <label for="commercialOwner">Responsável Monnera</label>
+          <input id="commercialOwner" value="Rafael Lucena de Jesus" data-field="commercialOwner">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="ownerEmail">E-mail</label>
+            <input id="ownerEmail" value="rafael.lucena@monnera.com.br" data-field="ownerEmail">
+          </div>
+          <div class="field">
+            <label for="ownerPhone">Telefone</label>
+            <input id="ownerPhone" value="(27) 99652-1589" data-field="ownerPhone">
+          </div>
+        </div>
+        <div class="field">
+          <label for="commercialNotes">Observações comerciais</label>
+          <textarea id="commercialNotes" data-field="commercialNotes">Primeira mensalidade com vencimento após 30 dias da assinatura do contrato.</textarea>
+        </div>
+      </section>
+
+      <div class="button-row">
+        <button class="button button-primary" type="button" id="printButton">Imprimir / Salvar em PDF</button>
+        <button class="button button-secondary" type="button" id="resetButton">Restaurar padrão</button>
+      </div>
+      <p class="note">Na impressão, somente a proposta formatada aparece. O editor fica oculto automaticamente.</p>
+    </aside>
+
+    <section class="preview-wrap" aria-label="Visualização da proposta">
+      <article class="proposal" id="proposal"></article>
+    </section>
+  </main>
+
+  <button class="button button-primary print-cta" type="button" aria-label="Imprimir proposta">Imprimir / Salvar em PDF</button>
+  <button class="button button-primary accept-cta" type="button" id="acceptProposalCta" aria-label="Aceitar proposta comercial">Aceitar proposta comercial</button>
+  <div class="accept-status" id="acceptStatus" aria-live="polite"></div>
+
+  <div class="accept-modal" id="acceptModal" role="dialog" aria-modal="true" aria-labelledby="acceptModalTitle">
+    <div class="accept-dialog">
+      <h2 id="acceptModalTitle">Aceitar proposta comercial</h2>
+      <p>
+        Declaro que li e aceito a proposta comercial Monnera, incluindo escopo, condições comerciais, valores, prazos e demais termos apresentados. Ao confirmar, o aceite será registrado no painel Monnera para acompanhamento do time comercial.
+      </p>
+      <div class="field-group">
+        <label for="acceptName">Nome completo</label>
+        <input id="acceptName" autocomplete="name" placeholder="Digite seu nome">
+      </div>
+      <div class="field-group">
+        <label for="acceptEmail">Email</label>
+        <input id="acceptEmail" type="email" autocomplete="email" placeholder="nome@empresa.com.br">
+      </div>
+      <div class="accept-note">
+        Simulação local: o aceite oficial deve ser realizado pelo link público da proposta no projeto Monnera.
+      </div>
+      <div class="button-row">
+        <button class="button button-secondary" type="button" id="cancelAccept">Cancelar</button>
+        <button class="button button-primary" type="button" id="confirmAccept">Aceitar proposta comercial</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const clients = [
+      {
+        name: "Preço Baixo",
+        logo: "/__l5e/assets-v1/b8b6bbd2-996e-43f1-a702-99462a30cf8d/parceiro-01.png"
+      },
+      {
+        name: "Parceiro comercial Monnera 02",
+        logo: "/__l5e/assets-v1/0e7ff185-a5bb-4157-bf03-ee9c5d174d9e/parceiro-02.png"
+      },
+      {
+        name: "Parceiro comercial Monnera 03",
+        logo: "/__l5e/assets-v1/22522475-f2df-4b5f-a517-9c500b398bb4/parceiro-03.png"
+      },
+      {
+        name: "Santa Lucia Drogarias",
+        logo: "/__l5e/assets-v1/afbf8b8a-e410-4578-8f0b-15bf8c9de15d/parceiro-04.png"
+      },
+      {
+        name: "Parceiro comercial Monnera 05",
+        logo: "/__l5e/assets-v1/19971087-470f-494e-b477-b6cde3676653/parceiro-05.png"
+      },
+      {
+        name: "Parceiro comercial Monnera 06",
+        logo: "/__l5e/assets-v1/bbeee810-e46b-44af-8d0e-187d617e5119/parceiro-06.png"
+      },
+      {
+        name: "Parceiro comercial Monnera 07",
+        logo: "/__l5e/assets-v1/802f8f1c-f556-4bc3-b9ad-08bede5f54d7/parceiro-07.png"
+      },
+      {
+        name: "Parceiro comercial Monnera 08",
+        logo: "/__l5e/assets-v1/a6f36b92-8dc8-452c-a9a4-bde9b6f10940/parceiro-08.png"
+      },
+      {
+        name: "Parceiro comercial Monnera 09",
+        logo: "/__l5e/assets-v1/abf27305-14c5-4e17-a5e0-890ec2026bd1/parceiro-09.png"
+      },
+      {
+        name: "Parceiro comercial Monnera 10",
+        logo: "/__l5e/assets-v1/95c0a152-7951-4876-9220-0819b5801c19/parceiro-10.png"
+      },
+      {
+        name: "Parceiro comercial Monnera 11",
+        logo: "/__l5e/assets-v1/9b6f451a-b96c-48d0-b7b6-01ca936f43ee/parceiro-11.png"
+      },
+      {
+        name: "Parceiro comercial Monnera 12",
+        logo: "/__l5e/assets-v1/8b114961-bd3c-4022-bbdd-9bb5ebea5cf7/parceiro-12.png"
+      },
+      {
+        name: "Farmácias Unipreço",
+        logo: "/__l5e/assets-v1/6b52c2a5-f8d6-4c82-aac7-a657182ef980/parceiro-13.png"
+      },
+      {
+        name: "Parceiro comercial Monnera 14",
+        logo: "/__l5e/assets-v1/0ac7c755-cfb7-4663-9708-39a69b037463/parceiro-14.png"
+      },
+      {
+        name: "Parceiro comercial Monnera 15",
+        logo: "/__l5e/assets-v1/cfcc15d8-01f0-469d-b8cf-f57fa4137bcd/parceiro-15.png"
+      },
+      {
+        name: "Parceiro comercial Monnera 16",
+        logo: "/__l5e/assets-v1/988eb92c-f0c8-4f5c-9fae-e78ad47de6e7/parceiro-16.png"
+      },
+      {
+        name: "Parceiro comercial Monnera 17",
+        logo: "/__l5e/assets-v1/209b9f4e-4411-428c-83ee-dbab5effad01/parceiro-17.png"
+      },
+      {
+        name: "Parceiro comercial Monnera 18",
+        logo: "/__l5e/assets-v1/7f893ac8-2c9a-4f0f-ba5b-c776f3d05dad/parceiro-18.png"
+      },
+      {
+        name: "Parceiro comercial Monnera 19",
+        logo: "/__l5e/assets-v1/7dd81e43-831d-4c75-8eb7-608d05ab8ec0/parceiro-19.png"
+      },
+      {
+        name: "Parceiro comercial Monnera 20",
+        logo: "/__l5e/assets-v1/bbd2e602-71c1-4265-b522-12ec31f40802/parceiro-20.png"
+      },
+      {
+        name: "Parceiro comercial Monnera 21",
+        logo: "/__l5e/assets-v1/c7dee329-c019-4284-ac73-8dc6e914e7dd/parceiro-21.png"
+      },
+      {
+        name: "Parceiro comercial Monnera 22",
+        logo: "/__l5e/assets-v1/b928c448-5801-4a48-82ba-1af639ada9d4/parceiro-22.png"
+      },
+      {
+        name: "Parceiro comercial Monnera 23",
+        logo: "/__l5e/assets-v1/d6835d2b-811f-46bd-8ff0-3b5476d10baf/parceiro-23.png"
+      },
+      {
+        name: "Parceiro comercial Monnera 24",
+        logo: "/__l5e/assets-v1/2bede25a-79be-4df2-804f-4bb830e3b4f1/parceiro-24.png"
+      },
+      {
+        name: "Rede de Farmácias Biomax",
+        logo: "/__l5e/assets-v1/c087e163-8bbe-4307-bf4e-b6e1246209fe/parceiro-25.png"
+      },
+      {
+        name: "Farmácias Cruzeiro",
+        logo: "/__l5e/assets-v1/e6839527-bd6c-45ac-ba66-95d224bf2954/parceiro-26.png"
+      }
+    ];
+
+    const defaultDiscountRows = [
+      { prize: 5000, discount: 10 },
+      { prize: 10000, discount: 20 },
+      { prize: 20000, discount: 30 },
+      { prize: 30000, discount: 40 },
+      { prize: 50000, discount: 50 }
+    ];
+
+    const state = {
+      model: "geral",
+      proposalName: "Proposta Comercial Monnera",
+      company: "Cliente Monnera",
+      contact: "",
+      stores: 1,
+      validity: "15 dias",
+      proposalCode: "",
+      processingFeePayer: "colaborador",
+      products: {
+        campaigns: true,
+        paymentOrder: false,
+        cross: false
+      },
+      showAppVideo: "sim",
+      showManagerVideo: "sim",
+      showSocialVideo: "nao",
+      showLogoRail: "sim",
+      productPricing: {
+        campaigns: {
+          monthlyFee: 299,
+          setupFee: 897,
+          setupManual: false,
+          setupExempt: false,
+          processingFee: "3%",
+          transferFee: 3.40,
+          boletoFee: 3.40
+        },
+        paymentOrder: {
+          monthlyFee: 49,
+          setupFee: 147,
+          setupManual: false,
+          setupExempt: false,
+          processingFee: "3%",
+          transferFee: 3.40,
+          boletoFee: 3.40
+        },
+        cross: {
+          monthlyFee: 1499,
+          setupFee: 4497,
+          setupManual: false,
+          setupExempt: false,
+          processingFee: "3%",
+          transferFee: 3.40,
+          boletoFee: 3.40
+        }
+      },
+      dynamicMonthly: "nao",
+      setupPaymentTerm: "30% de desconto à vista ou parcelado em 3x",
+      setupNotes: "",
+      commercialOwner: "Rafael Lucena de Jesus",
+      ownerEmail: "rafael.lucena@monnera.com.br",
+      ownerPhone: "(27) 99652-1589",
+      commercialNotes: "Primeira mensalidade com vencimento após 30 dias da assinatura do contrato.",
+      discountRows: defaultDiscountRows.map((row) => ({ ...row })),
+      updatedAt: new Date()
+    };
+
+    const proposalEl = document.getElementById("proposal");
+    const discountEditor = document.getElementById("discountEditor");
+    const discountRowsEl = document.getElementById("discountRows");
+    const productValuesEl = document.getElementById("productValues");
+    const fields = document.querySelectorAll("[data-field]");
+    const modelButtons = document.querySelectorAll("[data-model]");
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function numberValue(value) {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function currency(value) {
+      return numberValue(value).toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL"
+      });
+    }
+
+    function percentValue(value) {
+      const match = String(value || "").replace(",", ".").match(/-?\d+(\.\d+)?/);
+      return match ? numberValue(match[0]) : 0;
+    }
+
+    function dateLabel(date) {
+      return date.toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric"
+      });
+    }
+
+    function validitySentence() {
+      const validity = String(state.validity || "").trim() || "prazo a definir";
+      return `Proposta construída em ${dateLabel(state.updatedAt)} e válida por ${validity}.`;
+    }
+
+    function productCatalog() {
+      return {
+        campaigns: {
+          title: "Monnera Campanhas",
+          description: "Produto para estruturar campanhas de incentivo, regras, metas, participantes, apuração e pagamento em um fluxo centralizado."
+        },
+        paymentOrder: {
+          title: "Monnera Pagamentos",
+          description: "Produto para pagamentos diretos a CPFs, mesmo sem vínculo com o CNPJ contratante, com boleto único e split automático para múltiplos beneficiários."
+        },
+        cross: {
+          title: "Monnera Cross",
+          description: "Produto para patrocinar campanhas em parceiros comerciais com controle de performance, gestão compartilhada e segurança operacional, tributária, fiscal e trabalhista."
+        }
+      };
+    }
+
+    function selectedProductKeys() {
+      return Object.keys(productCatalog()).filter((key) => state.products[key]);
+    }
+
+    function selectedMonthlyTotal() {
+      return selectedProductKeys().reduce((total, key) => {
+        return total + numberValue(state.productPricing[key].monthlyFee);
+      }, 0);
+    }
+
+    function selectedAverageProcessingPercent() {
+      const keys = selectedProductKeys();
+      const total = keys.reduce((sum, key) => {
+        return sum + percentValue(state.productPricing[key].processingFee);
+      }, 0);
+      return keys.length ? total / keys.length : 0;
+    }
+
+    function currentModelCopy() {
+      if (state.model === "enterprise") {
+        return {
+          label: "Modelo Enterprise",
+          title: "Infraestrutura de campanhas, pagamentos e governança comercial para operações em escala.",
+          subtitle: "Uma proposta para empresas que precisam conectar estratégia, parceiros, sell-out, pagamentos e auditoria em um ambiente único, seguro e rastreável.",
+          challengeTitle: "O desafio de crescer com controle",
+          challenge: [
+            "Operações enterprise precisam provar retorno do investimento, controlar verba de trade e incentivo, rastrear decisões e manter segurança jurídica, fiscal e operacional em diferentes CNPJs, lojas, parceiros e equipes.",
+            "Quando campanhas, apurações e pagamentos vivem em planilhas, a empresa perde velocidade, visibilidade e capacidade de auditar cada etapa da execução."
+          ],
+          solutionTitle: "A Monnera como camada de gestão compartilhada",
+          solution: "A Monnera centraliza campanhas, regras, participantes, parceiros, apuração e pagamentos em uma plataforma que apoia a governança do investimento comercial. O cliente continua protagonista da estratégia; a Monnera entrega método, tecnologia e suporte para a operação acontecer com mais clareza.",
+          valueTitle: "ROI, segurança e expansão com parceiros",
+          valueCards: [
+            ["ROI do investimento", "Verbas de incentivo passam a ser conectadas a regras, metas e registros de performance, reduzindo dispersão operacional."],
+            ["Rastreabilidade", "Campanhas, participantes, aceite, apuração, pagamentos e saldos ficam organizados para consulta e auditoria."],
+            ["Gestão compartilhada", "Indústrias, distribuidoras, varejos e parceiros podem participar da mesma estratégia com papéis claros e controle centralizado."],
+            ["Segurança operacional", "O fluxo reduz planilhas, retrabalho, pagamentos manuais e riscos associados a processos fragmentados."]
+          ]
+        };
+      }
+
+      return {
+        label: "Modelo Geral",
+        title: "Campanhas de incentivo mais simples, seguras e rastreáveis para sua operação comercial.",
+        subtitle: "Proposta para empresas que querem melhorar a performance de campanhas de vendas, centralizando criação, acompanhamento, apuração e pagamento em um único ambiente, com mais clareza do planejamento ao pagamento.",
+        challengeTitle: "O desafio da operação manual",
+        challenge: [
+          "Campanhas de incentivo costumam nascer com boas metas, mas perdem eficiência quando dependem de planilhas, conferências manuais, pagamentos separados e pouca visibilidade para quem vende.",
+          "A Monnera organiza esse fluxo para que a empresa tenha mais controle, o participante tenha clareza sobre seus ganhos e o pagamento aconteça com segurança."
+        ],
+        solutionTitle: "A Monnera como parceira facilitadora",
+        solution: "A Monnera combina plataforma, inteligência operacional e suporte para estruturar campanhas de incentivo, conectar participantes e automatizar pagamentos com mais centralização, segurança e rastreabilidade.",
+        valueTitle: "Benefícios principais",
+        valueCards: [
+          ["Automação operacional", "Menos planilhas e menos conferências manuais na criação, apuração e pagamento de campanhas."],
+          ["Clareza para o participante", "O usuário acompanha origem do saldo, campanha relacionada e saque, tudo pelo app Monnera."],
+          ["Segurança jurídica e fiscal", "Fluxo mais organizado para premiações, registros, pagamentos e emissão fiscal sobre o valor transacionado."],
+          ["Gestão em um só lugar", "Campanhas, regras, beneficiários e pagamentos reunidos em uma operação mais simples de acompanhar."]
+        ]
+      };
+    }
+
+    function selectedProducts() {
+      const catalog = productCatalog();
+      return selectedProductKeys().map((key) => [catalog[key].title, catalog[key].description, key]);
+    }
+
+    function productVisual(key) {
+      const visuals = {
+        campaigns: {
+          src: "/__l5e/assets-v1/49fa8bb9-367d-41c7-8ff2-316dd5fd7211/produto-campanhas.png",
+          fallback: "/__l5e/assets-v1/67db825f-fee5-4a0b-98ee-dea8d2afe665/canva-app-10-58e9913bde925120fce2e0236b1d6b66.png"
+        },
+        paymentOrder: {
+          src: "/__l5e/assets-v1/da9b2a07-edca-4283-a941-e12e52abec64/produto-pagamentos.png",
+          fallback: "/__l5e/assets-v1/ffe24ed9-28de-4dfc-a593-41cbad6db9ce/canva-app-18-a7c4e2962b8045daec8ca8a87c8d7574.png"
+        },
+        cross: {
+          src: "/__l5e/assets-v1/4c3b7fc8-9324-443e-80e2-dda60dd19f46/monnera-cross-jornada.png",
+          fallback: "/__l5e/assets-v1/c3f84ccf-eed0-4520-a736-7eb98cf1d6c0/canva-app-21-c365186151b5160625ea1e721ca1ba2c.png"
+        }
+      };
+      return visuals[key] || {
+        src: "/__l5e/assets-v1/931989f3-9272-4819-aa87-61b1fdecfdf7/resultado-usuario-app.png",
+        fallback: "/__l5e/assets-v1/dfdbf387-a267-4437-92a6-95ee9fff3ac1/canva-app-01-026b2a5859cd3b30398dd6b2424c9c8e.png"
+      };
+    }
+
+    function productsHtml() {
+      const products = selectedProducts();
+      if (!products.length) {
+        return `
+          <article class="card">
+            <strong>Nenhum produto selecionado</strong>
+            <p>Selecione ao menos um produto no editor para compor o escopo e os valores desta proposta.</p>
+          </article>
+        `;
+      }
+
+      return products.map(([title, text, key]) => {
+        const visual = productVisual(key);
+        return `
+        <article class="card product-card ${key === "cross" ? "is-cross" : ""}">
+          <img class="product-visual" src="${escapeHtml(visual.src)}" alt="${escapeHtml(title)}" onerror="this.onerror=null;this.src='${escapeHtml(visual.fallback)}';">
+          <strong>${escapeHtml(title)}</strong>
+          <p>${escapeHtml(text)}</p>
+        </article>
+      `;
+      }).join("");
+    }
+
+    function visualTileHtml({ src, fallback, alt, caption, tall = false }) {
+      return `
+        <figure class="visual-tile${tall ? " is-tall" : ""}">
+          <img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" onerror="this.onerror=null;this.src='${escapeHtml(fallback)}';">
+          <figcaption class="visual-caption">${escapeHtml(caption)}</figcaption>
+        </figure>
+      `;
+    }
+
+    function coverVisualHtml() {
+      return `
+        <aside class="cover-visual" aria-label="Pessoas e tecnologia na operação Monnera">
+          <img src="/__l5e/assets-v1/38ef937e-f1bb-4993-80d0-1ff1f2649b23/capa-app-boas-vindas.png" alt="App Monnera em tela de boas-vindas" onerror="this.onerror=null;this.src='/__l5e/assets-v1/37d71b9f-1d88-46ff-a5f5-dbca3b6f9766/canva-app-24-e602257a4362daf9eb4b618ef1193d4c.png';">
+        </aside>
+      `;
+    }
+
+    function sectionVisualHtml(kind) {
+      const visuals = {
+        scenario: {
+          src: "/__l5e/assets-v1/c906d651-266f-4a27-ad97-61dc7d3ac9f2/cenario-operacao-varejo.jpg",
+          fallback: "/__l5e/assets-v1/c210f89a-99ca-473f-9437-62dc03efc305/canva-app-23-e42a159e7fd7f2769331533ea7d9444d.png",
+          alt: "Operação comercial com pessoas na ponta",
+          caption: "A operação de incentivo precisa funcionar para gestores, lojas, vendedores e parceiros."
+        },
+        value: {
+          src: "/__l5e/assets-v1/931989f3-9272-4819-aa87-61b1fdecfdf7/resultado-usuario-app.png",
+          fallback: "/__l5e/assets-v1/237cd1e1-57e9-457d-add6-715ef2a97d51/canva-app-16-98e688fec5bd7d562c228deee8f6f063.png",
+          alt: "Usuário acompanhando resultados no app",
+          caption: "Quem participa acompanha resultados, valores e origem do saldo com mais clareza."
+        },
+        security: {
+          src: "/__l5e/assets-v1/bad8f610-17e6-4d76-9ce9-6a2124e4dec2/seguranca-documentacao.jpg",
+          fallback: "/__l5e/assets-v1/bc274710-c802-4304-a6d3-c50957a343fa/canva-app-12-76c708cf4c732bff10b0b6445f651467.png",
+          alt: "Documentação e rastreabilidade da operação",
+          caption: "Dados, documentos e registros deixam a gestão mais auditável."
+        },
+        labor: {
+          src: "/__l5e/assets-v1/4d109870-b94d-4885-9d70-dda456c65dac/eficiencia-aceite-digital.jpg",
+          fallback: "/__l5e/assets-v1/b755ee6c-0dc0-4655-9b4e-31453e0fee71/canva-app-20-bfa8da92659a727f2a2ae09717d05c82.png",
+          alt: "Aceite digital e documentação de campanha",
+          caption: "Aceite, regras e evidências ficam mais organizados para a operação."
+        }
+      };
+      return visualTileHtml({ ...visuals[kind], tall: true });
+    }
+
+    function operationVisualStripHtml() {
+      return `
+        <div style="margin-top:22px;">
+          ${visualTileHtml({
+            src: "/__l5e/assets-v1/bfa8f60c-c619-4372-b062-dd8553368582/solucao-pessoa-app.jpg",
+            fallback: "/__l5e/assets-v1/c210f89a-99ca-473f-9437-62dc03efc305/canva-app-23-e42a159e7fd7f2769331533ea7d9444d.png",
+            alt: "Operação comercial acompanhada pela Monnera",
+            caption: "Da estratégia à ponta: campanhas mais claras para quem opera e para quem participa.",
+            tall: true
+          })}
+        </div>
+      `;
+    }
+
+    function imageFoldHtml({ eyebrow, title, bodyHtml, image }) {
+      return `
+        <section class="section image-fold" style="--fold-image:url('${escapeHtml(image)}');">
+          <div class="section-grid">
+            <div>
+              <p class="eyebrow">${escapeHtml(eyebrow)}</p>
+              <h2>${escapeHtml(title)}</h2>
+            </div>
+            <div>
+              ${bodyHtml}
+            </div>
+          </div>
+        </section>
+      `;
+      if (typeof updateAcceptanceUi === "function") {
+        updateAcceptanceUi();
+      }
+    }
+
+    function governanceVisualHtml() {
+      return `
+        <div class="section-visual" style="margin-top:22px;">
+          ${visualTileHtml({
+            src: "/__l5e/assets-v1/bad8f610-17e6-4d76-9ce9-6a2124e4dec2/seguranca-documentacao.jpg",
+            fallback: "/__l5e/assets-v1/bc274710-c802-4304-a6d3-c50957a343fa/canva-app-12-76c708cf4c732bff10b0b6445f651467.png",
+            alt: "Documentação de campanha organizada",
+            caption: "Termos, regras e registros organizados."
+          })}
+          ${visualTileHtml({
+            src: "/__l5e/assets-v1/c906d651-266f-4a27-ad97-61dc7d3ac9f2/cenario-operacao-varejo.jpg",
+            fallback: "/__l5e/assets-v1/b755ee6c-0dc0-4655-9b4e-31453e0fee71/canva-app-20-bfa8da92659a727f2a2ae09717d05c82.png",
+            alt: "Time de vendas acompanhado por campanha",
+            caption: "Comunicação mais alinhada com quem vende."
+          })}
+          ${visualTileHtml({
+            src: "/__l5e/assets-v1/39023eab-68ec-4ec9-a063-0de875a12276/gestao-painel-resultados.jpg",
+            fallback: "/__l5e/assets-v1/37d71b9f-1d88-46ff-a5f5-dbca3b6f9766/canva-app-24-e602257a4362daf9eb4b618ef1193d4c.png",
+            alt: "Gestão de resultados comerciais",
+            caption: "Rastreabilidade para decisão e auditoria."
+          })}
+        </div>
+      `;
+    }
+
+    function clientsHtml() {
+      return clients.map((client) => `
+        <div class="client-card">
+          <img src="${escapeHtml(client.logo)}" alt="${escapeHtml(client.name)}">
+        </div>
+      `).join("");
+    }
+
+    function clientLogoTilesHtml() {
+      return clients.map((client) => `
+        <div class="logo-tile">
+          <img src="${escapeHtml(client.logo)}" alt="${escapeHtml(client.name)}">
+        </div>
+      `).join("");
+    }
+
+    function clientMarqueeHtml() {
+      const tiles = clientLogoTilesHtml();
+      return `
+        <div class="logo-rail" aria-label="Marcas que utilizam a plataforma Monnera">
+          <div class="logo-track">
+            ${tiles}
+            ${tiles}
+          </div>
+        </div>
+        <div class="client-grid print-only-logo-grid" style="margin-top:22px;">
+          ${clientsHtml()}
+        </div>
+      `;
+    }
+
+    function proposalMediaHtml() {
+      const mediaCards = [];
+
+      if (state.showAppVideo === "sim") {
+        mediaCards.push(`
+          <article class="media-card">
+            <video src="/__l5e/assets-v1/ab9a7c16-c9e0-4f57-9ac9-7f3d103a7162/canva-app-usuario.mp4" poster="/__l5e/assets-v1/dfdbf387-a267-4437-92a6-95ee9fff3ac1/canva-app-01-026b2a5859cd3b30398dd6b2424c9c8e.png" muted playsinline loop controls preload="metadata"></video>
+            <img class="print-media-poster" src="/__l5e/assets-v1/dfdbf387-a267-4437-92a6-95ee9fff3ac1/canva-app-01-026b2a5859cd3b30398dd6b2424c9c8e.png" alt="Tela do app Monnera">
+            <div class="media-card-caption">
+              <strong>App Monnera para participantes</strong>
+              <p>O participante visualiza saldo, origem dos valores, campanhas relacionadas e saque em uma experiência simples no celular.</p>
+            </div>
+          </article>
+        `);
+      }
+
+      if (state.showManagerVideo === "sim") {
+        mediaCards.push(`
+          <article class="media-card">
+            <video src="/__l5e/assets-v1/35cd627c-5004-476d-b2da-c8b6850aa5ab/monnera-gestor-jornada-completa.mp4" poster="/__l5e/assets-v1/716a538b-2b0e-4baa-bf61-e5e294f95469/canva-app-07-4095f91b27d0a40d76cc9dd4a35d4fc9.png" muted playsinline loop controls preload="metadata"></video>
+            <img class="print-media-poster" src="/__l5e/assets-v1/716a538b-2b0e-4baa-bf61-e5e294f95469/canva-app-07-4095f91b27d0a40d76cc9dd4a35d4fc9.png" alt="Painel gestor Monnera">
+            <div class="media-card-caption">
+              <strong>Painel gestor Monnera</strong>
+              <p>O gestor acompanha boletos, notas fiscais, dashboard de gestão de campanhas, termos de aceite, pagamentos, documentos e resultados em um único painel, com mais controle e rastreabilidade.</p>
+            </div>
+          </article>
+        `);
+      }
+
+      if (state.showSocialVideo === "sim") {
+        mediaCards.push(`
+          <article class="media-card">
+            <img src="/__l5e/assets-v1/afbf8b8a-e410-4578-8f0b-15bf8c9de15d/parceiro-04.png" alt="Validação social Monnera">
+            <div class="media-card-caption">
+              <strong>Validação social autorizada</strong>
+              <p>Espaço reservado para depoimento em vídeo de cliente. Ative com arquivo autorizado antes de publicar a proposta na intranet.</p>
+            </div>
+          </article>
+        `);
+      }
+
+      if (!mediaCards.length) {
+        return "";
+      }
+
+      return `
+        <section class="section">
+          <div class="section-grid">
+            <div>
+              <p class="eyebrow">A experiência Monnera</p>
+              <h2>A operação fica clara para quem gerencia e simples para quem participa.</h2>
+            </div>
+            <div>
+              <p>A Monnera conecta gestor, campanha e participante em uma jornada mais transparente: quem recebe acompanha seus ganhos pelo app; quem gerencia acompanha regras, pagamentos, documentos e resultados pelo painel.</p>
+            </div>
+          </div>
+          <div class="media-stage">
+            <div class="media-card-grid">
+              ${mediaCards.join("")}
+            </div>
+          </div>
+        </section>
+      `;
+    }
+
+    function valueCardsHtml(cards) {
+      return cards.map(([title, text]) => `
+        <article class="card">
+          <strong>${escapeHtml(title)}</strong>
+          <p>${escapeHtml(text)}</p>
+        </article>
+      `).join("");
+    }
+
+    function discountRowsHtml() {
+      if (state.dynamicMonthly !== "sim") {
+        return "";
+      }
+
+      const stores = Math.max(1, Math.round(numberValue(state.stores)));
+      const monthlyFee = selectedMonthlyTotal();
+      const rows = state.discountRows.map((row) => {
+        const discountPercent = numberValue(row.discount);
+        const paidToBeneficiaries = numberValue(row.prize);
+        const discountedMonthly = monthlyFee * (1 - discountPercent / 100);
+        const perStore = discountedMonthly / stores;
+
+        return `
+          <tr>
+            <td>${currency(paidToBeneficiaries)}</td>
+            <td>${discountPercent.toLocaleString("pt-BR")}%</td>
+            <td>${currency(discountedMonthly)}</td>
+            <td>${currency(perStore)}</td>
+          </tr>
+        `;
+      }).join("");
+
+      return `
+        <table class="discount-table" aria-label="Tabela de mensalidade dinâmica">
+          <thead>
+            <tr>
+              <th>Valor total pago em campanhas</th>
+              <th>Desconto na Mensalidade (%)</th>
+              <th>Mensalidade total</th>
+              <th>Valor mensalidade por CNPJ</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div class="card" style="margin-top:16px;">
+          <strong>Mensalidade dinâmica</strong>
+          <p>Quanto maior o volume pago aos beneficiários, menor pode ser a mensalidade, mantendo o alinhamento econômico da operação: o beneficiário recebe mais e o contratante reduz custo fixo.</p>
+          <p>O desconto da mensalidade dinâmica incide sobre a soma das mensalidades dos produtos selecionados, conforme tabela demonstrativa anexa, e passa a valer no mês subsequente ao fechamento das campanhas.</p>
+        </div>
+      `;
+    }
+
+    function commercialSummaryValues() {
+      const stores = Math.max(1, Math.round(numberValue(state.stores)));
+      const monthlyFee = selectedMonthlyTotal();
+
+      if (state.dynamicMonthly !== "sim") {
+        return {
+          monthlyPerCnpj: monthlyFee,
+          totalValue: monthlyFee * stores
+        };
+      }
+
+      const dynamicRows = state.discountRows.map((row) => {
+        const discountPercent = numberValue(row.discount);
+        const discountedMonthly = monthlyFee * (1 - discountPercent / 100);
+        return {
+          discountedMonthly,
+          monthlyPerCnpj: discountedMonthly / stores
+        };
+      });
+
+      const bestRow = dynamicRows.reduce((best, row) => {
+        if (!best || row.monthlyPerCnpj < best.monthlyPerCnpj) {
+          return row;
+        }
+        return best;
+      }, null);
+
+      return {
+        monthlyPerCnpj: bestRow ? bestRow.monthlyPerCnpj : monthlyFee / stores,
+        totalValue: bestRow ? bestRow.discountedMonthly : monthlyFee
+      };
+    }
+
+    function processingFeePolicyHtml() {
+      return "";
+    }
+
+    function pricingRowsHtml() {
+      const catalog = productCatalog();
+      const keys = selectedProductKeys();
+      if (!keys.length) {
+        return `
+          <tr>
+            <td colspan="6">Nenhum produto selecionado.</td>
+          </tr>
+        `;
+      }
+      return keys.map((key) => {
+        const pricing = state.productPricing[key];
+        return `
+          <tr>
+            <td>${escapeHtml(catalog[key].title)}</td>
+            <td>${currency(pricing.monthlyFee)}</td>
+            <td>
+              ${currency(productSetupValue(key))}
+              ${state.productPricing[key]?.setupExempt ? `<small class="table-note">Isento no total</small>` : ""}
+            </td>
+            <td>${escapeHtml(pricing.processingFee)}</td>
+            <td>${currency(pricing.transferFee)}</td>
+            <td>${currency(pricing.boletoFee)}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function calculatedProductSetup(key) {
+      const stores = Math.max(1, Math.round(numberValue(state.stores)));
+      const selectedMonthlyBase = selectedMonthlyTotal() * stores;
+      if (selectedMonthlyBase <= 0) {
+        return 0;
+      }
+      const productMonthlyBase = numberValue(state.productPricing[key]?.monthlyFee) * stores;
+      const productShare = productMonthlyBase / selectedMonthlyBase;
+      return commercialSummaryValues().totalValue * productShare * 3;
+    }
+
+    function productSetupValue(key) {
+      return numberValue(state.productPricing[key]?.setupFee);
+    }
+
+    function syncAutomaticSetupFees() {
+      selectedProductKeys().forEach((key) => {
+        const pricing = state.productPricing[key];
+        if (!pricing || pricing.setupManual) {
+          return;
+        }
+        pricing.setupFee = Math.round(calculatedProductSetup(key) * 100) / 100;
+      });
+    }
+
+    function refreshSetupInputs() {
+      selectedProductKeys().forEach((key) => {
+        const input = document.getElementById(`${key}SetupFee`);
+        if (input && !state.productPricing[key]?.setupManual) {
+          input.value = productSetupValue(key).toFixed(2);
+        }
+      });
+    }
+
+    function selectedSetupTotal() {
+      return selectedProductKeys().reduce((total, key) => {
+        if (state.productPricing[key]?.setupExempt) {
+          return total;
+        }
+        return total + productSetupValue(key);
+      }, 0);
+    }
+
+    function setupHtml() {
+      const selectedKeys = selectedProductKeys();
+      if (!selectedKeys.length) {
+        return "";
+      }
+
+      const hasCross = selectedKeys.includes("cross");
+      const setupTotal = selectedSetupTotal();
+      const setupPaymentHtml = setupTotal > 0 ? `
+          <p><strong>Forma de pagamento do setup:</strong><br>${escapeHtml(state.setupPaymentTerm || "30% de desconto à vista ou parcelado em 3x")}</p>
+          <p>Setup é um pagamento único com vencimento em 7 dias após a assinatura do contrato.</p>
+        ` : "";
+      const setupNotes = String(state.setupNotes || "").trim();
+      return `
+        <div class="card" style="margin-top:16px;">
+          <strong>Setup de implantação</strong>
+          <p><strong>Total de setup:</strong> ${currency(setupTotal)}</p>
+          ${setupPaymentHtml}
+          ${setupNotes ? `<p><strong>Observações:</strong> ${escapeHtml(setupNotes)}</p>` : ""}
+          <p>O setup contempla configuração do painel do gestor, validação inicial das informações, apoio à estruturação das bases, parametrização inicial dos fluxos e orientação de implantação.</p>
+          <p>O lançamento é conduzido pelo time Monnera. Gestores recebem orientação sobre painel gerencial, acompanhamento de resultados por CNPJ, resultados do time, cadastros no app, cadastro de campanhas, saque e funcionalidades. Usuários recebem orientação sobre cadastro no app, saque, acompanhamento de resultados e valores, mensageria, obrigatoriedades e demais funcionalidades de apoio às vendas.</p>
+          ${hasCross ? `<p>Para Monnera Cross, o setup inclui também a conexão técnica com clientes ou parceiros do contratante, dependente da colaboração ativa dos times envolvidos para conectar tecnologia, bases e operação.</p>` : ""}
+        </div>
+      `;
+    }
+
+    function pricingHtml() {
+      const summary = commercialSummaryValues();
+      return `
+        <table class="discount-table" aria-label="Condições comerciais por produto">
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th>Mensalidade</th>
+              <th>Setup de implantação</th>
+              <th>Taxa de processamento</th>
+              <th>Taxa de transferência</th>
+              <th>Taxa de boleto</th>
+            </tr>
+          </thead>
+          <tbody>${pricingRowsHtml()}</tbody>
+        </table>
+        ${discountRowsHtml()}
+        <div class="pricing-panel" style="margin-top:16px;">
+          <div class="price-item">
+            <span>Valor mensalidade por CNPJ</span>
+            <strong>${currency(summary.monthlyPerCnpj)}</strong>
+          </div>
+          <div class="price-item">
+            <span>Valor total</span>
+            <strong>${currency(summary.totalValue)}</strong>
+          </div>
+        </div>
+        ${setupHtml()}
+        <p><strong>Forma de cobrança da taxa de processamento:</strong> ${state.processingFeePayer === "colaborador" ? "debitada do prêmio do colaborador" : "cobrada do contratante"}.</p>
+        ${processingFeePolicyHtml()}
+        ${state.commercialNotes ? `<p><strong>Observações comerciais:</strong> ${escapeHtml(state.commercialNotes)}</p>` : ""}
+      `;
+    }
+
+    function renderProposal() {
+      const copy = currentModelCopy();
+      proposalEl.innerHTML = `
+        <header class="proposal-cover">
+          <div class="cover-content">
+            <img class="cover-logo" src="/__l5e/assets-v1/9beada95-48f2-4b19-b590-081ca8f812e4/logomarca-monnera.jpg" alt="Monnera">
+            <h1>${escapeHtml(state.proposalName || "Proposta Comercial Monnera")}</h1>
+            <p class="cover-subtitle">${escapeHtml(copy.subtitle)}</p>
+            <aside class="cover-card" aria-label="Dados da proposta">
+              <div class="cover-meta">
+                <div class="meta-item">
+                  <span>Cliente</span>
+                  <strong>${escapeHtml(state.company || "Cliente Monnera")}</strong>
+                </div>
+                <div class="meta-item">
+                  <span>Contato</span>
+                  <strong>${escapeHtml(state.contact || "A definir")}</strong>
+                </div>
+                <div class="meta-item">
+                  <span>Data da proposta</span>
+                  <strong>${dateLabel(state.updatedAt)}</strong>
+                </div>
+                <div class="meta-item">
+                  <span>Validade</span>
+                  <strong>${escapeHtml(state.validity || "A definir")}</strong>
+                </div>
+                ${state.proposalCode ? `<div class="meta-item"><span>Código</span><strong>${escapeHtml(state.proposalCode)}</strong></div>` : ""}
+              </div>
+            </aside>
+          </div>
+          ${coverVisualHtml()}
+        </header>
+
+        <section class="section">
+          <div class="section-grid">
+            <div>
+              <p class="eyebrow">Cenário atual</p>
+              <h2>${escapeHtml(copy.challengeTitle)}</h2>
+            </div>
+            <div>
+              ${copy.challenge.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}
+            </div>
+          </div>
+        </section>
+
+        ${imageFoldHtml({
+          eyebrow: "Solução",
+          title: copy.solutionTitle,
+          image: "/__l5e/assets-v1/fbc9a61f-682e-458e-9233-db72dbd3bd11/dobra-operacao-fundo.jpg",
+          bodyHtml: `<p>${escapeHtml(copy.solution)}</p>`
+        })}
+
+        ${proposalMediaHtml()}
+
+        <section class="section">
+          <p class="eyebrow">Ecossistema Monnera</p>
+          <h2>Produtos selecionados para compor esta proposta.</h2>
+          <p style="margin-top:12px;">Os produtos Monnera são soluções distintas e podem ser contratados conforme a necessidade da operação. Esta proposta apresenta os itens discriminados abaixo.</p>
+          <div class="product-grid" style="margin-top:22px;">
+            ${productsHtml()}
+          </div>
+        </section>
+
+        <section class="section">
+          <p class="eyebrow">Valor do investimento</p>
+          <h2>${escapeHtml(copy.valueTitle)}</h2>
+          <div class="value-grid" style="margin-top:22px;">
+            ${valueCardsHtml(copy.valueCards)}
+          </div>
+        </section>
+
+        ${imageFoldHtml({
+          eyebrow: "Segurança e governança",
+          title: "Controle, dados e rastreabilidade para uma operação mais segura.",
+          image: "/__l5e/assets-v1/bad8f610-17e6-4d76-9ce9-6a2124e4dec2/seguranca-documentacao.jpg",
+          bodyHtml: `<div class="feature-grid">${valueCardsHtml([
+            ["Segurança de dados", "Operação estruturada com controle de acesso, organização de informações e tratamento de dados alinhado à legislação vigente de segurança e proteção de dados."],
+            ["Auditoria", "Histórico de campanhas, regras, participantes, saldos e pagamentos para consulta e conferência."],
+            ["Rastreio de informações", "Cada etapa da campanha passa a ter registros mais claros, reduzindo dependência de arquivos paralelos."],
+            ["Conformidade operacional", "Apoio a uma operação mais segura do ponto de vista jurídico, fiscal, tributário e trabalhista."]
+          ])}</div>`
+        })}
+
+        <section class="section">
+          <p class="eyebrow">Eficiência trabalhista e fiscal</p>
+          <h2>Mais documentação, mais controle e menos exposição operacional.</h2>
+          <div class="value-grid" style="margin-top:22px;">
+            ${valueCardsHtml([
+              ["Base trabalhista para premiações", "O modelo apoia campanhas de premiação alinhadas ao Art. 457 da CLT, especialmente para programas vinculados a desempenho superior ao ordinariamente esperado."],
+              ["Termo de aceite por campanha", "Cada campanha exige anuência prévia do colaborador, com aceite individualizado e assinatura digital no início da campanha. Assim, o participante conhece as regras desde o começo da operação."],
+              ["Documentação para eventual demanda", "O gestor pode acessar pelo app Monnera os documentos da campanha, termos assinados, regras e registros relacionados, facilitando a organização de evidências em caso de demanda trabalhista."],
+              ["Guarda documental por 5 anos", "Os termos de aceite assinados digitalmente são mantidos por 5 anos, ajudando a preservar o histórico da operação e a rastreabilidade dos pagamentos."],
+              ["Eficiência fiscal", "A emissão de nota fiscal sobre todos os valores transacionados organiza a documentação fiscal da operação e contribui para a comprovação das despesas dedutíveis, conforme validação contábil aplicável."],
+              ["Pagamento condicionado à anuência", "O pagamento é estruturado para ocorrer somente após o aceite digital do colaborador, reduzindo divergências entre regra comunicada, prêmio apurado e valor disponibilizado."]
+            ])}
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-grid">
+            <div>
+              <p class="eyebrow">Marcas que operam com a Monnera</p>
+              <h2>Empresas que já utilizam a plataforma na gestão de suas operações comerciais.</h2>
+            </div>
+            <div>
+              <p>As marcas abaixo reforçam a presença da Monnera em operações reais de incentivo, campanhas, pagamentos e relacionamento com quem está na ponta.</p>
+            </div>
+          </div>
+          ${state.showLogoRail === "sim" ? clientMarqueeHtml() : `<div class="client-grid" style="margin-top:22px;">${clientsHtml()}</div>`}
+        </section>
+
+        <section class="section">
+          <p class="eyebrow">Condições comerciais</p>
+          <h2>Investimento e regras comerciais</h2>
+          <div style="margin-top:22px;">
+            ${pricingHtml()}
+          </div>
+        </section>
+
+        <section class="section closing">
+          <p class="eyebrow">Próximo passo</p>
+          <h2>Confirme esta proposta e comece a operar campanhas, pagamentos e premiações com mais clareza, segurança e retorno.</h2>
+          <div class="signature">
+            <div>
+              <strong>${escapeHtml(state.commercialOwner || "Equipe Monnera")}</strong>
+              <p>${escapeHtml(state.ownerEmail || "")}${state.ownerEmail && state.ownerPhone ? " · " : ""}${escapeHtml(state.ownerPhone || "")}</p>
+              <p>${escapeHtml(validitySentence())}</p>
+            </div>
+          </div>
+        </section>
+      `;
+    }
+
+    function renderDiscountEditor() {
+      discountEditor.classList.toggle("is-visible", state.dynamicMonthly === "sim");
+      discountRowsEl.innerHTML = state.discountRows.map((row, index) => `
+        <tr>
+          <td>
+            <input type="number" min="0" step="0.01" value="${escapeHtml(row.prize)}" data-discount-index="${index}" data-discount-field="prize" aria-label="Valor total pago em campanhas">
+          </td>
+          <td>
+            <input type="number" min="0" max="100" step="1" value="${escapeHtml(row.discount)}" data-discount-index="${index}" data-discount-field="discount" aria-label="Desconto na Mensalidade (%)">
+          </td>
+          <td>
+            <button class="remove-row" type="button" data-remove-row="${index}" aria-label="Remover linha">×</button>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function renderProductValuesEditor() {
+      syncAutomaticSetupFees();
+      const catalog = productCatalog();
+      const keys = selectedProductKeys();
+      if (!keys.length) {
+        productValuesEl.innerHTML = `<p class="note">Selecione ao menos um produto para preencher valores.</p>`;
+        return;
+      }
+      productValuesEl.innerHTML = keys.map((key) => {
+        const pricing = state.productPricing[key];
+        return `
+          <div class="product-value-card">
+            <h3>${escapeHtml(catalog[key].title)}</h3>
+            <div class="field-row">
+              <div class="field">
+                <label for="${key}MonthlyFee">Mensalidade</label>
+                <input id="${key}MonthlyFee" type="number" min="0" step="0.01" value="${escapeHtml(pricing.monthlyFee)}" data-product-price="${key}" data-product-price-field="monthlyFee">
+              </div>
+              <div class="field">
+                <label for="${key}SetupFee">Setup de implantação</label>
+                <input id="${key}SetupFee" type="number" min="0" step="0.01" value="${escapeHtml(productSetupValue(key))}" data-product-price="${key}" data-product-price-field="setupFee">
+                <label class="check-field" for="${key}SetupExempt">
+                  <input id="${key}SetupExempt" type="checkbox" ${pricing.setupExempt ? "checked" : ""} data-product-price="${key}" data-product-price-field="setupExempt">
+                  <span>Isento de setup</span>
+                </label>
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="${key}ProcessingFee">Taxa de processamento</label>
+                <input id="${key}ProcessingFee" value="${escapeHtml(pricing.processingFee)}" data-product-price="${key}" data-product-price-field="processingFee">
+              </div>
+              <div class="field">
+                <label for="${key}TransferFee">Taxa de transferência</label>
+                <input id="${key}TransferFee" type="number" min="0" step="0.01" value="${escapeHtml(pricing.transferFee)}" data-product-price="${key}" data-product-price-field="transferFee">
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="${key}BoletoFee">Taxa de boleto</label>
+                <input id="${key}BoletoFee" type="number" min="0" step="0.01" value="${escapeHtml(pricing.boletoFee)}" data-product-price="${key}" data-product-price-field="boletoFee">
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function syncFieldsFromState() {
+      fields.forEach((field) => {
+        const key = field.dataset.field;
+        if (key in state) {
+          field.value = state[key];
+        }
+      });
+      document.querySelectorAll("[data-product]").forEach((field) => {
+        field.checked = Boolean(state.products[field.dataset.product]);
+      });
+      modelButtons.forEach((button) => {
+        button.classList.toggle("is-active", button.dataset.model === state.model);
+      });
+      renderDiscountEditor();
+      renderProductValuesEditor();
+    }
+
+    function markUpdated() {
+      state.updatedAt = new Date();
+    }
+
+    function updateFromField(field) {
+      const key = field.dataset.field;
+      if (!key) {
+        return;
+      }
+
+      if (["stores"].includes(key)) {
+        state[key] = numberValue(field.value);
+      } else {
+        state[key] = field.value;
+      }
+
+      markUpdated();
+      if (["stores", "dynamicMonthly"].includes(key)) {
+        syncAutomaticSetupFees();
+      }
+      renderDiscountEditor();
+      if (["stores", "dynamicMonthly"].includes(key)) {
+        renderProductValuesEditor();
+      }
+      renderProposal();
+    }
+
+    modelButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        state.model = button.dataset.model;
+        markUpdated();
+        syncFieldsFromState();
+        renderProposal();
+      });
+    });
+
+    fields.forEach((field) => {
+      field.addEventListener("input", () => updateFromField(field));
+      field.addEventListener("change", () => updateFromField(field));
+    });
+
+    document.querySelectorAll("[data-product]").forEach((field) => {
+      field.addEventListener("change", () => {
+        state.products[field.dataset.product] = field.checked;
+        markUpdated();
+        syncAutomaticSetupFees();
+        renderProductValuesEditor();
+        renderDiscountEditor();
+        renderProposal();
+      });
+    });
+
+    productValuesEl.addEventListener("input", (event) => {
+      const target = event.target;
+      const product = target.dataset.productPrice;
+      const key = target.dataset.productPriceField;
+      if (!product || !key || !state.productPricing[product]) {
+        return;
+      }
+      if (key === "setupExempt") {
+        state.productPricing[product][key] = target.checked;
+      } else if (key === "setupFee") {
+        state.productPricing[product].setupFee = numberValue(target.value);
+        state.productPricing[product].setupManual = true;
+      } else if (["monthlyFee", "setupFee", "transferFee", "boletoFee"].includes(key)) {
+        state.productPricing[product][key] = numberValue(target.value);
+      } else {
+        state.productPricing[product][key] = target.value;
+      }
+      if (key === "monthlyFee") {
+        syncAutomaticSetupFees();
+        refreshSetupInputs();
+      }
+      markUpdated();
+      renderProposal();
+    });
+
+    productValuesEl.addEventListener("change", (event) => {
+      const target = event.target;
+      const product = target.dataset.productPrice;
+      const key = target.dataset.productPriceField;
+      if (key !== "setupExempt" || !product || !state.productPricing[product]) {
+        return;
+      }
+      state.productPricing[product][key] = target.checked;
+      markUpdated();
+      renderProposal();
+    });
+
+    discountRowsEl.addEventListener("input", (event) => {
+      const target = event.target;
+      const index = Number(target.dataset.discountIndex);
+      const key = target.dataset.discountField;
+      if (!Number.isInteger(index) || !key || !state.discountRows[index]) {
+        return;
+      }
+      state.discountRows[index][key] = numberValue(target.value);
+      markUpdated();
+      syncAutomaticSetupFees();
+      refreshSetupInputs();
+      renderProposal();
+    });
+
+    discountRowsEl.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-remove-row]");
+      if (!button) {
+        return;
+      }
+      const index = Number(button.dataset.removeRow);
+      if (state.discountRows.length > 1 && Number.isInteger(index)) {
+        state.discountRows.splice(index, 1);
+        markUpdated();
+        syncAutomaticSetupFees();
+        renderDiscountEditor();
+        renderProductValuesEditor();
+        renderProposal();
+      }
+    });
+
+    document.getElementById("addDiscountRow").addEventListener("click", () => {
+      state.discountRows.push({ prize: 0, discount: 0 });
+      markUpdated();
+      syncAutomaticSetupFees();
+      renderDiscountEditor();
+      renderProductValuesEditor();
+      renderProposal();
+    });
+
+    function resetDefaults() {
+      Object.assign(state, {
+        model: "geral",
+        proposalName: "Proposta Comercial Monnera",
+        company: "Cliente Monnera",
+        contact: "",
+        stores: 1,
+        validity: "15 dias",
+        proposalCode: "",
+        processingFeePayer: "colaborador",
+        products: {
+          campaigns: true,
+          paymentOrder: false,
+          cross: false
+        },
+        showAppVideo: "sim",
+        showManagerVideo: "sim",
+        showSocialVideo: "nao",
+        showLogoRail: "sim",
+        productPricing: {
+          campaigns: {
+            monthlyFee: 299,
+            setupFee: 897,
+            setupManual: false,
+            setupExempt: false,
+            processingFee: "3%",
+            transferFee: 3.40,
+            boletoFee: 3.40
+          },
+          paymentOrder: {
+            monthlyFee: 49,
+            setupFee: 147,
+            setupManual: false,
+            setupExempt: false,
+            processingFee: "3%",
+            transferFee: 3.40,
+            boletoFee: 3.40
+          },
+          cross: {
+            monthlyFee: 1499,
+            setupFee: 4497,
+            setupManual: false,
+            setupExempt: false,
+            processingFee: "3%",
+            transferFee: 3.40,
+            boletoFee: 3.40
+          }
+        },
+        dynamicMonthly: "nao",
+        setupPaymentTerm: "30% de desconto à vista ou parcelado em 3x",
+        setupNotes: "",
+        commercialOwner: "Rafael Lucena de Jesus",
+        ownerEmail: "rafael.lucena@monnera.com.br",
+        ownerPhone: "(27) 99652-1589",
+        commercialNotes: "Primeira mensalidade com vencimento após 30 dias da assinatura do contrato.",
+        discountRows: defaultDiscountRows.map((row) => ({ ...row })),
+        updatedAt: new Date()
+      });
+      syncFieldsFromState();
+      renderProposal();
+    }
+
+    const localAcceptanceKey = "monnera-proposta-aceite-local";
+    const acceptCta = document.getElementById("acceptProposalCta");
+    const acceptStatus = document.getElementById("acceptStatus");
+    const acceptModal = document.getElementById("acceptModal");
+    const acceptName = document.getElementById("acceptName");
+    const acceptEmail = document.getElementById("acceptEmail");
+    const cancelAccept = document.getElementById("cancelAccept");
+    const confirmAccept = document.getElementById("confirmAccept");
+
+    function currentAcceptanceStorageKey() {
+      const code = String(state.proposalCode || state.proposalName || "proposta-monnera").trim().toLowerCase();
+      return `${localAcceptanceKey}:${code || "proposta-monnera"}`;
+    }
+
+    function readLocalAcceptance() {
+      try {
+        return JSON.parse(localStorage.getItem(currentAcceptanceStorageKey()) || "null");
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function updateAcceptanceUi() {
+      const accepted = readLocalAcceptance();
+      if (accepted) {
+        acceptCta.style.display = "none";
+        acceptStatus.style.display = "block";
+        const acceptedAt = accepted.acceptedAt
+          ? new Date(accepted.acceptedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
+          : "";
+        acceptStatus.innerHTML = `Proposta aceita${acceptedAt ? `<span>${acceptedAt}</span>` : ""}`;
+        return;
+      }
+      acceptStatus.style.display = "none";
+      acceptStatus.innerHTML = "";
+      acceptCta.style.display = "inline-flex";
+    }
+
+    function openAcceptModal() {
+      acceptModal.classList.add("is-open");
+      acceptName.focus();
+    }
+
+    function closeAcceptModal() {
+      acceptModal.classList.remove("is-open");
+    }
+
+    function confirmLocalAcceptance() {
+      const name = acceptName.value.trim();
+      const email = acceptEmail.value.trim();
+      if (!name) {
+        alert("Informe seu nome para aceitar a proposta.");
+        acceptName.focus();
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        alert("Informe um email válido.");
+        acceptEmail.focus();
+        return;
+      }
+      localStorage.setItem(currentAcceptanceStorageKey(), JSON.stringify({
+        name,
+        email,
+        acceptedAt: new Date().toISOString()
+      }));
+      closeAcceptModal();
+      updateAcceptanceUi();
+    }
+
+    document.getElementById("resetButton").addEventListener("click", resetDefaults);
+    document.getElementById("printButton").addEventListener("click", () => window.print());
+    document.querySelector(".print-cta").addEventListener("click", () => window.print());
+    acceptCta.addEventListener("click", openAcceptModal);
+    cancelAccept.addEventListener("click", closeAcceptModal);
+    confirmAccept.addEventListener("click", confirmLocalAcceptance);
+    acceptModal.addEventListener("click", (event) => {
+      if (event.target === acceptModal) {
+        closeAcceptModal();
+      }
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && acceptModal.classList.contains("is-open")) {
+        closeAcceptModal();
+      }
+    });
+
+    function applyUrlState() {
+      const params = new URLSearchParams(window.location.search);
+      const simpleFields = [
+        "proposalName",
+        "company",
+        "contact",
+        "validity",
+        "proposalCode",
+        "setupNotes",
+        "commercialOwner",
+        "ownerEmail",
+        "ownerPhone",
+        "commercialNotes"
+      ];
+      simpleFields.forEach((field) => {
+        const value = params.get(field);
+        if (value !== null && value !== "") state[field] = value;
+      });
+      const stores = params.get("stores");
+      if (stores !== null && stores !== "") state.stores = Math.max(1, numberValue(stores));
+      const model = params.get("model");
+      if (model === "geral" || model === "enterprise") state.model = model;
+      if (params.get("embedded") === "1") document.body.classList.add("embedded-public");
+      state.updatedAt = new Date();
+    }
+
+    applyUrlState();
+    syncFieldsFromState();
+    renderProposal();
+    updateAcceptanceUi();
+
+
+    // ===== Bridge para wrapper React (postMessage same-origin) =====
+    (function geradorBridge() {
+      const ALLOWED_ORIGIN = window.location.origin;
+      const parentWin = window.parent !== window ? window.parent : null;
+
+      function postToParent(msg) {
+        if (!parentWin) return;
+        try { parentWin.postMessage(msg, ALLOWED_ORIGIN); } catch (_) {}
+      }
+
+      function deepMerge(target, source) {
+        if (!source || typeof source !== "object") return;
+        Object.keys(source).forEach((k) => {
+          const v = source[k];
+          if (v && typeof v === "object" && !Array.isArray(v) && target[k] && typeof target[k] === "object") {
+            deepMerge(target[k], v);
+          } else {
+            target[k] = v;
+          }
+        });
+      }
+
+      function applyPrefill(payload) {
+        if (!payload || typeof payload !== "object") return;
+        // payload can be either a full state OR a partial { client, footer } shape
+        if (payload.client || payload.footer) {
+          if (payload.client) {
+            if (payload.client.company) state.company = payload.client.company;
+            if (payload.client.contact) state.contact = payload.client.contact;
+            if (payload.client.proposalName) state.proposalName = payload.client.proposalName;
+          }
+          if (payload.footer) {
+            if (payload.footer.nome) state.commercialOwner = payload.footer.nome;
+            if (payload.footer.email) state.ownerEmail = payload.footer.email;
+            if (payload.footer.telefone) state.ownerPhone = payload.footer.telefone;
+          }
+        } else {
+          // full state replay
+          deepMerge(state, payload);
+          // restore Date object on updatedAt
+          state.updatedAt = new Date();
+        }
+        try { syncFieldsFromState(); } catch (_) {}
+        try { renderProposal(); } catch (_) {}
+        try { updateAcceptanceUi(); } catch (_) {}
+      }
+
+      function applyMode(mode, readonly) {
+        if (mode === "view") {
+          document.body.classList.add("proposal-view-mode");
+        } else {
+          document.body.classList.remove("proposal-view-mode");
+        }
+        if (readonly) {
+          document.querySelectorAll('.editor input, .editor select, .editor textarea, .editor button')
+            .forEach((el) => { try { el.setAttribute('disabled', 'disabled'); } catch(_) {} });
+        }
+      }
+
+      function serializeState() {
+        try { return JSON.parse(JSON.stringify(state)); } catch (_) { return null; }
+      }
+
+      window.addEventListener("message", (e) => {
+        if (e.origin !== ALLOWED_ORIGIN) return;
+        const data = e.data || {};
+        if (data.type === "prefill") applyPrefill(data.payload);
+        else if (data.type === "setMode") applyMode(data.mode, !!data.readonly);
+      });
+
+      const saveBtn = document.getElementById("geradorSaveBtn");
+      if (saveBtn) {
+        saveBtn.addEventListener("click", () => {
+          const payload = serializeState();
+          if (!payload) return;
+          saveBtn.disabled = true;
+          saveBtn.textContent = "Salvando...";
+          postToParent({ type: "save", payload });
+          setTimeout(() => {
+            saveBtn.disabled = false;
+            saveBtn.textContent = "Salvar e gerar link";
+          }, 4000);
+        });
+      }
+
+      // Sinaliza pronto para o wrapper
+      postToParent({ type: "ready" });
+    })();
+
+  </script>
+</body>
+</html>
+
