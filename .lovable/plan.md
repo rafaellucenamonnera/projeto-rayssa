@@ -1,71 +1,74 @@
 ## Objetivo
-Criar versão funcional mínima da página pública de proposta comercial, focando no fluxo de aceite via link público. Sem alterações de banco, Edge Functions ou RLS.
+Substituir o modal antigo `PropostaUploadDialog` (upload de PDF) por um gerador editável de proposta comercial Monnera em React, no fluxo de mover card para `proposta_enviada` / `proposta_comercial`. Sem `file://`. A proposta gerada grava em `commercial_proposals`, gera link público `/proposta/:token` e atualiza `lead.proposta_url`.
 
 ## Mudanças
 
-### 1. Novo arquivo `src/pages/PropostaPublica.tsx`
-Página pública, com:
+### 1. Novo componente `src/components/admin/PropostaComercialDialog.tsx`
+Dialog do shadcn, editável. Props:
+- `open: boolean`
+- `onOpenChange: (open: boolean) => void`
+- `lead: any` (objeto completo — deriva `lead.id`, `lead.nome_fantasia`, financeiro etc.)
+- `onSuccess: (publicUrl: string, proposalName: string) => void`
+- `onCancel: () => void`
 
-- `useParams<{ token: string }>()` para ler o token da URL.
-- No mount: chamar `supabase.rpc('get_public_commercial_proposal', { p_token: token })`.
-- Estados: `loading`, `error`, `proposal`, `accepting`, `modalOpen`, `name`, `email`.
-- Renderização condicional:
-  - **Loading**: spinner centralizado.
-  - **Erro / não encontrada**: card amigável "Proposta não encontrada ou link inválido".
-  - **Carregada**: header com nome da proposta + dados básicos do payload (resumo simples).
-  - Se `accepted === true` (ou `accepted_at` presente): badge `Proposta aceita em <data formatada pt-BR>`. CTA oculto.
-  - Caso contrário: CTA flutuante fixo (`fixed bottom-6 right-6 z-50`) `Aceitar proposta comercial`.
+Seções:
+- **Identificação**: `proposal_name` (default `Proposta Monnera - <nome_fantasia> - <data>`), `cliente`, `contato_nome`, `contato_email`, `contato_telefone` (defaults do lead).
+- **Escopo**: `objetivo` (textarea), `escopo_itens` (lista dinâmica add/remove com `titulo`/`descricao`).
+- **Comercial** (Switch `omit_financials`): `valor_setup`, `valor_mensalidade`, `valor_campanhas`, `qtd_parcelas` (defaults do lead); ao omitir, exibir `omit_financials_reason`.
+- **Prazos e Condições**: `prazo_implantacao`, `validade_proposta`, `condicoes_pagamento`, `observacoes`.
 
-### 2. Fallback flexível para identificação do cliente
-Na renderização, montar o nome do cliente exibido seguindo esta ordem:
-- `proposal.proposal_name`
-- `proposal.payload?.company`
-- `proposal.payload?.leadName`
-- `proposal.lead?.nome_fantasia`
-- `"Cliente Monnera"` (fallback final)
+Ações: `Cancelar`, `Gerar proposta`.
 
-### 3. Modal de aceite (Dialog do shadcn, inline)
-- Inputs obrigatórios: nome, email (validação regex simples).
-- Texto legal:
-  > Declaro que li e aceito a proposta comercial Monnera, incluindo escopo, condições comerciais, valores, prazos e demais termos apresentados. Ao confirmar, o aceite será registrado no painel Monnera para acompanhamento do time comercial.
-- Botão `Aceitar proposta comercial` (desabilitado se vazios ou `accepting`).
-- Botão `Cancelar`.
-
-### 4. Submissão do aceite
+### 2. Submissão
 ```ts
-supabase.rpc('accept_commercial_proposal', {
-  p_token: token,
-  p_accepted_by_name: name.trim(),
-  p_accepted_by_email: email.trim().toLowerCase(),
-  p_accepted_ip: null,
-  p_accepted_user_agent: navigator.userAgent,
-})
+const token = crypto.randomUUID().replace(/-/g, "");
+const publicUrl = `${window.location.origin}/proposta/${token}`;
+const { data: { user } } = await supabase.auth.getUser();
+await supabase.from("commercial_proposals").insert({
+  lead_id: lead.id, token, proposal_name, payload,
+  omit_financials, omit_financials_reason: omit_financials ? reason : null,
+  public_url: publicUrl, created_by_user_id: user?.id ?? null,
+});
 ```
-- Sucesso: fechar modal, atualizar `proposal` local com `accepted_at = now`, toast `sonner` de sucesso.
-- `already_accepted: true`: tratar como sucesso e atualizar UI.
-- Erro: toast amigável.
+Em sucesso: copiar link (`navigator.clipboard.writeText`), toast, `onSuccess(publicUrl, proposal_name)`, fechar.
 
-### 5. Registro de rota em `src/App.tsx`
-- Adicionar `const PropostaPublica = lazy(() => import("./pages/PropostaPublica"));`
-- Adicionar `<Route path="/proposta/:token" element={<PropostaPublica />} />` fora das rotas administrativas protegidas.
-- A página pode estar dentro da árvore global de providers, mas não deve exigir usuário logado nem chamar dados protegidos por auth.
+### 3. Integrar em `src/pages/admin/AdminLeads.tsx`
+- Remover import `PropostaUploadDialog`; adicionar `PropostaComercialDialog`.
+- Manter estado `uploadDialogOpen` (renomear para `proposalDialogOpen` fica para depois — não bloqueia).
+- `handleFinanceiroSaved` mantém `setPendingStatusChange` + `setUploadDialogOpen(true)` no branch `proposta_enviada` / `proposta_comercial`.
+- `handleReplaceProposta` reabre o mesmo `PropostaComercialDialog`.
+- Substituir JSX:
+  ```tsx
+  <PropostaComercialDialog
+    open={uploadDialogOpen}
+    onOpenChange={setUploadDialogOpen}
+    lead={leads.find(l => l.id === pendingStatusChange?.leadId)}
+    onSuccess={handlePropostaGerada}
+    onCancel={handlePropostaUploadCancel}
+  />
+  ```
+- Substituir `handlePropostaUploadSuccess` por `handlePropostaGerada(publicUrl, proposalName)`:
+  - `replaceOnly` → `updatePropostaUrl(leadId, publicUrl, proposalName)`.
+  - Caso contrário → `updateStatus(leadId, "proposta_enviada", publicUrl, proposalName)`.
 
-## Estilo
-- Container centralizado max-w-3xl, padding generoso.
-- Tokens semânticos do design system (sem cores hardcoded), tema escuro Monnera.
-- Tipografia hierárquica: título da proposta destacado, dados em cards.
+### 4. Limpeza
+- Remover `src/components/admin/PropostaUploadDialog.tsx` (uso único confirmado em `AdminLeads.tsx`).
+- Nada em `public/`.
+
+### 5. Sem banco
+- `commercial_proposals`, RPCs `get_public_commercial_proposal`, `accept_commercial_proposal` e rota `/proposta/:token` já existem.
 
 ## Restrições
-- Não alterar banco, RLS, Edge Functions, tabelas ou Storage.
-- Não alterar fluxo financeiro já implementado.
-- Não criar componentes novos além de `PropostaPublica.tsx` (modal inline).
-- Renderização do payload mantida simples — refinamento visual fica para rodada futura quando os assets do gerador chegarem.
+- Sem alterações em banco, RLS, Edge Functions, Storage, tabelas.
+- Não tocar no fluxo financeiro (continua antes do gerador, com `allowSkipValidation`).
+- Sem `file://`.
+- Não sobrescrever campos do lead com 0; somente ler para defaults.
 
 ## Critérios de aceite
-- `/proposta/:token` abre sem login.
-- Token inválido → mensagem amigável.
-- Token válido → renderiza proposta básica.
-- CTA aparece somente quando não aceito.
-- Aceite chama `accept_commercial_proposal` com os 5 parâmetros corretos.
-- Após aceite: CTA some, badge de aceito aparece, toast de sucesso.
+- Mover card para `Proposta Enviada` → financeiro → `PropostaComercialDialog` (não mais upload de PDF).
+- `commercial_proposals` recebe registro com `token`, `payload`, `public_url`.
+- `lead.proposta_url` recebe `/proposta/:token`.
+- Card vai para `proposta_enviada`.
+- Link público abre, exibe a proposta e permite aceite.
+- `PropostaUploadDialog` removido sem referências.
 - Build e typecheck passam.
