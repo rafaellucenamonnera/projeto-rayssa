@@ -22,6 +22,7 @@ import {
   FileText,
   XCircle,
   Ban,
+  Copy,
 } from "lucide-react";
 
 type Proposal = {
@@ -45,6 +46,7 @@ type Proposal = {
   pdf_status: "pending" | "ready" | "failed" | null;
   pdf_error: string | null;
   pdf_generated_at: string | null;
+  payload: any;
 };
 
 function fmtDate(value?: string | null) {
@@ -99,7 +101,7 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
     const { data, error } = await (supabase as any)
       .from("commercial_proposals")
       .select(
-        "id, lead_id, token, proposal_name, public_url, created_at, created_by_user_id, version, accepted_at, accepted_by_name, acceptance_canceled_at, acceptance_cancellation_reason, superseded_at, proposal_canceled_at, proposal_canceled_by, proposal_cancellation_reason, pdf_path, pdf_status, pdf_error, pdf_generated_at",
+        "id, lead_id, token, proposal_name, public_url, created_at, created_by_user_id, version, accepted_at, accepted_by_name, acceptance_canceled_at, acceptance_cancellation_reason, superseded_at, proposal_canceled_at, proposal_canceled_by, proposal_cancellation_reason, pdf_path, pdf_status, pdf_error, pdf_generated_at, payload",
       )
       .eq("lead_id", leadId)
       .order("version", { ascending: false });
@@ -287,6 +289,38 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
     }
   };
 
+  const handleCopyProposalMessage = async (p: Proposal) => {
+    if (!p.public_url) {
+      toast.error("Não há link público disponível para esta proposta.");
+      return;
+    }
+    const contactName =
+      (typeof p.payload?.contact === "string" && p.payload.contact.trim()) ||
+      "Cliente";
+    const link = /^https?:\/\//i.test(p.public_url)
+      ? p.public_url
+      : `${window.location.origin}${p.public_url.startsWith("/") ? "" : "/"}${p.public_url}`;
+    const msg = `Olá, ${contactName}. Tudo bem?
+
+Agradeço pela oportunidade de conversarmos e entendermos melhor os seus objetivos. Conforme alinhamos, segue o link para acesso à nossa proposta comercial detalhada:
+
+💻 ${link}
+
+Fique à vontade para analisar o escopo e as condições. Caso esteja tudo de acordo, você pode formalizar o aceite diretamente pelo botão na própria página da proposta, ou, se preferir, pode me retornar por aqui.
+
+Se tiver qualquer dúvida ou necessite de algum ajuste no projeto, estou à inteira disposição.
+
+Atenciosamente,`;
+    try {
+      await navigator.clipboard.writeText(msg);
+      toast.success("Mensagem da proposta copiada.");
+    } catch {
+      toast.error(
+        "Não foi possível copiar automaticamente. Tente novamente ou copie o link manualmente.",
+      );
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center text-sm text-muted-foreground">
@@ -416,6 +450,16 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                     <ExternalLink className="h-3.5 w-3.5 mr-1" /> Ver proposta
                   </Button>
                 )}
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleCopyProposalMessage(p)}
+                >
+                  <Copy className="h-3.5 w-3.5 mr-1" /> Copiar proposta comercial
+                </Button>
+
+
 
                 {p.pdf_status === "ready" && p.pdf_path && (
                   <Button
