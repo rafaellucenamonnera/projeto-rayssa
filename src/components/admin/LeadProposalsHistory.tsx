@@ -289,6 +289,38 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
     }
   };
 
+  const handleCopyProposalMessage = async (p: Proposal) => {
+    if (!p.public_url) {
+      toast.error("Não há link público disponível para esta proposta.");
+      return;
+    }
+    const contactName =
+      (typeof p.payload?.contact === "string" && p.payload.contact.trim()) ||
+      "Cliente";
+    const link = /^https?:\/\//i.test(p.public_url)
+      ? p.public_url
+      : `${window.location.origin}${p.public_url.startsWith("/") ? "" : "/"}${p.public_url}`;
+    const msg = `Olá, ${contactName}. Tudo bem?
+
+Agradeço pela oportunidade de conversarmos e entendermos melhor os seus objetivos. Conforme alinhamos, segue o link para acesso à nossa proposta comercial detalhada:
+
+💻 ${link}
+
+Fique à vontade para analisar o escopo e as condições. Caso esteja tudo de acordo, você pode formalizar o aceite diretamente pelo botão na própria página da proposta, ou, se preferir, pode me retornar por aqui.
+
+Se tiver qualquer dúvida ou necessite de algum ajuste no projeto, estou à inteira disposição.
+
+Atenciosamente,`;
+    try {
+      await navigator.clipboard.writeText(msg);
+      toast.success("Mensagem da proposta copiada.");
+    } catch {
+      toast.error(
+        "Não foi possível copiar automaticamente. Tente novamente ou copie o link manualmente.",
+      );
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center text-sm text-muted-foreground">
