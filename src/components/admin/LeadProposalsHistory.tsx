@@ -294,9 +294,10 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                 )}
               </div>
 
-              {isActiveAccepted && p.accepted_by_name && (
+              {isActiveAccepted && (
                 <div className="text-xs text-muted-foreground">
-                  Aceita por: {p.accepted_by_name}
+                  Aceita em {fmtDate(p.accepted_at)}
+                  {p.accepted_by_name ? ` por ${p.accepted_by_name}` : ""}
                 </div>
               )}
 
