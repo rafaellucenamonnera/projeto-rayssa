@@ -130,14 +130,48 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
 
   const handleDownloadPdf = async (p: Proposal) => {
     if (!p.pdf_path) return;
-    const { data, error } = await supabase.storage
-      .from("propostas")
-      .createSignedUrl(p.pdf_path, 3600);
-    if (error || !data?.signedUrl) {
-      toast.error("Erro ao gerar link do PDF");
-      return;
+    try {
+      const { data, error } = await supabase.storage
+        .from("propostas")
+        .createSignedUrl(p.pdf_path, 3600);
+      if (error || !data?.signedUrl) {
+        toast.error("Erro ao gerar link do PDF");
+        return;
+      }
+      const res = await fetch(data.signedUrl);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const baseName = (p.proposal_name || "proposta").replace(/[^\w\-]+/g, "_");
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = `${baseName}-v${p.version}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch (err) {
+      console.error("download pdf:", err);
+      toast.error(
+        "Não foi possível baixar o PDF. O navegador pode ter bloqueado o download automático.",
+      );
     }
-    window.open(data.signedUrl, "_blank", "noopener");
+  };
+
+  const humanizePdfError = (raw?: string | null): string => {
+    if (!raw) return "Não foi possível gerar o PDF agora. Você pode tentar novamente.";
+    const s = raw.toLowerCase();
+    if (s.includes("401") || s.includes("unauthorized") || s.includes("invalid api key"))
+      return "A chave do PDFShift está inválida ou foi revogada. Avise o time técnico.";
+    if (s.includes("timeout") || s.includes("timed out"))
+      return "O serviço de PDF demorou demais para responder. Tente novamente em alguns instantes.";
+    if (s.includes("429") || s.includes("rate limit"))
+      return "Limite de geração de PDF atingido. Aguarde alguns minutos e tente novamente.";
+    if (s.includes("processamento anterior") || s.includes("processamento expirado"))
+      return "Processamento anterior foi interrompido. Clique em tentar gerar novamente.";
+    if (/\b5\d{2}\b/.test(s) || s.includes("network") || s.includes("fetch failed"))
+      return "O serviço de PDF está temporariamente indisponível. Tente novamente em alguns instantes.";
+    return "Não foi possível gerar o PDF agora. Você pode tentar novamente.";
   };
 
   const handleRetry = async (p: Proposal) => {
