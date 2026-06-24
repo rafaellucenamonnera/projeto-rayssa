@@ -24,6 +24,7 @@ import { AgendarReuniaoDialog } from "@/components/admin/AgendarReuniaoDialog";
 import { CadastroFinanceiroDialog } from "@/components/admin/CadastroFinanceiroDialog";
 import { LeadComments } from "@/components/admin/LeadComments";
 import { LeadReuniao } from "@/components/admin/LeadReuniao";
+import LeadProposalsHistory from "@/components/admin/LeadProposalsHistory";
 import {
   HEALTH_STATUS_ORDER, IMPACT_ORDER,
   healthStatusColor, impactColor,
@@ -1204,18 +1205,20 @@ const AdminLeads = () => {
 
   const openSignedUrl = async (storagePath: string, fileName?: string) => {
     try {
-      let url = storagePath;
-      if (!storagePath.startsWith("http")) {
-        const { data, error } = await supabase.storage
-          .from("propostas")
-          .createSignedUrl(storagePath, 3600);
-        if (error || !data?.signedUrl) {
-          toast.error("Erro ao gerar link do documento");
-          return;
-        }
-        url = data.signedUrl;
+      // URL pública (link da proposta etc.) — abre direto em nova aba
+      if (storagePath.startsWith("http")) {
+        window.open(storagePath, "_blank", "noopener");
+        return;
       }
-      const response = await fetch(url);
+      // Caminho de storage — assina e baixa
+      const { data, error } = await supabase.storage
+        .from("propostas")
+        .createSignedUrl(storagePath, 3600);
+      if (error || !data?.signedUrl) {
+        toast.error("Erro ao gerar link do documento");
+        return;
+      }
+      const response = await fetch(data.signedUrl);
       if (!response.ok) throw new Error("Erro ao baixar documento");
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
@@ -2517,6 +2520,11 @@ const AdminLeads = () => {
                   </div>
                 </div>
               )}
+
+              {/* Histórico de propostas */}
+              <div className="border-t border-border pt-4">
+                <LeadProposalsHistory leadId={detailLead.id} />
+              </div>
 
               {/* Contract section */}
               {isConvertedOrBeyond(detailLead.status_lead) && (
