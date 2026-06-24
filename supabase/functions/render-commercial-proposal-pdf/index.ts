@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
         format: "A4",
         margin: "0",
         delay: 2500,
-        timeout: 60,
+        timeout: 30,
       }),
     });
     if (!res.ok) {
