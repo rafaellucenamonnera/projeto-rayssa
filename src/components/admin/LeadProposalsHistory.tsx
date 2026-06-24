@@ -311,28 +311,32 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                 )}
 
                 {p.pdf_status === "failed" && (
-                  <>
-                    <span
-                      className="inline-flex items-center text-xs text-destructive"
-                      title={p.pdf_error || ""}
-                    >
-                      <AlertCircle className="h-3.5 w-3.5 mr-1" />
-                      Falha ao gerar PDF
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={retrying[p.id]}
-                      onClick={() => handleRetry(p)}
-                    >
-                      {retrying[p.id] ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-                      ) : (
-                        <RefreshCw className="h-3.5 w-3.5 mr-1" />
-                      )}
-                      Tentar gerar novamente
-                    </Button>
-                  </>
+                  <div className="w-full flex flex-col gap-1.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="inline-flex items-center text-xs text-destructive">
+                        <AlertCircle className="h-3.5 w-3.5 mr-1" />
+                        Falha ao gerar PDF
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={retrying[p.id]}
+                        onClick={() => handleRetry(p)}
+                      >
+                        {retrying[p.id] ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                        ) : (
+                          <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                        )}
+                        Tentar gerar novamente
+                      </Button>
+                    </div>
+                    {p.pdf_error && (
+                      <pre className="text-[11px] leading-snug text-destructive/90 bg-destructive/5 border border-destructive/20 rounded px-2 py-1.5 whitespace-pre-wrap break-words font-mono max-h-32 overflow-auto">
+                        {p.pdf_error}
+                      </pre>
+                    )}
+                  </div>
                 )}
 
                 {isActiveAccepted && (
