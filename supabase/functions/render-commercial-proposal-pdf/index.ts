@@ -100,7 +100,6 @@ Deno.serve(async (req) => {
         format: "A4",
         margin: "0",
         delay: 2500,
-        timeout: 30,
       }),
     });
     if (!res.ok) {
@@ -111,7 +110,7 @@ Deno.serve(async (req) => {
   } catch (err) {
     const msg = (err as Error).message || String(err);
     await markFailed(admin, proposal.id, msg);
-    return json({ error: msg }, 502);
+    return json({ ok: false, pdf_status: "failed", error: msg }, 200);
   }
 
   const path = `${proposal.lead_id}/proposta-v${proposal.version}-${proposal.token}.pdf`;
@@ -123,7 +122,7 @@ Deno.serve(async (req) => {
     });
   if (upErr) {
     await markFailed(admin, proposal.id, `upload: ${upErr.message}`);
-    return json({ error: upErr.message }, 500);
+    return json({ ok: false, pdf_status: "failed", error: upErr.message }, 200);
   }
 
   const { error: updErr } = await admin
