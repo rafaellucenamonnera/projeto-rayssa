@@ -98,6 +98,19 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
       setProposals(list);
       proposalsRef.current = list;
 
+      if (import.meta.env.DEV) {
+        console.info(
+          "[LeadProposalsHistory] proposals",
+          list.map((p) => ({
+            id: p.id,
+            version: p.version,
+            accepted_at: p.accepted_at,
+            acceptance_canceled_at: p.acceptance_canceled_at,
+            isActiveAccepted: isActiveAccepted(p),
+          })),
+        );
+      }
+
       const ids = Array.from(
         new Set(list.map((p) => p.created_by_user_id).filter(Boolean)),
       ) as string[];
