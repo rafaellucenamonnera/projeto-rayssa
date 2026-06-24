@@ -278,8 +278,7 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                 <span className="text-muted-foreground">por {author}</span>
                 {isActiveAccepted && (
                   <Badge className="bg-green-600 hover:bg-green-600 text-white">
-                    <CheckCircle2 className="h-3 w-3 mr-1" /> Aceita em{" "}
-                    {fmtDate(p.accepted_at)}
+                    <CheckCircle2 className="h-3 w-3 mr-1" /> Proposta aceita
                   </Badge>
                 )}
                 {isCanceledAcceptance && (
