@@ -101,7 +101,7 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
     const { data, error } = await (supabase as any)
       .from("commercial_proposals")
       .select(
-        "id, lead_id, token, proposal_name, public_url, created_at, created_by_user_id, version, accepted_at, accepted_by_name, acceptance_canceled_at, acceptance_cancellation_reason, superseded_at, proposal_canceled_at, proposal_canceled_by, proposal_cancellation_reason, pdf_path, pdf_status, pdf_error, pdf_generated_at",
+        "id, lead_id, token, proposal_name, public_url, created_at, created_by_user_id, version, accepted_at, accepted_by_name, acceptance_canceled_at, acceptance_cancellation_reason, superseded_at, proposal_canceled_at, proposal_canceled_by, proposal_cancellation_reason, pdf_path, pdf_status, pdf_error, pdf_generated_at, payload",
       )
       .eq("lead_id", leadId)
       .order("version", { ascending: false });
