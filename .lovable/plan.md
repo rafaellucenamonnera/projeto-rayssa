@@ -1,74 +1,52 @@
 ## Objetivo
-Substituir o modal antigo `PropostaUploadDialog` (upload de PDF) por um gerador editável de proposta comercial Monnera em React, no fluxo de mover card para `proposta_enviada` / `proposta_comercial`. Sem `file://`. A proposta gerada grava em `commercial_proposals`, gera link público `/proposta/:token` e atualiza `lead.proposta_url`.
+Executar somente verificação final no sandbox Lovable e publicar. Nenhuma alteração de código, banco ou legados.
 
-## Mudanças
+## Passo 1 — Re-grep em `public/gerador-proposta/index.html`
+Confirmar no sandbox:
+- 0 ocorrências de `assets/`
+- 0 ocorrências de `file://`
+- 0 ocorrências de `C:\`
+- 0 ocorrências de `./assets`
+- 0 ocorrências de `../assets`
+- Todas as referências de mídia apontando para `/__l5e/assets-v1/...`
 
-### 1. Novo componente `src/components/admin/PropostaComercialDialog.tsx`
-Dialog do shadcn, editável. Props:
-- `open: boolean`
-- `onOpenChange: (open: boolean) => void`
-- `lead: any` (objeto completo — deriva `lead.id`, `lead.nome_fantasia`, financeiro etc.)
-- `onSuccess: (publicUrl: string, proposalName: string) => void`
-- `onCancel: () => void`
+Se qualquer padrão proibido aparecer, parar e reportar antes de publicar.
 
-Seções:
-- **Identificação**: `proposal_name` (default `Proposta Monnera - <nome_fantasia> - <data>`), `cliente`, `contato_nome`, `contato_email`, `contato_telefone` (defaults do lead).
-- **Escopo**: `objetivo` (textarea), `escopo_itens` (lista dinâmica add/remove com `titulo`/`descricao`).
-- **Comercial** (Switch `omit_financials`): `valor_setup`, `valor_mensalidade`, `valor_campanhas`, `qtd_parcelas` (defaults do lead); ao omitir, exibir `omit_financials_reason`.
-- **Prazos e Condições**: `prazo_implantacao`, `validade_proposta`, `condicoes_pagamento`, `observacoes`.
+## Passo 2 — Smoke test Playwright (headless, contra `localhost:8080`)
 
-Ações: `Cancelar`, `Gerar proposta`.
+**Rota interna** `/admin/gerador-proposta/:leadId` (sessão Supabase restaurada via `LOVABLE_BROWSER_SUPABASE_*`):
+- iframe `/gerador-proposta/index.html` carrega
+- bridge `postMessage` envia `prefill` e gerador hidrata
+- nome / email / telefone aparecem no rodapé
+- nenhum 404 de asset no network log
 
-### 2. Submissão
-```ts
-const token = crypto.randomUUID().replace(/-/g, "");
-const publicUrl = `${window.location.origin}/proposta/${token}`;
-const { data: { user } } = await supabase.auth.getUser();
-await supabase.from("commercial_proposals").insert({
-  lead_id: lead.id, token, proposal_name, payload,
-  omit_financials, omit_financials_reason: omit_financials ? reason : null,
-  public_url: publicUrl, created_by_user_id: user?.id ?? null,
-});
-```
-Em sucesso: copiar link (`navigator.clipboard.writeText`), toast, `onSuccess(publicUrl, proposal_name)`, fechar.
+**Rota pública** `/proposta/:token` (sem login) — **modo seguro, sem aceite real**:
+- iframe abre em modo `view` / readonly
+- visual 1:1 renderiza (screenshot)
+- botão "Aceitar proposta comercial" visível
+- clique no botão abre o dialog de aceite
+- **parar aqui**: não confirmar o aceite. Não preencher e submeter o formulário.
+- só validar aceite ponta-a-ponta se houver token/proposta de teste dedicada disponível. Nesse caso, confirmar via network que a RPC chamada é `accept_commercial_proposal` (validar payload do POST `/rest/v1/rpc/accept_commercial_proposal`) e que `accepted_at` é preenchido na resposta.
+- nunca aceitar proposta real de cliente durante o smoke test.
 
-### 3. Integrar em `src/pages/admin/AdminLeads.tsx`
-- Remover import `PropostaUploadDialog`; adicionar `PropostaComercialDialog`.
-- Manter estado `uploadDialogOpen` (renomear para `proposalDialogOpen` fica para depois — não bloqueia).
-- `handleFinanceiroSaved` mantém `setPendingStatusChange` + `setUploadDialogOpen(true)` no branch `proposta_enviada` / `proposta_comercial`.
-- `handleReplaceProposta` reabre o mesmo `PropostaComercialDialog`.
-- Substituir JSX:
-  ```tsx
-  <PropostaComercialDialog
-    open={uploadDialogOpen}
-    onOpenChange={setUploadDialogOpen}
-    lead={leads.find(l => l.id === pendingStatusChange?.leadId)}
-    onSuccess={handlePropostaGerada}
-    onCancel={handlePropostaUploadCancel}
-  />
-  ```
-- Substituir `handlePropostaUploadSuccess` por `handlePropostaGerada(publicUrl, proposalName)`:
-  - `replaceOnly` → `updatePropostaUrl(leadId, publicUrl, proposalName)`.
-  - Caso contrário → `updateStatus(leadId, "proposta_enviada", publicUrl, proposalName)`.
+Capturar screenshots de cada etapa e logs de console/network.
 
-### 4. Limpeza
-- Remover `src/components/admin/PropostaUploadDialog.tsx` (uso único confirmado em `AdminLeads.tsx`).
-- Nada em `public/`.
+## Passo 3 — Confirmar escopo zero de mudanças
 
-### 5. Sem banco
-- `commercial_proposals`, RPCs `get_public_commercial_proposal`, `accept_commercial_proposal` e rota `/proposta/:token` já existem.
+Este publish **não** inclui:
+- nenhuma migration nova (`supabase--migration` não será chamado)
+- lógica de PDF / anexos no novo gerador
+- alteração em bucket `propostas`
+- alteração em `lead_comments` / `lead_comment_attachments`
+- remoção adicional de componentes legados além do que já está no sandbox
 
-## Restrições
-- Sem alterações em banco, RLS, Edge Functions, Storage, tabelas.
-- Não tocar no fluxo financeiro (continua antes do gerador, com `allowSkipValidation`).
-- Sem `file://`.
-- Não sobrescrever campos do lead com 0; somente ler para defaults.
+## Passo 4 — Publish
+Se build, grep e smoke test passarem:
+- preflight de website info (title, description, OG/Twitter, favicon) em `index.html`
+- `preview_ui--publish`
+- relatar URL e tempo estimado de propagação
 
-## Critérios de aceite
-- Mover card para `Proposta Enviada` → financeiro → `PropostaComercialDialog` (não mais upload de PDF).
-- `commercial_proposals` recebe registro com `token`, `payload`, `public_url`.
-- `lead.proposta_url` recebe `/proposta/:token`.
-- Card vai para `proposta_enviada`.
-- Link público abre, exibe a proposta e permite aceite.
-- `PropostaUploadDialog` removido sem referências.
-- Build e typecheck passam.
+Se qualquer verificação falhar: parar, reportar e não publicar.
+
+## Pós-publish
+Lembrete ao usuário: atualizar a cópia local a partir do estado publicado/sandbox para evitar comparações contra cópia antiga.
