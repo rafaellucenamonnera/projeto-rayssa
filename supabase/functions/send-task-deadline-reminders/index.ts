@@ -18,9 +18,28 @@ Deno.serve(async (req) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !serviceRoleKey) return json({ error: "Supabase env ausente" }, 500);
 
+  // AuthZ: aceita service role (cron) OU admin/gestor autenticado.
+  const authHeader = req.headers.get("Authorization") || "";
+  const bearer = authHeader.toLowerCase().startsWith("bearer ") ? authHeader.slice(7) : "";
+  let authorized = bearer && bearer === serviceRoleKey;
+  if (!authorized && bearer) {
+    const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") || "", {
+      global: { headers: { Authorization: `Bearer ${bearer}` } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: claims } = await userClient.auth.getClaims(bearer);
+    const uid = claims?.claims?.sub;
+    if (uid) {
+      const { data: roles } = await userClient.from("user_roles").select("role").eq("user_id", uid);
+      authorized = !!roles?.some((r: any) => r.role === "admin" || r.role === "gestor_conta");
+    }
+  }
+  if (!authorized) return json({ error: "Unauthorized" }, 401);
+
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+
 
   const now = new Date();
   const in48h = new Date(now.getTime() + 48 * 60 * 60 * 1000);
