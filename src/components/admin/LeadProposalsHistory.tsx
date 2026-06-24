@@ -268,11 +268,10 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
         {proposals.map((p) => {
           const author =
             (p.created_by_user_id && authors[p.created_by_user_id]) || "—";
-          const isActiveAccepted =
-            !!p.accepted_at && !p.acceptance_canceled_at;
+          const activeAccepted = isActiveAccepted(p);
           const isCanceledAcceptance =
             !!p.accepted_at && !!p.acceptance_canceled_at;
-          const isSuperseded = !!p.superseded_at && !isActiveAccepted;
+          const isSuperseded = !!p.superseded_at && !activeAccepted;
           return (
             <li
               key={p.id}
