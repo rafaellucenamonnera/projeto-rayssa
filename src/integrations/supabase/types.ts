@@ -188,6 +188,9 @@ export type Database = {
       }
       commercial_proposals: {
         Row: {
+          acceptance_canceled_at: string | null
+          acceptance_canceled_by: string | null
+          acceptance_cancellation_reason: string | null
           accepted_at: string | null
           accepted_by_email: string | null
           accepted_by_name: string | null
@@ -203,9 +206,11 @@ export type Database = {
           open_count: number
           opened_at: string | null
           payload: Json
+          pdf_attempts: number
           pdf_error: string | null
           pdf_generated_at: string | null
           pdf_path: string | null
+          pdf_processing_started_at: string | null
           pdf_status: string
           proposal_name: string | null
           public_url: string | null
@@ -216,6 +221,9 @@ export type Database = {
           version: number
         }
         Insert: {
+          acceptance_canceled_at?: string | null
+          acceptance_canceled_by?: string | null
+          acceptance_cancellation_reason?: string | null
           accepted_at?: string | null
           accepted_by_email?: string | null
           accepted_by_name?: string | null
@@ -231,9 +239,11 @@ export type Database = {
           open_count?: number
           opened_at?: string | null
           payload?: Json
+          pdf_attempts?: number
           pdf_error?: string | null
           pdf_generated_at?: string | null
           pdf_path?: string | null
+          pdf_processing_started_at?: string | null
           pdf_status?: string
           proposal_name?: string | null
           public_url?: string | null
@@ -244,6 +254,9 @@ export type Database = {
           version?: number
         }
         Update: {
+          acceptance_canceled_at?: string | null
+          acceptance_canceled_by?: string | null
+          acceptance_cancellation_reason?: string | null
           accepted_at?: string | null
           accepted_by_email?: string | null
           accepted_by_name?: string | null
@@ -259,9 +272,11 @@ export type Database = {
           open_count?: number
           opened_at?: string | null
           payload?: Json
+          pdf_attempts?: number
           pdf_error?: string | null
           pdf_generated_at?: string | null
           pdf_path?: string | null
+          pdf_processing_started_at?: string | null
           pdf_status?: string
           proposal_name?: string | null
           public_url?: string | null
@@ -2226,6 +2241,10 @@ export type Database = {
       business_days_between_dates: {
         Args: { p_end: string; p_start: string }
         Returns: number
+      }
+      cancel_commercial_proposal_acceptance: {
+        Args: { p_proposal_id: string; p_reason: string }
+        Returns: Json
       }
       complete_lead_by_token: {
         Args: { p_data: Json; p_lojas?: Json; p_token: string }
