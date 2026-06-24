@@ -53,6 +53,24 @@ Deno.serve(async (req) => {
     return json({ error: "Method not allowed" }, 405);
   }
 
+  // AuthZ: somente service role ou admin/gestor podem disparar geração de PDF
+  const authHeader = req.headers.get("Authorization") || "";
+  const bearer = authHeader.toLowerCase().startsWith("bearer ") ? authHeader.slice(7) : "";
+  let authorized = bearer && bearer === SERVICE_ROLE;
+  if (!authorized && bearer) {
+    const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY") || "", {
+      global: { headers: { Authorization: `Bearer ${bearer}` } },
+      auth: { persistSession: false },
+    });
+    const { data: claims } = await userClient.auth.getClaims(bearer);
+    const uid = claims?.claims?.sub;
+    if (uid) {
+      const { data: roles } = await userClient.from("user_roles").select("role").eq("user_id", uid);
+      authorized = !!roles?.some((r: any) => r.role === "admin" || r.role === "gestor_conta");
+    }
+  }
+  if (!authorized) return json({ error: "Unauthorized" }, 401);
+
   let body: any;
   try {
     body = await req.json();
@@ -64,6 +82,7 @@ Deno.serve(async (req) => {
   if (!proposalId || typeof proposalId !== "string") {
     return json({ error: "proposal_id is required" }, 400);
   }
+
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
     auth: { persistSession: false },
