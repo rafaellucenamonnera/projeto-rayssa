@@ -139,7 +139,8 @@ export default function PropostaPublica() {
     return () => window.removeEventListener("message", onMessage);
   }, [printMode]);
 
-  const isAccepted = Boolean(proposal?.accepted || proposal?.accepted_at);
+  const isAccepted =
+    Boolean(proposal?.accepted_at) && !proposal?.acceptance_canceled_at;
 
   async function handleAccept() {
     if (!token) return;
