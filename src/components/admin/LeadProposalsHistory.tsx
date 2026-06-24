@@ -451,6 +451,16 @@ Atenciosamente,`;
                   </Button>
                 )}
 
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleCopyProposalMessage(p)}
+                >
+                  <Copy className="h-3.5 w-3.5 mr-1" /> Copiar proposta comercial
+                </Button>
+
+
+
                 {p.pdf_status === "ready" && p.pdf_path && (
                   <Button
                     size="sm"
