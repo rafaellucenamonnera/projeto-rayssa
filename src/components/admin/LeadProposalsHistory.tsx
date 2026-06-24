@@ -38,6 +38,9 @@ type Proposal = {
   acceptance_canceled_at: string | null;
   acceptance_cancellation_reason: string | null;
   superseded_at: string | null;
+  proposal_canceled_at: string | null;
+  proposal_canceled_by: string | null;
+  proposal_cancellation_reason: string | null;
   pdf_path: string | null;
   pdf_status: "pending" | "ready" | "failed" | null;
   pdf_error: string | null;
@@ -70,6 +73,12 @@ function openPublic(url?: string | null) {
 const isActiveAccepted = (p: Proposal) =>
   !!p.accepted_at && !p.acceptance_canceled_at;
 
+const isActiveProposal = (p: Proposal) =>
+  !p.accepted_at &&
+  !p.acceptance_canceled_at &&
+  !p.superseded_at &&
+  !p.proposal_canceled_at;
+
 export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
   const [loading, setLoading] = useState(true);
   const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -81,11 +90,16 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
   const [cancelReason, setCancelReason] = useState("");
   const [cancelling, setCancelling] = useState(false);
 
+  const [cancelProposalTarget, setCancelProposalTarget] =
+    useState<Proposal | null>(null);
+  const [cancelProposalReason, setCancelProposalReason] = useState("");
+  const [cancellingProposal, setCancellingProposal] = useState(false);
+
   const load = useCallback(async () => {
     const { data, error } = await (supabase as any)
       .from("commercial_proposals")
       .select(
-        "id, lead_id, token, proposal_name, public_url, created_at, created_by_user_id, version, accepted_at, accepted_by_name, acceptance_canceled_at, acceptance_cancellation_reason, superseded_at, pdf_path, pdf_status, pdf_error, pdf_generated_at",
+        "id, lead_id, token, proposal_name, public_url, created_at, created_by_user_id, version, accepted_at, accepted_by_name, acceptance_canceled_at, acceptance_cancellation_reason, superseded_at, proposal_canceled_at, proposal_canceled_by, proposal_cancellation_reason, pdf_path, pdf_status, pdf_error, pdf_generated_at",
       )
       .eq("lead_id", leadId)
       .order("version", { ascending: false });
@@ -243,6 +257,36 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
     }
   };
 
+  const openCancelProposalModal = (p: Proposal) => {
+    setCancelProposalTarget(p);
+    setCancelProposalReason("");
+  };
+
+  const handleConfirmCancelProposal = async () => {
+    if (!cancelProposalTarget) return;
+    const reason = cancelProposalReason.trim();
+    if (reason.length < 5) {
+      toast.error("Informe um motivo com no mínimo 5 caracteres.");
+      return;
+    }
+    setCancellingProposal(true);
+    try {
+      const { error } = await (supabase as any).rpc(
+        "cancel_commercial_proposal",
+        { p_proposal_id: cancelProposalTarget.id, p_reason: reason },
+      );
+      if (error) throw error;
+      toast.success("Proposta cancelada e registrada no histórico.");
+      setCancelProposalTarget(null);
+      setCancelProposalReason("");
+      load();
+    } catch (err: any) {
+      toast.error("Falha ao cancelar proposta: " + (err?.message || ""));
+    } finally {
+      setCancellingProposal(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center text-sm text-muted-foreground">
@@ -271,7 +315,10 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
           const activeAccepted = isActiveAccepted(p);
           const isCanceledAcceptance =
             !!p.accepted_at && !!p.acceptance_canceled_at;
-          const isSuperseded = !!p.superseded_at && !activeAccepted;
+          const proposalCanceled = !!p.proposal_canceled_at && !p.accepted_at;
+          const isSuperseded =
+            !!p.superseded_at && !activeAccepted && !proposalCanceled;
+          const activeProposal = isActiveProposal(p);
           return (
             <li
               key={p.id}
@@ -280,9 +327,11 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                   ? "border-green-500/60 bg-green-500/5"
                   : isCanceledAcceptance
                     ? "border-destructive/40 bg-destructive/5"
-                    : isSuperseded
-                      ? "border-border bg-muted/40 opacity-80"
-                      : "border-primary/40 bg-primary/5"
+                    : proposalCanceled
+                      ? "border-destructive/40 bg-destructive/5"
+                      : isSuperseded
+                        ? "border-border bg-muted/40 opacity-80"
+                        : "border-primary/40 bg-primary/5"
               }`}
             >
               <div className="flex items-center gap-2 flex-wrap">
@@ -301,11 +350,26 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                     <XCircle className="h-3 w-3 mr-1" /> Aceite cancelado
                   </Badge>
                 )}
-                {isSuperseded && !isCanceledAcceptance && (
+                {proposalCanceled && (
+                  <Badge variant="destructive">
+                    <XCircle className="h-3 w-3 mr-1" /> Proposta cancelada
+                  </Badge>
+                )}
+                {isSuperseded && !isCanceledAcceptance && !proposalCanceled && (
                   <Badge variant="secondary">Substituída</Badge>
                 )}
-                {!activeAccepted && !isCanceledAcceptance && !isSuperseded && (
-                  <Badge variant="outline">Ativa</Badge>
+                {activeProposal && (
+                  <>
+                    <Badge variant="outline">Ativa</Badge>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2 text-destructive border-destructive/40 hover:bg-destructive/10"
+                      onClick={() => openCancelProposalModal(p)}
+                    >
+                      <Ban className="h-3.5 w-3.5 mr-1" /> Cancelar proposta
+                    </Button>
+                  </>
                 )}
               </div>
 
@@ -327,6 +391,17 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                   </div>
                   {p.acceptance_cancellation_reason && (
                     <div>Motivo: {p.acceptance_cancellation_reason}</div>
+                  )}
+                </div>
+              )}
+
+              {proposalCanceled && (
+                <div className="text-xs text-muted-foreground space-y-0.5">
+                  <div>
+                    Proposta cancelada em: {fmtDate(p.proposal_canceled_at)}
+                  </div>
+                  {p.proposal_cancellation_reason && (
+                    <div>Motivo: {p.proposal_cancellation_reason}</div>
                   )}
                 </div>
               )}
@@ -463,6 +538,58 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                 <Loader2 className="h-4 w-4 animate-spin mr-1" />
               )}
               Confirmar cancelamento do aceite
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!cancelProposalTarget}
+        onOpenChange={(open) => {
+          if (!open && !cancellingProposal) {
+            setCancelProposalTarget(null);
+            setCancelProposalReason("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancelar proposta</DialogTitle>
+            <DialogDescription>
+              A proposta deixará de constar como ativa no histórico interno. O
+              link público e os registros permanecem preservados para auditoria.
+              Informe o motivo (mín. 5 caracteres).
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={cancelProposalReason}
+            onChange={(e) => setCancelProposalReason(e.target.value)}
+            placeholder="Motivo do cancelamento"
+            rows={4}
+            disabled={cancellingProposal}
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCancelProposalTarget(null);
+                setCancelProposalReason("");
+              }}
+              disabled={cancellingProposal}
+            >
+              Voltar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmCancelProposal}
+              disabled={
+                cancellingProposal || cancelProposalReason.trim().length < 5
+              }
+            >
+              {cancellingProposal && (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              )}
+              Confirmar cancelamento da proposta
             </Button>
           </DialogFooter>
         </DialogContent>
