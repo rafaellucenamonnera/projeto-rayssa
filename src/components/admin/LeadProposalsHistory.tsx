@@ -2,6 +2,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   Loader2,
@@ -11,6 +20,8 @@ import {
   CheckCircle2,
   AlertCircle,
   FileText,
+  XCircle,
+  Ban,
 } from "lucide-react";
 
 type Proposal = {
@@ -24,6 +35,8 @@ type Proposal = {
   version: number;
   accepted_at: string | null;
   accepted_by_name: string | null;
+  acceptance_canceled_at: string | null;
+  acceptance_cancellation_reason: string | null;
   superseded_at: string | null;
   pdf_path: string | null;
   pdf_status: "pending" | "ready" | "failed" | null;
@@ -46,6 +59,14 @@ function fmtDate(value?: string | null) {
   }
 }
 
+function openPublic(url?: string | null) {
+  if (!url) return;
+  const target = /^https?:\/\//i.test(url)
+    ? url
+    : `${window.location.origin}${url.startsWith("/") ? "" : "/"}${url}`;
+  window.open(target, "_blank", "noopener");
+}
+
 export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
   const [loading, setLoading] = useState(true);
   const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -53,11 +74,15 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
   const [retrying, setRetrying] = useState<Record<string, boolean>>({});
   const proposalsRef = useRef<Proposal[]>([]);
 
+  const [cancelTarget, setCancelTarget] = useState<Proposal | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+
   const load = useCallback(async () => {
     const { data, error } = await (supabase as any)
       .from("commercial_proposals")
       .select(
-        "id, lead_id, token, proposal_name, public_url, created_at, created_by_user_id, version, accepted_at, accepted_by_name, superseded_at, pdf_path, pdf_status, pdf_error, pdf_generated_at",
+        "id, lead_id, token, proposal_name, public_url, created_at, created_by_user_id, version, accepted_at, accepted_by_name, acceptance_canceled_at, acceptance_cancellation_reason, superseded_at, pdf_path, pdf_status, pdf_error, pdf_generated_at",
       )
       .eq("lead_id", leadId)
       .order("version", { ascending: false });
@@ -93,6 +118,7 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
   useEffect(() => {
     setLoading(true);
     load();
+    // Polling consulta APENAS o banco. Nunca invoca a Edge Function.
     const interval = setInterval(() => {
       const hasPending = proposalsRef.current.some(
         (p) => p.pdf_status === "pending",
@@ -117,19 +143,53 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
   const handleRetry = async (p: Proposal) => {
     setRetrying((r) => ({ ...r, [p.id]: true }));
     try {
-      await (supabase as any)
-        .from("commercial_proposals")
-        .update({ pdf_status: "pending", pdf_error: null })
-        .eq("id", p.id);
-      await supabase.functions.invoke("render-commercial-proposal-pdf", {
-        body: { proposal_id: p.id },
-      });
-      toast.success("Geração de PDF reenfileirada.");
+      const { data, error } = await supabase.functions.invoke(
+        "render-commercial-proposal-pdf",
+        { body: { proposal_id: p.id, force: true } },
+      );
+      if (error) throw error;
+      if (data && (data as any).ok === false) {
+        toast.error(
+          "Falha ao gerar PDF: " + ((data as any).error || "desconhecido"),
+        );
+      } else {
+        toast.success("Geração de PDF reenfileirada.");
+      }
       load();
     } catch (err: any) {
       toast.error("Falha ao reprocessar: " + (err?.message || ""));
     } finally {
       setRetrying((r) => ({ ...r, [p.id]: false }));
+    }
+  };
+
+  const openCancelModal = (p: Proposal) => {
+    setCancelTarget(p);
+    setCancelReason("");
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!cancelTarget) return;
+    const reason = cancelReason.trim();
+    if (reason.length < 5) {
+      toast.error("Informe um motivo com no mínimo 5 caracteres.");
+      return;
+    }
+    setCancelling(true);
+    try {
+      const { error } = await (supabase as any).rpc(
+        "cancel_commercial_proposal_acceptance",
+        { p_proposal_id: cancelTarget.id, p_reason: reason },
+      );
+      if (error) throw error;
+      toast.success("Aceite cancelado.");
+      setCancelTarget(null);
+      setCancelReason("");
+      load();
+    } catch (err: any) {
+      toast.error("Falha ao cancelar aceite: " + (err?.message || ""));
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -158,17 +218,22 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
         {proposals.map((p) => {
           const author =
             (p.created_by_user_id && authors[p.created_by_user_id]) || "—";
-          const isAccepted = !!p.accepted_at;
-          const isSuperseded = !!p.superseded_at && !isAccepted;
+          const isActiveAccepted =
+            !!p.accepted_at && !p.acceptance_canceled_at;
+          const isCanceledAcceptance =
+            !!p.accepted_at && !!p.acceptance_canceled_at;
+          const isSuperseded = !!p.superseded_at && !isActiveAccepted;
           return (
             <li
               key={p.id}
               className={`rounded-md border p-3 text-sm space-y-2 ${
-                isAccepted
+                isActiveAccepted
                   ? "border-green-500/60 bg-green-500/5"
-                  : isSuperseded
-                    ? "border-border bg-muted/40 opacity-80"
-                    : "border-primary/40 bg-primary/5"
+                  : isCanceledAcceptance
+                    ? "border-destructive/40 bg-destructive/5"
+                    : isSuperseded
+                      ? "border-border bg-muted/40 opacity-80"
+                      : "border-primary/40 bg-primary/5"
               }`}
             >
               <div className="flex items-center gap-2 flex-wrap">
@@ -177,21 +242,43 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                 <span>{fmtDate(p.created_at)}</span>
                 <span className="text-muted-foreground">·</span>
                 <span className="text-muted-foreground">por {author}</span>
-                {isAccepted && (
+                {isActiveAccepted && (
                   <Badge className="bg-green-600 hover:bg-green-600 text-white">
                     <CheckCircle2 className="h-3 w-3 mr-1" /> Aceita em{" "}
                     {fmtDate(p.accepted_at)}
                   </Badge>
                 )}
-                {isSuperseded && <Badge variant="secondary">Substituída</Badge>}
-                {!isAccepted && !isSuperseded && (
+                {isCanceledAcceptance && (
+                  <Badge variant="destructive">
+                    <XCircle className="h-3 w-3 mr-1" /> Aceite cancelado
+                  </Badge>
+                )}
+                {isSuperseded && !isCanceledAcceptance && (
+                  <Badge variant="secondary">Substituída</Badge>
+                )}
+                {!isActiveAccepted && !isCanceledAcceptance && !isSuperseded && (
                   <Badge variant="outline">Ativa</Badge>
                 )}
               </div>
 
-              {isAccepted && p.accepted_by_name && (
+              {isActiveAccepted && p.accepted_by_name && (
                 <div className="text-xs text-muted-foreground">
                   Aceita por: {p.accepted_by_name}
+                </div>
+              )}
+
+              {isCanceledAcceptance && (
+                <div className="text-xs text-muted-foreground space-y-0.5">
+                  <div>
+                    Aceite original: {fmtDate(p.accepted_at)}
+                    {p.accepted_by_name ? ` por ${p.accepted_by_name}` : ""}
+                  </div>
+                  <div>
+                    Cancelado em: {fmtDate(p.acceptance_canceled_at)}
+                  </div>
+                  {p.acceptance_cancellation_reason && (
+                    <div>Motivo: {p.acceptance_cancellation_reason}</div>
+                  )}
                 </div>
               )}
 
@@ -200,11 +287,9 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() =>
-                      window.open(p.public_url!, "_blank", "noopener")
-                    }
+                    onClick={() => openPublic(p.public_url)}
                   >
-                    <ExternalLink className="h-3.5 w-3.5 mr-1" /> Abrir link
+                    <ExternalLink className="h-3.5 w-3.5 mr-1" /> Ver proposta
                   </Button>
                 )}
 
@@ -249,11 +334,72 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                     </Button>
                   </>
                 )}
+
+                {isActiveAccepted && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-destructive border-destructive/40 hover:bg-destructive/10"
+                    onClick={() => openCancelModal(p)}
+                  >
+                    <Ban className="h-3.5 w-3.5 mr-1" /> Cancelar aceite
+                  </Button>
+                )}
               </div>
             </li>
           );
         })}
       </ul>
+
+      <Dialog
+        open={!!cancelTarget}
+        onOpenChange={(open) => {
+          if (!open && !cancelling) {
+            setCancelTarget(null);
+            setCancelReason("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancelar aceite da proposta</DialogTitle>
+            <DialogDescription>
+              O aceite original será preservado no histórico, mas a proposta
+              deixará de ser considerada ativa. Informe o motivo (mín. 5
+              caracteres).
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            placeholder="Motivo do cancelamento do aceite"
+            rows={4}
+            disabled={cancelling}
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCancelTarget(null);
+                setCancelReason("");
+              }}
+              disabled={cancelling}
+            >
+              Voltar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmCancel}
+              disabled={cancelling || cancelReason.trim().length < 5}
+            >
+              {cancelling && (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              )}
+              Confirmar cancelamento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
