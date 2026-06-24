@@ -276,7 +276,7 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
             <li
               key={p.id}
               className={`rounded-md border p-3 text-sm space-y-2 ${
-                isActiveAccepted
+                activeAccepted
                   ? "border-green-500/60 bg-green-500/5"
                   : isCanceledAcceptance
                     ? "border-destructive/40 bg-destructive/5"
