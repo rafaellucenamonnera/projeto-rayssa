@@ -315,7 +315,10 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
           const activeAccepted = isActiveAccepted(p);
           const isCanceledAcceptance =
             !!p.accepted_at && !!p.acceptance_canceled_at;
-          const isSuperseded = !!p.superseded_at && !activeAccepted;
+          const proposalCanceled = !!p.proposal_canceled_at && !p.accepted_at;
+          const isSuperseded =
+            !!p.superseded_at && !activeAccepted && !proposalCanceled;
+          const activeProposal = isActiveProposal(p);
           return (
             <li
               key={p.id}
@@ -324,9 +327,11 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                   ? "border-green-500/60 bg-green-500/5"
                   : isCanceledAcceptance
                     ? "border-destructive/40 bg-destructive/5"
-                    : isSuperseded
-                      ? "border-border bg-muted/40 opacity-80"
-                      : "border-primary/40 bg-primary/5"
+                    : proposalCanceled
+                      ? "border-destructive/40 bg-destructive/5"
+                      : isSuperseded
+                        ? "border-border bg-muted/40 opacity-80"
+                        : "border-primary/40 bg-primary/5"
               }`}
             >
               <div className="flex items-center gap-2 flex-wrap">
@@ -345,11 +350,26 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                     <XCircle className="h-3 w-3 mr-1" /> Aceite cancelado
                   </Badge>
                 )}
-                {isSuperseded && !isCanceledAcceptance && (
+                {proposalCanceled && (
+                  <Badge variant="destructive">
+                    <XCircle className="h-3 w-3 mr-1" /> Proposta cancelada
+                  </Badge>
+                )}
+                {isSuperseded && !isCanceledAcceptance && !proposalCanceled && (
                   <Badge variant="secondary">Substituída</Badge>
                 )}
-                {!activeAccepted && !isCanceledAcceptance && !isSuperseded && (
-                  <Badge variant="outline">Ativa</Badge>
+                {activeProposal && (
+                  <>
+                    <Badge variant="outline">Ativa</Badge>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2 text-destructive border-destructive/40 hover:bg-destructive/10"
+                      onClick={() => openCancelProposalModal(p)}
+                    >
+                      <Ban className="h-3.5 w-3.5 mr-1" /> Cancelar proposta
+                    </Button>
+                  </>
                 )}
               </div>
 
@@ -371,6 +391,17 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                   </div>
                   {p.acceptance_cancellation_reason && (
                     <div>Motivo: {p.acceptance_cancellation_reason}</div>
+                  )}
+                </div>
+              )}
+
+              {proposalCanceled && (
+                <div className="text-xs text-muted-foreground space-y-0.5">
+                  <div>
+                    Proposta cancelada em: {fmtDate(p.proposal_canceled_at)}
+                  </div>
+                  {p.proposal_cancellation_reason && (
+                    <div>Motivo: {p.proposal_cancellation_reason}</div>
                   )}
                 </div>
               )}
