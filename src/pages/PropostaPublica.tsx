@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,6 +52,9 @@ function formatDate(value?: string | null) {
 
 export default function PropostaPublica() {
   const { token } = useParams<{ token: string }>();
+  const [searchParams] = useSearchParams();
+  const printMode = searchParams.get("print") === "1";
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [proposal, setProposal] = useState<ProposalData | null>(null);
@@ -95,7 +98,6 @@ export default function PropostaPublica() {
     };
   }, [token]);
 
-  // Bridge: hidrata o iframe quando ele sinaliza ready
   useEffect(() => {
     function onMessage(e: MessageEvent) {
       if (e.origin !== window.location.origin) return;
@@ -116,6 +118,16 @@ export default function PropostaPublica() {
               window.location.origin,
             );
           }
+          if (printMode) {
+            setTimeout(() => {
+              document.body.classList.add("proposal-ready");
+              try {
+                (window as any).isProposalReadyForPdf = () => true;
+              } catch {
+                /* noop */
+              }
+            }, 1500);
+          }
         } catch {
           /* noop */
         }
@@ -123,7 +135,7 @@ export default function PropostaPublica() {
     }
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, []);
+  }, [printMode]);
 
   const isAccepted = Boolean(proposal?.accepted || proposal?.accepted_at);
 
@@ -193,7 +205,15 @@ export default function PropostaPublica() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      {isAccepted && (
+      {printMode && (
+        <style>{`
+          @page { size: A4; margin: 0; }
+          html, body { background: #fff !important; }
+          .proposta-print-hide { display: none !important; }
+        `}</style>
+      )}
+
+      {!printMode && isAccepted && (
         <div className="flex items-center gap-3 border-b border-primary/40 bg-primary/10 px-4 py-2 text-primary text-sm">
           <CheckCircle2 className="h-4 w-4" />
           <span className="font-medium">
@@ -210,66 +230,68 @@ export default function PropostaPublica() {
         style={{ minHeight: "calc(100vh - 0px)" }}
       />
 
-      {!isAccepted && (
-        <div className="fixed bottom-6 right-6 z-50">
+      {!printMode && !isAccepted && (
+        <div className="fixed bottom-6 right-6 z-50 proposta-print-hide">
           <Button size="lg" onClick={() => setModalOpen(true)}>
             Aceitar proposta comercial
           </Button>
         </div>
       )}
 
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Aceitar proposta comercial</DialogTitle>
-            <DialogDescription>
-              Confirme seus dados para registrar o aceite.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="accept-name">Nome completo</Label>
-              <Input
-                id="accept-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Seu nome completo"
-                disabled={accepting}
-              />
+      {!printMode && (
+        <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Aceitar proposta comercial</DialogTitle>
+              <DialogDescription>
+                Confirme seus dados para registrar o aceite.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="accept-name">Nome completo</Label>
+                <Input
+                  id="accept-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Seu nome completo"
+                  disabled={accepting}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="accept-email">Email</Label>
+                <Input
+                  id="accept-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="voce@empresa.com"
+                  disabled={accepting}
+                />
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {ACCEPT_TEXT}
+              </p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="accept-email">Email</Label>
-              <Input
-                id="accept-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="voce@empresa.com"
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setModalOpen(false)}
                 disabled={accepting}
-              />
-            </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {ACCEPT_TEXT}
-            </p>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setModalOpen(false)}
-              disabled={accepting}
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleAccept}
-              disabled={accepting || !name.trim() || !email.trim()}
-            >
-              {accepting && <Loader2 className="h-4 w-4 animate-spin" />}
-              Aceitar proposta comercial
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleAccept}
+                disabled={accepting || !name.trim() || !email.trim()}
+              >
+                {accepting && <Loader2 className="h-4 w-4 animate-spin" />}
+                Aceitar proposta comercial
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

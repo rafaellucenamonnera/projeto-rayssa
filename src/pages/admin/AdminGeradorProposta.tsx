@@ -34,7 +34,6 @@ export default function AdminGeradorProposta() {
   const leadRef = useRef<any>(null);
   const profileRef = useRef<{ nome?: string | null } | null>(null);
 
-  // ---- Carregar lead e perfil
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -77,7 +76,6 @@ export default function AdminGeradorProposta() {
     telefoneRef.current = telefone;
   }, [telefone]);
 
-  // ---- Bridge postMessage
   useEffect(() => {
     function sendPrefill() {
       const iframe = iframeRef.current;
@@ -121,13 +119,29 @@ export default function AdminGeradorProposta() {
       submittingRef.current = true;
       setSubmitting(true);
       try {
+        // Próxima versão + ids das versões abertas (não aceitas) para marcar como substituídas
+        const { data: existing, error: existErr } = await (supabase as any)
+          .from("commercial_proposals")
+          .select("id, version, accepted_at")
+          .eq("lead_id", leadData.id);
+        if (existErr) throw existErr;
+
+        const maxVersion = (existing || []).reduce(
+          (m: number, r: any) => Math.max(m, Number(r.version) || 1),
+          0,
+        );
+        const nextVersion = maxVersion + 1;
+        const priorOpenIds = (existing || [])
+          .filter((r: any) => !r.accepted_at)
+          .map((r: any) => r.id);
+
         const token = generateToken();
         const publicUrl = `${window.location.origin}/proposta/${token}`;
         const proposalName =
           (payload && payload.proposalName) ||
           `Proposta Monnera - ${leadData.nome_fantasia || leadData.razao_social || "Cliente"}`;
 
-        const { error: insertError } = await supabase
+        const { data: inserted, error: insertError } = await (supabase as any)
           .from("commercial_proposals")
           .insert({
             lead_id: leadData.id,
@@ -138,8 +152,24 @@ export default function AdminGeradorProposta() {
             created_by_user_id: user?.id ?? null,
             omit_financials: false,
             omit_financials_reason: null,
-          } as any);
+            version: nextVersion,
+            pdf_status: "pending",
+          } as any)
+          .select("id")
+          .single();
         if (insertError) throw insertError;
+        const newId = (inserted as any)?.id as string | undefined;
+
+        // Marca versões anteriores NÃO aceitas como substituídas (a aceita permanece intacta)
+        if (newId && priorOpenIds.length > 0) {
+          await (supabase as any)
+            .from("commercial_proposals")
+            .update({
+              superseded_at: new Date().toISOString(),
+              superseded_by: newId,
+            } as any)
+            .in("id", priorOpenIds);
+        }
 
         const updateData: any = {
           proposta_url: publicUrl,
@@ -154,11 +184,24 @@ export default function AdminGeradorProposta() {
           .eq("id", leadData.id);
         if (updErr) throw updErr;
 
+        // PDF em segundo plano — falha NÃO bloqueia a proposta
+        if (newId) {
+          supabase.functions
+            .invoke("render-commercial-proposal-pdf", {
+              body: { proposal_id: newId },
+            })
+            .catch((e) => console.warn("PDF dispatch failed:", e));
+        }
+
         try {
           await navigator.clipboard.writeText(publicUrl);
-          toast.success("Proposta gerada! Link copiado para a área de transferência.");
+          toast.success(
+            "Proposta gerada! Link copiado. PDF sendo processado em segundo plano.",
+          );
         } catch {
-          toast.success("Proposta gerada com sucesso.");
+          toast.success(
+            "Proposta gerada. PDF sendo processado em segundo plano.",
+          );
         }
         navigate("/admin/painel-comercial");
       } catch (err: any) {
@@ -183,7 +226,6 @@ export default function AdminGeradorProposta() {
     return () => window.removeEventListener("message", onMessage);
   }, [navigate, replaceMode, user?.email, user?.id]);
 
-  // Reenvia prefill quando o telefone muda manualmente
   useEffect(() => {
     const iframe = iframeRef.current;
     if (!iframe?.contentWindow || loading) return;
@@ -239,7 +281,7 @@ export default function AdminGeradorProposta() {
           </h1>
           <p className="text-xs text-muted-foreground">
             {replaceMode
-              ? "Substituindo proposta existente"
+              ? "Nova versão da proposta"
               : "Gere a proposta e o link público de aceite"}
           </p>
         </div>
