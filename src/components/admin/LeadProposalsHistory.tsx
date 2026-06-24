@@ -462,7 +462,7 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
               {cancelling && (
                 <Loader2 className="h-4 w-4 animate-spin mr-1" />
               )}
-              Confirmar cancelamento
+              Confirmar cancelamento do aceite
             </Button>
           </DialogFooter>
         </DialogContent>
