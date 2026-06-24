@@ -345,12 +345,21 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                 )}
 
                 {p.pdf_status === "failed" && (
-                  <div className="w-full flex flex-col gap-1.5">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="inline-flex items-center text-xs text-destructive">
-                        <AlertCircle className="h-3.5 w-3.5 mr-1" />
-                        Falha ao gerar PDF
-                      </span>
+                  <div className="w-full flex flex-col gap-2">
+                    <div className="flex items-start gap-2 flex-wrap">
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="inline-flex items-center text-sm text-destructive font-medium">
+                          <AlertCircle className="h-4 w-4 mr-1" />
+                          PDF ainda não foi gerado
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          A proposta está salva e o link público continua
+                          funcionando. Você pode tentar gerar o PDF novamente.
+                        </div>
+                        <div className="text-xs text-destructive/90">
+                          {humanizePdfError(p.pdf_error)}
+                        </div>
+                      </div>
                       <Button
                         size="sm"
                         variant="outline"
@@ -366,9 +375,14 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                       </Button>
                     </div>
                     {p.pdf_error && (
-                      <pre className="text-[11px] leading-snug text-destructive/90 bg-destructive/5 border border-destructive/20 rounded px-2 py-1.5 whitespace-pre-wrap break-words font-mono max-h-32 overflow-auto">
-                        {p.pdf_error}
-                      </pre>
+                      <details className="text-xs">
+                        <summary className="cursor-pointer text-muted-foreground hover:text-foreground select-none">
+                          Ver detalhe técnico
+                        </summary>
+                        <pre className="mt-1 text-[11px] leading-snug text-destructive/90 bg-destructive/5 border border-destructive/20 rounded px-2 py-1.5 whitespace-pre-wrap break-words font-mono max-h-32 overflow-auto">
+                          {p.pdf_error}
+                        </pre>
+                      </details>
                     )}
                   </div>
                 )}
@@ -380,7 +394,7 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                     className="text-destructive border-destructive/40 hover:bg-destructive/10"
                     onClick={() => openCancelModal(p)}
                   >
-                    <Ban className="h-3.5 w-3.5 mr-1" /> Cancelar aceite
+                    <Ban className="h-3.5 w-3.5 mr-1" /> Cancelar aceite da proposta
                   </Button>
                 )}
               </div>
