@@ -67,7 +67,7 @@ function openPublic(url?: string | null) {
   window.open(target, "_blank", "noopener");
 }
 
-const isActiveAccepted = (p: Proposal) =>
+const activeAccepted = (p: Proposal) =>
   !!p.accepted_at && !p.acceptance_canceled_at;
 
 export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
@@ -291,7 +291,7 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                 <span>{fmtDate(p.created_at)}</span>
                 <span className="text-muted-foreground">·</span>
                 <span className="text-muted-foreground">por {author}</span>
-                {isActiveAccepted && (
+                {activeAccepted && (
                   <Badge className="bg-green-600 hover:bg-green-600 text-white">
                     <CheckCircle2 className="h-3 w-3 mr-1" /> Proposta aceita
                   </Badge>
@@ -304,12 +304,12 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                 {isSuperseded && !isCanceledAcceptance && (
                   <Badge variant="secondary">Substituída</Badge>
                 )}
-                {!isActiveAccepted && !isCanceledAcceptance && !isSuperseded && (
+                {!activeAccepted && !isCanceledAcceptance && !isSuperseded && (
                   <Badge variant="outline">Ativa</Badge>
                 )}
               </div>
 
-              {isActiveAccepted && (
+              {activeAccepted && (
                 <div className="text-xs text-muted-foreground">
                   Aceita em {fmtDate(p.accepted_at)}
                   {p.accepted_by_name ? ` por ${p.accepted_by_name}` : ""}
@@ -402,7 +402,7 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                   </div>
                 )}
 
-                {isActiveAccepted && (
+                {activeAccepted && (
                   <Button
                     size="sm"
                     variant="outline"
