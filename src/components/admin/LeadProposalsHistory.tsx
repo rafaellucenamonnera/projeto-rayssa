@@ -130,14 +130,48 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
 
   const handleDownloadPdf = async (p: Proposal) => {
     if (!p.pdf_path) return;
-    const { data, error } = await supabase.storage
-      .from("propostas")
-      .createSignedUrl(p.pdf_path, 3600);
-    if (error || !data?.signedUrl) {
-      toast.error("Erro ao gerar link do PDF");
-      return;
+    try {
+      const { data, error } = await supabase.storage
+        .from("propostas")
+        .createSignedUrl(p.pdf_path, 3600);
+      if (error || !data?.signedUrl) {
+        toast.error("Erro ao gerar link do PDF");
+        return;
+      }
+      const res = await fetch(data.signedUrl);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const baseName = (p.proposal_name || "proposta").replace(/[^\w\-]+/g, "_");
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = `${baseName}-v${p.version}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch (err) {
+      console.error("download pdf:", err);
+      toast.error(
+        "Não foi possível baixar o PDF. O navegador pode ter bloqueado o download automático.",
+      );
     }
-    window.open(data.signedUrl, "_blank", "noopener");
+  };
+
+  const humanizePdfError = (raw?: string | null): string => {
+    if (!raw) return "Não foi possível gerar o PDF agora. Você pode tentar novamente.";
+    const s = raw.toLowerCase();
+    if (s.includes("401") || s.includes("unauthorized") || s.includes("invalid api key"))
+      return "A chave do PDFShift está inválida ou foi revogada. Avise o time técnico.";
+    if (s.includes("timeout") || s.includes("timed out"))
+      return "O serviço de PDF demorou demais para responder. Tente novamente em alguns instantes.";
+    if (s.includes("429") || s.includes("rate limit"))
+      return "Limite de geração de PDF atingido. Aguarde alguns minutos e tente novamente.";
+    if (s.includes("processamento anterior") || s.includes("processamento expirado"))
+      return "Processamento anterior foi interrompido. Clique em tentar gerar novamente.";
+    if (/\b5\d{2}\b/.test(s) || s.includes("network") || s.includes("fetch failed"))
+      return "O serviço de PDF está temporariamente indisponível. Tente novamente em alguns instantes.";
+    return "Não foi possível gerar o PDF agora. Você pode tentar novamente.";
   };
 
   const handleRetry = async (p: Proposal) => {
@@ -244,8 +278,7 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                 <span className="text-muted-foreground">por {author}</span>
                 {isActiveAccepted && (
                   <Badge className="bg-green-600 hover:bg-green-600 text-white">
-                    <CheckCircle2 className="h-3 w-3 mr-1" /> Aceita em{" "}
-                    {fmtDate(p.accepted_at)}
+                    <CheckCircle2 className="h-3 w-3 mr-1" /> Proposta aceita
                   </Badge>
                 )}
                 {isCanceledAcceptance && (
@@ -261,9 +294,10 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                 )}
               </div>
 
-              {isActiveAccepted && p.accepted_by_name && (
+              {isActiveAccepted && (
                 <div className="text-xs text-muted-foreground">
-                  Aceita por: {p.accepted_by_name}
+                  Aceita em {fmtDate(p.accepted_at)}
+                  {p.accepted_by_name ? ` por ${p.accepted_by_name}` : ""}
                 </div>
               )}
 
@@ -311,12 +345,21 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                 )}
 
                 {p.pdf_status === "failed" && (
-                  <div className="w-full flex flex-col gap-1.5">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="inline-flex items-center text-xs text-destructive">
-                        <AlertCircle className="h-3.5 w-3.5 mr-1" />
-                        Falha ao gerar PDF
-                      </span>
+                  <div className="w-full flex flex-col gap-2">
+                    <div className="flex items-start gap-2 flex-wrap">
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="inline-flex items-center text-sm text-destructive font-medium">
+                          <AlertCircle className="h-4 w-4 mr-1" />
+                          PDF ainda não foi gerado
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          A proposta está salva e o link público continua
+                          funcionando. Você pode tentar gerar o PDF novamente.
+                        </div>
+                        <div className="text-xs text-destructive/90">
+                          {humanizePdfError(p.pdf_error)}
+                        </div>
+                      </div>
                       <Button
                         size="sm"
                         variant="outline"
@@ -332,9 +375,14 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                       </Button>
                     </div>
                     {p.pdf_error && (
-                      <pre className="text-[11px] leading-snug text-destructive/90 bg-destructive/5 border border-destructive/20 rounded px-2 py-1.5 whitespace-pre-wrap break-words font-mono max-h-32 overflow-auto">
-                        {p.pdf_error}
-                      </pre>
+                      <details className="text-xs">
+                        <summary className="cursor-pointer text-muted-foreground hover:text-foreground select-none">
+                          Ver detalhe técnico
+                        </summary>
+                        <pre className="mt-1 text-[11px] leading-snug text-destructive/90 bg-destructive/5 border border-destructive/20 rounded px-2 py-1.5 whitespace-pre-wrap break-words font-mono max-h-32 overflow-auto">
+                          {p.pdf_error}
+                        </pre>
+                      </details>
                     )}
                   </div>
                 )}
@@ -346,7 +394,7 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                     className="text-destructive border-destructive/40 hover:bg-destructive/10"
                     onClick={() => openCancelModal(p)}
                   >
-                    <Ban className="h-3.5 w-3.5 mr-1" /> Cancelar aceite
+                    <Ban className="h-3.5 w-3.5 mr-1" /> Cancelar aceite da proposta
                   </Button>
                 )}
               </div>
