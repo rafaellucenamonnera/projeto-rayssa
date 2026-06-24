@@ -203,10 +203,17 @@ export type Database = {
           open_count: number
           opened_at: string | null
           payload: Json
+          pdf_error: string | null
+          pdf_generated_at: string | null
+          pdf_path: string | null
+          pdf_status: string
           proposal_name: string | null
           public_url: string | null
+          superseded_at: string | null
+          superseded_by: string | null
           token: string
           updated_at: string
+          version: number
         }
         Insert: {
           accepted_at?: string | null
@@ -224,10 +231,17 @@ export type Database = {
           open_count?: number
           opened_at?: string | null
           payload?: Json
+          pdf_error?: string | null
+          pdf_generated_at?: string | null
+          pdf_path?: string | null
+          pdf_status?: string
           proposal_name?: string | null
           public_url?: string | null
+          superseded_at?: string | null
+          superseded_by?: string | null
           token: string
           updated_at?: string
+          version?: number
         }
         Update: {
           accepted_at?: string | null
@@ -245,10 +259,17 @@ export type Database = {
           open_count?: number
           opened_at?: string | null
           payload?: Json
+          pdf_error?: string | null
+          pdf_generated_at?: string | null
+          pdf_path?: string | null
+          pdf_status?: string
           proposal_name?: string | null
           public_url?: string | null
+          superseded_at?: string | null
+          superseded_by?: string | null
           token?: string
           updated_at?: string
+          version?: number
         }
         Relationships: [
           {
@@ -263,6 +284,13 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commercial_proposals_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "commercial_proposals"
             referencedColumns: ["id"]
           },
         ]
