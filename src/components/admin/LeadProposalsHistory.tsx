@@ -67,6 +67,9 @@ function openPublic(url?: string | null) {
   window.open(target, "_blank", "noopener");
 }
 
+const isActiveAccepted = (p: Proposal) =>
+  !!p.accepted_at && !p.acceptance_canceled_at;
+
 export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
   const [loading, setLoading] = useState(true);
   const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -94,6 +97,19 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
       const list = (data as Proposal[]) || [];
       setProposals(list);
       proposalsRef.current = list;
+
+      if (import.meta.env.DEV) {
+        console.info(
+          "[LeadProposalsHistory] proposals",
+          list.map((p) => ({
+            id: p.id,
+            version: p.version,
+            accepted_at: p.accepted_at,
+            acceptance_canceled_at: p.acceptance_canceled_at,
+            isActiveAccepted: isActiveAccepted(p),
+          })),
+        );
+      }
 
       const ids = Array.from(
         new Set(list.map((p) => p.created_by_user_id).filter(Boolean)),
@@ -216,7 +232,7 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
         { p_proposal_id: cancelTarget.id, p_reason: reason },
       );
       if (error) throw error;
-      toast.success("Aceite cancelado.");
+      toast.success("Aceite cancelado e registrado no histórico.");
       setCancelTarget(null);
       setCancelReason("");
       load();
@@ -252,16 +268,15 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
         {proposals.map((p) => {
           const author =
             (p.created_by_user_id && authors[p.created_by_user_id]) || "—";
-          const isActiveAccepted =
-            !!p.accepted_at && !p.acceptance_canceled_at;
+          const activeAccepted = isActiveAccepted(p);
           const isCanceledAcceptance =
             !!p.accepted_at && !!p.acceptance_canceled_at;
-          const isSuperseded = !!p.superseded_at && !isActiveAccepted;
+          const isSuperseded = !!p.superseded_at && !activeAccepted;
           return (
             <li
               key={p.id}
               className={`rounded-md border p-3 text-sm space-y-2 ${
-                isActiveAccepted
+                activeAccepted
                   ? "border-green-500/60 bg-green-500/5"
                   : isCanceledAcceptance
                     ? "border-destructive/40 bg-destructive/5"
@@ -276,7 +291,7 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                 <span>{fmtDate(p.created_at)}</span>
                 <span className="text-muted-foreground">·</span>
                 <span className="text-muted-foreground">por {author}</span>
-                {isActiveAccepted && (
+                {activeAccepted && (
                   <Badge className="bg-green-600 hover:bg-green-600 text-white">
                     <CheckCircle2 className="h-3 w-3 mr-1" /> Proposta aceita
                   </Badge>
@@ -289,12 +304,12 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                 {isSuperseded && !isCanceledAcceptance && (
                   <Badge variant="secondary">Substituída</Badge>
                 )}
-                {!isActiveAccepted && !isCanceledAcceptance && !isSuperseded && (
+                {!activeAccepted && !isCanceledAcceptance && !isSuperseded && (
                   <Badge variant="outline">Ativa</Badge>
                 )}
               </div>
 
-              {isActiveAccepted && (
+              {activeAccepted && (
                 <div className="text-xs text-muted-foreground">
                   Aceita em {fmtDate(p.accepted_at)}
                   {p.accepted_by_name ? ` por ${p.accepted_by_name}` : ""}
@@ -387,7 +402,7 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
                   </div>
                 )}
 
-                {isActiveAccepted && (
+                {activeAccepted && (
                   <Button
                     size="sm"
                     variant="outline"
@@ -447,7 +462,7 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
               {cancelling && (
                 <Loader2 className="h-4 w-4 animate-spin mr-1" />
               )}
-              Confirmar cancelamento
+              Confirmar cancelamento do aceite
             </Button>
           </DialogFooter>
         </DialogContent>
