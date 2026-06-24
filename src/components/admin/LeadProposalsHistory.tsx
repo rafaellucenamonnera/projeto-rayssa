@@ -542,6 +542,58 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog
+        open={!!cancelProposalTarget}
+        onOpenChange={(open) => {
+          if (!open && !cancellingProposal) {
+            setCancelProposalTarget(null);
+            setCancelProposalReason("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancelar proposta</DialogTitle>
+            <DialogDescription>
+              A proposta deixará de constar como ativa no histórico interno. O
+              link público e os registros permanecem preservados para auditoria.
+              Informe o motivo (mín. 5 caracteres).
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={cancelProposalReason}
+            onChange={(e) => setCancelProposalReason(e.target.value)}
+            placeholder="Motivo do cancelamento"
+            rows={4}
+            disabled={cancellingProposal}
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCancelProposalTarget(null);
+                setCancelProposalReason("");
+              }}
+              disabled={cancellingProposal}
+            >
+              Voltar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmCancelProposal}
+              disabled={
+                cancellingProposal || cancelProposalReason.trim().length < 5
+              }
+            >
+              {cancellingProposal && (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              )}
+              Confirmar cancelamento da proposta
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
