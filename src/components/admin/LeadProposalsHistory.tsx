@@ -46,6 +46,7 @@ type Proposal = {
   pdf_status: "pending" | "ready" | "failed" | null;
   pdf_error: string | null;
   pdf_generated_at: string | null;
+  payload: any;
 };
 
 function fmtDate(value?: string | null) {
