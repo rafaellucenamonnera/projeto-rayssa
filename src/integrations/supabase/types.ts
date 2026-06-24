@@ -212,6 +212,9 @@ export type Database = {
           pdf_path: string | null
           pdf_processing_started_at: string | null
           pdf_status: string
+          proposal_canceled_at: string | null
+          proposal_canceled_by: string | null
+          proposal_cancellation_reason: string | null
           proposal_name: string | null
           public_url: string | null
           superseded_at: string | null
@@ -245,6 +248,9 @@ export type Database = {
           pdf_path?: string | null
           pdf_processing_started_at?: string | null
           pdf_status?: string
+          proposal_canceled_at?: string | null
+          proposal_canceled_by?: string | null
+          proposal_cancellation_reason?: string | null
           proposal_name?: string | null
           public_url?: string | null
           superseded_at?: string | null
@@ -278,6 +284,9 @@ export type Database = {
           pdf_path?: string | null
           pdf_processing_started_at?: string | null
           pdf_status?: string
+          proposal_canceled_at?: string | null
+          proposal_canceled_by?: string | null
+          proposal_cancellation_reason?: string | null
           proposal_name?: string | null
           public_url?: string | null
           superseded_at?: string | null
@@ -2241,6 +2250,10 @@ export type Database = {
       business_days_between_dates: {
         Args: { p_end: string; p_start: string }
         Returns: number
+      }
+      cancel_commercial_proposal: {
+        Args: { p_proposal_id: string; p_reason: string }
+        Returns: Json
       }
       cancel_commercial_proposal_acceptance: {
         Args: { p_proposal_id: string; p_reason: string }
