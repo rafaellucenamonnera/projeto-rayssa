@@ -22,6 +22,7 @@ import {
   FileText,
   XCircle,
   Ban,
+  Copy,
 } from "lucide-react";
 
 type Proposal = {
