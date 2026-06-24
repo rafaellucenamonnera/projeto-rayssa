@@ -25,6 +25,8 @@ type ProposalData = {
   omit_financials_reason?: string | null;
   accepted?: boolean;
   accepted_at?: string | null;
+  acceptance_canceled_at?: string | null;
+  acceptance_cancellation_reason?: string | null;
   opened_at?: string | null;
   created_at?: string | null;
   lead?: { nome_fantasia?: string | null } | null;
@@ -137,7 +139,8 @@ export default function PropostaPublica() {
     return () => window.removeEventListener("message", onMessage);
   }, [printMode]);
 
-  const isAccepted = Boolean(proposal?.accepted || proposal?.accepted_at);
+  const isAccepted =
+    Boolean(proposal?.accepted_at) && !proposal?.acceptance_canceled_at;
 
   async function handleAccept() {
     if (!token) return;
