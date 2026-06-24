@@ -73,6 +73,12 @@ function openPublic(url?: string | null) {
 const isActiveAccepted = (p: Proposal) =>
   !!p.accepted_at && !p.acceptance_canceled_at;
 
+const isActiveProposal = (p: Proposal) =>
+  !p.accepted_at &&
+  !p.acceptance_canceled_at &&
+  !p.superseded_at &&
+  !p.proposal_canceled_at;
+
 export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
   const [loading, setLoading] = useState(true);
   const [proposals, setProposals] = useState<Proposal[]>([]);
