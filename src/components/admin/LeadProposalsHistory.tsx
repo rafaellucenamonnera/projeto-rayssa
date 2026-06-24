@@ -257,6 +257,36 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
     }
   };
 
+  const openCancelProposalModal = (p: Proposal) => {
+    setCancelProposalTarget(p);
+    setCancelProposalReason("");
+  };
+
+  const handleConfirmCancelProposal = async () => {
+    if (!cancelProposalTarget) return;
+    const reason = cancelProposalReason.trim();
+    if (reason.length < 5) {
+      toast.error("Informe um motivo com no mínimo 5 caracteres.");
+      return;
+    }
+    setCancellingProposal(true);
+    try {
+      const { error } = await (supabase as any).rpc(
+        "cancel_commercial_proposal",
+        { p_proposal_id: cancelProposalTarget.id, p_reason: reason },
+      );
+      if (error) throw error;
+      toast.success("Proposta cancelada e registrada no histórico.");
+      setCancelProposalTarget(null);
+      setCancelProposalReason("");
+      load();
+    } catch (err: any) {
+      toast.error("Falha ao cancelar proposta: " + (err?.message || ""));
+    } finally {
+      setCancellingProposal(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center text-sm text-muted-foreground">
