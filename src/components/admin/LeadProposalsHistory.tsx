@@ -232,7 +232,7 @@ export default function LeadProposalsHistory({ leadId }: { leadId: string }) {
         { p_proposal_id: cancelTarget.id, p_reason: reason },
       );
       if (error) throw error;
-      toast.success("Aceite cancelado.");
+      toast.success("Aceite cancelado e registrado no histórico.");
       setCancelTarget(null);
       setCancelReason("");
       load();
