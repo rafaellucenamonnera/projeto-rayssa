@@ -38,6 +38,9 @@ type Proposal = {
   acceptance_canceled_at: string | null;
   acceptance_cancellation_reason: string | null;
   superseded_at: string | null;
+  proposal_canceled_at: string | null;
+  proposal_canceled_by: string | null;
+  proposal_cancellation_reason: string | null;
   pdf_path: string | null;
   pdf_status: "pending" | "ready" | "failed" | null;
   pdf_error: string | null;
