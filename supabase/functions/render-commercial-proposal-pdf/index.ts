@@ -1,8 +1,11 @@
 // Edge function: render-commercial-proposal-pdf
-// Renderiza a rota publica da proposta como PDF via PDFShift e salva no
-// bucket `propostas`. Atualiza pdf_path / pdf_generated_at / pdf_status na
-// linha de commercial_proposals. Nunca bloqueia o chamador: falhas viram
-// pdf_status='failed' com pdf_error.
+// Idempotente. Entrada: { proposal_id: string, force?: boolean }
+// - pdf_status='ready' e !force        -> retorna { ok:true, already_ready:true }
+// - pdf_status='pending' e
+//     pdf_processing_started_at < 5min  -> retorna { ok:true, already_processing:true }
+// - pdf_status='failed' e !force        -> retorna { ok:false, pdf_status:'failed' } (sem nova tentativa)
+// - força nova tentativa apenas com force:true ou stale pending
+// Falhas NUNCA quebram a proposta/link público — gravam pdf_status='failed'.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -18,6 +21,8 @@ const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const PDFSHIFT_API_KEY = Deno.env.get("PDFSHIFT_API_KEY") || "";
 const PUBLIC_APP_URL =
   Deno.env.get("PUBLIC_APP_URL") || "https://parceiros.monnera.com.br";
+
+const PENDING_WINDOW_MS = 5 * 60 * 1000;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -55,6 +60,7 @@ Deno.serve(async (req) => {
     return json({ error: "Invalid JSON" }, 400);
   }
   const proposalId: string | undefined = body?.proposal_id;
+  const force: boolean = body?.force === true;
   if (!proposalId || typeof proposalId !== "string") {
     return json({ error: "proposal_id is required" }, 400);
   }
@@ -65,21 +71,45 @@ Deno.serve(async (req) => {
 
   const { data: proposal, error: pErr } = await admin
     .from("commercial_proposals")
-    .select("id, lead_id, token, version")
+    .select(
+      "id, lead_id, token, version, pdf_status, pdf_processing_started_at, pdf_attempts",
+    )
     .eq("id", proposalId)
     .maybeSingle();
   if (pErr || !proposal) {
     return json({ error: "Proposal not found" }, 404);
   }
 
-  if (!PDFSHIFT_API_KEY) {
-    await markFailed(admin, proposal.id, "PDFSHIFT_API_KEY not configured");
-    return json({ error: "PDFSHIFT_API_KEY not configured" }, 500);
+  // Idempotência
+  if (proposal.pdf_status === "ready" && !force) {
+    return json({ ok: true, already_ready: true });
+  }
+  if (proposal.pdf_status === "pending" && !force) {
+    const started = proposal.pdf_processing_started_at
+      ? new Date(proposal.pdf_processing_started_at as string).getTime()
+      : 0;
+    if (started && Date.now() - started < PENDING_WINDOW_MS) {
+      return json({ ok: true, already_processing: true });
+    }
+  }
+  if (proposal.pdf_status === "failed" && !force) {
+    return json({ ok: false, pdf_status: "failed", skipped: true });
   }
 
+  if (!PDFSHIFT_API_KEY) {
+    await markFailed(admin, proposal.id, "PDFSHIFT_API_KEY not configured");
+    return json({ ok: false, pdf_status: "failed", error: "PDFSHIFT_API_KEY not configured" }, 200);
+  }
+
+  // Marca início da tentativa
   await admin
     .from("commercial_proposals")
-    .update({ pdf_status: "pending", pdf_error: null })
+    .update({
+      pdf_status: "pending",
+      pdf_error: null,
+      pdf_processing_started_at: new Date().toISOString(),
+      pdf_attempts: (Number(proposal.pdf_attempts) || 0) + 1,
+    })
     .eq("id", proposal.id);
 
   const sourceUrl = `${PUBLIC_APP_URL.replace(/\/+$/, "")}/proposta/${proposal.token}?print=1`;
@@ -135,7 +165,7 @@ Deno.serve(async (req) => {
     })
     .eq("id", proposal.id);
   if (updErr) {
-    return json({ error: updErr.message }, 500);
+    return json({ ok: false, pdf_status: "failed", error: updErr.message }, 200);
   }
 
   return json({ ok: true, pdf_path: path });
