@@ -17,11 +17,32 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
-  const appUrl = Deno.env.get("APP_URL") || req.headers.get("origin") || "";
+  // APP_URL must be configured server-side to prevent attacker-controlled origin
+  // headers from poisoning notification email links.
+  const appUrl = Deno.env.get("APP_URL") || "";
   const fromEmail = Deno.env.get("NOTIFICATION_FROM_EMAIL") || "Rayssa <notificacoes@monnera.com.br>";
 
   if (!supabaseUrl || !serviceRoleKey) return json({ error: "Supabase env ausente" }, 500);
   if (!resendApiKey) return json({ error: "RESEND_API_KEY ausente" }, 500);
+
+  // AuthZ: aceita service role (cron/edge interno) OU admin/gestor autenticado.
+  const authHeader = req.headers.get("Authorization") || "";
+  const bearer = authHeader.toLowerCase().startsWith("bearer ") ? authHeader.slice(7) : "";
+  let authorized = bearer && bearer === serviceRoleKey;
+  if (!authorized && bearer) {
+    const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") || "", {
+      global: { headers: { Authorization: `Bearer ${bearer}` } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: claims } = await userClient.auth.getClaims(bearer);
+    const uid = claims?.claims?.sub;
+    if (uid) {
+      const { data: roles } = await userClient.from("user_roles").select("role").eq("user_id", uid);
+      authorized = !!roles?.some((r: any) => r.role === "admin" || r.role === "gestor_conta");
+    }
+  }
+  if (!authorized) return json({ error: "Unauthorized" }, 401);
+
 
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
