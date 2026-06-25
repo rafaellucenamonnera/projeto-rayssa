@@ -1,52 +1,43 @@
-## Objetivo
-Executar somente verificação final no sandbox Lovable e publicar. Nenhuma alteração de código, banco ou legados.
 
-## Passo 1 — Re-grep em `public/gerador-proposta/index.html`
-Confirmar no sandbox:
-- 0 ocorrências de `assets/`
-- 0 ocorrências de `file://`
-- 0 ocorrências de `C:\`
-- 0 ocorrências de `./assets`
-- 0 ocorrências de `../assets`
-- Todas as referências de mídia apontando para `/__l5e/assets-v1/...`
+## Alteração única em `supabase/functions/render-commercial-proposal-pdf/index.ts`
 
-Se qualquer padrão proibido aparecer, parar e reportar antes de publicar.
+Nenhum outro arquivo é tocado. Sem mudanças em frontend, gerador, proposta pública, assets, package.json, migrations, RLS, schema, layout, fluxo de aceite ou regras do painel comercial.
 
-## Passo 2 — Smoke test Playwright (headless, contra `localhost:8080`)
+### 1. CORS dinâmico
+- Remover `Access-Control-Allow-Origin: "*"` fixo.
+- Calcular `ALLOWED_ORIGINS = { new URL(PUBLIC_APP_URL).origin, "http://localhost:8080" }`.
+- Função `buildCorsHeaders(req)`:
+  - `Access-Control-Allow-Headers: authorization, x-client-info, apikey, content-type`
+  - `Access-Control-Allow-Methods: POST, OPTIONS`
+  - `Vary: Origin`
+  - `Access-Control-Allow-Origin` só é refletido quando o header `Origin` da requisição estiver em `ALLOWED_ORIGINS`.
+- `OPTIONS` continua respondendo `200 ok` com esses headers. Todas as respostas (sucesso e erro) usam `buildCorsHeaders(req)`.
 
-**Rota interna** `/admin/gerador-proposta/:leadId` (sessão Supabase restaurada via `LOVABLE_BROWSER_SUPABASE_*`):
-- iframe `/gerador-proposta/index.html` carrega
-- bridge `postMessage` envia `prefill` e gerador hidrata
-- nome / email / telefone aparecem no rodapé
-- nenhum 404 de asset no network log
+### 2. Autorização (antes de qualquer query/alteração)
+- Ler `Authorization: Bearer <token>`.
+- Sem token → **401** `{ error: "Unauthorized" }`.
+- Se `token === SUPABASE_SERVICE_ROLE_KEY` → autorizado.
+- Caso contrário, tratar como JWT Supabase:
+  - `userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { global: { headers: { Authorization: Bearer ... } } })`
+  - `const { data, error } = await userClient.auth.getUser(token)`
+  - `error` ou `!data.user` → **401**.
+  - Buscar `user_roles` por `user_id`.
+  - Se não houver papel `admin` nem `gestor_conta` → **403** `{ error: "Forbidden" }`.
+- Só após autorizado a função segue: parse do body, leitura da proposta, idempotência, PDFShift, upload, updates.
 
-**Rota pública** `/proposta/:token` (sem login) — **modo seguro, sem aceite real**:
-- iframe abre em modo `view` / readonly
-- visual 1:1 renderiza (screenshot)
-- botão "Aceitar proposta comercial" visível
-- clique no botão abre o dialog de aceite
-- **parar aqui**: não confirmar o aceite. Não preencher e submeter o formulário.
-- só validar aceite ponta-a-ponta se houver token/proposta de teste dedicada disponível. Nesse caso, confirmar via network que a RPC chamada é `accept_commercial_proposal` (validar payload do POST `/rest/v1/rpc/accept_commercial_proposal`) e que `accepted_at` é preenchido na resposta.
-- nunca aceitar proposta real de cliente durante o smoke test.
+### 3. Inalterado
+- Idempotência (`ready`, `pending` < 5min, `failed` sem `force`).
+- `force: true` para retry.
+- Chamada PDFShift (`/v3/convert/pdf`, mesmos parâmetros).
+- Upload em `propostas/{lead_id}/proposta-v{version}-{token}.pdf`.
+- Updates de `pdf_status`, `pdf_error`, `pdf_processing_started_at`, `pdf_attempts`, `pdf_path`, `pdf_generated_at`.
+- Formato das respostas JSON consumido pelo frontend.
 
-Capturar screenshots de cada etapa e logs de console/network.
-
-## Passo 3 — Confirmar escopo zero de mudanças
-
-Este publish **não** inclui:
-- nenhuma migration nova (`supabase--migration` não será chamado)
-- lógica de PDF / anexos no novo gerador
-- alteração em bucket `propostas`
-- alteração em `lead_comments` / `lead_comment_attachments`
-- remoção adicional de componentes legados além do que já está no sandbox
-
-## Passo 4 — Publish
-Se build, grep e smoke test passarem:
-- preflight de website info (title, description, OG/Twitter, favicon) em `index.html`
-- `preview_ui--publish`
-- relatar URL e tempo estimado de propagação
-
-Se qualquer verificação falhar: parar, reportar e não publicar.
-
-## Pós-publish
-Lembrete ao usuário: atualizar a cópia local a partir do estado publicado/sandbox para evitar comparações contra cópia antiga.
+### Validação
+- Sem header `Authorization` → 401.
+- Token inválido (JWT que falha em `getUser`) → 401.
+- JWT válido sem papel admin/gestor → 403.
+- Admin/gestor → gera/regera PDF normalmente.
+- Service role (chamadas server-side) → gera PDF normalmente.
+- `/proposta/:token` e regeneração via painel continuam funcionando.
+- Nenhuma mudança visual.
