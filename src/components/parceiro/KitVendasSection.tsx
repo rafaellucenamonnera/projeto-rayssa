@@ -29,7 +29,7 @@ type Rede = { id: string; titulo: string; link: string; comentario: string | nul
 
 const isYoutube = (url: string) => /youtube\.com|youtu\.be/.test(url);
 const isVimeo = (url: string) => /vimeo\.com/.test(url);
-const ytId = (url: string) => url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/)?.[1];
+const ytId = (url: string) => url.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([a-zA-Z0-9_-]{11})/)?.[1];
 const ytEmbed = (url: string) => {
   const id = ytId(url);
   return id ? `https://www.youtube.com/embed/${id}` : url;
