@@ -9,14 +9,8 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const PDFSHIFT_API_KEY = Deno.env.get("PDFSHIFT_API_KEY") || "";
 const PUBLIC_APP_URL =
@@ -24,10 +18,36 @@ const PUBLIC_APP_URL =
 
 const PENDING_WINDOW_MS = 5 * 60 * 1000;
 
-function json(body: unknown, status = 200) {
+function appOrigin(): string {
+  try {
+    return new URL(PUBLIC_APP_URL).origin;
+  } catch {
+    return "";
+  }
+}
+
+const ALLOWED_ORIGINS = new Set<string>(
+  [appOrigin(), "http://localhost:8080"].filter(Boolean),
+);
+
+function buildCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("Origin") || "";
+  const headers: Record<string, string> = {
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    Vary: "Origin",
+  };
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    headers["Access-Control-Allow-Origin"] = origin;
+  }
+  return headers;
+}
+
+function json(req: Request, body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...buildCorsHeaders(req), "Content-Type": "application/json" },
   });
 }
 
@@ -47,42 +67,54 @@ async function markFailed(
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: buildCorsHeaders(req) });
   }
   if (req.method !== "POST") {
-    return json({ error: "Method not allowed" }, 405);
+    return json(req, { error: "Method not allowed" }, 405);
   }
 
   // AuthZ: somente service role ou admin/gestor podem disparar geração de PDF
   const authHeader = req.headers.get("Authorization") || "";
-  const bearer = authHeader.toLowerCase().startsWith("bearer ") ? authHeader.slice(7) : "";
-  let authorized = bearer && bearer === SERVICE_ROLE;
-  if (!authorized && bearer) {
-    const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY") || "", {
+  const bearer = authHeader.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice(7).trim()
+    : "";
+  if (!bearer) return json(req, { error: "Unauthorized" }, 401);
+
+  let authorized = bearer === SERVICE_ROLE;
+  if (!authorized) {
+    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: `Bearer ${bearer}` } },
       auth: { persistSession: false },
     });
-    const { data: claims } = await userClient.auth.getClaims(bearer);
-    const uid = claims?.claims?.sub;
-    if (uid) {
-      const { data: roles } = await userClient.from("user_roles").select("role").eq("user_id", uid);
-      authorized = !!roles?.some((r: any) => r.role === "admin" || r.role === "gestor_conta");
+    const { data: userData, error: userErr } = await userClient.auth.getUser(bearer);
+    const uid = userData?.user?.id;
+    if (userErr || !uid) {
+      return json(req, { error: "Unauthorized" }, 401);
     }
+    const { data: roles } = await userClient
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", uid);
+    const hasRole = !!roles?.some(
+      (r: any) => r.role === "admin" || r.role === "gestor_conta",
+    );
+    if (!hasRole) {
+      return json(req, { error: "Forbidden" }, 403);
+    }
+    authorized = true;
   }
-  if (!authorized) return json({ error: "Unauthorized" }, 401);
 
   let body: any;
   try {
     body = await req.json();
   } catch {
-    return json({ error: "Invalid JSON" }, 400);
+    return json(req, { error: "Invalid JSON" }, 400);
   }
   const proposalId: string | undefined = body?.proposal_id;
   const force: boolean = body?.force === true;
   if (!proposalId || typeof proposalId !== "string") {
-    return json({ error: "proposal_id is required" }, 400);
+    return json(req, { error: "proposal_id is required" }, 400);
   }
-
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
     auth: { persistSession: false },
@@ -96,28 +128,28 @@ Deno.serve(async (req) => {
     .eq("id", proposalId)
     .maybeSingle();
   if (pErr || !proposal) {
-    return json({ error: "Proposal not found" }, 404);
+    return json(req, { error: "Proposal not found" }, 404);
   }
 
   // Idempotência
   if (proposal.pdf_status === "ready" && !force) {
-    return json({ ok: true, already_ready: true });
+    return json(req, { ok: true, already_ready: true });
   }
   if (proposal.pdf_status === "pending" && !force) {
     const started = proposal.pdf_processing_started_at
       ? new Date(proposal.pdf_processing_started_at as string).getTime()
       : 0;
     if (started && Date.now() - started < PENDING_WINDOW_MS) {
-      return json({ ok: true, already_processing: true });
+      return json(req, { ok: true, already_processing: true });
     }
   }
   if (proposal.pdf_status === "failed" && !force) {
-    return json({ ok: false, pdf_status: "failed", skipped: true });
+    return json(req, { ok: false, pdf_status: "failed", skipped: true });
   }
 
   if (!PDFSHIFT_API_KEY) {
     await markFailed(admin, proposal.id, "PDFSHIFT_API_KEY not configured");
-    return json({ ok: false, pdf_status: "failed", error: "PDFSHIFT_API_KEY not configured" }, 200);
+    return json(req, { ok: false, pdf_status: "failed", error: "PDFSHIFT_API_KEY not configured" }, 200);
   }
 
   // Marca início da tentativa
@@ -159,7 +191,7 @@ Deno.serve(async (req) => {
   } catch (err) {
     const msg = (err as Error).message || String(err);
     await markFailed(admin, proposal.id, msg);
-    return json({ ok: false, pdf_status: "failed", error: msg }, 200);
+    return json(req, { ok: false, pdf_status: "failed", error: msg }, 200);
   }
 
   const path = `${proposal.lead_id}/proposta-v${proposal.version}-${proposal.token}.pdf`;
@@ -171,7 +203,7 @@ Deno.serve(async (req) => {
     });
   if (upErr) {
     await markFailed(admin, proposal.id, `upload: ${upErr.message}`);
-    return json({ ok: false, pdf_status: "failed", error: upErr.message }, 200);
+    return json(req, { ok: false, pdf_status: "failed", error: upErr.message }, 200);
   }
 
   const { error: updErr } = await admin
@@ -184,8 +216,8 @@ Deno.serve(async (req) => {
     })
     .eq("id", proposal.id);
   if (updErr) {
-    return json({ ok: false, pdf_status: "failed", error: updErr.message }, 200);
+    return json(req, { ok: false, pdf_status: "failed", error: updErr.message }, 200);
   }
 
-  return json({ ok: true, pdf_path: path });
+  return json(req, { ok: true, pdf_path: path });
 });
