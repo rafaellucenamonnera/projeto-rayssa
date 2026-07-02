@@ -2844,6 +2844,11 @@
             if (payload.client.company) state.company = payload.client.company;
             if (payload.client.contact) state.contact = payload.client.contact;
             if (payload.client.proposalName) state.proposalName = payload.client.proposalName;
+            const rawStores = payload.client.stores ?? payload.client.quantidade_lojas;
+            if (rawStores !== undefined && rawStores !== null && rawStores !== "") {
+              const n = Number(rawStores);
+              if (Number.isFinite(n) && n >= 1) state.stores = Math.round(n);
+            }
           }
           if (payload.footer) {
             if (payload.footer.nome) state.commercialOwner = payload.footer.nome;
