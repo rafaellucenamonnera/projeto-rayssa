@@ -2282,8 +2282,9 @@
             <strong>${currency(summary.monthlyPerCnpj)}</strong>
           </div>
           <div class="price-item">
-            <span>Valor total</span>
+            <span>Valor mensalidade total</span>
             <strong>${currency(summary.totalValue)}</strong>
+            <small>${summary.stores} CNPJs x ${currency(summary.monthlyPerCnpj)}</small>
           </div>
         </div>
         ${setupHtml()}
