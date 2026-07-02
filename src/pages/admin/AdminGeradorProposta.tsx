@@ -82,7 +82,12 @@ export default function AdminGeradorProposta() {
       if (!iframe || !iframe.contentWindow) return;
       const leadData = leadRef.current;
       const prof = profileRef.current;
-      const payload = {
+      const rawStores = Number(leadData?.quantidade_lojas);
+      const stores =
+        Number.isFinite(rawStores) && rawStores >= 1
+          ? Math.round(rawStores)
+          : undefined;
+      const payload: any = {
         client: {
           company:
             leadData?.nome_fantasia ||
@@ -92,6 +97,9 @@ export default function AdminGeradorProposta() {
           proposalName: leadData?.nome_fantasia
             ? `Proposta Monnera - ${leadData.nome_fantasia}`
             : undefined,
+          ...(stores !== undefined
+            ? { stores, quantidade_lojas: stores }
+            : {}),
         },
         footer: {
           nome: prof?.nome || user?.email || "",
