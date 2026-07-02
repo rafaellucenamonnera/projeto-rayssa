@@ -2317,6 +2317,10 @@
                   <span>Validade</span>
                   <strong>${escapeHtml(state.validity || "A definir")}</strong>
                 </div>
+                <div class="meta-item">
+                  <span>Qtd. de lojas</span>
+                  <strong>${escapeHtml(String(Math.max(1, Math.round(numberValue(state.stores) || 1))))}</strong>
+                </div>
                 ${state.proposalCode ? `<div class="meta-item"><span>Código</span><strong>${escapeHtml(state.proposalCode)}</strong></div>` : ""}
               </div>
             </aside>
