@@ -2086,22 +2086,46 @@
       }
 
       const stores = Math.max(1, Math.round(numberValue(state.stores)));
-      const monthlyFee = selectedMonthlyTotal();
+      const baseTotal = selectedMonthlyTotal() * stores;
       const rows = state.discountRows.map((row) => {
         const discountPercent = numberValue(row.discount);
         const paidToBeneficiaries = numberValue(row.prize);
-        const discountedMonthly = monthlyFee * (1 - discountPercent / 100);
-        const perStore = discountedMonthly / stores;
+        const discountedTotal = baseTotal * (1 - discountPercent / 100);
+        const discountedPerCnpj = discountedTotal / stores;
 
         return `
           <tr>
             <td>${currency(paidToBeneficiaries)}</td>
             <td>${discountPercent.toLocaleString("pt-BR")}%</td>
-            <td>${currency(discountedMonthly)}</td>
-            <td>${currency(perStore)}</td>
+            <td>${currency(discountedTotal)}</td>
+            <td>${currency(discountedPerCnpj)}</td>
           </tr>
         `;
       }).join("");
+
+      const lastRow = state.discountRows[state.discountRows.length - 1];
+      let benefitBlock = "";
+      if (lastRow) {
+        const lastDiscount = numberValue(lastRow.discount);
+        const lastPrize = numberValue(lastRow.prize);
+        const lastDiscountedTotal = baseTotal * (1 - lastDiscount / 100);
+        const lastDiscountedPerCnpj = lastDiscountedTotal / stores;
+        const savings = baseTotal - lastDiscountedTotal;
+        benefitBlock = `
+          <div class="card" style="margin-top:16px; border:2px solid var(--brand, #0f766e);">
+            <strong>Benefício máximo por volume atingido</strong>
+            <p>Atingindo ${currency(lastPrize)} em pagamentos de campanhas, a mensalidade pode ser reduzida conforme a faixa máxima cadastrada na tabela dinâmica.</p>
+            <ul style="margin:8px 0 0 0; padding-left:18px;">
+              <li><strong>Atingindo:</strong> ${currency(lastPrize)}</li>
+              <li><strong>Desconto aplicado:</strong> ${lastDiscount.toLocaleString("pt-BR")}%</li>
+              <li><strong>Mensalidade total atual:</strong> ${currency(baseTotal)}</li>
+              <li><strong>Mensalidade total com benefício:</strong> ${currency(lastDiscountedTotal)}</li>
+              <li><strong>Mensalidade por CNPJ com benefício:</strong> ${currency(lastDiscountedPerCnpj)}</li>
+              <li><strong>Economia potencial mensal:</strong> ${currency(savings)}</li>
+            </ul>
+          </div>
+        `;
+      }
 
       return `
         <table class="discount-table" aria-label="Tabela de mensalidade dinâmica">
@@ -2115,44 +2139,22 @@
           </thead>
           <tbody>${rows}</tbody>
         </table>
+        ${benefitBlock}
         <div class="card" style="margin-top:16px;">
           <strong>Mensalidade dinâmica</strong>
           <p>Quanto maior o volume pago aos beneficiários, menor pode ser a mensalidade, mantendo o alinhamento econômico da operação: o beneficiário recebe mais e o contratante reduz custo fixo.</p>
-          <p>O desconto da mensalidade dinâmica incide sobre a soma das mensalidades dos produtos selecionados, conforme tabela demonstrativa anexa, e passa a valer no mês subsequente ao fechamento das campanhas.</p>
+          <p>A tabela de mensalidade dinâmica é demonstrativa: ilustra o benefício por volume transacionado e não substitui os valores comerciais contratados. O desconto passa a valer no mês subsequente ao fechamento das campanhas.</p>
         </div>
       `;
     }
 
     function commercialSummaryValues() {
       const stores = Math.max(1, Math.round(numberValue(state.stores)));
-      const monthlyFee = selectedMonthlyTotal();
-
-      if (state.dynamicMonthly !== "sim") {
-        return {
-          monthlyPerCnpj: monthlyFee,
-          totalValue: monthlyFee * stores
-        };
-      }
-
-      const dynamicRows = state.discountRows.map((row) => {
-        const discountPercent = numberValue(row.discount);
-        const discountedMonthly = monthlyFee * (1 - discountPercent / 100);
-        return {
-          discountedMonthly,
-          monthlyPerCnpj: discountedMonthly / stores
-        };
-      });
-
-      const bestRow = dynamicRows.reduce((best, row) => {
-        if (!best || row.monthlyPerCnpj < best.monthlyPerCnpj) {
-          return row;
-        }
-        return best;
-      }, null);
-
+      const monthlyPerCnpj = selectedMonthlyTotal();
       return {
-        monthlyPerCnpj: bestRow ? bestRow.monthlyPerCnpj : monthlyFee / stores,
-        totalValue: bestRow ? bestRow.discountedMonthly : monthlyFee
+        stores,
+        monthlyPerCnpj,
+        totalValue: monthlyPerCnpj * stores
       };
     }
 
