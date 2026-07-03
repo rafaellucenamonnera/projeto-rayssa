@@ -35,7 +35,7 @@ type ProposalData = {
 const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const ACCEPT_TEXT =
   "Declaro que li e aceito a proposta comercial Monnera, incluindo escopo, condições comerciais, valores, prazos e demais termos apresentados. Ao confirmar, o aceite será registrado no painel Monnera para acompanhamento do time comercial.";
-const IFRAME_SRC = "/gerador-proposta/index.html";
+const IFRAME_SRC = "/gerador-proposta/index.html?embedded=1";
 
 function formatDate(value?: string | null) {
   if (!value) return "";
