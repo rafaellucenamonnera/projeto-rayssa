@@ -101,6 +101,11 @@ export default function PropostaPublica() {
   }, [token]);
 
   useEffect(() => {
+    proposalRef.current = proposal;
+  }, [proposal]);
+
+
+  useEffect(() => {
     function onMessage(e: MessageEvent) {
       if (e.origin !== window.location.origin) return;
       if (e.source !== iframeRef.current?.contentWindow) return;
