@@ -35,7 +35,7 @@ type ProposalData = {
 const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const ACCEPT_TEXT =
   "Declaro que li e aceito a proposta comercial Monnera, incluindo escopo, condições comerciais, valores, prazos e demais termos apresentados. Ao confirmar, o aceite será registrado no painel Monnera para acompanhamento do time comercial.";
-const IFRAME_SRC = "/gerador-proposta/index.html";
+const IFRAME_SRC = "/gerador-proposta/index.html?embedded=1";
 
 function formatDate(value?: string | null) {
   if (!value) return "";
@@ -101,6 +101,11 @@ export default function PropostaPublica() {
   }, [token]);
 
   useEffect(() => {
+    proposalRef.current = proposal;
+  }, [proposal]);
+
+
+  useEffect(() => {
     function onMessage(e: MessageEvent) {
       if (e.origin !== window.location.origin) return;
       if (e.source !== iframeRef.current?.contentWindow) return;
@@ -133,6 +138,12 @@ export default function PropostaPublica() {
         } catch {
           /* noop */
         }
+      } else if (data.type === "accept-proposal") {
+        if (printMode) return;
+        const p = proposalRef.current;
+        const accepted = Boolean(p?.accepted_at) && !p?.acceptance_canceled_at;
+        if (accepted) return;
+        setModalOpen(true);
       }
     }
     window.addEventListener("message", onMessage);
@@ -233,13 +244,6 @@ export default function PropostaPublica() {
         style={{ minHeight: "calc(100vh - 0px)" }}
       />
 
-      {!printMode && !isAccepted && (
-        <div className="fixed bottom-6 right-6 z-50 proposta-print-hide">
-          <Button size="lg" onClick={() => setModalOpen(true)}>
-            Aceitar proposta comercial
-          </Button>
-        </div>
-      )}
 
       {!printMode && (
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
