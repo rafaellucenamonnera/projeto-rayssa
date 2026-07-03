@@ -133,6 +133,12 @@ export default function PropostaPublica() {
         } catch {
           /* noop */
         }
+      } else if (data.type === "accept-proposal") {
+        if (printMode) return;
+        const p = proposalRef.current;
+        const accepted = Boolean(p?.accepted_at) && !p?.acceptance_canceled_at;
+        if (accepted) return;
+        setModalOpen(true);
       }
     }
     window.addEventListener("message", onMessage);
