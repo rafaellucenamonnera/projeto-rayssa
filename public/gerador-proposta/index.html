@@ -1276,6 +1276,20 @@
     .embedded-public .accept-modal {
       display: none !important;
     }
+
+    .inline-accept-wrap {
+      margin: 20px 0 8px;
+      display: flex;
+      justify-content: flex-start;
+    }
+    .inline-accept-cta {
+      cursor: pointer;
+      border: 0;
+    }
+    @media print {
+      .inline-accept-wrap { display: none !important; }
+    }
+    body.proposal-view-mode .inline-accept-wrap { display: flex; }
   </style>
 
   <style>
