@@ -244,13 +244,6 @@ export default function PropostaPublica() {
         style={{ minHeight: "calc(100vh - 0px)" }}
       />
 
-      {!printMode && !isAccepted && (
-        <div className="fixed bottom-6 right-6 z-50 proposta-print-hide">
-          <Button size="lg" onClick={() => setModalOpen(true)}>
-            Aceitar proposta comercial
-          </Button>
-        </div>
-      )}
 
       {!printMode && (
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
