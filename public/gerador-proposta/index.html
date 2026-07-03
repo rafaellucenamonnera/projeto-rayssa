@@ -2930,6 +2930,21 @@
 
       // Sinaliza pronto para o wrapper
       postToParent({ type: "ready" });
+
+      // CTA único na última dobra: se embedded, pede para o pai abrir modal oficial
+      document.addEventListener("click", (e) => {
+        const target = e.target;
+        if (!(target instanceof Element)) return;
+        const btn = target.closest("[data-accept-proposal]");
+        if (!btn) return;
+        e.preventDefault();
+        const embedded = document.body.classList.contains("embedded-public");
+        if (embedded && parentWin) {
+          postToParent({ type: "accept-proposal" });
+        } else if (typeof openAcceptModal === "function") {
+          try { openAcceptModal(); } catch (_) {}
+        }
+      });
     })();
 
   </script>
