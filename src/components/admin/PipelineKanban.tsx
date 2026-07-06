@@ -481,6 +481,22 @@ export const PipelineKanban = memo(({
                         )}
                       </div>
                     </div>
+                    {(leadStatus === "proposta_enviada" || leadStatus === "proposta_comercial") && onEditProposal && (
+                      <div className="mt-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 w-full text-[11px]"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditProposal(l);
+                          }}
+                        >
+                          <FileText className="mr-1.5 h-3.5 w-3.5" />
+                          {l.proposta_url ? "Editar proposta comercial" : "Gerar proposta comercial"}
+                        </Button>
+                      </div>
+                    )}
                     </div>
                   </div>
                 );
