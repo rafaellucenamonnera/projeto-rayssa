@@ -255,6 +255,7 @@ export const PipelineKanban = memo(({
             <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
               {items.map((l) => {
                 const valor = leadContractValue(l);
+                const leadStatus = l.stage_id || l.status_lead || l.status || "";
                 const statusTokens = showCsInsteadOfPartner ? healthStatusColor(l.health_status) : null;
                 const impactTokens = showCsInsteadOfPartner ? impactColor(l.impact_level) : null;
                 const hasStatus = showCsInsteadOfPartner && normalizeHealthStatus(l.health_status) !== "SEM_STATUS_CLIENTE";
