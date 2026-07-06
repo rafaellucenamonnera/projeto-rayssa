@@ -61,6 +61,7 @@ interface PipelineKanbanProps {
   onEditCard?: (lead: KanbanLeadCardData) => void;
   onDeleteCard?: (lead: KanbanLeadCardData) => void;
   onAssignResponsible?: (lead: KanbanLeadCardData) => void;
+  onEditProposal?: (lead: KanbanLeadCardData) => void;
   /** Mapa lead_id -> ISO date de entrada no estágio atual (lead_stage_history.data_entrada). */
   stageEntryMap?: Record<string, string>;
   /** Ativa regras do painel comercial: contador de dias, tarja amarela/vermelha e ordenação por dias. */
