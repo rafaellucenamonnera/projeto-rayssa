@@ -165,6 +165,7 @@ export const PipelineKanban = memo(({
   onEditCard,
   onDeleteCard,
   onAssignResponsible,
+  onEditProposal,
   stages,
   showCampaignStatus = false,
   showCsInsteadOfPartner = false,
