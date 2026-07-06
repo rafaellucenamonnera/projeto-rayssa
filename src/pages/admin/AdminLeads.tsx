@@ -1936,6 +1936,7 @@ const AdminLeads = () => {
             onEditCard={handleKanbanEditCard}
             onDeleteCard={handleKanbanDeleteCard}
             onAssignResponsible={handleKanbanEditCard}
+            onEditProposal={(lead) => handleReplaceProposta(lead.id, lead.nome_fantasia)}
             onMoveLead={handleKanbanMoveLead}
             onOpenLead={openLeadDetail}
           />

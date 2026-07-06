@@ -1,5 +1,5 @@
 import { memo, useMemo, useState } from "react";
-import { ArrowDown, ArrowRight, ArrowUp, ChevronDown, ChevronUp, Copy, GripVertical, Pencil, Trash2, UserRound, Info } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUp, ChevronDown, ChevronUp, Copy, FileText, GripVertical, Pencil, Trash2, UserRound, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { healthStatusColor, impactColor, normalizeHealthStatus, normalizeImpact } from "@/lib/healthStatusColors";
 
@@ -40,6 +40,7 @@ interface KanbanLeadCardData {
   revenue_current_month?: string | null;
   revenue_previous_month?: string | null;
   partner_code?: string | null;
+  proposta_url?: string | null;
 }
 
 interface PipelineStage {
@@ -60,6 +61,7 @@ interface PipelineKanbanProps {
   onEditCard?: (lead: KanbanLeadCardData) => void;
   onDeleteCard?: (lead: KanbanLeadCardData) => void;
   onAssignResponsible?: (lead: KanbanLeadCardData) => void;
+  onEditProposal?: (lead: KanbanLeadCardData) => void;
   /** Mapa lead_id -> ISO date de entrada no estágio atual (lead_stage_history.data_entrada). */
   stageEntryMap?: Record<string, string>;
   /** Ativa regras do painel comercial: contador de dias, tarja amarela/vermelha e ordenação por dias. */
@@ -163,6 +165,7 @@ export const PipelineKanban = memo(({
   onEditCard,
   onDeleteCard,
   onAssignResponsible,
+  onEditProposal,
   stages,
   showCampaignStatus = false,
   showCsInsteadOfPartner = false,
@@ -252,6 +255,7 @@ export const PipelineKanban = memo(({
             <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
               {items.map((l) => {
                 const valor = leadContractValue(l);
+                const leadStatus = l.stage_id || l.status_lead || l.status || "";
                 const statusTokens = showCsInsteadOfPartner ? healthStatusColor(l.health_status) : null;
                 const impactTokens = showCsInsteadOfPartner ? impactColor(l.impact_level) : null;
                 const hasStatus = showCsInsteadOfPartner && normalizeHealthStatus(l.health_status) !== "SEM_STATUS_CLIENTE";
@@ -477,6 +481,22 @@ export const PipelineKanban = memo(({
                         )}
                       </div>
                     </div>
+                    {(leadStatus === "proposta_enviada" || leadStatus === "proposta_comercial") && onEditProposal && (
+                      <div className="mt-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 w-full text-[11px]"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditProposal(l);
+                          }}
+                        >
+                          <FileText className="mr-1.5 h-3.5 w-3.5" />
+                          {l.proposta_url ? "Editar proposta comercial" : "Gerar proposta comercial"}
+                        </Button>
+                      </div>
+                    )}
                     </div>
                   </div>
                 );
