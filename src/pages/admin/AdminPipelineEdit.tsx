@@ -878,6 +878,51 @@ export default function AdminPipelineEdit() {
         </CardContent>
       </Card>
 
+      {(isAdmin || canManagePanels) && (
+        <Card className="border-border">
+          <CardHeader>
+            <CardTitle className="text-base">Ordem dos painéis no menu</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {panels.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum painel cadastrado.</p>
+            ) : (
+              <div className="space-y-2 max-w-md">
+                {panels.map((p, idx) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center gap-2 rounded-md border border-border p-2"
+                  >
+                    <span className="text-xs text-muted-foreground w-6 text-center">
+                      {idx + 1}
+                    </span>
+                    <span className="flex-1 text-sm truncate">{p.name}</span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => movePanel(p.id, "up")}
+                      disabled={reorderingPanels || idx === 0}
+                      aria-label="Mover para cima"
+                    >
+                      <ChevronUp className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => movePanel(p.id, "down")}
+                      disabled={reorderingPanels || idx === panels.length - 1}
+                      aria-label="Mover para baixo"
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="border-border">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Colunas do painel</CardTitle>
