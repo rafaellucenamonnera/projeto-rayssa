@@ -2392,6 +2392,10 @@ export type Database = {
         Args: { p_lead_id: string }
         Returns: string
       }
+      ensure_training_panel_campaign_card: {
+        Args: { p_lead_id: string }
+        Returns: string
+      }
       generate_partner_code: { Args: never; Returns: string }
       generate_slug: { Args: { name_input: string }; Returns: string }
       get_available_responsible_users: {
