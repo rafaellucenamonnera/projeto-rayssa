@@ -944,6 +944,42 @@ export type Database = {
           },
         ]
       }
+      lead_training_panel_campaign_links: {
+        Row: {
+          campaign_lead_id: string
+          created_at: string
+          id: string
+          source_lead_id: string
+        }
+        Insert: {
+          campaign_lead_id: string
+          created_at?: string
+          id?: string
+          source_lead_id: string
+        }
+        Update: {
+          campaign_lead_id?: string
+          created_at?: string
+          id?: string
+          source_lead_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_training_panel_campaign_links_campaign_lead_id_fkey"
+            columns: ["campaign_lead_id"]
+            isOneToOne: true
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_training_panel_campaign_links_source_lead_id_fkey"
+            columns: ["source_lead_id"]
+            isOneToOne: true
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           auto_lost_at: string | null
