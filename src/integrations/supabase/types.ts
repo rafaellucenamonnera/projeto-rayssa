@@ -764,6 +764,42 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_onboarding_links: {
+        Row: {
+          commercial_lead_id: string
+          created_at: string
+          id: string
+          onboarding_lead_id: string
+        }
+        Insert: {
+          commercial_lead_id: string
+          created_at?: string
+          id?: string
+          onboarding_lead_id: string
+        }
+        Update: {
+          commercial_lead_id?: string
+          created_at?: string
+          id?: string
+          onboarding_lead_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_onboarding_links_commercial_lead_id_fkey"
+            columns: ["commercial_lead_id"]
+            isOneToOne: true
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_onboarding_links_onboarding_lead_id_fkey"
+            columns: ["onboarding_lead_id"]
+            isOneToOne: true
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_stage_history: {
         Row: {
           data_entrada: string
@@ -2316,6 +2352,10 @@ export type Database = {
         Args: { card_id: string; target_stage_id: string }
         Returns: string
       }
+      ensure_onboarding_card_from_contract_signed: {
+        Args: { p_lead_id: string }
+        Returns: string
+      }
       generate_partner_code: { Args: never; Returns: string }
       generate_slug: { Args: { name_input: string }; Returns: string }
       get_available_responsible_users: {
@@ -2446,6 +2486,7 @@ export type Database = {
         | "contrato_assinado"
         | "reuniao_realizada"
         | "lead_perdido"
+        | "etapa_onboarding_1777497467069"
       success_panel_rule_priority: "baixa" | "media" | "alta" | "critica"
     }
     CompositeTypes: {
@@ -2586,6 +2627,7 @@ export const Constants = {
         "contrato_assinado",
         "reuniao_realizada",
         "lead_perdido",
+        "etapa_onboarding_1777497467069",
       ],
       success_panel_rule_priority: ["baixa", "media", "alta", "critica"],
     },
