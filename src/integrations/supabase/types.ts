@@ -2446,6 +2446,7 @@ export type Database = {
         | "contrato_assinado"
         | "reuniao_realizada"
         | "lead_perdido"
+        | "etapa_onboarding_1777497467069"
       success_panel_rule_priority: "baixa" | "media" | "alta" | "critica"
     }
     CompositeTypes: {
@@ -2586,6 +2587,7 @@ export const Constants = {
         "contrato_assinado",
         "reuniao_realizada",
         "lead_perdido",
+        "etapa_onboarding_1777497467069",
       ],
       success_panel_rule_priority: ["baixa", "media", "alta", "critica"],
     },
