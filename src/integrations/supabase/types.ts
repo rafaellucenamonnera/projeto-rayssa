@@ -1556,6 +1556,39 @@ export type Database = {
         }
         Relationships: []
       }
+      pipeline_panel_edit_history: {
+        Row: {
+          action_type: string
+          created_at: string
+          created_by: string | null
+          id: string
+          panel_id: string
+          reverted_at: string | null
+          snapshot: Json
+          summary: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          panel_id: string
+          reverted_at?: string | null
+          snapshot: Json
+          summary: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          panel_id?: string
+          reverted_at?: string | null
+          snapshot?: Json
+          summary?: string
+        }
+        Relationships: []
+      }
       pipeline_panels: {
         Row: {
           created_at: string
