@@ -80,6 +80,7 @@ export default function AdminPipelineEdit() {
 
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [savingAction, setSavingAction] = useState(false);
+  const [reorderingPanels, setReorderingPanels] = useState(false);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
   const [stageInputKey, setStageInputKey] = useState(0);
   const [panelInputKey, setPanelInputKey] = useState(0);
