@@ -134,6 +134,42 @@ export default function AdminPipelineEdit() {
     if (list.length && !selectedPanelId) setSelectedPanelId(list[0].id);
   };
 
+  const movePanel = async (panelId: string, direction: "up" | "down") => {
+    if (reorderingPanels) return;
+    const idx = panels.findIndex((p) => p.id === panelId);
+    if (idx === -1) return;
+    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= panels.length) return;
+
+    const reordered = [...panels];
+    [reordered[idx], reordered[swapIdx]] = [reordered[swapIdx], reordered[idx]];
+    const normalized = reordered.map((p, i) => ({ ...p, sort_order: i + 1 }));
+
+    setReorderingPanels(true);
+    setPanels(normalized);
+    try {
+      const results = await Promise.all(
+        normalized.map((p) =>
+          (supabase as any)
+            .from("pipeline_panels")
+            .update({ sort_order: p.sort_order })
+            .eq("id", p.id),
+        ),
+      );
+      const failed = results.find((r: any) => r?.error);
+      if (failed) throw failed.error;
+      toast.success("Ordem dos painéis atualizada");
+      window.dispatchEvent(new CustomEvent("pipeline-panels-updated"));
+      await loadPanels();
+    } catch (err: any) {
+      console.error("[movePanel]", err);
+      toast.error("Erro ao reordenar painéis");
+      await loadPanels();
+    } finally {
+      setReorderingPanels(false);
+    }
+  };
+
   const loadPanelStages = async (panelId: string, force = false) => {
     if (!panelId) return;
     if (!force && stageCache[panelId]) return;
