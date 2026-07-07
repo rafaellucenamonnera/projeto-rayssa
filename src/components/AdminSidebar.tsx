@@ -33,6 +33,9 @@ export function AdminSidebar() {
       setPanels((data as Array<{ id: string; name: string; sort_order: number }>) || []);
     };
     loadPanels();
+    const handler = () => { loadPanels(); };
+    window.addEventListener("pipeline-panels-updated", handler);
+    return () => window.removeEventListener("pipeline-panels-updated", handler);
   }, []);
 
   const fixedItems = [
