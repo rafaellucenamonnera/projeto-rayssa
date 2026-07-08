@@ -2235,14 +2235,16 @@ const AdminLeads = () => {
                     <p>{detailLead.erp_utilizado || "—"}</p>
                   )}
                 </div>
-                <div>
-                  <p className="text-muted-foreground text-xs mb-1">Qtd Funcionários</p>
-                  {isEditingCard ? (
-                    <Input type="number" min="0" value={editFormData.numero_funcionarios} onChange={(e) => setEditFormData((prev) => ({ ...prev, numero_funcionarios: e.target.value }))} />
-                  ) : (
-                    <p>{detailLead.numero_funcionarios || detailLead.quantidade_funcionarios || "—"}</p>
-                  )}
-                </div>
+                {!isAmbassadorPanel && (
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-1">Qtd Funcionários</p>
+                    {isEditingCard ? (
+                      <Input type="number" min="0" value={editFormData.numero_funcionarios} onChange={(e) => setEditFormData((prev) => ({ ...prev, numero_funcionarios: e.target.value }))} />
+                    ) : (
+                      <p>{detailLead.numero_funcionarios || detailLead.quantidade_funcionarios || "—"}</p>
+                    )}
+                  </div>
+                )}
                 {!isAmbassadorPanel && (
                   <div>
                     <p className="text-muted-foreground text-xs mb-1">Tipo de empresa</p>
