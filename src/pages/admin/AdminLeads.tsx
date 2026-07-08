@@ -2219,14 +2219,16 @@ const AdminLeads = () => {
                     <p>{detailLead.cidade || "—"}</p>
                   )}
                 </div>
-                <div>
-                  <p className="text-muted-foreground text-xs mb-1">Qtd Lojas</p>
-                  {isEditingCard ? (
-                    <Input type="number" min="0" value={editFormData.quantidade_lojas} onChange={(e) => setEditFormData((prev) => ({ ...prev, quantidade_lojas: e.target.value }))} />
-                  ) : (
-                    <p>{detailLead.quantidade_lojas || "—"}</p>
-                  )}
-                </div>
+                {!isAmbassadorPanel && (
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-1">Qtd Lojas</p>
+                    {isEditingCard ? (
+                      <Input type="number" min="0" value={editFormData.quantidade_lojas} onChange={(e) => setEditFormData((prev) => ({ ...prev, quantidade_lojas: e.target.value }))} />
+                    ) : (
+                      <p>{detailLead.quantidade_lojas || "—"}</p>
+                    )}
+                  </div>
+                )}
                 {!isAmbassadorPanel && (
                   <div>
                     <p className="text-muted-foreground text-xs mb-1">ERP / Sistema</p>
