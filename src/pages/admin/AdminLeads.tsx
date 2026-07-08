@@ -2227,14 +2227,16 @@ const AdminLeads = () => {
                     <p>{detailLead.quantidade_lojas || "—"}</p>
                   )}
                 </div>
-                <div>
-                  <p className="text-muted-foreground text-xs mb-1">ERP / Sistema</p>
-                  {isEditingCard ? (
-                    <Input value={editFormData.erp_utilizado} onChange={(e) => setEditFormData((prev) => ({ ...prev, erp_utilizado: e.target.value }))} />
-                  ) : (
-                    <p>{detailLead.erp_utilizado || "—"}</p>
-                  )}
-                </div>
+                {!isAmbassadorPanel && (
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-1">ERP / Sistema</p>
+                    {isEditingCard ? (
+                      <Input value={editFormData.erp_utilizado} onChange={(e) => setEditFormData((prev) => ({ ...prev, erp_utilizado: e.target.value }))} />
+                    ) : (
+                      <p>{detailLead.erp_utilizado || "—"}</p>
+                    )}
+                  </div>
+                )}
                 {!isAmbassadorPanel && (
                   <div>
                     <p className="text-muted-foreground text-xs mb-1">Qtd Funcionários</p>
