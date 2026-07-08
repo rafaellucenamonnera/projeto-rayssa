@@ -52,6 +52,7 @@ export const LeadComments = ({
   canEditMessage = true,
   canDeleteMessage = true,
   canInsertFile = true,
+  submitLabel = "Enviar",
 }: LeadCommentsProps) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
