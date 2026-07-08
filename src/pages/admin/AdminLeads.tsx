@@ -23,6 +23,7 @@ import { LeadPerdidoDialog } from "@/components/admin/LeadPerdidoDialog";
 import { AgendarReuniaoDialog } from "@/components/admin/AgendarReuniaoDialog";
 import { CadastroFinanceiroDialog } from "@/components/admin/CadastroFinanceiroDialog";
 import { LeadComments } from "@/components/admin/LeadComments";
+import { AmbassadorCardComments } from "@/components/admin/AmbassadorCardComments";
 import { LeadReuniao } from "@/components/admin/LeadReuniao";
 import LeadProposalsHistory from "@/components/admin/LeadProposalsHistory";
 import {
@@ -2625,17 +2626,28 @@ const AdminLeads = () => {
 
               {/* Histórico de Conversa */}
               <div className="border-t border-border pt-4">
-                <LeadComments
-                  leadId={detailLead.id}
-                  currentStage={detailLead.status_lead || "novo_lead"}
-                  userName={currentUserName}
-                  actionBasePath={location.pathname}
-                  canInsertMessage={canInsertMessage}
-                  canEditMessage={canEditMessage}
-                  canDeleteMessage={canDeleteMessage}
-                  canInsertFile={canInsertFile}
-                  submitLabel={isAmbassadorPanel ? "Salvar" : "Enviar"}
-                />
+                {isAmbassadorPanel ? (
+                  <AmbassadorCardComments
+                    cardId={detailLead.id}
+                    currentStage={detailLead.status_lead || detailLead.stage_id || "prospeccao"}
+                    userName={currentUserName}
+                    canInsertMessage={canInsertMessage}
+                    canEditMessage={canEditMessage}
+                    canDeleteMessage={canDeleteMessage}
+                    canInsertFile={canInsertFile}
+                  />
+                ) : (
+                  <LeadComments
+                    leadId={detailLead.id}
+                    currentStage={detailLead.status_lead || "novo_lead"}
+                    userName={currentUserName}
+                    actionBasePath={location.pathname}
+                    canInsertMessage={canInsertMessage}
+                    canEditMessage={canEditMessage}
+                    canDeleteMessage={canDeleteMessage}
+                    canInsertFile={canInsertFile}
+                  />
+                )}
               </div>
             </div>
           )}
