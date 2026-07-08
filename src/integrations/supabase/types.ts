@@ -14,6 +14,109 @@ export type Database = {
   }
   public: {
     Tables: {
+      ambassador_card_comment_attachments: {
+        Row: {
+          ambassador_card_id: string
+          comment_id: string
+          created_at: string
+          created_by: string
+          file_name: string
+          id: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+        }
+        Insert: {
+          ambassador_card_id: string
+          comment_id: string
+          created_at?: string
+          created_by: string
+          file_name: string
+          id?: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+        }
+        Update: {
+          ambassador_card_id?: string
+          comment_id?: string
+          created_at?: string
+          created_by?: string
+          file_name?: string
+          id?: string
+          mime_type?: string
+          size_bytes?: number
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ambassador_card_comment_attachments_ambassador_card_id_fkey"
+            columns: ["ambassador_card_id"]
+            isOneToOne: false
+            referencedRelation: "ambassador_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ambassador_card_comment_attachments_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "ambassador_card_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ambassador_card_comment_attachments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      ambassador_card_comments: {
+        Row: {
+          ambassador_card_id: string
+          comentario: string
+          data_comentario: string
+          etapa: string
+          id: string
+          user_id: string
+          usuario: string
+        }
+        Insert: {
+          ambassador_card_id: string
+          comentario: string
+          data_comentario?: string
+          etapa: string
+          id?: string
+          user_id: string
+          usuario: string
+        }
+        Update: {
+          ambassador_card_id?: string
+          comentario?: string
+          data_comentario?: string
+          etapa?: string
+          id?: string
+          user_id?: string
+          usuario?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ambassador_card_comments_ambassador_card_id_fkey"
+            columns: ["ambassador_card_id"]
+            isOneToOne: false
+            referencedRelation: "ambassador_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ambassador_card_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       ambassador_card_tasks: {
         Row: {
           ambassador_card_id: string
