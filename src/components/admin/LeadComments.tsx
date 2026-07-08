@@ -17,6 +17,7 @@ interface LeadCommentsProps {
   canEditMessage?: boolean;
   canDeleteMessage?: boolean;
   canInsertFile?: boolean;
+  submitLabel?: string;
 }
 
 interface Comment {
