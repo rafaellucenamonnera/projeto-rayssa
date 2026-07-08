@@ -2243,22 +2243,24 @@ const AdminLeads = () => {
                     <p>{detailLead.numero_funcionarios || detailLead.quantidade_funcionarios || "—"}</p>
                   )}
                 </div>
-                <div>
-                  <p className="text-muted-foreground text-xs mb-1">Tipo de empresa</p>
-                  {isEditingCard ? (
-                    <Select value={editFormData.tipo_empresa || "nao_informado"} onValueChange={(value) => setEditFormData((prev) => ({ ...prev, tipo_empresa: value === "nao_informado" ? "" : value }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="nao_informado">Não informado</SelectItem>
-                        <SelectItem value="varejo">Varejo</SelectItem>
-                        <SelectItem value="distribuidor">Distribuidor</SelectItem>
-                        <SelectItem value="industria">Indústria</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <p>{getTipoEmpresaLabel(detailLead.tipo_empresa)}</p>
-                  )}
-                </div>
+                {!isAmbassadorPanel && (
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-1">Tipo de empresa</p>
+                    {isEditingCard ? (
+                      <Select value={editFormData.tipo_empresa || "nao_informado"} onValueChange={(value) => setEditFormData((prev) => ({ ...prev, tipo_empresa: value === "nao_informado" ? "" : value }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="nao_informado">Não informado</SelectItem>
+                          <SelectItem value="varejo">Varejo</SelectItem>
+                          <SelectItem value="distribuidor">Distribuidor</SelectItem>
+                          <SelectItem value="industria">Indústria</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p>{getTipoEmpresaLabel(detailLead.tipo_empresa)}</p>
+                    )}
+                  </div>
+                )}
                 {!isAmbassadorPanel && (
                   <div>
                     <p className="text-muted-foreground text-xs mb-1">Canal de tração</p>
