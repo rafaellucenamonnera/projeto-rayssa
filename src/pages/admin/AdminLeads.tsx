@@ -2612,20 +2612,19 @@ const AdminLeads = () => {
               </div>
 
               {/* Histórico de Conversa */}
-              {!isAmbassadorPanel && (
-                <div className="border-t border-border pt-4">
-                  <LeadComments
-                    leadId={detailLead.id}
-                    currentStage={detailLead.status_lead || "novo_lead"}
-                    userName={currentUserName}
-                    actionBasePath={location.pathname}
-                    canInsertMessage={canInsertMessage}
-                    canEditMessage={canEditMessage}
-                    canDeleteMessage={canDeleteMessage}
-                    canInsertFile={canInsertFile}
-                  />
-                </div>
-              )}
+              <div className="border-t border-border pt-4">
+                <LeadComments
+                  leadId={detailLead.id}
+                  currentStage={detailLead.status_lead || "novo_lead"}
+                  userName={currentUserName}
+                  actionBasePath={location.pathname}
+                  canInsertMessage={canInsertMessage}
+                  canEditMessage={canEditMessage}
+                  canDeleteMessage={canDeleteMessage}
+                  canInsertFile={canInsertFile}
+                  submitLabel={isAmbassadorPanel ? "Salvar" : "Enviar"}
+                />
+              </div>
             </div>
           )}
         </DialogContent>
