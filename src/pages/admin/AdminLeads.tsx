@@ -2259,14 +2259,16 @@ const AdminLeads = () => {
                     <p>{getTipoEmpresaLabel(detailLead.tipo_empresa)}</p>
                   )}
                 </div>
-                <div>
-                  <p className="text-muted-foreground text-xs mb-1">Canal de tração</p>
-                  {isEditingCard ? (
-                    <Input value={editFormData.canal_tracao} onChange={(e) => setEditFormData((prev) => ({ ...prev, canal_tracao: e.target.value }))} />
-                  ) : (
-                    <p>{detailLead.canal_tracao || "—"}</p>
-                  )}
-                </div>
+                {!isAmbassadorPanel && (
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-1">Canal de tração</p>
+                    {isEditingCard ? (
+                      <Input value={editFormData.canal_tracao} onChange={(e) => setEditFormData((prev) => ({ ...prev, canal_tracao: e.target.value }))} />
+                    ) : (
+                      <p>{detailLead.canal_tracao || "—"}</p>
+                    )}
+                  </div>
+                )}
               </div>
 
               {(detailLead.modelo_campanha || detailLead.volume_premiacao_comissao || detailLead.participantes_reuniao || detailLead.cargo_participante) && (
