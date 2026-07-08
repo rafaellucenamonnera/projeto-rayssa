@@ -2398,7 +2398,7 @@ const AdminLeads = () => {
               </div>
 
               {/* Valor Campanhas */}
-              {detailLead.valor_campanhas != null && (
+              {!isAmbassadorPanel && detailLead.valor_campanhas != null && (
                 <div className="border-t border-border pt-4">
                   <h3 className="text-sm font-semibold mb-2">Valor Médio de Campanhas</h3>
                   <p className="text-lg font-bold font-display">{fmt(detailLead.valor_campanhas)}</p>
