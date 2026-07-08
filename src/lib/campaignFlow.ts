@@ -26,10 +26,12 @@ export const ATTACHMENT_ALLOWED_MIME = [
   "text/csv",
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
 
 export const ATTACHMENT_ACCEPT =
-  "image/png,image/jpeg,image/webp,image/gif,application/pdf,text/csv,.csv,.xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  "image/png,image/jpeg,image/webp,image/gif,application/pdf,text/csv,.csv,.xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 export function isAllowedMime(mime: string, fileName: string): boolean {
   if (ATTACHMENT_ALLOWED_MIME.includes(mime)) return true;
@@ -38,6 +40,8 @@ export function isAllowedMime(mime: string, fileName: string): boolean {
     lower.endsWith(".csv") ||
     lower.endsWith(".xls") ||
     lower.endsWith(".xlsx") ||
-    lower.endsWith(".pdf")
+    lower.endsWith(".pdf") ||
+    lower.endsWith(".doc") ||
+    lower.endsWith(".docx")
   );
 }

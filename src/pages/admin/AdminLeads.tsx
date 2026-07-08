@@ -2219,54 +2219,64 @@ const AdminLeads = () => {
                     <p>{detailLead.cidade || "—"}</p>
                   )}
                 </div>
-                <div>
-                  <p className="text-muted-foreground text-xs mb-1">Qtd Lojas</p>
-                  {isEditingCard ? (
-                    <Input type="number" min="0" value={editFormData.quantidade_lojas} onChange={(e) => setEditFormData((prev) => ({ ...prev, quantidade_lojas: e.target.value }))} />
-                  ) : (
-                    <p>{detailLead.quantidade_lojas || "—"}</p>
-                  )}
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs mb-1">ERP / Sistema</p>
-                  {isEditingCard ? (
-                    <Input value={editFormData.erp_utilizado} onChange={(e) => setEditFormData((prev) => ({ ...prev, erp_utilizado: e.target.value }))} />
-                  ) : (
-                    <p>{detailLead.erp_utilizado || "—"}</p>
-                  )}
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs mb-1">Qtd Funcionários</p>
-                  {isEditingCard ? (
-                    <Input type="number" min="0" value={editFormData.numero_funcionarios} onChange={(e) => setEditFormData((prev) => ({ ...prev, numero_funcionarios: e.target.value }))} />
-                  ) : (
-                    <p>{detailLead.numero_funcionarios || detailLead.quantidade_funcionarios || "—"}</p>
-                  )}
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs mb-1">Tipo de empresa</p>
-                  {isEditingCard ? (
-                    <Select value={editFormData.tipo_empresa || "nao_informado"} onValueChange={(value) => setEditFormData((prev) => ({ ...prev, tipo_empresa: value === "nao_informado" ? "" : value }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="nao_informado">Não informado</SelectItem>
-                        <SelectItem value="varejo">Varejo</SelectItem>
-                        <SelectItem value="distribuidor">Distribuidor</SelectItem>
-                        <SelectItem value="industria">Indústria</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <p>{getTipoEmpresaLabel(detailLead.tipo_empresa)}</p>
-                  )}
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs mb-1">Canal de tração</p>
-                  {isEditingCard ? (
-                    <Input value={editFormData.canal_tracao} onChange={(e) => setEditFormData((prev) => ({ ...prev, canal_tracao: e.target.value }))} />
-                  ) : (
-                    <p>{detailLead.canal_tracao || "—"}</p>
-                  )}
-                </div>
+                {!isAmbassadorPanel && (
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-1">Qtd Lojas</p>
+                    {isEditingCard ? (
+                      <Input type="number" min="0" value={editFormData.quantidade_lojas} onChange={(e) => setEditFormData((prev) => ({ ...prev, quantidade_lojas: e.target.value }))} />
+                    ) : (
+                      <p>{detailLead.quantidade_lojas || "—"}</p>
+                    )}
+                  </div>
+                )}
+                {!isAmbassadorPanel && (
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-1">ERP / Sistema</p>
+                    {isEditingCard ? (
+                      <Input value={editFormData.erp_utilizado} onChange={(e) => setEditFormData((prev) => ({ ...prev, erp_utilizado: e.target.value }))} />
+                    ) : (
+                      <p>{detailLead.erp_utilizado || "—"}</p>
+                    )}
+                  </div>
+                )}
+                {!isAmbassadorPanel && (
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-1">Qtd Funcionários</p>
+                    {isEditingCard ? (
+                      <Input type="number" min="0" value={editFormData.numero_funcionarios} onChange={(e) => setEditFormData((prev) => ({ ...prev, numero_funcionarios: e.target.value }))} />
+                    ) : (
+                      <p>{detailLead.numero_funcionarios || detailLead.quantidade_funcionarios || "—"}</p>
+                    )}
+                  </div>
+                )}
+                {!isAmbassadorPanel && (
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-1">Tipo de empresa</p>
+                    {isEditingCard ? (
+                      <Select value={editFormData.tipo_empresa || "nao_informado"} onValueChange={(value) => setEditFormData((prev) => ({ ...prev, tipo_empresa: value === "nao_informado" ? "" : value }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="nao_informado">Não informado</SelectItem>
+                          <SelectItem value="varejo">Varejo</SelectItem>
+                          <SelectItem value="distribuidor">Distribuidor</SelectItem>
+                          <SelectItem value="industria">Indústria</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p>{getTipoEmpresaLabel(detailLead.tipo_empresa)}</p>
+                    )}
+                  </div>
+                )}
+                {!isAmbassadorPanel && (
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-1">Canal de tração</p>
+                    {isEditingCard ? (
+                      <Input value={editFormData.canal_tracao} onChange={(e) => setEditFormData((prev) => ({ ...prev, canal_tracao: e.target.value }))} />
+                    ) : (
+                      <p>{detailLead.canal_tracao || "—"}</p>
+                    )}
+                  </div>
+                )}
               </div>
 
               {(detailLead.modelo_campanha || detailLead.volume_premiacao_comissao || detailLead.participantes_reuniao || detailLead.cargo_participante) && (
@@ -2329,17 +2339,19 @@ const AdminLeads = () => {
               </div>
 
               {/* Embaixador Monnera */}
-              <div className="border-t border-border pt-4">
-                <h3 className="text-sm font-semibold mb-3">Embaixador Monnera</h3>
-                {detailLead.partner_code ? (
-                  <div className="space-y-1">
-                    <p className="text-sm">{detailLead.full_name || parceiros[detailLead.parceiro_id] || "—"}</p>
-                    <p className="text-xs font-mono text-primary">Código: {detailLead.partner_code}</p>
-                  </div>
-                ) : (
-                  <p className="text-sm">{parceiros[detailLead.parceiro_id] || "—"}</p>
-                )}
-              </div>
+              {!isAmbassadorPanel && (
+                <div className="border-t border-border pt-4">
+                  <h3 className="text-sm font-semibold mb-3">Embaixador Monnera</h3>
+                  {detailLead.partner_code ? (
+                    <div className="space-y-1">
+                      <p className="text-sm">{detailLead.full_name || parceiros[detailLead.parceiro_id] || "—"}</p>
+                      <p className="text-xs font-mono text-primary">Código: {detailLead.partner_code}</p>
+                    </div>
+                  ) : (
+                    <p className="text-sm">{parceiros[detailLead.parceiro_id] || "—"}</p>
+                  )}
+                </div>
+              )}
 
               {/* Pipeline Status */}
               <div className="border-t border-border pt-4">
@@ -2398,7 +2410,7 @@ const AdminLeads = () => {
               </div>
 
               {/* Valor Campanhas */}
-              {detailLead.valor_campanhas != null && (
+              {!isAmbassadorPanel && detailLead.valor_campanhas != null && (
                 <div className="border-t border-border pt-4">
                   <h3 className="text-sm font-semibold mb-2">Valor Médio de Campanhas</h3>
                   <p className="text-lg font-bold font-display">{fmt(detailLead.valor_campanhas)}</p>
@@ -2612,20 +2624,19 @@ const AdminLeads = () => {
               </div>
 
               {/* Histórico de Conversa */}
-              {!isAmbassadorPanel && (
-                <div className="border-t border-border pt-4">
-                  <LeadComments
-                    leadId={detailLead.id}
-                    currentStage={detailLead.status_lead || "novo_lead"}
-                    userName={currentUserName}
-                    actionBasePath={location.pathname}
-                    canInsertMessage={canInsertMessage}
-                    canEditMessage={canEditMessage}
-                    canDeleteMessage={canDeleteMessage}
-                    canInsertFile={canInsertFile}
-                  />
-                </div>
-              )}
+              <div className="border-t border-border pt-4">
+                <LeadComments
+                  leadId={detailLead.id}
+                  currentStage={detailLead.status_lead || "novo_lead"}
+                  userName={currentUserName}
+                  actionBasePath={location.pathname}
+                  canInsertMessage={canInsertMessage}
+                  canEditMessage={canEditMessage}
+                  canDeleteMessage={canDeleteMessage}
+                  canInsertFile={canInsertFile}
+                  submitLabel={isAmbassadorPanel ? "Salvar" : "Enviar"}
+                />
+              </div>
             </div>
           )}
         </DialogContent>

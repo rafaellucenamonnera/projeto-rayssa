@@ -17,6 +17,7 @@ interface LeadCommentsProps {
   canEditMessage?: boolean;
   canDeleteMessage?: boolean;
   canInsertFile?: boolean;
+  submitLabel?: string;
 }
 
 interface Comment {
@@ -51,6 +52,7 @@ export const LeadComments = ({
   canEditMessage = true,
   canDeleteMessage = true,
   canInsertFile = true,
+  submitLabel = "Enviar",
 }: LeadCommentsProps) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
@@ -294,7 +296,7 @@ export const LeadComments = ({
             <span className="text-xs text-muted-foreground">{newComment.length}/500</span>
             <Button size="sm" onClick={handleSubmit} disabled={submitting || (!newComment.trim() && stagedAttachments.length === 0)}>
               {submitting ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-3 w-3" />}
-              Enviar
+              {submitLabel}
             </Button>
           </div>
         </div>
