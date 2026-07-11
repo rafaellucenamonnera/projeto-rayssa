@@ -176,11 +176,37 @@ export const PipelineKanban = memo(({
   showCsInsteadOfPartner = false,
   stageEntryMap,
   commercialMode = false,
+  canEditStageMessages = false,
+  onUpdateStageFollowupMessage,
 }: PipelineKanbanProps) => {
   const [dragId, setDragId] = useState<string | null>(null);
   const [overStage, setOverStage] = useState<string | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+  const [editingStageMessage, setEditingStageMessage] = useState<{ stageValue: string; message: string } | null>(null);
+  const [savingStageMessage, setSavingStageMessage] = useState(false);
+
+  const copyStageMessage = async (message: string) => {
+    try {
+      await navigator.clipboard.writeText(message);
+      toast.success("Mensagem copiada");
+    } catch {
+      toast.error("Erro ao copiar mensagem");
+    }
+  };
+
+  const saveStageMessage = async () => {
+    if (!editingStageMessage || !onUpdateStageFollowupMessage) return;
+    setSavingStageMessage(true);
+    try {
+      await onUpdateStageFollowupMessage(editingStageMessage.stageValue, editingStageMessage.message);
+      setEditingStageMessage(null);
+    } catch {
+      // toast já emitido pelo handler
+    } finally {
+      setSavingStageMessage(false);
+    }
+  };
 
   const stageDaysByLead = useMemo(() => {
     if (!stageEntryMap) return {};
