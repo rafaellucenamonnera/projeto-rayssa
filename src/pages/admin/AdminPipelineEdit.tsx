@@ -624,14 +624,91 @@ export default function AdminPipelineEdit() {
     });
   };
 
-  // ---------- Revert ----------
-  const handleRevert = async () => {
-    if (history.length === 0 || savingAction) return;
-    const entry = history[0];
+  // ---------- Stage order edit ----------
+  const startStageOrderEdit = () => {
+    if (!isAdmin || !selectedPanelId || editingStageOrder) return;
+    const normalized = orderedStages.map((s, i) => ({ ...s, sort_order: i + 1 }));
+    setStageOrderDraft(normalized);
+    setEditingStageOrder(true);
+  };
+
+  const cancelStageOrderEdit = () => {
+    setEditingStageOrder(false);
+    setStageOrderDraft([]);
+  };
+
+  const moveStageOrderDraft = (stageId: string, direction: "up" | "down") => {
+    setStageOrderDraft((prev) => {
+      const idx = prev.findIndex((s) => s.id === stageId);
+      if (idx === -1) return prev;
+      const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+      if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+      return next.map((s, i) => ({ ...s, sort_order: i + 1 }));
+    });
+  };
+
+  const saveStageOrder = async () => {
+    if (!isAdmin || !selectedPanelId || !editingStageOrder || savingAction) return;
+    const normalized = stageOrderDraft.map((s, i) => ({ ...s, sort_order: i + 1 }));
+    const previous_order = orderedStages.map((s) => ({ id: s.id, sort_order: s.sort_order }));
+    const next_order = normalized.map((s) => ({ id: s.id, sort_order: s.sort_order }));
+    const unchanged =
+      previous_order.length === next_order.length &&
+      previous_order.every((p, i) => p.id === next_order[i].id && p.sort_order === next_order[i].sort_order);
+    if (unchanged) {
+      cancelStageOrderEdit();
+      return;
+    }
     setSavingAction(true);
     try {
-      const s = entry.snapshot || {};
-      let toastMsg = "Edição revertida";
+      const results = await Promise.all(
+        normalized.map((s) =>
+          (supabase as any)
+            .from("pipeline_stages_config")
+            .update({ sort_order: s.sort_order })
+            .eq("id", s.id),
+        ),
+      );
+      const failed = results.find((r: any) => r?.error);
+      if (failed) throw failed.error;
+      await recordHistory(
+        selectedPanelId,
+        "rename_stage",
+        "Reordenou colunas do painel",
+        { kind: "reorder_stages", previous_order, next_order },
+      );
+      toast.success("Ordem das colunas atualizada");
+      setEditingStageOrder(false);
+      setStageOrderDraft([]);
+      await loadPanelStages(selectedPanelId, true);
+      await loadHistory(selectedPanelId);
+    } catch (err: any) {
+      console.error("[saveStageOrder]", err);
+      toast.error("Erro ao salvar ordem das colunas");
+    } finally {
+      setSavingAction(false);
+    }
+  };
+
+  // ---------- Revert ----------
+  const revertHistoryEntry = async (entry: HistoryRow, revertedAt: string) => {
+    const s = entry.snapshot || {};
+    if (entry.action_type === "rename_stage" && s.kind === "reorder_stages") {
+      const previous = Array.isArray(s.previous_order) ? s.previous_order : [];
+      const results = await Promise.all(
+        previous.map((item: { id: string; sort_order: number }) =>
+          (supabase as any)
+            .from("pipeline_stages_config")
+            .update({ sort_order: item.sort_order })
+            .eq("id", item.id)
+            .eq("panel_key", entry.panel_id),
+        ),
+      );
+      const failed = results.find((r: any) => r?.error);
+      if (failed) throw failed.error;
+    } else {
       switch (entry.action_type) {
         case "rename_stage": {
           const { error } = await (supabase as any)
@@ -663,10 +740,6 @@ export default function AdminPipelineEdit() {
           const moved = (s.moved_cards?.leads || 0) + (s.moved_cards?.representative_cards || 0);
           if (s.previous_stage && moved > 0) {
             await moveStageCards(s.stage.panel_key, s.previous_stage.value, s.stage.value);
-            toastMsg =
-              "Coluna restaurada. Cards atualmente na coluna anterior foram devolvidos à coluna restaurada.";
-          } else {
-            toastMsg = "Coluna restaurada";
           }
           break;
         }
@@ -689,7 +762,6 @@ export default function AdminPipelineEdit() {
             .eq("id", s.panel.id);
           if (error) throw error;
           if (selectedPanelId === s.panel.id) setSelectedPanelId("");
-          toastMsg = "Criação do painel revertida";
           break;
         }
         case "delete_panel": {
@@ -715,25 +787,36 @@ export default function AdminPipelineEdit() {
               );
             if (stErr) throw stErr;
           }
-          toastMsg = "Painel restaurado (cards não são recriados)";
           break;
         }
         default:
           throw new Error("Tipo de ação desconhecido");
       }
-      await (supabase as any)
-        .from("pipeline_panel_edit_history")
-        .update({ reverted_at: new Date().toISOString() })
-        .eq("id", entry.id);
-      toast.success(toastMsg);
+    }
+    await (supabase as any)
+      .from("pipeline_panel_edit_history")
+      .update({ reverted_at: revertedAt })
+      .eq("id", entry.id);
+  };
+
+  const revertLastThreeEdits = async () => {
+    if (history.length === 0 || savingAction || editingStageOrder) return;
+    const entries = history.slice(0, 3);
+    const now = new Date().toISOString();
+    setSavingAction(true);
+    try {
+      for (const entry of entries) {
+        await revertHistoryEntry(entry, now);
+      }
+      toast.success(`${entries.length} edição(ões) revertida(s)`);
       await loadPanels();
       if (selectedPanelId) await loadPanelStages(selectedPanelId, true);
-      await loadHistory(entry.panel_id);
+      await loadHistory(selectedPanelId);
       setStageInputKey((k) => k + 1);
       setPanelInputKey((k) => k + 1);
     } catch (err: any) {
-      console.error("[handleRevert]", err);
-      toast.error("Erro ao reverter edição");
+      console.error("[revertLastThreeEdits]", err);
+      toast.error("Erro ao reverter edições");
     } finally {
       setSavingAction(false);
     }
