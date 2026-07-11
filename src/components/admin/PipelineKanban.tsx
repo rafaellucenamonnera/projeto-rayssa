@@ -281,6 +281,72 @@ export const PipelineKanban = memo(({
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{items.length}</span>
               </div>
               <p className="text-[11px] text-muted-foreground mt-0.5">Total: <span className="font-medium text-foreground">{fmt(totals[s.value])}</span></p>
+              {(() => {
+                const isEditingThis = editingStageMessage?.stageValue === s.value;
+                const canEdit = canEditStageMessages && !!onUpdateStageFollowupMessage;
+                if (!s.followup_message && !isEditingThis) return null;
+                if (isEditingThis) {
+                  return (
+                    <div className="mt-1.5 space-y-1.5">
+                      <Textarea
+                        value={editingStageMessage!.message}
+                        onChange={(e) => setEditingStageMessage({ stageValue: s.value, message: e.target.value })}
+                        rows={4}
+                        className="text-[11px] min-h-[60px]"
+                        disabled={savingStageMessage}
+                      />
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-[11px]"
+                          onClick={() => setEditingStageMessage(null)}
+                          disabled={savingStageMessage}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="h-6 px-2 text-[11px]"
+                          onClick={saveStageMessage}
+                          disabled={savingStageMessage}
+                        >
+                          Salvar
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="mt-1.5 flex items-start gap-1 rounded border border-border/70 bg-secondary/40 p-1.5">
+                    <p className="flex-1 text-[11px] leading-snug text-foreground whitespace-pre-wrap">{s.followup_message}</p>
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6"
+                        onClick={() => copyStageMessage(s.followup_message || "")}
+                        aria-label="Copiar mensagem"
+                        title="Copiar mensagem"
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                      {canEdit && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          onClick={() => setEditingStageMessage({ stageValue: s.value, message: s.followup_message || "" })}
+                          aria-label="Editar mensagem"
+                          title="Editar mensagem"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
