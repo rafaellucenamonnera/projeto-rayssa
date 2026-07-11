@@ -841,16 +841,16 @@ export default function AdminPipelineEdit() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={handleRevert}
-                disabled={history.length === 0 || savingAction}
-                title="Reverte a última edição registrada para o painel selecionado"
+                onClick={revertLastThreeEdits}
+                disabled={history.length === 0 || savingAction || editingStageOrder}
+                title="Reverte até as 3 últimas edições registradas para o painel selecionado"
               >
                 {savingAction ? (
                   <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                 ) : (
                   <Undo2 className="h-4 w-4 mr-1" />
                 )}
-                Reverter última edição ({history.length}/3)
+                Reverter 3 últimas edições ({history.length}/3)
               </Button>
               {(isAdmin || canManagePanels) && (
                 <>
