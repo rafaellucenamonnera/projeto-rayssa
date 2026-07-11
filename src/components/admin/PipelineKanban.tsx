@@ -1,6 +1,8 @@
 import { memo, useMemo, useState } from "react";
 import { ArrowDown, ArrowRight, ArrowUp, ChevronDown, ChevronUp, Copy, FileText, GripVertical, Pencil, Trash2, UserRound, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 import { healthStatusColor, impactColor, normalizeHealthStatus, normalizeImpact } from "@/lib/healthStatusColors";
 
 interface KanbanLeadCardData {
