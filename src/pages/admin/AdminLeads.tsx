@@ -1256,6 +1256,7 @@ const AdminLeads = () => {
     setEditingNumProposta(lead.numero_proposta || "");
     setIsEditingCard(false);
     setEditFormData(leadToEditFormData(lead));
+    setFinancialInfoExpanded(!isFinanceiroZerado(lead));
     setDetailOpen(true);
   }, []);
 
@@ -1266,6 +1267,7 @@ const AdminLeads = () => {
     }
     setDetailLead(lead);
     setEditFormData(leadToEditFormData(lead));
+    setFinancialInfoExpanded(!isFinanceiroZerado(lead));
     setIsEditingCard(true);
     setDetailOpen(true);
   }, [canEditLead]);
