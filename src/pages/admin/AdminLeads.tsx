@@ -1289,6 +1289,11 @@ const AdminLeads = () => {
       toast.error("Título é obrigatório");
       return;
     }
+    const valorCampanhas = editFormData.valor_campanhas.trim() === "" ? null : Number(editFormData.valor_campanhas);
+    if (valorCampanhas !== null && !Number.isFinite(valorCampanhas)) {
+      toast.error("Valor médio de campanhas inválido");
+      return;
+    }
     setSavingCard(true);
     const quantidadeLojas = editFormData.quantidade_lojas.trim() ? Number(editFormData.quantidade_lojas) : null;
     const numeroFuncionarios = editFormData.numero_funcionarios.trim() ? Number(editFormData.numero_funcionarios) : null;
