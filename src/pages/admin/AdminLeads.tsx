@@ -496,7 +496,7 @@ const AdminLeads = () => {
     const loadPipelineStages = async () => {
       const { data, error } = await (supabase as any)
         .from("pipeline_stages_config")
-        .select("value,label,sort_order")
+        .select("value,label,sort_order,followup_message")
         .eq("panel_key", currentPanelId)
         .order("sort_order", { ascending: true });
 
