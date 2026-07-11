@@ -1,11 +1,3 @@
-## Escopo
-- 1 migration nova.
-- `src/pages/admin/AdminLeads.tsx` — carregar `followup_message`, expor RPC de update ao Kanban.
-- `src/components/admin/PipelineKanban.tsx` — bloco de mensagem abaixo do "Total" com Copiar/Editar.
-
-## 1. Migration `supabase/migrations/<ts>_commercial_proposal_followups.sql`
-
-```sql
 -- 1.1 Colunas em pipeline_stages_config
 ALTER TABLE public.pipeline_stages_config
   ADD COLUMN IF NOT EXISTS followup_message text,
@@ -190,39 +182,3 @@ BEGIN
     RAISE NOTICE 'cron.schedule falhou (%). Agende manualmente.', SQLERRM;
   END;
 END $do$;
-```
-
-## 4. `src/pages/admin/AdminLeads.tsx`
-- `type PipelineStage = { value: string; label: string; sort_order: number; followup_message?: string | null };`
-- Em `loadPipelineStages`, select: `"value,label,sort_order,followup_message"`.
-- Nova função:
-  ```ts
-  const updateStageFollowupMessage = async (stageValue: string, message: string) => {
-    if (!(canEditLead || isAdmin)) return;
-    const trimmed = message.trim();
-    const { error } = await (supabase as any).rpc("update_pipeline_stage_followup_message", {
-      p_panel_key: currentPanelId,
-      p_stage_value: stageValue,
-      p_followup_message: trimmed || null,
-    });
-    if (error) { toast.error("Erro ao salvar mensagem da coluna"); throw error; }
-    setPipelineStages((prev) => prev.map((s) => s.value === stageValue ? { ...s, followup_message: trimmed || null } : s));
-    toast.success("Mensagem da coluna atualizada");
-  };
-  ```
-- Em toda ocorrência de `<PipelineKanban ... />` existente, passar `canEditStageMessages={canEditLead || isAdmin}` e `onUpdateStageFollowupMessage={updateStageFollowupMessage}`.
-
-## 5. `src/components/admin/PipelineKanban.tsx`
-- Estender `interface PipelineStage { value: string; label: string; followup_message?: string | null; }`.
-- Adicionar props opcionais `canEditStageMessages?: boolean` e `onUpdateStageFollowupMessage?: (stageValue: string, message: string) => Promise<void>`.
-- Imports: `import { Textarea } from "@/components/ui/textarea"; import { toast } from "sonner";` (`Copy`/`Pencil` já existem).
-- Estados: `editingStageMessage: { stageValue: string; message: string } | null` e `savingStageMessage: boolean`.
-- Após `<p>Total…</p>` (linha ~252), quando `s.followup_message || editingStageMessage?.stageValue === s.value`:
-  - **Leitura**: `border rounded p-1.5 bg-secondary/40 text-[11px]` com texto + botão icon `Copy` (`navigator.clipboard.writeText` → toasts "Mensagem copiada"/"Erro ao copiar mensagem") + botão icon `Pencil` (só se `canEditStageMessages && onUpdateStageFollowupMessage`).
-  - **Edição**: `<Textarea>` compacto + botões `Cancelar` e `Salvar`; salvar chama `onUpdateStageFollowupMessage(s.value, message)` em try/finally com `savingStageMessage`; fecha no sucesso.
-
-Sem alterar drag/drop, agrupamento, cards ou resto do layout.
-
-## 6. Validação
-- `npm run build`.
-- Reportar arquivos alterados, resultado do build, warnings e lembrete: aprovar a migration; sem `pg_cron`, agendar externamente `SELECT public.sync_commercial_proposal_followups();`.

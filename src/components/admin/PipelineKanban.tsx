@@ -1,6 +1,8 @@
 import { memo, useMemo, useState } from "react";
 import { ArrowDown, ArrowRight, ArrowUp, ChevronDown, ChevronUp, Copy, FileText, GripVertical, Pencil, Trash2, UserRound, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 import { healthStatusColor, impactColor, normalizeHealthStatus, normalizeImpact } from "@/lib/healthStatusColors";
 
 interface KanbanLeadCardData {
@@ -46,6 +48,7 @@ interface KanbanLeadCardData {
 interface PipelineStage {
   value: string;
   label: string;
+  followup_message?: string | null;
 }
 
 interface PipelineKanbanProps {
@@ -68,6 +71,8 @@ interface PipelineKanbanProps {
   commercialMode?: boolean;
   showCampaignStatus?: boolean;
   showCsInsteadOfPartner?: boolean;
+  canEditStageMessages?: boolean;
+  onUpdateStageFollowupMessage?: (stageValue: string, message: string) => Promise<void>;
 }
 
 const campaignStatusClass = (status?: string | null) => {
@@ -171,11 +176,37 @@ export const PipelineKanban = memo(({
   showCsInsteadOfPartner = false,
   stageEntryMap,
   commercialMode = false,
+  canEditStageMessages = false,
+  onUpdateStageFollowupMessage,
 }: PipelineKanbanProps) => {
   const [dragId, setDragId] = useState<string | null>(null);
   const [overStage, setOverStage] = useState<string | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+  const [editingStageMessage, setEditingStageMessage] = useState<{ stageValue: string; message: string } | null>(null);
+  const [savingStageMessage, setSavingStageMessage] = useState(false);
+
+  const copyStageMessage = async (message: string) => {
+    try {
+      await navigator.clipboard.writeText(message);
+      toast.success("Mensagem copiada");
+    } catch {
+      toast.error("Erro ao copiar mensagem");
+    }
+  };
+
+  const saveStageMessage = async () => {
+    if (!editingStageMessage || !onUpdateStageFollowupMessage) return;
+    setSavingStageMessage(true);
+    try {
+      await onUpdateStageFollowupMessage(editingStageMessage.stageValue, editingStageMessage.message);
+      setEditingStageMessage(null);
+    } catch {
+      // toast já emitido pelo handler
+    } finally {
+      setSavingStageMessage(false);
+    }
+  };
 
   const stageDaysByLead = useMemo(() => {
     if (!stageEntryMap) return {};
@@ -250,6 +281,72 @@ export const PipelineKanban = memo(({
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{items.length}</span>
               </div>
               <p className="text-[11px] text-muted-foreground mt-0.5">Total: <span className="font-medium text-foreground">{fmt(totals[s.value])}</span></p>
+              {(() => {
+                const isEditingThis = editingStageMessage?.stageValue === s.value;
+                const canEdit = canEditStageMessages && !!onUpdateStageFollowupMessage;
+                if (!s.followup_message && !isEditingThis) return null;
+                if (isEditingThis) {
+                  return (
+                    <div className="mt-1.5 space-y-1.5">
+                      <Textarea
+                        value={editingStageMessage!.message}
+                        onChange={(e) => setEditingStageMessage({ stageValue: s.value, message: e.target.value })}
+                        rows={4}
+                        className="text-[11px] min-h-[60px]"
+                        disabled={savingStageMessage}
+                      />
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-[11px]"
+                          onClick={() => setEditingStageMessage(null)}
+                          disabled={savingStageMessage}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="h-6 px-2 text-[11px]"
+                          onClick={saveStageMessage}
+                          disabled={savingStageMessage}
+                        >
+                          Salvar
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="mt-1.5 flex items-start gap-1 rounded border border-border/70 bg-secondary/40 p-1.5">
+                    <p className="flex-1 text-[11px] leading-snug text-foreground whitespace-pre-wrap">{s.followup_message}</p>
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6"
+                        onClick={() => copyStageMessage(s.followup_message || "")}
+                        aria-label="Copiar mensagem"
+                        title="Copiar mensagem"
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                      {canEdit && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          onClick={() => setEditingStageMessage({ stageValue: s.value, message: s.followup_message || "" })}
+                          aria-label="Editar mensagem"
+                          title="Editar mensagem"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">

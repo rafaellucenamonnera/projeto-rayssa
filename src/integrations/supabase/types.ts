@@ -1791,6 +1791,8 @@ export type Database = {
       pipeline_stages_config: {
         Row: {
           created_at: string
+          followup_message: string | null
+          followup_message_updated_at: string | null
           id: string
           label: string
           panel_key: string
@@ -1800,6 +1802,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          followup_message?: string | null
+          followup_message_updated_at?: string | null
           id?: string
           label: string
           panel_key?: string
@@ -1809,6 +1813,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          followup_message?: string | null
+          followup_message_updated_at?: string | null
           id?: string
           label?: string
           panel_key?: string
@@ -2580,6 +2586,10 @@ export type Database = {
         Returns: undefined
       }
       move_inactive_commercial_leads_to_lost: { Args: never; Returns: number }
+      normalize_pipeline_stage_label: {
+        Args: { p_label: string }
+        Returns: string
+      }
       register_lead_public: {
         Args: {
           p_canal_tracao?: string
@@ -2613,6 +2623,15 @@ export type Database = {
       }
       reset_commercial_lead_stage_timer: {
         Args: { p_lead_id: string }
+        Returns: undefined
+      }
+      sync_commercial_proposal_followups: { Args: never; Returns: number }
+      update_pipeline_stage_followup_message: {
+        Args: {
+          p_followup_message: string
+          p_panel_key: string
+          p_stage_value: string
+        }
         Returns: undefined
       }
     }
