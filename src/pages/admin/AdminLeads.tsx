@@ -49,7 +49,7 @@ import {
 } from "@/lib/campaignFlow";
 import { CampaignMoveDialog, CampanhaConcluidaDialog } from "@/components/admin/CampaignFlowDialogs";
 
-type PipelineStage = { value: string; label: string; sort_order: number };
+type PipelineStage = { value: string; label: string; sort_order: number; followup_message?: string | null };
 
 const AMBASSADOR_PANEL_ID = "painel_mp5q4du9";
 
