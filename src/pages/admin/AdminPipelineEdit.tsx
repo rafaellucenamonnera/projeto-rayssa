@@ -867,7 +867,7 @@ export default function AdminPipelineEdit() {
                       size="sm"
                       variant="destructive"
                       onClick={deletePanel}
-                      disabled={!selectedPanelId || savingAction}
+                      disabled={!selectedPanelId || savingAction || editingStageOrder}
                     >
                       <Trash2 className="h-4 w-4 mr-1" /> Excluir Painel
                     </Button>
