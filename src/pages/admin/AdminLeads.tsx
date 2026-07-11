@@ -2429,55 +2429,83 @@ const AdminLeads = () => {
                     </Select>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">{detailLead.descricao_necessidade || "—"}</p>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">{detailLead.nome_fantasia || "—"}</p>
+                    <p className="text-sm text-muted-foreground">{detailLead.descricao_necessidade || "—"}</p>
+                  </div>
                 )}
               </div>
 
               {/* Valor Campanhas */}
-              {!isAmbassadorPanel && detailLead.valor_campanhas != null && (
+              {currentPanelId !== "sucesso" && !isAmbassadorPanel && (isEditingCard || detailLead.valor_campanhas != null) && (
                 <div className="border-t border-border pt-4">
                   <h3 className="text-sm font-semibold mb-2">Valor Médio de Campanhas</h3>
-                  <p className="text-lg font-bold font-display">{fmt(detailLead.valor_campanhas)}</p>
+                  {isEditingCard ? (
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editFormData.valor_campanhas}
+                      onChange={(e) => setEditFormData((prev) => ({ ...prev, valor_campanhas: e.target.value }))}
+                      placeholder="0,00"
+                    />
+                  ) : (
+                    <p className="text-lg font-bold font-display">{fmt(detailLead.valor_campanhas)}</p>
+                  )}
                 </div>
               )}
 
               {/* Financial Info */}
               {detailLead.valor_mensalidade != null && (
                 <div className="border-t border-border pt-4 space-y-3">
-                  <h3 className="text-sm font-semibold">Informações Financeiras</h3>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <p className="text-muted-foreground text-xs mb-1">Comissão mensal</p>
-                      <p className="font-medium">{fmt((detailLead.valor_mensalidade || 0) * (detailLead.percentual_consultor || 0))}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-xs mb-1">Parcelas contratadas</p>
-                      <p className="font-medium">{detailLead.comissao_vitalicia ? "Vitalício" : detailLead.qtd_parcelas || 0}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-xs mb-1">Valor total do contrato</p>
-                      <p className="font-bold">{detailLead.comissao_vitalicia ? "Não aplicável" : fmt((detailLead.valor_mensalidade || 0) * (detailLead.percentual_consultor || 0) * (detailLead.qtd_parcelas || 0))}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-xs mb-1">Embaixador Monnera responsável</p>
-                      <p className="font-medium">{parceiros[detailLead.parceiro_id] || "—"}</p>
-                    </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold">Informações Financeiras</h3>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setFinancialInfoExpanded((prev) => !prev)}
+                    >
+                      {financialInfoExpanded ? "Recolher informações financeiras" : "Expandir informações financeiras"}
+                    </Button>
                   </div>
-                  {!detailLead.comissao_vitalicia && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span>Parcelas pagas: {detailLead.parcelas_pagas || 0} de {detailLead.qtd_parcelas || 0}</span>
-                      <span className={`text-xs font-medium ${(detailLead.parcelas_pagas || 0) >= (detailLead.qtd_parcelas || 0) && (detailLead.qtd_parcelas || 0) > 0 ? "text-emerald-600" : "text-amber-600"}`}>
-                        {(detailLead.parcelas_pagas || 0) >= (detailLead.qtd_parcelas || 0) && (detailLead.qtd_parcelas || 0) > 0 ? "Quitado" : "Em andamento"}
-                      </span>
-                    </div>
-                    <Progress value={(detailLead.qtd_parcelas || 0) > 0 ? ((detailLead.parcelas_pagas || 0) / (detailLead.qtd_parcelas || 0)) * 100 : 0} className="h-3" />
-                    {(detailLead.parcelas_pagas || 0) < (detailLead.qtd_parcelas || 0) && (detailLead.qtd_parcelas || 0) > 0 && (
-                      <Button size="sm" onClick={() => handleRegistrarParcela(detailLead.id)}>
-                        Registrar parcela paga
-                      </Button>
-                    )}
-                  </div>
+                  {financialInfoExpanded && (
+                    <>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <p className="text-muted-foreground text-xs mb-1">Comissão mensal</p>
+                          <p className="font-medium">{fmt((detailLead.valor_mensalidade || 0) * (detailLead.percentual_consultor || 0))}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground text-xs mb-1">Parcelas contratadas</p>
+                          <p className="font-medium">{detailLead.comissao_vitalicia ? "Vitalício" : detailLead.qtd_parcelas || 0}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground text-xs mb-1">Valor total do contrato</p>
+                          <p className="font-bold">{detailLead.comissao_vitalicia ? "Não aplicável" : fmt((detailLead.valor_mensalidade || 0) * (detailLead.percentual_consultor || 0) * (detailLead.qtd_parcelas || 0))}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground text-xs mb-1">Embaixador Monnera responsável</p>
+                          <p className="font-medium">{parceiros[detailLead.parceiro_id] || "—"}</p>
+                        </div>
+                      </div>
+                      {!detailLead.comissao_vitalicia && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span>Parcelas pagas: {detailLead.parcelas_pagas || 0} de {detailLead.qtd_parcelas || 0}</span>
+                          <span className={`text-xs font-medium ${(detailLead.parcelas_pagas || 0) >= (detailLead.qtd_parcelas || 0) && (detailLead.qtd_parcelas || 0) > 0 ? "text-emerald-600" : "text-amber-600"}`}>
+                            {(detailLead.parcelas_pagas || 0) >= (detailLead.qtd_parcelas || 0) && (detailLead.qtd_parcelas || 0) > 0 ? "Quitado" : "Em andamento"}
+                          </span>
+                        </div>
+                        <Progress value={(detailLead.qtd_parcelas || 0) > 0 ? ((detailLead.parcelas_pagas || 0) / (detailLead.qtd_parcelas || 0)) * 100 : 0} className="h-3" />
+                        {(detailLead.parcelas_pagas || 0) < (detailLead.qtd_parcelas || 0) && (detailLead.qtd_parcelas || 0) > 0 && (
+                          <Button size="sm" onClick={() => handleRegistrarParcela(detailLead.id)}>
+                            Registrar parcela paga
+                          </Button>
+                        )}
+                      </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}
