@@ -24,7 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { ChevronDown, ChevronUp, Loader2, Plus, Trash2, Undo2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Loader2, Pencil, Plus, Trash2, Undo2 } from "lucide-react";
 
 type Stage = {
   id: string;
@@ -84,9 +84,13 @@ export default function AdminPipelineEdit() {
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
   const [stageInputKey, setStageInputKey] = useState(0);
   const [panelInputKey, setPanelInputKey] = useState(0);
+  const [editingStageOrder, setEditingStageOrder] = useState(false);
+  const [stageOrderDraft, setStageOrderDraft] = useState<Stage[]>([]);
 
   const stages = stageCache[selectedPanelId] || [];
   const currentPanel = panels.find((p) => p.id === selectedPanelId);
+  const orderedStages = [...stages].sort((a, b) => a.sort_order - b.sort_order);
+  const displayedStages = editingStageOrder ? stageOrderDraft : orderedStages;
 
   const openConfirm = (cfg: Omit<ConfirmState, "open">) => {
     setConfirmState({ ...cfg, open: true });
@@ -223,6 +227,11 @@ export default function AdminPipelineEdit() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allowed, selectedPanelId]);
+
+  useEffect(() => {
+    setEditingStageOrder(false);
+    setStageOrderDraft([]);
+  }, [selectedPanelId]);
 
   if (!isInternalUser) return <Navigate to="/admin/login" replace />;
   if (checked && !allowed) return <Navigate to="/admin" replace />;
@@ -615,14 +624,91 @@ export default function AdminPipelineEdit() {
     });
   };
 
-  // ---------- Revert ----------
-  const handleRevert = async () => {
-    if (history.length === 0 || savingAction) return;
-    const entry = history[0];
+  // ---------- Stage order edit ----------
+  const startStageOrderEdit = () => {
+    if (!isAdmin || !selectedPanelId || editingStageOrder) return;
+    const normalized = orderedStages.map((s, i) => ({ ...s, sort_order: i + 1 }));
+    setStageOrderDraft(normalized);
+    setEditingStageOrder(true);
+  };
+
+  const cancelStageOrderEdit = () => {
+    setEditingStageOrder(false);
+    setStageOrderDraft([]);
+  };
+
+  const moveStageOrderDraft = (stageId: string, direction: "up" | "down") => {
+    setStageOrderDraft((prev) => {
+      const idx = prev.findIndex((s) => s.id === stageId);
+      if (idx === -1) return prev;
+      const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+      if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+      return next.map((s, i) => ({ ...s, sort_order: i + 1 }));
+    });
+  };
+
+  const saveStageOrder = async () => {
+    if (!isAdmin || !selectedPanelId || !editingStageOrder || savingAction) return;
+    const normalized = stageOrderDraft.map((s, i) => ({ ...s, sort_order: i + 1 }));
+    const previous_order = orderedStages.map((s) => ({ id: s.id, sort_order: s.sort_order }));
+    const next_order = normalized.map((s) => ({ id: s.id, sort_order: s.sort_order }));
+    const unchanged =
+      previous_order.length === next_order.length &&
+      previous_order.every((p, i) => p.id === next_order[i].id && p.sort_order === next_order[i].sort_order);
+    if (unchanged) {
+      cancelStageOrderEdit();
+      return;
+    }
     setSavingAction(true);
     try {
-      const s = entry.snapshot || {};
-      let toastMsg = "Edição revertida";
+      const results = await Promise.all(
+        normalized.map((s) =>
+          (supabase as any)
+            .from("pipeline_stages_config")
+            .update({ sort_order: s.sort_order })
+            .eq("id", s.id),
+        ),
+      );
+      const failed = results.find((r: any) => r?.error);
+      if (failed) throw failed.error;
+      await recordHistory(
+        selectedPanelId,
+        "rename_stage",
+        "Reordenou colunas do painel",
+        { kind: "reorder_stages", previous_order, next_order },
+      );
+      toast.success("Ordem das colunas atualizada");
+      setEditingStageOrder(false);
+      setStageOrderDraft([]);
+      await loadPanelStages(selectedPanelId, true);
+      await loadHistory(selectedPanelId);
+    } catch (err: any) {
+      console.error("[saveStageOrder]", err);
+      toast.error("Erro ao salvar ordem das colunas");
+    } finally {
+      setSavingAction(false);
+    }
+  };
+
+  // ---------- Revert ----------
+  const revertHistoryEntry = async (entry: HistoryRow, revertedAt: string) => {
+    const s = entry.snapshot || {};
+    if (entry.action_type === "rename_stage" && s.kind === "reorder_stages") {
+      const previous = Array.isArray(s.previous_order) ? s.previous_order : [];
+      const results = await Promise.all(
+        previous.map((item: { id: string; sort_order: number }) =>
+          (supabase as any)
+            .from("pipeline_stages_config")
+            .update({ sort_order: item.sort_order })
+            .eq("id", item.id)
+            .eq("panel_key", entry.panel_id),
+        ),
+      );
+      const failed = results.find((r: any) => r?.error);
+      if (failed) throw failed.error;
+    } else {
       switch (entry.action_type) {
         case "rename_stage": {
           const { error } = await (supabase as any)
@@ -654,10 +740,6 @@ export default function AdminPipelineEdit() {
           const moved = (s.moved_cards?.leads || 0) + (s.moved_cards?.representative_cards || 0);
           if (s.previous_stage && moved > 0) {
             await moveStageCards(s.stage.panel_key, s.previous_stage.value, s.stage.value);
-            toastMsg =
-              "Coluna restaurada. Cards atualmente na coluna anterior foram devolvidos à coluna restaurada.";
-          } else {
-            toastMsg = "Coluna restaurada";
           }
           break;
         }
@@ -680,7 +762,6 @@ export default function AdminPipelineEdit() {
             .eq("id", s.panel.id);
           if (error) throw error;
           if (selectedPanelId === s.panel.id) setSelectedPanelId("");
-          toastMsg = "Criação do painel revertida";
           break;
         }
         case "delete_panel": {
@@ -706,25 +787,36 @@ export default function AdminPipelineEdit() {
               );
             if (stErr) throw stErr;
           }
-          toastMsg = "Painel restaurado (cards não são recriados)";
           break;
         }
         default:
           throw new Error("Tipo de ação desconhecido");
       }
-      await (supabase as any)
-        .from("pipeline_panel_edit_history")
-        .update({ reverted_at: new Date().toISOString() })
-        .eq("id", entry.id);
-      toast.success(toastMsg);
+    }
+    await (supabase as any)
+      .from("pipeline_panel_edit_history")
+      .update({ reverted_at: revertedAt })
+      .eq("id", entry.id);
+  };
+
+  const revertLastThreeEdits = async () => {
+    if (history.length === 0 || savingAction || editingStageOrder) return;
+    const entries = history.slice(0, 3);
+    const now = new Date().toISOString();
+    setSavingAction(true);
+    try {
+      for (const entry of entries) {
+        await revertHistoryEntry(entry, now);
+      }
+      toast.success(`${entries.length} edição(ões) revertida(s)`);
       await loadPanels();
       if (selectedPanelId) await loadPanelStages(selectedPanelId, true);
-      await loadHistory(entry.panel_id);
+      await loadHistory(selectedPanelId);
       setStageInputKey((k) => k + 1);
       setPanelInputKey((k) => k + 1);
     } catch (err: any) {
-      console.error("[handleRevert]", err);
-      toast.error("Erro ao reverter edição");
+      console.error("[revertLastThreeEdits]", err);
+      toast.error("Erro ao reverter edições");
     } finally {
       setSavingAction(false);
     }
@@ -749,16 +841,16 @@ export default function AdminPipelineEdit() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={handleRevert}
-                disabled={history.length === 0 || savingAction}
-                title="Reverte a última edição registrada para o painel selecionado"
+                onClick={revertLastThreeEdits}
+                disabled={history.length === 0 || savingAction || editingStageOrder}
+                title="Reverte até as 3 últimas edições registradas para o painel selecionado"
               >
                 {savingAction ? (
                   <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                 ) : (
                   <Undo2 className="h-4 w-4 mr-1" />
                 )}
-                Reverter última edição ({history.length}/3)
+                Reverter 3 últimas edições ({history.length}/3)
               </Button>
               {(isAdmin || canManagePanels) && (
                 <>
@@ -775,7 +867,7 @@ export default function AdminPipelineEdit() {
                       size="sm"
                       variant="destructive"
                       onClick={deletePanel}
-                      disabled={!selectedPanelId || savingAction}
+                      disabled={!selectedPanelId || savingAction || editingStageOrder}
                     >
                       <Trash2 className="h-4 w-4 mr-1" /> Excluir Painel
                     </Button>
@@ -860,19 +952,22 @@ export default function AdminPipelineEdit() {
               <Label className="text-xs text-muted-foreground">
                 Nome do painel selecionado
               </Label>
-              <Input
-                key={`${currentPanel.id}-${panelInputKey}`}
-                defaultValue={currentPanel.name}
-                maxLength={80}
-                className="max-w-md"
-                onBlur={(e) => {
-                  if (e.target.value.trim() && e.target.value !== currentPanel.name)
-                    savePanelName(currentPanel, e.target.value.trim());
-                }}
-              />
-              <p className="text-[11px] text-muted-foreground">
-                ID interno: {currentPanel.id}
-              </p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Input
+                  key={`${currentPanel.id}-${panelInputKey}`}
+                  defaultValue={currentPanel.name}
+                  maxLength={80}
+                  className="sm:max-w-xs"
+                  disabled={editingStageOrder}
+                  onBlur={(e) => {
+                    if (e.target.value.trim() && e.target.value !== currentPanel.name)
+                      savePanelName(currentPanel, e.target.value.trim());
+                  }}
+                />
+                <p className="break-all text-[11px] text-muted-foreground">
+                  ID interno: {currentPanel.id}
+                </p>
+              </div>
             </div>
           )}
         </CardContent>
@@ -927,9 +1022,40 @@ export default function AdminPipelineEdit() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Colunas do painel</CardTitle>
           {isAdmin && selectedPanelId && (
-            <Button size="sm" onClick={addStage} disabled={savingAction}>
-              <Plus className="h-4 w-4 mr-1" /> Nova coluna
-            </Button>
+            <div className="flex items-center gap-2 flex-wrap">
+              {editingStageOrder ? (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={cancelStageOrderEdit}
+                    disabled={savingAction}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button size="sm" onClick={saveStageOrder} disabled={savingAction}>
+                    {savingAction ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : null}
+                    Salvar ordem
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={startStageOrderEdit}
+                    disabled={stages.length < 2 || savingAction}
+                  >
+                    <Pencil className="h-4 w-4 mr-1" /> Editar ordem
+                  </Button>
+                  <Button size="sm" onClick={addStage} disabled={savingAction}>
+                    <Plus className="h-4 w-4 mr-1" /> Nova coluna
+                  </Button>
+                </>
+              )}
+            </div>
           )}
         </CardHeader>
         <CardContent>
@@ -937,31 +1063,56 @@ export default function AdminPipelineEdit() {
             <div className="flex justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
-          ) : stages.length === 0 ? (
+          ) : displayedStages.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhuma coluna cadastrada.</p>
           ) : (
             <div className="space-y-2">
-              {stages.map((s) => (
+              {displayedStages.map((s, index) => (
                 <div
                   key={s.id}
                   className="flex items-center gap-2 rounded-md border border-border p-2"
                 >
                   <span className="text-xs text-muted-foreground w-6 text-center">
-                    {s.sort_order}
+                    {index + 1}
                   </span>
+                  {editingStageOrder && (
+                    <>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 shrink-0"
+                        onClick={() => moveStageOrderDraft(s.id, "up")}
+                        disabled={index === 0 || savingAction}
+                        aria-label="Mover coluna para cima"
+                      >
+                        <ArrowUp className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 shrink-0"
+                        onClick={() => moveStageOrderDraft(s.id, "down")}
+                        disabled={index === displayedStages.length - 1 || savingAction}
+                        aria-label="Mover coluna para baixo"
+                      >
+                        <ArrowDown className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
                   <Input
                     key={`${s.id}-${stageInputKey}`}
                     defaultValue={s.label}
                     onBlur={(e) => {
-                      if (e.target.value !== s.label) saveLabel(s, e.target.value);
+                      if (!editingStageOrder && e.target.value !== s.label)
+                        saveLabel(s, e.target.value);
                     }}
                     maxLength={60}
-                    disabled={!isAdmin}
+                    disabled={!isAdmin || editingStageOrder}
                   />
                   <span className="text-[11px] text-muted-foreground hidden sm:inline truncate max-w-[160px]">
                     {s.value}
                   </span>
-                  {isAdmin && (
+                  {isAdmin && !editingStageOrder && (
                     <Button
                       size="icon"
                       variant="ghost"
@@ -978,6 +1129,7 @@ export default function AdminPipelineEdit() {
           )}
         </CardContent>
       </Card>
+
 
       <AlertDialog
         open={!!confirmState?.open}
