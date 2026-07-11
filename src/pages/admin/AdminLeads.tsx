@@ -1336,6 +1336,7 @@ const AdminLeads = () => {
           nome_responsavel: editFormData.nome_responsavel?.trim() || null,
           telefone_responsavel: editFormData.telefone_responsavel.trim() || null,
           email_responsavel: editFormData.email_responsavel.trim().toLowerCase() || null,
+          ...(isAmbassadorPanel ? {} : { valor_campanhas: valorCampanhas }),
         };
     if (responsibleChanged) {
       payload.responsible_user_id = nextResponsibleUserId;
