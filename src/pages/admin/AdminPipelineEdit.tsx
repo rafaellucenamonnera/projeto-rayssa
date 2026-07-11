@@ -1022,9 +1022,40 @@ export default function AdminPipelineEdit() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Colunas do painel</CardTitle>
           {isAdmin && selectedPanelId && (
-            <Button size="sm" onClick={addStage} disabled={savingAction}>
-              <Plus className="h-4 w-4 mr-1" /> Nova coluna
-            </Button>
+            <div className="flex items-center gap-2 flex-wrap">
+              {editingStageOrder ? (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={cancelStageOrderEdit}
+                    disabled={savingAction}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button size="sm" onClick={saveStageOrder} disabled={savingAction}>
+                    {savingAction ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : null}
+                    Salvar ordem
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={startStageOrderEdit}
+                    disabled={stages.length < 2 || savingAction}
+                  >
+                    <Pencil className="h-4 w-4 mr-1" /> Editar ordem
+                  </Button>
+                  <Button size="sm" onClick={addStage} disabled={savingAction}>
+                    <Plus className="h-4 w-4 mr-1" /> Nova coluna
+                  </Button>
+                </>
+              )}
+            </div>
           )}
         </CardHeader>
         <CardContent>
@@ -1032,31 +1063,56 @@ export default function AdminPipelineEdit() {
             <div className="flex justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
-          ) : stages.length === 0 ? (
+          ) : displayedStages.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhuma coluna cadastrada.</p>
           ) : (
             <div className="space-y-2">
-              {stages.map((s) => (
+              {displayedStages.map((s, index) => (
                 <div
                   key={s.id}
                   className="flex items-center gap-2 rounded-md border border-border p-2"
                 >
                   <span className="text-xs text-muted-foreground w-6 text-center">
-                    {s.sort_order}
+                    {index + 1}
                   </span>
+                  {editingStageOrder && (
+                    <>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 shrink-0"
+                        onClick={() => moveStageOrderDraft(s.id, "up")}
+                        disabled={index === 0 || savingAction}
+                        aria-label="Mover coluna para cima"
+                      >
+                        <ArrowUp className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 shrink-0"
+                        onClick={() => moveStageOrderDraft(s.id, "down")}
+                        disabled={index === displayedStages.length - 1 || savingAction}
+                        aria-label="Mover coluna para baixo"
+                      >
+                        <ArrowDown className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
                   <Input
                     key={`${s.id}-${stageInputKey}`}
                     defaultValue={s.label}
                     onBlur={(e) => {
-                      if (e.target.value !== s.label) saveLabel(s, e.target.value);
+                      if (!editingStageOrder && e.target.value !== s.label)
+                        saveLabel(s, e.target.value);
                     }}
                     maxLength={60}
-                    disabled={!isAdmin}
+                    disabled={!isAdmin || editingStageOrder}
                   />
                   <span className="text-[11px] text-muted-foreground hidden sm:inline truncate max-w-[160px]">
                     {s.value}
                   </span>
-                  {isAdmin && (
+                  {isAdmin && !editingStageOrder && (
                     <Button
                       size="icon"
                       variant="ghost"
@@ -1073,6 +1129,7 @@ export default function AdminPipelineEdit() {
           )}
         </CardContent>
       </Card>
+
 
       <AlertDialog
         open={!!confirmState?.open}
