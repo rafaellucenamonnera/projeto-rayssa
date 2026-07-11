@@ -24,7 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { ChevronDown, ChevronUp, Loader2, Plus, Trash2, Undo2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Loader2, Pencil, Plus, Trash2, Undo2 } from "lucide-react";
 
 type Stage = {
   id: string;
