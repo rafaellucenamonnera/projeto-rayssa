@@ -95,6 +95,7 @@ const emptyEditFormData = {
   email_responsavel: "",
   responsible_user_id: "",
   responsible_slack_user_id: "",
+  valor_campanhas: "",
 };
 
 const leadToEditFormData = (lead: any) => ({
@@ -114,7 +115,20 @@ const leadToEditFormData = (lead: any) => ({
   email_responsavel: lead?.email_responsavel || "",
   responsible_user_id: lead?.responsible_user_id || "",
   responsible_slack_user_id: lead?.responsible_slack_user_id || "",
+  valor_campanhas: lead?.valor_campanhas != null ? String(lead.valor_campanhas) : "",
 });
+
+const isFinanceiroZerado = (lead: any) => {
+  const comissaoMensal = Number(lead?.valor_mensalidade || 0) * Number(lead?.percentual_consultor || 0);
+  const parcelasContratadas = Number(lead?.qtd_parcelas || 0);
+  const valorTotalContrato = comissaoMensal * parcelasContratadas;
+  const parcelasPagas = Number(lead?.parcelas_pagas || 0);
+  return !lead?.comissao_vitalicia &&
+    comissaoMensal === 0 &&
+    parcelasContratadas === 0 &&
+    valorTotalContrato === 0 &&
+    parcelasPagas === 0;
+};
 
 type LeadEditFormData = typeof emptyEditFormData;
 
