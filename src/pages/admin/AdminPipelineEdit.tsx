@@ -228,6 +228,11 @@ export default function AdminPipelineEdit() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allowed, selectedPanelId]);
 
+  useEffect(() => {
+    setEditingStageOrder(false);
+    setStageOrderDraft([]);
+  }, [selectedPanelId]);
+
   if (!isInternalUser) return <Navigate to="/admin/login" replace />;
   if (checked && !allowed) return <Navigate to="/admin" replace />;
 
