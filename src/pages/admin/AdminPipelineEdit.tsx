@@ -952,19 +952,22 @@ export default function AdminPipelineEdit() {
               <Label className="text-xs text-muted-foreground">
                 Nome do painel selecionado
               </Label>
-              <Input
-                key={`${currentPanel.id}-${panelInputKey}`}
-                defaultValue={currentPanel.name}
-                maxLength={80}
-                className="max-w-md"
-                onBlur={(e) => {
-                  if (e.target.value.trim() && e.target.value !== currentPanel.name)
-                    savePanelName(currentPanel, e.target.value.trim());
-                }}
-              />
-              <p className="text-[11px] text-muted-foreground">
-                ID interno: {currentPanel.id}
-              </p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Input
+                  key={`${currentPanel.id}-${panelInputKey}`}
+                  defaultValue={currentPanel.name}
+                  maxLength={80}
+                  className="sm:max-w-xs"
+                  disabled={editingStageOrder}
+                  onBlur={(e) => {
+                    if (e.target.value.trim() && e.target.value !== currentPanel.name)
+                      savePanelName(currentPanel, e.target.value.trim());
+                  }}
+                />
+                <p className="break-all text-[11px] text-muted-foreground">
+                  ID interno: {currentPanel.id}
+                </p>
+              </div>
             </div>
           )}
         </CardContent>
