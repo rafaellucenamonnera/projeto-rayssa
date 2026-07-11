@@ -528,6 +528,24 @@ const AdminLeads = () => {
     };
   }, [currentPanelId]);
 
+  const updateStageFollowupMessage = async (stageValue: string, message: string) => {
+    if (!(canEditLead || isAdmin)) return;
+    const trimmed = message.trim();
+    const { error } = await (supabase as any).rpc("update_pipeline_stage_followup_message", {
+      p_panel_key: currentPanelId,
+      p_stage_value: stageValue,
+      p_followup_message: trimmed || null,
+    });
+    if (error) {
+      toast.error("Erro ao salvar mensagem da coluna");
+      throw error;
+    }
+    setPipelineStages((prev) =>
+      prev.map((s) => (s.value === stageValue ? { ...s, followup_message: trimmed || null } : s)),
+    );
+    toast.success("Mensagem da coluna atualizada");
+  };
+
   useEffect(() => {
     loadData();
   }, [isCustomCrmPanel, currentPanelId]);
