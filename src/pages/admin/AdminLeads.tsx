@@ -1981,6 +1981,8 @@ const AdminLeads = () => {
             onEditProposal={(lead) => handleReplaceProposta(lead.id, lead.nome_fantasia)}
             onMoveLead={handleKanbanMoveLead}
             onOpenLead={openLeadDetail}
+            canEditStageMessages={canEditLead || isAdmin}
+            onUpdateStageFollowupMessage={updateStageFollowupMessage}
           />
         </div>
       )}
