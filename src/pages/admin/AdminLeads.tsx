@@ -253,6 +253,7 @@ const AdminLeads = () => {
   const [isEditingCard, setIsEditingCard] = useState(false);
   const [savingCard, setSavingCard] = useState(false);
   const [editFormData, setEditFormData] = useState<LeadEditFormData>(emptyEditFormData);
+  const [financialInfoExpanded, setFinancialInfoExpanded] = useState(false);
 
   // Reunião dialog
   const [reuniaoDialogOpen, setReuniaoDialogOpen] = useState(false);
