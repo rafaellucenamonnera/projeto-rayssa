@@ -84,9 +84,13 @@ export default function AdminPipelineEdit() {
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
   const [stageInputKey, setStageInputKey] = useState(0);
   const [panelInputKey, setPanelInputKey] = useState(0);
+  const [editingStageOrder, setEditingStageOrder] = useState(false);
+  const [stageOrderDraft, setStageOrderDraft] = useState<Stage[]>([]);
 
   const stages = stageCache[selectedPanelId] || [];
   const currentPanel = panels.find((p) => p.id === selectedPanelId);
+  const orderedStages = [...stages].sort((a, b) => a.sort_order - b.sort_order);
+  const displayedStages = editingStageOrder ? stageOrderDraft : orderedStages;
 
   const openConfirm = (cfg: Omit<ConfirmState, "open">) => {
     setConfirmState({ ...cfg, open: true });
