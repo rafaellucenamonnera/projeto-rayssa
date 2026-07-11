@@ -48,6 +48,7 @@ interface KanbanLeadCardData {
 interface PipelineStage {
   value: string;
   label: string;
+  followup_message?: string | null;
 }
 
 interface PipelineKanbanProps {
@@ -70,6 +71,8 @@ interface PipelineKanbanProps {
   commercialMode?: boolean;
   showCampaignStatus?: boolean;
   showCsInsteadOfPartner?: boolean;
+  canEditStageMessages?: boolean;
+  onUpdateStageFollowupMessage?: (stageValue: string, message: string) => Promise<void>;
 }
 
 const campaignStatusClass = (status?: string | null) => {
