@@ -111,6 +111,7 @@ const App = () => (
               <Route path="/esqueci-senha" element={<EsqueciSenha />} />
               <Route path="/proposta/:token" element={<PropostaPublica />} />
               <Route path="/teste-monnera" element={<TesteMonnera />} />
+              <Route path="/testemonnera" element={<TesteMonnera />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
