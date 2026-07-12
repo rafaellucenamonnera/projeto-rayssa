@@ -572,7 +572,7 @@ export default function TesteMonnera() {
 
   return (
     <>
-      <div className="min-h-screen bg-background">
+      <div className="teste-monnera-theme min-h-screen bg-background">
         <header className="border-b border-border">
           <div className="max-w-5xl mx-auto flex items-center justify-between px-4 py-4">
             <span className="font-display text-lg font-semibold text-foreground">Monnera</span>
