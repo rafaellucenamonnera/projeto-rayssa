@@ -120,8 +120,13 @@ export default function TesteMonnera() {
 
   const goBack = () => setStep((s) => Math.max(0, s - 1));
 
-  const scrollToForm = () => {
-    document.getElementById("teste-monnera-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const openDiagnosticForm = () => {
+    setShowForm(true);
+    window.setTimeout(() => {
+      document
+        .getElementById("teste-monnera-form")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
   };
 
   const resetTeste = () => {
