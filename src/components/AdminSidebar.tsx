@@ -74,7 +74,7 @@ export function AdminSidebar() {
   );
   const items = [...fixedItems, ...dynamicPanelItems];
 
-  const configItems = isAdmin
+  const adminConfigItems = isAdmin
     ? [
         { title: "Usuários", url: "/admin/usuarios", icon: UserCog },
         { title: "Permissões", url: "/admin/permissoes", icon: ShieldCheck },
@@ -82,6 +82,12 @@ export function AdminSidebar() {
         { title: "Edição de Painel", url: "/admin/edicao-painel", icon: Settings },
       ]
     : [];
+
+  const documentationItems = canAccessDocumentation
+    ? [{ title: "Documentação", url: "/admin/documentacao", icon: BookOpen }]
+    : [];
+
+  const configItems = [...adminConfigItems, ...documentationItems];
 
   return (
     <Sidebar collapsible="icon">
@@ -114,7 +120,7 @@ export function AdminSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        {isAdmin && (
+        {configItems.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel>
               <span className="flex items-center gap-2">
