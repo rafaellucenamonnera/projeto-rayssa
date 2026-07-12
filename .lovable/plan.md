@@ -1,63 +1,94 @@
 ## Objetivo
-Ajustar somente o comportamento da primeira dobra da landing `/teste-monnera` para que o formulário fique oculto no carregamento inicial e seja revelado apenas ao clicar no CTA **"Fazer diagnóstico gratuito"**.
+Ajustar apenas a primeira dobra de `/teste-monnera` conforme correções do usuário, preservando visual, formulário, scoring e integrações.
 
-## Escopo
-- Alterar apenas `src/pages/TesteMonnera.tsx`.
-- Não criar arquivos novos.
-- Não alterar `src/App.tsx`.
-- Não alterar perguntas, scoring, resultado, localStorage, RPC, Supabase, painel comercial, tarefas ou notificações.
-- Manter o layout visual atual da primeira dobra.
+## Arquivo alterado
+- `src/pages/TesteMonnera.tsx` (único arquivo)
 
-## Implementação
+## Mudanças
 
-1. Adicionar estado local para controlar a visibilidade do formulário:
+1. **Import**
+   - Garantir que `ArrowRight` esteja importado de `lucide-react`, sem duplicar.
+
+2. **Handler único `openDiagnosticForm`**
    ```tsx
-   const [showForm, setShowForm] = useState(() => state.currentStep > 0 || state.submitted);
-   ```
-
-2. Adicionar efeito para preservar progresso salvo:
-   ```tsx
-   useEffect(() => {
-     if (state.currentStep > 0 || state.submitted) {
-       setShowForm(true);
-     }
-   }, [state.currentStep, state.submitted]);
-   ```
-
-3. Alterar o CTA **"Fazer diagnóstico gratuito"** para revelar o formulário e rolar até ele:
-   ```tsx
-   onClick={() => {
+   const openDiagnosticForm = () => {
      setShowForm(true);
      window.setTimeout(() => {
        document
          .getElementById("teste-monnera-form")
          ?.scrollIntoView({ behavior: "smooth", block: "start" });
      }, 0);
-   }}
+   };
+   ```
+   - Ambos os CTAs usam `openDiagnosticForm`. Não manter `scrollToForm`.
+
+3. **Estado `showForm` e efeitos**
+   - Usar `state.currentStep` e `state.submitted` (não `step`/`RESULT_STEP`):
+   ```tsx
+   const [showForm, setShowForm] = useState(() => state.currentStep > 0 || state.submitted);
+
+   useEffect(() => {
+     if (state.currentStep > 0 || state.submitted) {
+       setShowForm(true);
+     }
+   }, [state.currentStep, state.submitted]);
+   ```
+   - No handler `resetTest` (nome em inglês, conforme arquivo local), continuar chamando `setShowForm(false)`.
+
+4. **Identificação da primeira dobra**
+   - Substituir:
+   ```tsx
+   <p className="text-sm font-medium text-primary">Teste Monnera</p>
+   <p className="text-xs text-muted-foreground">Diagnóstico educativo</p>
+   ```
+   Por:
+   ```tsx
+   <p className="text-sm font-medium text-primary">Diagnóstico educativo Monnera</p>
+   ```
+   - Preservar a classe da logo:
+   ```tsx
+   <img src={logoMonnera} alt="Monnera" className="h-10 w-10 rounded-lg sm:h-12 sm:w-12 sm:rounded-xl" />
    ```
 
-4. Renderizar a seção do formulário condicionalmente, preservando o id e as classes existentes:
+5. **Wrapper responsivo do topo + CTA no topo**
+   ```tsx
+   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+     <div className="flex items-center gap-3">
+       <img src={logoMonnera} alt="Monnera" className="h-10 w-10 rounded-lg sm:h-12 sm:w-12 sm:rounded-xl" />
+       <p className="text-sm font-medium text-primary">Diagnóstico educativo Monnera</p>
+     </div>
+     <Button className="h-10 w-full text-sm sm:w-auto" onClick={openDiagnosticForm}>
+       Fazer diagnóstico gratuito
+       <ArrowRight className="ml-2 h-4 w-4" />
+     </Button>
+   </div>
+   ```
+
+6. **CTA atual do corpo do hero**
+   ```tsx
+   <Button className="h-11 text-sm sm:h-12 sm:text-base" onClick={openDiagnosticForm}>
+     Fazer diagnóstico gratuito
+     <ArrowRight className="ml-2 h-4 w-4" />
+   </Button>
+   ```
+
+7. **Microcopy LGPD**
+   - Substituir o texto do `<p>` com `ShieldCheck` por:
+   > Resultado educativo. Não substitui validação jurídica ou contábil. Ao continuar, você concorda com o uso dos dados informados para contato comercial da Monnera, conforme a LGPD.
+   - Preservar ícone, classes e posição.
+
+8. **Seção inline do formulário**
    ```tsx
    {showForm && (
      <section id="teste-monnera-form" className="container mx-auto px-4 py-8 md:py-12">
-       {/* manter aqui o conteúdo atual do formulário sem alterações */}
+       {/* conteúdo atual do formulário sem alterações */}
      </section>
    )}
    ```
 
-5. No fluxo de reset/reinício do teste, adicionar:
-   ```tsx
-   setShowForm(false);
-   ```
-
-## Critérios de Aceite
-- `/teste-monnera` abre apenas com a primeira dobra/hero.
-- A segunda dobra/formulário não aparece antes do clique no CTA.
-- O CTA revela o formulário e rola suavemente até ele.
-- Progresso salvo continua funcionando.
-- Reset oculta novamente o formulário.
-- `npm run build` passa.
+## Preservações
+- Não alterar questionário, `submit_teste_monnera`, `localStorage`, resultado, card lateral "O diagnóstico avalia", validações e mensagens, rota, tokens de tema, cores, botões, cards, ícones ou componentes shadcn/Tailwind existentes.
 
 ## Validação
-- Executar `npm run build`.
-- Verificar visualmente desktop e mobile que o formulário só aparece após o clique no CTA.
+- `npm run build`.
+- Verificação visual do hero (desktop + mobile) confirmando dois CTAs e ausência do formulário no carregamento inicial.
