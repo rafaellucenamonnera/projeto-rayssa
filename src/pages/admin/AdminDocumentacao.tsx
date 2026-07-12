@@ -102,22 +102,25 @@ const AdminDocumentacao = () => {
     const check = async () => {
       if (!user) {
         setHasAccess(false);
+        setCanInsert(false);
         setCheckingAccess(false);
         return;
       }
       if (isAdmin) {
         setHasAccess(true);
+        setCanInsert(true);
         setCheckingAccess(false);
         return;
       }
       const { data } = await (supabase as any)
         .from("module_permissions")
-        .select("permitido")
+        .select("acao,permitido")
         .eq("user_id", user.id)
         .eq("modulo", "documentacao")
-        .eq("acao", "acessar")
-        .maybeSingle();
-      setHasAccess(!!data?.permitido);
+        .in("acao", ["acessar", "inserir"]);
+      const rows = (data as Array<{ acao: string; permitido: boolean }>) || [];
+      setHasAccess(rows.some((r) => r.acao === "acessar" && r.permitido));
+      setCanInsert(rows.some((r) => r.acao === "inserir" && r.permitido));
       setCheckingAccess(false);
     };
     check();
