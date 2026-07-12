@@ -124,6 +124,20 @@ export default function TesteMonnera() {
     document.getElementById("teste-monnera-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const resetTeste = () => {
+    setStep(0);
+    setLead(EMPTY_LEAD);
+    setAnswers({});
+    setLeadId(null);
+    setReuniaoRequested(false);
+    setInitialSubmitDone(false);
+    setShowForm(false);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {}
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const submitDiagnostico = async (solicitouReuniao: boolean): Promise<string | null> => {
     if (!diagnostico) return null;
     setSubmitting(true);
