@@ -594,11 +594,6 @@ export default function TesteMonnera() {
           {step > 0 && step <= TOTAL_STEPS && renderBlock()}
           {step >= RESULT_STEP && renderResult()}
         </main>
-        <footer className="border-t border-border mt-16">
-          <div className="max-w-5xl mx-auto px-4 py-6 text-xs text-muted-foreground text-center">
-            © Monnera — Resultado educativo. Não substitui validação jurídica ou contábil.
-          </div>
-        </footer>
       </div>
     </>
   );
