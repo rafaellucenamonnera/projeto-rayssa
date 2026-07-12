@@ -304,16 +304,19 @@ export default function TesteMonnera() {
     <section className="bg-background">
       <div className="container mx-auto grid gap-5 px-4 py-5 sm:gap-6 sm:py-8 md:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.75fr)] md:items-center md:gap-8 md:py-10">
         <div className="space-y-5 sm:space-y-6">
-          <div className="space-y-3">
-            <img
-              src={logoMonnera}
-              alt="Monnera"
-              className="h-8 w-auto object-contain"
-            />
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Teste Monnera</p>
-              <p className="text-xs text-muted-foreground">Diagnóstico educativo</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <img
+                src={logoMonnera}
+                alt="Monnera"
+                className="h-8 w-auto object-contain"
+              />
+              <p className="text-sm font-medium text-primary">Diagnóstico educativo Monnera</p>
             </div>
+            <Button className="h-10 w-full text-sm sm:w-auto" onClick={openDiagnosticForm}>
+              Fazer diagnóstico gratuito
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
           </div>
           <h1 className="max-w-3xl text-3xl font-bold leading-tight sm:text-4xl md:text-5xl">
             Sua empresa paga prêmio ou apenas chama comissão de prêmio?
