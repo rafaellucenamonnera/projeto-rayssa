@@ -104,6 +104,7 @@ const App = () => (
                 <Route path="edicao-painel" element={<AdminPipelineEdit />} />
                 <Route path="kit-vendas" element={<AdminKitVendas />} />
                 <Route path="gerador-proposta/:leadId" element={<AdminGeradorProposta />} />
+                <Route path="documentacao" element={<AdminDocumentacao />} />
               </Route>
               <Route path="/primeiro-acesso" element={<PrimeiroAcesso />} />
               <Route path="/resetar-senha" element={<ResetarSenha />} />
