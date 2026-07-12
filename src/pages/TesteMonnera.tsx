@@ -473,22 +473,26 @@ export default function TesteMonnera() {
     );
   };
 
+  useEffect(() => {
+    document.title = "Teste Monnera — Diagnóstico de campanhas de incentivo";
+    const ensureMeta = (attr: "name" | "property", key: string, content: string) => {
+      let el = document.head.querySelector<HTMLMetaElement>(`meta[${attr}="${key}"]`);
+      if (!el) {
+        el = document.createElement("meta");
+        el.setAttribute(attr, key);
+        document.head.appendChild(el);
+      }
+      el.setAttribute("content", content);
+    };
+    ensureMeta("name", "description", "Descubra em minutos como está a governança, clareza e pagamento das suas campanhas de incentivo. Diagnóstico educativo Monnera.");
+    ensureMeta("property", "og:title", "Teste Monnera — Diagnóstico de campanhas de incentivo");
+    ensureMeta("property", "og:description", "Um diagnóstico rápido e educativo para avaliar como sua empresa organiza campanhas, comissão e pagamentos.");
+    ensureMeta("property", "og:type", "website");
+    ensureMeta("name", "twitter:card", "summary_large_image");
+  }, []);
+
   return (
     <>
-      <Helmet>
-        <title>Teste Monnera — Diagnóstico de campanhas de incentivo</title>
-        <meta
-          name="description"
-          content="Descubra em minutos como está a governança, clareza e pagamento das suas campanhas de incentivo. Diagnóstico educativo Monnera."
-        />
-        <meta property="og:title" content="Teste Monnera — Diagnóstico de campanhas de incentivo" />
-        <meta
-          property="og:description"
-          content="Um diagnóstico rápido e educativo para avaliar como sua empresa organiza campanhas, comissão e pagamentos."
-        />
-        <meta property="og:type" content="website" />
-        <meta name="twitter:card" content="summary_large_image" />
-      </Helmet>
       <div className="min-h-screen bg-background">
         <header className="border-b border-border">
           <div className="max-w-5xl mx-auto flex items-center justify-between px-4 py-4">
