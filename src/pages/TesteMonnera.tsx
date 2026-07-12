@@ -543,6 +543,12 @@ export default function TesteMonnera() {
             )}
           </CardContent>
         </Card>
+
+        <div className="text-center">
+          <Button variant="outline" onClick={resetTeste}>
+            Refazer diagnóstico
+          </Button>
+        </div>
       </div>
     );
   };
