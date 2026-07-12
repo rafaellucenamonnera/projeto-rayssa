@@ -546,7 +546,12 @@ export default function TesteMonnera() {
           )}
         </header>
         <main className="px-4 py-8 md:py-12">
-          {step === 0 && heroAndDados}
+          {step === 0 && (
+            <>
+              {heroSection}
+              {leadFormSection}
+            </>
+          )}
           {step > 0 && step <= TOTAL_STEPS && renderBlock()}
           {step >= RESULT_STEP && renderResult()}
         </main>
