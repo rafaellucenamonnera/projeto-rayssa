@@ -306,7 +306,19 @@ export default function TesteMonnera() {
             Muitas empresas querem premiar melhor, vender mais e reconhecer desempenho, mas travam na dúvida: estou pagando do jeito certo? O cálculo vira planilha manual, a apuração consome tempo, o pagamento em dinheiro ou recarga em cartão de benefício gera retrabalho e a falta de rastreabilidade aumenta o medo de estar fazendo errado.
           </p>
           <div className="flex flex-col items-start gap-3">
-            <Button size="lg" onClick={scrollToForm}>Fazer diagnóstico gratuito</Button>
+            <Button
+              size="lg"
+              onClick={() => {
+                setShowForm(true);
+                window.setTimeout(() => {
+                  document
+                    .getElementById("teste-monnera-form")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }, 0);
+              }}
+            >
+              Fazer diagnóstico gratuito
+            </Button>
             <p className="text-xs text-muted-foreground flex items-start gap-2">
               <ShieldCheck className="h-3.5 w-3.5 mt-0.5 shrink-0" />
               Resultado educativo. Não substitui validação jurídica ou contábil.
