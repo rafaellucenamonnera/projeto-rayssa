@@ -43,6 +43,9 @@ interface KanbanLeadCardData {
   revenue_previous_month?: string | null;
   partner_code?: string | null;
   proposta_url?: string | null;
+  teste_monnera_last_diagnostic_id?: string | null;
+  teste_monnera_result_color?: string | null;
+  teste_monnera_solicitou_reuniao?: boolean | null;
 }
 
 interface PipelineStage {
@@ -486,6 +489,28 @@ export const PipelineKanban = memo(({
                           l.nome_responsavel && (
                             <p className="text-[10px] text-muted-foreground truncate">{l.nome_responsavel}</p>
                           )
+                        )}
+                        {l.teste_monnera_last_diagnostic_id && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {(() => {
+                              const c = (l.teste_monnera_result_color || "cinza").toLowerCase();
+                              const cls =
+                                c === "verde" ? "bg-emerald-100 text-emerald-800 border-emerald-300" :
+                                c === "amarelo" ? "bg-amber-100 text-amber-800 border-amber-300" :
+                                c === "vermelho" ? "bg-red-100 text-red-800 border-red-300" :
+                                "bg-secondary text-muted-foreground border-border";
+                              return (
+                                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border ${cls}`}>
+                                  Teste Monnera
+                                </span>
+                              );
+                            })()}
+                            {l.teste_monnera_solicitou_reuniao && (
+                              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded border bg-primary/10 text-primary border-primary/30">
+                                Reunião solicitada
+                              </span>
+                            )}
+                          </div>
                         )}
                         <div className="flex items-center justify-between gap-2 mt-1">
                           <span className="text-[10px] text-primary truncate">

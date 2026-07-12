@@ -36,6 +36,7 @@ import { LeadTasks } from "@/components/admin/LeadTasks";
 import { AmbassadorCardTasks } from "@/components/admin/AmbassadorCardTasks";
 import { DaysInStage } from "@/components/admin/DaysInStage";
 import { PipelineKanban } from "@/components/admin/PipelineKanban";
+import { TesteMonneraSection } from "@/components/admin/TesteMonneraSection";
 import { PIPELINE_STAGES, PIPELINE_LABELS } from "@/lib/pipelineConstants";
 import { cardActionUrl, createNotification } from "@/lib/notifications";
 import { addBusinessHoursBR } from "@/lib/businessHours";
@@ -2669,6 +2670,11 @@ const AdminLeads = () => {
                   }}
                 />
               </div>
+
+              {/* Diagnóstico Teste Monnera (painel comercial) */}
+              {(currentPanelId === "comercial" || currentPanelId === "comerc") && detailLead.teste_monnera_last_diagnostic_id && (
+                <TesteMonneraSection leadId={detailLead.id} />
+              )}
 
               {/* Contatos do Lead */}
               <div className="border-t border-border pt-4">

@@ -54,6 +54,7 @@ const PrimeiroAcesso = lazy(() => import("./pages/PrimeiroAcesso"));
 const ResetarSenha = lazy(() => import("./pages/ResetarSenha"));
 const EsqueciSenha = lazy(() => import("./pages/EsqueciSenha"));
 const PropostaPublica = lazy(() => import("./pages/PropostaPublica"));
+const TesteMonnera = lazy(() => import("./pages/TesteMonnera"));
 
 // Configure QueryClient with optimized defaults
 const queryClient = new QueryClient({
@@ -107,6 +108,7 @@ const App = () => (
               <Route path="/resetar-senha" element={<ResetarSenha />} />
               <Route path="/esqueci-senha" element={<EsqueciSenha />} />
               <Route path="/proposta/:token" element={<PropostaPublica />} />
+              <Route path="/teste-monnera" element={<TesteMonnera />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

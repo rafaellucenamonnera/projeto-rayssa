@@ -1165,6 +1165,13 @@ export type Database = {
           status: string
           status_lead: string
           telefone_responsavel: string
+          teste_monnera_last_diagnostic_id: string | null
+          teste_monnera_priority: string | null
+          teste_monnera_recommendation: string | null
+          teste_monnera_result_color: string | null
+          teste_monnera_scores: Json | null
+          teste_monnera_solicitou_reuniao: boolean
+          teste_monnera_submitted_at: string | null
           tipo_empresa: string | null
           valor_campanhas: number | null
           valor_campanhas_anterior: number | null
@@ -1256,6 +1263,13 @@ export type Database = {
           status?: string
           status_lead?: string
           telefone_responsavel: string
+          teste_monnera_last_diagnostic_id?: string | null
+          teste_monnera_priority?: string | null
+          teste_monnera_recommendation?: string | null
+          teste_monnera_result_color?: string | null
+          teste_monnera_scores?: Json | null
+          teste_monnera_solicitou_reuniao?: boolean
+          teste_monnera_submitted_at?: string | null
           tipo_empresa?: string | null
           valor_campanhas?: number | null
           valor_campanhas_anterior?: number | null
@@ -1347,6 +1361,13 @@ export type Database = {
           status?: string
           status_lead?: string
           telefone_responsavel?: string
+          teste_monnera_last_diagnostic_id?: string | null
+          teste_monnera_priority?: string | null
+          teste_monnera_recommendation?: string | null
+          teste_monnera_result_color?: string | null
+          teste_monnera_scores?: Json | null
+          teste_monnera_solicitou_reuniao?: boolean
+          teste_monnera_submitted_at?: string | null
           tipo_empresa?: string | null
           valor_campanhas?: number | null
           valor_campanhas_anterior?: number | null
@@ -1370,6 +1391,13 @@ export type Database = {
             columns: ["parceiro_id"]
             isOneToOne: false
             referencedRelation: "parceiros_comerciais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_teste_monnera_last_diagnostic_id_fkey"
+            columns: ["teste_monnera_last_diagnostic_id"]
+            isOneToOne: false
+            referencedRelation: "teste_monnera_diagnosticos"
             referencedColumns: ["id"]
           },
         ]
@@ -2354,6 +2382,95 @@ export type Database = {
         }
         Relationships: []
       }
+      teste_monnera_diagnosticos: {
+        Row: {
+          answers: Json
+          classificacao: Json
+          created_at: string
+          id: string
+          ip: unknown
+          lead_id: string
+          leitura_sdr: Json | null
+          pontos_atencao: Json | null
+          recomendacao: string | null
+          respondent_cargo: string | null
+          respondent_email: string | null
+          respondent_empresa: string | null
+          respondent_nome: string | null
+          respondent_segmento: string | null
+          respondent_sobrenome: string | null
+          respondent_telefone: string | null
+          result_color: string | null
+          result_summary: string | null
+          result_title: string | null
+          scores: Json
+          solicitou_reuniao: boolean
+          submitted_at: string
+          user_agent: string | null
+          utm: Json | null
+        }
+        Insert: {
+          answers?: Json
+          classificacao?: Json
+          created_at?: string
+          id?: string
+          ip?: unknown
+          lead_id: string
+          leitura_sdr?: Json | null
+          pontos_atencao?: Json | null
+          recomendacao?: string | null
+          respondent_cargo?: string | null
+          respondent_email?: string | null
+          respondent_empresa?: string | null
+          respondent_nome?: string | null
+          respondent_segmento?: string | null
+          respondent_sobrenome?: string | null
+          respondent_telefone?: string | null
+          result_color?: string | null
+          result_summary?: string | null
+          result_title?: string | null
+          scores?: Json
+          solicitou_reuniao?: boolean
+          submitted_at?: string
+          user_agent?: string | null
+          utm?: Json | null
+        }
+        Update: {
+          answers?: Json
+          classificacao?: Json
+          created_at?: string
+          id?: string
+          ip?: unknown
+          lead_id?: string
+          leitura_sdr?: Json | null
+          pontos_atencao?: Json | null
+          recomendacao?: string | null
+          respondent_cargo?: string | null
+          respondent_email?: string | null
+          respondent_empresa?: string | null
+          respondent_nome?: string | null
+          respondent_segmento?: string | null
+          respondent_sobrenome?: string | null
+          respondent_telefone?: string | null
+          result_color?: string | null
+          result_summary?: string | null
+          result_title?: string | null
+          scores?: Json
+          solicitou_reuniao?: boolean
+          submitted_at?: string
+          user_agent?: string | null
+          utm?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teste_monnera_diagnosticos_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_panel_permissions: {
         Row: {
           can_access: boolean
@@ -2625,6 +2742,7 @@ export type Database = {
         Args: { p_lead_id: string }
         Returns: undefined
       }
+      submit_teste_monnera: { Args: { p_payload: Json }; Returns: Json }
       sync_commercial_proposal_followups: { Args: never; Returns: number }
       update_pipeline_stage_followup_message: {
         Args: {
