@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { LayoutDashboard, Users, FileText, UserCog, DollarSign, Briefcase, Settings, ShieldCheck, PlugZap, Contact, HeartPulse } from "lucide-react";
+import { LayoutDashboard, Users, FileText, UserCog, DollarSign, Briefcase, Settings, ShieldCheck, PlugZap, Contact, HeartPulse, BookOpen } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,10 +19,27 @@ import {
 
 export function AdminSidebar() {
   const { state } = useSidebar();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const { canAccessPanel } = usePanelPermissions();
   const collapsed = state === "collapsed";
   const [panels, setPanels] = useState<Array<{ id: string; name: string; sort_order: number }>>([]);
+  const [canAccessDocumentation, setCanAccessDocumentation] = useState(false);
+
+  useEffect(() => {
+    const check = async () => {
+      if (isAdmin) { setCanAccessDocumentation(true); return; }
+      if (!user) { setCanAccessDocumentation(false); return; }
+      const { data } = await (supabase as any)
+        .from("module_permissions")
+        .select("permitido")
+        .eq("user_id", user.id)
+        .eq("modulo", "documentacao")
+        .eq("acao", "acessar")
+        .maybeSingle();
+      setCanAccessDocumentation(!!data?.permitido);
+    };
+    check();
+  }, [isAdmin, user]);
 
   useEffect(() => {
     const loadPanels = async () => {
@@ -57,7 +74,7 @@ export function AdminSidebar() {
   );
   const items = [...fixedItems, ...dynamicPanelItems];
 
-  const configItems = isAdmin
+  const adminConfigItems = isAdmin
     ? [
         { title: "Usuários", url: "/admin/usuarios", icon: UserCog },
         { title: "Permissões", url: "/admin/permissoes", icon: ShieldCheck },
@@ -65,6 +82,12 @@ export function AdminSidebar() {
         { title: "Edição de Painel", url: "/admin/edicao-painel", icon: Settings },
       ]
     : [];
+
+  const documentationItems = canAccessDocumentation
+    ? [{ title: "Documentação", url: "/admin/documentacao", icon: BookOpen }]
+    : [];
+
+  const configItems = [...adminConfigItems, ...documentationItems];
 
   return (
     <Sidebar collapsible="icon">
@@ -97,7 +120,7 @@ export function AdminSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        {isAdmin && (
+        {configItems.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel>
               <span className="flex items-center gap-2">

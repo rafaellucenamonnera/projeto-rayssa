@@ -460,6 +460,86 @@ export type Database = {
           },
         ]
       }
+      documentation_articles: {
+        Row: {
+          answer: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          question: string
+          tags: string[]
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          answer: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          question: string
+          tags?: string[]
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          question?: string
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      documentation_attachments: {
+        Row: {
+          article_id: string
+          created_at: string
+          created_by: string | null
+          file_name: string
+          id: string
+          mime_type: string | null
+          size_bytes: number | null
+          storage_path: string
+        }
+        Insert: {
+          article_id: string
+          created_at?: string
+          created_by?: string | null
+          file_name: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path: string
+        }
+        Update: {
+          article_id?: string
+          created_at?: string
+          created_by?: string | null
+          file_name?: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documentation_attachments_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "documentation_articles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kit_argumentos: {
         Row: {
           created_at: string
