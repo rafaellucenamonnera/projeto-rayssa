@@ -273,34 +273,69 @@ export default function TesteMonnera() {
   };
 
   // === LAYOUTS ===
-  const heroAndDados = (
-    <div className="space-y-8">
-      <div className="text-center space-y-4 max-w-3xl mx-auto">
-        <h1 className="font-display text-4xl md:text-5xl font-semibold text-foreground">
-          Teste Monnera: sua operação de incentivo está pronta?
-        </h1>
-        <p className="text-base md:text-lg text-muted-foreground">
-          Um diagnóstico rápido e educativo para entender como sua empresa organiza campanhas,
-          comissão, prêmio e pagamentos — e o que pode ser evoluído nos próximos 90 dias.
-        </p>
-      </div>
-
-      <Card className="max-w-2xl mx-auto">
-        <CardContent className="p-6 space-y-4">
-          <h2 className="font-display text-lg font-semibold">O diagnóstico avalia</h2>
-          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-            <li className="flex items-start gap-2"><CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Governança das campanhas</li>
-            <li className="flex items-start gap-2"><CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Clareza de regras e apuração</li>
-            <li className="flex items-start gap-2"><CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Estrutura de pagamento</li>
-            <li className="flex items-start gap-2"><CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Capacidade de gerar resultado</li>
-          </ul>
-          <p className="text-xs text-muted-foreground flex items-start gap-2">
-            <ShieldCheck className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-            Resultado educativo. Não substitui validação jurídica ou contábil.
+  const heroSection = (
+    <section className="bg-background">
+      <div className="container mx-auto grid gap-5 px-4 py-5 sm:gap-6 sm:py-8 md:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.75fr)] md:items-center md:gap-8 md:py-10">
+        <div className="space-y-5 sm:space-y-6">
+          <div className="space-y-3">
+            <img
+              src={logoMonnera}
+              alt="Monnera"
+              className="h-8 w-auto object-contain"
+            />
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Teste Monnera</p>
+              <p className="text-xs text-muted-foreground">Diagnóstico educativo</p>
+            </div>
+          </div>
+          <h1 className="max-w-3xl text-3xl font-bold leading-tight sm:text-4xl md:text-5xl">
+            Sua empresa paga prêmio ou apenas chama comissão de prêmio?
+          </h1>
+          <p className="text-base text-muted-foreground sm:text-lg">
+            Em menos de 4 minutos, descubra se sua empresa consegue pagar premiações com mais segurança, clareza e controle sem transformar incentivo em dor de cabeça operacional e passivo trabalhista.
           </p>
-        </CardContent>
-      </Card>
+          <p className="text-sm text-muted-foreground">
+            Muitas empresas querem premiar melhor, vender mais e reconhecer desempenho, mas travam na dúvida: estou pagando do jeito certo? O cálculo vira planilha manual, a apuração consome tempo, o pagamento em dinheiro ou recarga em cartão de benefício gera retrabalho e a falta de rastreabilidade aumenta o medo de estar fazendo errado.
+          </p>
+          <div className="flex flex-col items-start gap-3">
+            <Button size="lg" onClick={scrollToForm}>Fazer diagnóstico gratuito</Button>
+            <p className="text-xs text-muted-foreground flex items-start gap-2">
+              <ShieldCheck className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              Resultado educativo. Não substitui validação jurídica ou contábil.
+            </p>
+          </div>
+        </div>
 
+        <Card className="self-start border-border bg-card/70 md:self-center">
+          <CardHeader className="px-4 py-4 sm:px-5">
+            <CardTitle className="text-base font-semibold">O diagnóstico avalia</CardTitle>
+            <p className="text-xs leading-5 text-muted-foreground">
+              Quatro pontos que costumam gerar dúvida antes de pagar premiações.
+            </p>
+          </CardHeader>
+          <CardContent className="grid gap-2 px-4 pb-4 text-sm text-muted-foreground sm:px-5 sm:pb-5">
+            {[
+              { title: "Comissão ou premiação", copy: "Separação entre incentivo, comissão e pagamento recorrente." },
+              { title: "Governança e legalidade", copy: "Regras, aceite e registros antes do pagamento." },
+              { title: "Metas e potencial de vendas", copy: "Campanhas com metas por loja, rede e colaborador." },
+              { title: "Cálculo e pagamento", copy: "Apuração, conciliação e rastreabilidade do valor pago." },
+            ].map((item) => (
+              <div key={item.title} className="flex items-start gap-2 rounded-lg border border-border bg-secondary/30 p-2.5 sm:p-3">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">{item.title}</p>
+                  <p className="mt-0.5 hidden text-xs leading-5 text-muted-foreground sm:block">{item.copy}</p>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    </section>
+  );
+
+  const leadFormSection = (
+    <section id="teste-monnera-form" className="bg-background py-8 md:py-12">
       <Card className="max-w-2xl mx-auto">
         <CardContent className="p-6 space-y-4">
           <h2 className="font-display text-lg font-semibold">Seus dados</h2>
@@ -339,7 +374,7 @@ export default function TesteMonnera() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </section>
   );
 
   const renderBlock = () => {
