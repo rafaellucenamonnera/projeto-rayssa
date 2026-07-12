@@ -112,6 +112,10 @@ export default function TesteMonnera() {
 
   const goBack = () => setStep((s) => Math.max(0, s - 1));
 
+  const scrollToForm = () => {
+    document.getElementById("teste-monnera-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const submitDiagnostico = async (solicitouReuniao: boolean): Promise<string | null> => {
     if (!diagnostico) return null;
     setSubmitting(true);
