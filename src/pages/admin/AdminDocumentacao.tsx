@@ -79,6 +79,7 @@ const AdminDocumentacao = () => {
   const navigate = useNavigate();
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
+  const [canInsert, setCanInsert] = useState(false);
   const [loading, setLoading] = useState(true);
   const [articles, setArticles] = useState<Article[]>([]);
   const [search, setSearch] = useState("");
