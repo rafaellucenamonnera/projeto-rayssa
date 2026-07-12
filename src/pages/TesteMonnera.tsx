@@ -85,6 +85,13 @@ export default function TesteMonnera() {
     } catch {}
   }, [lead, answers, step]);
 
+  // Preserva progresso salvo na visibilidade do formulário
+  useEffect(() => {
+    if (step > 0 || step >= RESULT_STEP) {
+      setShowForm(true);
+    }
+  }, [step]);
+
   const diagnostico: Diagnostico | null = useMemo(
     () => (step >= TOTAL_STEPS ? buildDiagnostico(answers) : null),
     [answers, step]
