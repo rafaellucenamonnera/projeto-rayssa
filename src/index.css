@@ -71,7 +71,7 @@
 
   .teste-monnera-theme {
     --background: 163 40% 6%;
-    --foreground: 160 15% 96%;
+    --foreground: 0 0% 100%;
     --card: 163 32% 10%;
     --card-foreground: 160 15% 96%;
     --popover: 163 32% 10%;
