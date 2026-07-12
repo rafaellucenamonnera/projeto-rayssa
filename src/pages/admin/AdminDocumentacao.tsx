@@ -357,7 +357,7 @@ const AdminDocumentacao = () => {
             Manuais, respostas rápidas e arquivos de apoio para uso do painel comercial.
           </p>
         </div>
-        {isAdmin && (
+        {(isAdmin || canInsert) && (
           <Button onClick={openNew} className="shrink-0">
             <Plus className="h-4 w-4 mr-2" /> Nova documentação
           </Button>
