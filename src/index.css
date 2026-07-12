@@ -68,6 +68,26 @@
     font-weight: 700;
     letter-spacing: 0;
   }
+
+  .teste-monnera-theme {
+    --background: 163 40% 6%;
+    --foreground: 160 15% 96%;
+    --card: 163 32% 10%;
+    --card-foreground: 160 15% 96%;
+    --popover: 163 32% 10%;
+    --popover-foreground: 160 15% 96%;
+    --primary: 165 75% 55%;
+    --primary-foreground: 163 100% 10%;
+    --secondary: 163 30% 14%;
+    --secondary-foreground: 160 15% 96%;
+    --muted: 163 25% 14%;
+    --muted-foreground: 160 12% 68%;
+    --accent: 165 75% 55%;
+    --accent-foreground: 163 100% 10%;
+    --border: 163 25% 18%;
+    --input: 163 25% 18%;
+    --ring: 165 75% 55%;
+  }
 }
 
 @layer components {
