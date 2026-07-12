@@ -50,6 +50,7 @@ const AdminIntegracoes = lazy(() => import("./pages/admin/AdminIntegracoes"));
 const AdminContatos = lazy(() => import("./pages/admin/AdminContatos"));
 const AdminPipelineEdit = lazy(() => import("./pages/admin/AdminPipelineEdit"));
 const AdminGeradorProposta = lazy(() => import("./pages/admin/AdminGeradorProposta"));
+const AdminDocumentacao = lazy(() => import("./pages/admin/AdminDocumentacao"));
 const PrimeiroAcesso = lazy(() => import("./pages/PrimeiroAcesso"));
 const ResetarSenha = lazy(() => import("./pages/ResetarSenha"));
 const EsqueciSenha = lazy(() => import("./pages/EsqueciSenha"));
