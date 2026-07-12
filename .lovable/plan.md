@@ -1,228 +1,161 @@
+# Teste Monnera — Landing pública + Backend + Painel Comercial
+
+## Pontos críticos (não violar)
+
+1. **NÃO criar** valor `lead_qualificado`. **NÃO alterar** enum `lead_status`. `leads.status_lead` é usado como texto.
+2. **Reutilizar** a coluna existente "Lead Qualificado" do painel `comercial`, cujo `value` técnico é `etapa_comercial_1783879107510`.
+3. Tabela nova: **`teste_monnera_diagnosticos`** (não `lead_teste_monnera_diagnostics`).
+4. RPC única com **payload jsonb**: `submit_teste_monnera(p_payload jsonb)` — nada de múltiplos parâmetros.
+5. `action_url` das notificações: `/admin/painel-comercial?card=<id>` (padrão já usado em `src/lib/notifications.ts`).
+6. Se houver rascunho anterior com `lead_qualificado`, `lead_teste_monnera_diagnostics` ou RPC com parâmetros separados, **substituir** por este padrão.
+
 ## Escopo
-- 1 migration nova.
-- `src/pages/admin/AdminLeads.tsx` — carregar `followup_message`, expor RPC de update ao Kanban.
-- `src/components/admin/PipelineKanban.tsx` — bloco de mensagem abaixo do "Total" com Copiar/Editar.
 
-## 1. Migration `supabase/migrations/<ts>_commercial_proposal_followups.sql`
+Criar landing pública `/teste-monnera` + backend (tabela, colunas resumo, RPC) + dobra no card do painel comercial. Sem tocar em onboarding, sucesso, financeiro, campanhas, propostas ou fluxos de outros painéis.
 
+## Arquivos
+
+Novos:
+- `supabase/migrations/<ts>_teste_monnera.sql`
+- `src/pages/TesteMonnera.tsx`
+- `src/lib/testeMonnera.ts`
+- `src/components/admin/TesteMonneraSection.tsx`
+
+Editados:
+- `src/App.tsx` (registrar rota pública `/teste-monnera`)
+- `src/lib/pipelineConstants.ts` (label do value dinâmico)
+- `src/components/admin/PipelineKanban.tsx` (2 selos no card)
+- `src/pages/admin/AdminLeads.tsx` (carregar campos-resumo, renderizar dobra)
+
+## 1. Migration
+
+### 1.1 Garantir coluna "Lead Qualificado" (idempotente, sem duplicar)
 ```sql
--- 1.1 Colunas em pipeline_stages_config
-ALTER TABLE public.pipeline_stages_config
-  ADD COLUMN IF NOT EXISTS followup_message text,
-  ADD COLUMN IF NOT EXISTS followup_message_updated_at timestamptz;
+INSERT INTO public.pipeline_stages_config (panel_key, value, label, sort_order)
+SELECT 'comercial', 'etapa_comercial_1783879107510', 'Lead Qualificado',
+       COALESCE((SELECT max(sort_order)+1 FROM public.pipeline_stages_config WHERE panel_key='comercial'), 0)
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.pipeline_stages_config
+   WHERE panel_key='comercial' AND value='etapa_comercial_1783879107510'
+);
+```
+Não mexe se já existir (é o caso).
 
--- 1.2 Normalizador de label
-CREATE OR REPLACE FUNCTION public.normalize_pipeline_stage_label(p_label text)
-RETURNS text LANGUAGE sql IMMUTABLE SET search_path = public AS $$
-  SELECT lower(regexp_replace(coalesce(p_label,''), '[^a-zA-Z0-9]+', '', 'g'));
-$$;
+### 1.2 Tabela `public.teste_monnera_diagnosticos`
+Colunas: `id uuid pk default gen_random_uuid()`, `lead_id uuid not null references public.leads(id) on delete cascade`, `submitted_at timestamptz not null default now()`, `respondent_nome text`, `respondent_sobrenome text`, `respondent_email text`, `respondent_telefone text`, `respondent_empresa text`, `respondent_cargo text`, `respondent_segmento text`, `answers jsonb not null`, `scores jsonb not null` (icp/governanca/campanhas/pagamentos), `classificacao jsonb not null`, `result_color text check (result_color in ('verde','amarelo','vermelho','cinza'))`, `result_title text`, `result_summary text`, `pontos_atencao jsonb`, `recomendacao text`, `leitura_sdr jsonb`, `solicitou_reuniao boolean not null default false`, `utm jsonb`, `user_agent text`, `ip inet`, `created_at timestamptz not null default now()`.
 
--- 1.3 Trigger updated_at
-CREATE OR REPLACE FUNCTION public.tg_pipeline_stage_followup_touch()
-RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
-BEGIN
-  IF NEW.followup_message IS DISTINCT FROM OLD.followup_message THEN
-    NEW.followup_message_updated_at := now();
-  END IF;
-  RETURN NEW;
-END; $$;
+Grants + RLS na mesma migration:
+```sql
+GRANT SELECT ON public.teste_monnera_diagnosticos TO authenticated;
+GRANT ALL ON public.teste_monnera_diagnosticos TO service_role;
+ALTER TABLE public.teste_monnera_diagnosticos ENABLE ROW LEVEL SECURITY;
 
-DROP TRIGGER IF EXISTS pipeline_stage_followup_touch ON public.pipeline_stages_config;
-CREATE TRIGGER pipeline_stage_followup_touch
-BEFORE UPDATE ON public.pipeline_stages_config
-FOR EACH ROW EXECUTE FUNCTION public.tg_pipeline_stage_followup_touch();
+CREATE POLICY "Staff lê diagnósticos" ON public.teste_monnera_diagnosticos
+FOR SELECT TO authenticated
+USING (
+  public.has_role(auth.uid(), 'admin'::public.app_role)
+  OR public.has_role(auth.uid(), 'gestor_conta'::public.app_role)
+  OR public.has_module_permission(auth.uid(), 'leads', 'visualizar')
+);
+```
+Sem policies de INSERT/UPDATE/DELETE — escrita só via RPC `SECURITY DEFINER`.
+Index: `(lead_id, submitted_at desc)`.
 
--- 1.4 Seed (preenche NULL ou vazio, preserva edições manuais)
-WITH msgs(norm, msg) AS (VALUES
-  ('followup1', 'Vi que você conseguiu acessar a proposta. Faz sentido marcarmos uma conversa rápida para eu te ajudar a avaliar os pontos principais e próximos passos?'),
-  ('followup2', 'Pelo diagnóstico, o ponto mais sensível parece ser a forma como comissão/premiação é calculada, comunicada e documentada. A proposta foi pensada justamente para dar mais clareza, rastreabilidade e governança nesse processo.'),
-  ('followup3', 'Para avançarmos com segurança, faz sentido envolver também financeiro, RH, contador ou jurídico? Posso conduzir uma conversa objetiva com todos para explicar o modelo.'),
-  ('followup4', 'Conseguimos seguir com o aceite da proposta ou existe algum ponto específico impedindo a decisão hoje?'),
-  ('followup5', 'Vou deixar esse contato em acompanhamento por enquanto. Pelo cenário que vocês trouxeram, acredito que existe uma oportunidade clara de organizar melhor a operação de incentivo. Quando fizer sentido retomar, seguimos daqui.')
-)
-UPDATE public.pipeline_stages_config c
-SET followup_message = m.msg
-FROM msgs m
-WHERE c.panel_key = 'comercial'
-  AND public.normalize_pipeline_stage_label(c.label) = m.norm
-  AND coalesce(btrim(c.followup_message), '') = '';
+### 1.3 Colunas-resumo em `public.leads`
+`ADD COLUMN IF NOT EXISTS`:
+- `teste_monnera_last_diagnostic_id uuid references public.teste_monnera_diagnosticos(id) on delete set null`
+- `teste_monnera_result_color text`
+- `teste_monnera_recommendation text`
+- `teste_monnera_solicitou_reuniao boolean not null default false`
+- `teste_monnera_priority text`
+- `teste_monnera_scores jsonb`
+- `teste_monnera_submitted_at timestamptz`
 
--- 1.5 RPC update
-CREATE OR REPLACE FUNCTION public.update_pipeline_stage_followup_message(
-  p_panel_key text, p_stage_value text, p_followup_message text
-) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE v_ok boolean;
-BEGIN
-  v_ok := public.has_role(auth.uid(), 'admin'::public.app_role)
-       OR public.has_module_permission(auth.uid(), 'configuracao_painel', 'editar')
-       OR public.has_module_permission(auth.uid(), 'leads', 'editar');
-  IF NOT v_ok THEN RAISE EXCEPTION 'Sem permissão'; END IF;
+### 1.4 RPC `public.submit_teste_monnera(p_payload jsonb) returns jsonb`
+`SECURITY DEFINER`, `SET search_path = public`.
 
-  UPDATE public.pipeline_stages_config
-     SET followup_message = NULLIF(btrim(coalesce(p_followup_message,'')), '')
-   WHERE panel_key = p_panel_key AND value = p_stage_value;
+Lógica:
+1. Extrai campos do jsonb: `lead.{nome, sobrenome, email, telefone, empresa, cargo, segmento}`, `answers`, `scores`, `classificacao`, `result_color/title/summary`, `pontos_atencao`, `recomendacao`, `leitura_sdr`, `solicitou_reuniao` (default false), `utm`, `user_agent`, `priority`.
+2. Validações: email regex válido; `empresa`, `telefone`, `nome` não vazios. Normaliza `v_email=lower(trim)`, `v_tel_digits=regexp_replace(tel,'\D','','g')`.
+3. `PERFORM set_config('app.system_lead_update','on', true)` antes de mexer em leads (bypass do trigger anônimo).
+4. Match do lead em `panel_id='comercial'`, ordem:
+   - `lower(email_responsavel)=v_email`
+   - `regexp_replace(telefone_responsavel,'\D','','g')=v_tel_digits`
+   - `lower(nome_fantasia)=lower(v_empresa)`
+5. Se achou: UPDATE preservando dados existentes, seta `status_lead='etapa_comercial_1783879107510'`, atualiza campos vazios, atualiza `teste_monnera_*` (color/priority/scores/recommendation/solicitou_reuniao/submitted_at).
+6. Senão: INSERT com `panel_id='comercial'`, `status_lead='etapa_comercial_1783879107510'`, `origem='landing_teste_monnera'`, `nome_fantasia=empresa`, `nome_responsavel=nome+' '+sobrenome`, contato, `dados_completos=false`, campos `teste_monnera_*`.
+7. INSERT em `teste_monnera_diagnosticos` (linha nova a cada submit → histórico) `RETURNING id INTO v_diag_id`.
+8. UPDATE `leads.teste_monnera_last_diagnostic_id=v_diag_id`.
+9. Se `solicitou_reuniao=true`:
+   - INSERT em `lead_tasks`: título "Contato Teste Monnera — reunião solicitada", `due_at=now()+interval '24 hours'`, `status='pendente'`, `assigned_to=leads.responsible_user_id`, `created_by=NULL`.
+   - `PERFORM public.create_notification(...)` para `responsible_user_id` (se existir) com `type='teste_monnera_reuniao'`, `title='Reunião solicitada — Teste Monnera'`, `action_url='/admin/painel-comercial?card='||v_lead_id`, `delivery_key='teste_monnera_reuniao:'||v_lead_id`.
+   - Se `responsible_user_id` NULL: loop em `module_permissions` (`modulo='leads' AND acao='visualizar' AND permitido=true`) e notifica cada, delivery_key único por destinatário.
+10. Retorna `jsonb_build_object('lead_id', v_lead_id, 'diagnostic_id', v_diag_id)`.
 
-  IF NOT FOUND THEN RAISE EXCEPTION 'Coluna não encontrada'; END IF;
-END; $$;
-
-REVOKE ALL ON FUNCTION public.update_pipeline_stage_followup_message(text,text,text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.update_pipeline_stage_followup_message(text,text,text) TO authenticated;
-
--- 2. Trigger: proposta aceita → lead_convertido (painel comercial)
-CREATE OR REPLACE FUNCTION public.move_accepted_commercial_proposal_to_converted()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-BEGIN
-  IF NEW.accepted_at IS NULL
-     OR NEW.acceptance_canceled_at IS NOT NULL
-     OR NEW.superseded_at IS NOT NULL THEN
-    RETURN NEW;
-  END IF;
-  IF TG_OP = 'UPDATE'
-     AND OLD.accepted_at IS NOT DISTINCT FROM NEW.accepted_at
-     AND OLD.acceptance_canceled_at IS NOT DISTINCT FROM NEW.acceptance_canceled_at THEN
-    RETURN NEW;
-  END IF;
-
-  PERFORM set_config('app.system_lead_update', 'on', true);
-  UPDATE public.leads
-     SET status_lead = 'lead_convertido'
-   WHERE id = NEW.lead_id
-     AND panel_id = 'comercial'
-     AND status_lead IS DISTINCT FROM 'lead_convertido';
-  RETURN NEW;
-END; $$;
-
-DROP TRIGGER IF EXISTS trg_move_accepted_commercial_proposal ON public.commercial_proposals;
-CREATE TRIGGER trg_move_accepted_commercial_proposal
-AFTER INSERT OR UPDATE OF accepted_at, acceptance_canceled_at ON public.commercial_proposals
-FOR EACH ROW EXECUTE FUNCTION public.move_accepted_commercial_proposal_to_converted();
-
--- 3. Job de follow-up
-CREATE OR REPLACE FUNCTION public.sync_commercial_proposal_followups()
-RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE
-  v_stage_map jsonb := '{}'::jsonb;
-  v_target text;
-  v_count int := 0;
-  r record;
-  v_hours numeric;
-BEGIN
-  PERFORM set_config('app.system_lead_update', 'on', true);
-
-  -- 3.1 defesa: propostas aceitas, ativas e não substituídas → lead_convertido
-  UPDATE public.leads l
-     SET status_lead = 'lead_convertido'
-    FROM public.commercial_proposals p
-   WHERE p.lead_id = l.id
-     AND p.accepted_at IS NOT NULL
-     AND p.acceptance_canceled_at IS NULL
-     AND p.superseded_at IS NULL
-     AND l.panel_id = 'comercial'
-     AND l.status_lead IS DISTINCT FROM 'lead_convertido';
-
-  -- 3.2 mapear stage values de follow-up 1..5
-  SELECT jsonb_object_agg(norm, value) INTO v_stage_map
-  FROM (
-    SELECT public.normalize_pipeline_stage_label(label) AS norm, value
-    FROM public.pipeline_stages_config
-    WHERE panel_key = 'comercial'
-      AND public.normalize_pipeline_stage_label(label)
-          IN ('followup1','followup2','followup3','followup4','followup5')
-  ) x;
-
-  IF v_stage_map IS NULL OR v_stage_map = '{}'::jsonb THEN RETURN 0; END IF;
-
-  -- 3.3 proposta aberta mais recente por lead
-  FOR r IN
-    SELECT DISTINCT ON (p.lead_id) p.lead_id, p.opened_at, l.status_lead AS st
-      FROM public.commercial_proposals p
-      JOIN public.leads l ON l.id = p.lead_id
-     WHERE p.opened_at IS NOT NULL
-       AND p.accepted_at IS NULL
-       AND p.acceptance_canceled_at IS NULL
-       AND p.superseded_at IS NULL
-       AND l.panel_id = 'comercial'
-       AND l.status_lead NOT IN ('lead_convertido','contrato_enviado','contrato_assinado','lead_perdido')
-     ORDER BY p.lead_id, p.opened_at DESC
-  LOOP
-    v_hours := EXTRACT(EPOCH FROM (now() - r.opened_at)) / 3600.0;
-    v_target := CASE
-      WHEN v_hours >= 240 THEN v_stage_map->>'followup5'
-      WHEN v_hours >= 192 THEN v_stage_map->>'followup4'
-      WHEN v_hours >= 120 THEN v_stage_map->>'followup3'
-      WHEN v_hours >=  72 THEN v_stage_map->>'followup2'
-      WHEN v_hours >=  24 THEN v_stage_map->>'followup1'
-      ELSE NULL END;
-
-    IF v_target IS NOT NULL AND r.st IS DISTINCT FROM v_target THEN
-      UPDATE public.leads SET status_lead = v_target WHERE id = r.lead_id;
-      v_count := v_count + 1;
-    END IF;
-  END LOOP;
-
-  RETURN v_count;
-END; $$;
-
-REVOKE ALL ON FUNCTION public.sync_commercial_proposal_followups() FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.sync_commercial_proposal_followups() TO service_role;
-
--- 3.4 pg_cron: habilita, remove job anterior se existir, e reagenda
-DO $do$
-BEGIN
-  BEGIN
-    CREATE SCHEMA IF NOT EXISTS extensions;
-    CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA extensions;
-  EXCEPTION WHEN OTHERS THEN
-    RAISE NOTICE 'pg_cron indisponível (%). Agende manualmente: SELECT public.sync_commercial_proposal_followups();', SQLERRM;
-    RETURN;
-  END;
-
-  BEGIN
-    IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'commercial-proposal-followups-hourly') THEN
-      PERFORM cron.unschedule('commercial-proposal-followups-hourly');
-    END IF;
-    PERFORM cron.schedule(
-      'commercial-proposal-followups-hourly',
-      '0 * * * *',
-      $$SELECT public.sync_commercial_proposal_followups();$$
-    );
-  EXCEPTION WHEN OTHERS THEN
-    RAISE NOTICE 'cron.schedule falhou (%). Agende manualmente.', SQLERRM;
-  END;
-END $do$;
+Grants:
+```sql
+REVOKE ALL ON FUNCTION public.submit_teste_monnera(jsonb) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.submit_teste_monnera(jsonb) TO anon, authenticated;
 ```
 
-## 4. `src/pages/admin/AdminLeads.tsx`
-- `type PipelineStage = { value: string; label: string; sort_order: number; followup_message?: string | null };`
-- Em `loadPipelineStages`, select: `"value,label,sort_order,followup_message"`.
-- Nova função:
-  ```ts
-  const updateStageFollowupMessage = async (stageValue: string, message: string) => {
-    if (!(canEditLead || isAdmin)) return;
-    const trimmed = message.trim();
-    const { error } = await (supabase as any).rpc("update_pipeline_stage_followup_message", {
-      p_panel_key: currentPanelId,
-      p_stage_value: stageValue,
-      p_followup_message: trimmed || null,
-    });
-    if (error) { toast.error("Erro ao salvar mensagem da coluna"); throw error; }
-    setPipelineStages((prev) => prev.map((s) => s.value === stageValue ? { ...s, followup_message: trimmed || null } : s));
-    toast.success("Mensagem da coluna atualizada");
-  };
-  ```
-- Em toda ocorrência de `<PipelineKanban ... />` existente, passar `canEditStageMessages={canEditLead || isAdmin}` e `onUpdateStageFollowupMessage={updateStageFollowupMessage}`.
+## 2. `src/lib/testeMonnera.ts`
 
-## 5. `src/components/admin/PipelineKanban.tsx`
-- Estender `interface PipelineStage { value: string; label: string; followup_message?: string | null; }`.
-- Adicionar props opcionais `canEditStageMessages?: boolean` e `onUpdateStageFollowupMessage?: (stageValue: string, message: string) => Promise<void>`.
-- Imports: `import { Textarea } from "@/components/ui/textarea"; import { toast } from "sonner";` (`Copy`/`Pencil` já existem).
-- Estados: `editingStageMessage: { stageValue: string; message: string } | null` e `savingStageMessage: boolean`.
-- Após `<p>Total…</p>` (linha ~252), quando `s.followup_message || editingStageMessage?.stageValue === s.value`:
-  - **Leitura**: `border rounded p-1.5 bg-secondary/40 text-[11px]` com texto + botão icon `Copy` (`navigator.clipboard.writeText` → toasts "Mensagem copiada"/"Erro ao copiar mensagem") + botão icon `Pencil` (só se `canEditStageMessages && onUpdateStageFollowupMessage`).
-  - **Edição**: `<Textarea>` compacto + botões `Cancelar` e `Salvar`; salvar chama `onUpdateStageFollowupMessage(s.value, message)` em try/finally com `savingStageMessage`; fecha no sucesso.
+Fonte única para landing e dobra.
+- `QUESTIONNAIRE`: 8 blocos, perguntas `single`/`multi`/`scale05`.
+- Pesos: ICP (porte + participação decisão), Governança (formatos + separação salário/comissão/prêmio + termo/comunicação + regras acessíveis + apuração + auditabilidade), Campanhas (metas + desempenho + prioridade 90d + dor), Pagamentos (meio + conciliação).
+- `computeScores(answers)` → `{icp, governanca, campanhas, pagamentos}`.
+- `classify(scores)` → faixas.
+- `buildDiagnostico(scores, classifs, answers)` → `{result_color, result_title, result_summary, pontos_atencao[≤5], recomendacao, leitura_sdr:{prioridade, dor_principal, gancho, proximo_passo}, priority}`.
+- Regra cor: Governança 30+ vermelho; 15-29 amarelo; 0-14 verde. Cinza se ICP 0-9 e Governança<15.
+- Sem "blindagem trabalhista"/"sem risco"/"parecer jurídico". Microcopy: `Resultado educativo. Não substitui validação jurídica ou contábil.`
 
-Sem alterar drag/drop, agrupamento, cards ou resto do layout.
+## 3. `src/pages/TesteMonnera.tsx`
 
-## 6. Validação
+Rota pública sem login. Steps: 0 hero+dados → 1..8 blocos → 9 resultado. Persistência em `localStorage['monnera_teste_monnera_v1']` limpa após submit.
+
+UI:
+- Hero com título/subtítulo/card "O diagnóstico avalia"/microcopy.
+- Etapa 1 valida obrigatórios (toast sonner).
+- Blocos: `<Progress>` topo, 1-2 perguntas/página, Voltar/Próximo. Multi=Checkbox, Single=RadioGroup, Scale 0-5=6 radios horizontais.
+- Resultado: título colorido, resumo, cards Governança/Campanhas/Pagamentos (**ICP nunca visível**), até 5 pontos de atenção, recomendação, microcopy jurídica, CTA `Agendar conversa com especialista Monnera`.
+- Ao entrar em resultado: 1º submit via `supabase.rpc('submit_teste_monnera', { p_payload: {..., solicitou_reuniao:false} })`, guarda `lead_id`.
+- CTA: 2º submit com `solicitou_reuniao:true` no mesmo payload (RPC atualiza mesmo card + tarefa 24h). Mensagem final: `Recebemos seu diagnóstico. Uma tarefa foi criada no painel comercial para contato em até 24h.` Limpa localStorage.
+- Mobile-first. Reutilizar `logo-monnera.jpg`.
+
+## 4. `src/App.tsx`
+```tsx
+const TesteMonnera = lazy(() => import("./pages/TesteMonnera"));
+// entre as rotas públicas:
+<Route path="/teste-monnera" element={<TesteMonnera />} />
+```
+
+## 5. `src/lib/pipelineConstants.ts`
+Adicionar:
+```ts
+PIPELINE_LABELS["etapa_comercial_1783879107510"] = "Lead Qualificado";
+```
+Sem alterar `PIPELINE_STAGES`/`PIPELINE_STAGE_ORDER` — a etapa é dinâmica em `pipeline_stages_config`.
+
+## 6. `src/components/admin/PipelineKanban.tsx`
+Quando o lead tem `teste_monnera_last_diagnostic_id`:
+- Selo `Teste Monnera` com cor por `teste_monnera_result_color` (verde/amarelo/vermelho/cinza).
+- Selo `Reunião solicitada` quando `teste_monnera_solicitou_reuniao=true`.
+Sem alterar drag/drop nem layout.
+
+## 7. `src/components/admin/TesteMonneraSection.tsx`
+`<Collapsible>` titulado `Questionário de Qualificação`, prop `leadId`.
+```ts
+supabase.from('teste_monnera_diagnosticos').select('*').eq('lead_id', leadId).order('submitted_at',{ascending:false}).limit(1)
+```
+Renderiza: diagnóstico (cor+título+resumo), scores internos ICP/Governança/Campanhas/Pagamentos (**ICP só aqui**), classificação, recomendação, leitura SDR (prioridade/dor/gancho/próximo passo), respostas agrupadas por bloco (via `QUESTIONNAIRE`), selo "Reunião solicitada".
+
+## 8. `src/pages/admin/AdminLeads.tsx`
+- Incluir `teste_monnera_last_diagnostic_id, teste_monnera_result_color, teste_monnera_solicitou_reuniao` no select de leads.
+- No detalhe do card quando `panel_id==='comercial'` e `teste_monnera_last_diagnostic_id != null`, renderizar `<TesteMonneraSection leadId={lead.id} />`.
+
+## 9. Validação
 - `npm run build`.
-- Reportar arquivos alterados, resultado do build, warnings e lembrete: aprovar a migration; sem `pg_cron`, agendar externamente `SELECT public.sync_commercial_proposal_followups();`.
+- E2E: `/teste-monnera` deslogado; preencher; ver resultado sem ICP; CTA cria card em "Lead Qualificado"; dobra visível; tarefa 24h + notificação; reenvio mesmo email/telefone/empresa não duplica.
+
+## Fora de escopo
+WhatsApp/Calendly, outros painéis, parecer jurídico, remoção de funcionalidades existentes.
