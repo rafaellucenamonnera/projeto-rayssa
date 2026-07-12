@@ -63,6 +63,7 @@ export default function TesteMonnera() {
   const [leadId, setLeadId] = useState<string | null>(null);
   const [reuniaoRequested, setReuniaoRequested] = useState(false);
   const [initialSubmitDone, setInitialSubmitDone] = useState(false);
+  const [showForm, setShowForm] = useState(() => step > 0 || step >= RESULT_STEP);
 
   // Restaura progresso
   useEffect(() => {
@@ -83,6 +84,13 @@ export default function TesteMonnera() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ lead, answers, step }));
     } catch {}
   }, [lead, answers, step]);
+
+  // Preserva progresso salvo na visibilidade do formulário
+  useEffect(() => {
+    if (step > 0 || step >= RESULT_STEP) {
+      setShowForm(true);
+    }
+  }, [step]);
 
   const diagnostico: Diagnostico | null = useMemo(
     () => (step >= TOTAL_STEPS ? buildDiagnostico(answers) : null),
@@ -114,6 +122,20 @@ export default function TesteMonnera() {
 
   const scrollToForm = () => {
     document.getElementById("teste-monnera-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const resetTeste = () => {
+    setStep(0);
+    setLead(EMPTY_LEAD);
+    setAnswers({});
+    setLeadId(null);
+    setReuniaoRequested(false);
+    setInitialSubmitDone(false);
+    setShowForm(false);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {}
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const submitDiagnostico = async (solicitouReuniao: boolean): Promise<string | null> => {
@@ -298,7 +320,19 @@ export default function TesteMonnera() {
             Muitas empresas querem premiar melhor, vender mais e reconhecer desempenho, mas travam na dúvida: estou pagando do jeito certo? O cálculo vira planilha manual, a apuração consome tempo, o pagamento em dinheiro ou recarga em cartão de benefício gera retrabalho e a falta de rastreabilidade aumenta o medo de estar fazendo errado.
           </p>
           <div className="flex flex-col items-start gap-3">
-            <Button size="lg" onClick={scrollToForm}>Fazer diagnóstico gratuito</Button>
+            <Button
+              size="lg"
+              onClick={() => {
+                setShowForm(true);
+                window.setTimeout(() => {
+                  document
+                    .getElementById("teste-monnera-form")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }, 0);
+              }}
+            >
+              Fazer diagnóstico gratuito
+            </Button>
             <p className="text-xs text-muted-foreground flex items-start gap-2">
               <ShieldCheck className="h-3.5 w-3.5 mt-0.5 shrink-0" />
               Resultado educativo. Não substitui validação jurídica ou contábil.
@@ -509,6 +543,12 @@ export default function TesteMonnera() {
             )}
           </CardContent>
         </Card>
+
+        <div className="text-center">
+          <Button variant="outline" onClick={resetTeste}>
+            Refazer diagnóstico
+          </Button>
+        </div>
       </div>
     );
   };
@@ -549,7 +589,7 @@ export default function TesteMonnera() {
           {step === 0 && (
             <>
               {heroSection}
-              {leadFormSection}
+              {showForm && leadFormSection}
             </>
           )}
           {step > 0 && step <= TOTAL_STEPS && renderBlock()}
