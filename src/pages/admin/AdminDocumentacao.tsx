@@ -240,6 +240,8 @@ const AdminDocumentacao = () => {
   };
 
   const handleSave = async () => {
+    if (editing && !isAdmin) return;
+    if (!editing && !(isAdmin || canInsert)) return;
     if (!formTitle.trim() || !formQuestion.trim() || !formAnswer.trim()) {
       toast.error("Preencha título, pergunta e resposta");
       return;
