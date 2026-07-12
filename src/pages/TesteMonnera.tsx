@@ -63,6 +63,7 @@ export default function TesteMonnera() {
   const [leadId, setLeadId] = useState<string | null>(null);
   const [reuniaoRequested, setReuniaoRequested] = useState(false);
   const [initialSubmitDone, setInitialSubmitDone] = useState(false);
+  const [showForm, setShowForm] = useState(() => step > 0 || step >= RESULT_STEP);
 
   // Restaura progresso
   useEffect(() => {
