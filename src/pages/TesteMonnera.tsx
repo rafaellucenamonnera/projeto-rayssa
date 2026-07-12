@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, ShieldCheck, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, ShieldCheck, CheckCircle2, AlertCircle, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -120,8 +120,13 @@ export default function TesteMonnera() {
 
   const goBack = () => setStep((s) => Math.max(0, s - 1));
 
-  const scrollToForm = () => {
-    document.getElementById("teste-monnera-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const openDiagnosticForm = () => {
+    setShowForm(true);
+    window.setTimeout(() => {
+      document
+        .getElementById("teste-monnera-form")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
   };
 
   const resetTeste = () => {
@@ -299,16 +304,19 @@ export default function TesteMonnera() {
     <section className="bg-background">
       <div className="container mx-auto grid gap-5 px-4 py-5 sm:gap-6 sm:py-8 md:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.75fr)] md:items-center md:gap-8 md:py-10">
         <div className="space-y-5 sm:space-y-6">
-          <div className="space-y-3">
-            <img
-              src={logoMonnera}
-              alt="Monnera"
-              className="h-8 w-auto object-contain"
-            />
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Teste Monnera</p>
-              <p className="text-xs text-muted-foreground">Diagnóstico educativo</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <img
+                src={logoMonnera}
+                alt="Monnera"
+                className="h-8 w-auto object-contain"
+              />
+              <p className="text-sm font-medium text-primary">Diagnóstico educativo Monnera</p>
             </div>
+            <Button className="h-10 w-full text-sm sm:w-auto" onClick={openDiagnosticForm}>
+              Fazer diagnóstico gratuito
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
           </div>
           <h1 className="max-w-3xl text-3xl font-bold leading-tight sm:text-4xl md:text-5xl">
             Sua empresa paga prêmio ou apenas chama comissão de prêmio?
@@ -320,22 +328,13 @@ export default function TesteMonnera() {
             Muitas empresas querem premiar melhor, vender mais e reconhecer desempenho, mas travam na dúvida: estou pagando do jeito certo? O cálculo vira planilha manual, a apuração consome tempo, o pagamento em dinheiro ou recarga em cartão de benefício gera retrabalho e a falta de rastreabilidade aumenta o medo de estar fazendo errado.
           </p>
           <div className="flex flex-col items-start gap-3">
-            <Button
-              size="lg"
-              onClick={() => {
-                setShowForm(true);
-                window.setTimeout(() => {
-                  document
-                    .getElementById("teste-monnera-form")
-                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
-                }, 0);
-              }}
-            >
+            <Button className="h-11 text-sm sm:h-12 sm:text-base" onClick={openDiagnosticForm}>
               Fazer diagnóstico gratuito
+              <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
             <p className="text-xs text-muted-foreground flex items-start gap-2">
               <ShieldCheck className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-              Resultado educativo. Não substitui validação jurídica ou contábil.
+              Resultado educativo. Não substitui validação jurídica ou contábil. Ao continuar, você concorda com o uso dos dados informados para contato comercial da Monnera, conforme a LGPD.
             </p>
           </div>
         </div>
