@@ -16,6 +16,7 @@ export const PIPELINE_LABELS: Record<string, string> = Object.fromEntries(
 
 // Legacy mapping for backward compatibility
 PIPELINE_LABELS["proposta_comercial"] = "Proposta Enviada";
+PIPELINE_LABELS["etapa_comercial_1783879107510"] = "Lead Qualificado";
 
 export const PIPELINE_STAGE_ORDER: Record<string, number> = Object.fromEntries(
   PIPELINE_STAGES.map((s, index) => [s.value, index])
