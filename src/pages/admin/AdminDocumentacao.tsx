@@ -79,6 +79,7 @@ const AdminDocumentacao = () => {
   const navigate = useNavigate();
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
+  const [canInsert, setCanInsert] = useState(false);
   const [loading, setLoading] = useState(true);
   const [articles, setArticles] = useState<Article[]>([]);
   const [search, setSearch] = useState("");
@@ -101,22 +102,25 @@ const AdminDocumentacao = () => {
     const check = async () => {
       if (!user) {
         setHasAccess(false);
+        setCanInsert(false);
         setCheckingAccess(false);
         return;
       }
       if (isAdmin) {
         setHasAccess(true);
+        setCanInsert(true);
         setCheckingAccess(false);
         return;
       }
       const { data } = await (supabase as any)
         .from("module_permissions")
-        .select("permitido")
+        .select("acao,permitido")
         .eq("user_id", user.id)
         .eq("modulo", "documentacao")
-        .eq("acao", "acessar")
-        .maybeSingle();
-      setHasAccess(!!data?.permitido);
+        .in("acao", ["acessar", "inserir"]);
+      const rows = (data as Array<{ acao: string; permitido: boolean }>) || [];
+      setHasAccess(rows.some((r) => r.acao === "acessar" && r.permitido));
+      setCanInsert(rows.some((r) => r.acao === "inserir" && r.permitido));
       setCheckingAccess(false);
     };
     check();
@@ -236,6 +240,8 @@ const AdminDocumentacao = () => {
   };
 
   const handleSave = async () => {
+    if (editing && !isAdmin) return;
+    if (!editing && !(isAdmin || canInsert)) return;
     if (!formTitle.trim() || !formQuestion.trim() || !formAnswer.trim()) {
       toast.error("Preencha título, pergunta e resposta");
       return;
@@ -351,7 +357,7 @@ const AdminDocumentacao = () => {
             Manuais, respostas rápidas e arquivos de apoio para uso do painel comercial.
           </p>
         </div>
-        {isAdmin && (
+        {(isAdmin || canInsert) && (
           <Button onClick={openNew} className="shrink-0">
             <Plus className="h-4 w-4 mr-2" /> Nova documentação
           </Button>
@@ -509,44 +515,46 @@ const AdminDocumentacao = () => {
                 Publicar para usuários com acesso
               </Label>
             </div>
-            <div>
-              <Label>Anexos</Label>
-              <Input
-                type="file"
-                multiple
-                accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx"
-                onChange={onFilesChange}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                pdf, png, jpg, jpeg, webp, doc, docx, xls, xlsx · até 15 MB por arquivo
-              </p>
-              {formFiles.length > 0 && (
-                <div className="mt-2 space-y-1">
-                  {formFiles.map((f, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center justify-between text-sm border border-border rounded px-2 py-1"
-                    >
-                      <span className="flex items-center gap-2">
-                        <Paperclip className="h-3.5 w-3.5" />
-                        {f.name}
-                      </span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() =>
-                          setFormFiles((prev) => prev.filter((_, idx) => idx !== i))
-                        }
+            {(isAdmin || canInsert) && (
+              <div>
+                <Label>Anexos</Label>
+                <Input
+                  type="file"
+                  multiple
+                  accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx"
+                  onChange={onFilesChange}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  pdf, png, jpg, jpeg, webp, doc, docx, xls, xlsx · até 15 MB por arquivo
+                </p>
+                {formFiles.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {formFiles.map((f, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between text-sm border border-border rounded px-2 py-1"
                       >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                        <span className="flex items-center gap-2">
+                          <Paperclip className="h-3.5 w-3.5" />
+                          {f.name}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() =>
+                            setFormFiles((prev) => prev.filter((_, idx) => idx !== i))
+                          }
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <DialogFooter>

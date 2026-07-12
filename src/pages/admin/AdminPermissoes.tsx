@@ -32,7 +32,7 @@ const AdminPermissoes = () => {
       { key: "integracoes", label: "INTEGRAÇÕES", actions: ["notificacao_via_slack"] },
       { key: "configuracao_painel", label: "CONFIGURAÇÃO PAINEL", actions: ["visualizar", "editar", "criar_estagio", "excluir_estagio"] },
       { key: "configuracoes", label: "CONFIGURAÇÕES", actions: ["acessar", "gerenciar_permissoes", "gerenciar_usuarios"] },
-      { key: "documentacao", label: "DOCUMENTAÇÃO", actions: ["acessar"] },
+      { key: "documentacao", label: "DOCUMENTAÇÃO", actions: ["acessar", "inserir"] },
     ],
     [],
   );
