@@ -17,6 +17,7 @@ import {
   type Answers,
   type Diagnostico,
 } from "@/lib/testeMonnera";
+import logoMonnera from "@/assets/logo-monnera.jpg";
 
 interface LeadForm {
   nome: string;
