@@ -515,44 +515,46 @@ const AdminDocumentacao = () => {
                 Publicar para usuários com acesso
               </Label>
             </div>
-            <div>
-              <Label>Anexos</Label>
-              <Input
-                type="file"
-                multiple
-                accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx"
-                onChange={onFilesChange}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                pdf, png, jpg, jpeg, webp, doc, docx, xls, xlsx · até 15 MB por arquivo
-              </p>
-              {formFiles.length > 0 && (
-                <div className="mt-2 space-y-1">
-                  {formFiles.map((f, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center justify-between text-sm border border-border rounded px-2 py-1"
-                    >
-                      <span className="flex items-center gap-2">
-                        <Paperclip className="h-3.5 w-3.5" />
-                        {f.name}
-                      </span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() =>
-                          setFormFiles((prev) => prev.filter((_, idx) => idx !== i))
-                        }
+            {(isAdmin || canInsert) && (
+              <div>
+                <Label>Anexos</Label>
+                <Input
+                  type="file"
+                  multiple
+                  accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx"
+                  onChange={onFilesChange}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  pdf, png, jpg, jpeg, webp, doc, docx, xls, xlsx · até 15 MB por arquivo
+                </p>
+                {formFiles.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {formFiles.map((f, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between text-sm border border-border rounded px-2 py-1"
                       >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                        <span className="flex items-center gap-2">
+                          <Paperclip className="h-3.5 w-3.5" />
+                          {f.name}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() =>
+                            setFormFiles((prev) => prev.filter((_, idx) => idx !== i))
+                          }
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <DialogFooter>
