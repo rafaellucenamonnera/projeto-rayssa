@@ -318,7 +318,7 @@ export default function TesteMonnera() {
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
-          <h1 className="max-w-3xl text-3xl font-bold leading-tight sm:text-4xl md:text-5xl">
+          <h1 className="max-w-3xl text-3xl font-bold leading-tight text-foreground sm:text-4xl md:text-5xl">
             Sua empresa paga prêmio ou apenas chama comissão de prêmio?
           </h1>
           <p className="text-base text-muted-foreground sm:text-lg">
