@@ -569,7 +569,7 @@ export default function TesteMonnera() {
           {step === 0 && (
             <>
               {heroSection}
-              {leadFormSection}
+              {showForm && leadFormSection}
             </>
           )}
           {step > 0 && step <= TOTAL_STEPS && renderBlock()}
