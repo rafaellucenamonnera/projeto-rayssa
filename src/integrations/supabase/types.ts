@@ -2832,6 +2832,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      upsert_teste_monnera_started_lead: {
+        Args: { p_payload: Json }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "gestor_conta"
