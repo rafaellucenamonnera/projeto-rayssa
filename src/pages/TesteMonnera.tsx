@@ -454,7 +454,10 @@ export default function TesteMonnera() {
             </div>
           </div>
           <div className="flex justify-end">
-            <Button onClick={goNext} size="lg">Começar diagnóstico</Button>
+            <Button onClick={goNext} size="lg" disabled={submitting}>
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Começar diagnóstico
+            </Button>
           </div>
         </CardContent>
       </Card>
