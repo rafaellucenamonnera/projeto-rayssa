@@ -41,6 +41,7 @@ const EMPTY_LEAD: LeadForm = {
 };
 
 const STORAGE_KEY = "monnera_teste_monnera_v1";
+const LEAD_ID_KEY = "monnera_teste_monnera_lead_id";
 
 const TOTAL_STEPS = QUESTIONNAIRE.length + 1; // 1 dados + N blocos, último é confirmação
 const RESULT_STEP = TOTAL_STEPS + 1;
