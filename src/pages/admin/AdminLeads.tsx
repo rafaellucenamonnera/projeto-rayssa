@@ -633,6 +633,18 @@ const AdminLeads = () => {
     }
     const lead = leads.find((l) => l.id === leadId);
 
+    // Bloquear avanço manual para Lead Qualificado sem Teste Monnera preenchido
+    if (
+      (currentPanelId === "comercial" || currentPanelId === "comerc") &&
+      newStatus === "etapa_comercial_1783879107510" &&
+      lead &&
+      !lead.teste_monnera_last_diagnostic_id &&
+      !lead.teste_monnera_result_color
+    ) {
+      toast.warning("Para mover para Lead Qualificado, envie o Link do Teste Monnera e aguarde o preenchimento.");
+      return;
+    }
+
     const willOpenFinanceiro =
       (FINANCEIRO_REQUIRED_FROM.includes(newStatus) && lead && !hasValidFinanceiro(lead)) ||
       newStatus === "contrato_assinado";

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +57,7 @@ const readUtm = (): Record<string, string> => {
 };
 
 export default function TesteMonnera() {
+  const { slugConsultor } = useParams<{ slugConsultor?: string }>();
   const [step, setStep] = useState(0);
   const [lead, setLead] = useState<LeadForm>(EMPTY_LEAD);
   const [answers, setAnswers] = useState<Answers>({});
@@ -172,6 +174,7 @@ export default function TesteMonnera() {
         solicitou_reuniao: solicitouReuniao,
         utm: readUtm(),
         user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
+        partner_slug: slugConsultor ?? null,
       };
       // Reinjetamos os scores completos (o TS acima limpou por engano)
       const { computeScores } = await import("@/lib/testeMonnera");
