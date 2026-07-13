@@ -351,10 +351,17 @@ export function buildDiagnostico(answers: Answers): Diagnostico {
     pagamento: "Pagamento demorado ou errado",
     engajamento: "Time não engaja nas campanhas",
     resultado: "Campanha não move o ponteiro",
-    outra: "Não especificada",
+    outra: "Outra",
   };
-  const dorId = String(answers["dor_principal"] || "");
-  const dor = dorMap[dorId] || "Não informada";
+  const dorRaw = answers["dor_principal"];
+  const dorIds: string[] = Array.isArray(dorRaw)
+    ? (dorRaw as string[])
+    : dorRaw
+    ? [String(dorRaw)]
+    : [];
+  const dor = dorIds.length > 0
+    ? dorIds.map((id) => dorMap[id] || id).join(" · ")
+    : "Não informada";
 
   const gancho =
     color === "vermelho"
