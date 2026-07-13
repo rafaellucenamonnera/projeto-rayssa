@@ -166,6 +166,80 @@ export function TesteMonneraSection({ leadId }: { leadId: string }) {
               </div>
             )}
 
+            {(() => {
+              const nextSteps = Array.isArray(diag.next_steps) ? diag.next_steps.filter(Boolean) : [];
+              if (nextSteps.length === 0) return null;
+              return (
+                <div>
+                  <p className="text-[10px] uppercase text-muted-foreground mb-1">O que fazer agora</p>
+                  <ul className="list-disc pl-4 space-y-1 text-xs">
+                    {nextSteps.map((p, i) => (<li key={i}>{p}</li>))}
+                  </ul>
+                </div>
+              );
+            })()}
+
+            {(() => {
+              const raw = diag.manual_path;
+              const items = Array.isArray(raw) ? raw.filter(Boolean) : raw ? [raw] : [];
+              if (items.length === 0) return null;
+              return (
+                <div>
+                  <p className="text-[10px] uppercase text-muted-foreground mb-1">Caminho manual</p>
+                  <ul className="list-disc pl-4 space-y-1 text-xs">
+                    {items.map((p, i) => (<li key={i}>{p}</li>))}
+                  </ul>
+                </div>
+              );
+            })()}
+
+            {(() => {
+              const raw = diag.monnera_path;
+              const items = Array.isArray(raw) ? raw.filter(Boolean) : raw ? [raw] : [];
+              if (items.length === 0) return null;
+              return (
+                <div>
+                  <p className="text-[10px] uppercase text-muted-foreground mb-1">Como a Monnera pode automatizar</p>
+                  <ul className="list-disc pl-4 space-y-1 text-xs">
+                    {items.map((p, i) => (<li key={i}>{p}</li>))}
+                  </ul>
+                </div>
+              );
+            })()}
+
+            {(() => {
+              const list = Array.isArray(diag.practical_actions) ? diag.practical_actions : [];
+              if (list.length === 0) return null;
+              const grouped = new Map<string, PracticalAction[]>();
+              list.forEach((a) => {
+                const arr = grouped.get(a.tema) ?? [];
+                arr.push(a);
+                grouped.set(a.tema, arr);
+              });
+              return (
+                <div>
+                  <p className="text-[10px] uppercase text-muted-foreground mb-1">Ações práticas por tema</p>
+                  <div className="space-y-2">
+                    {Array.from(grouped).map(([tema, items]) => (
+                      <div key={tema} className="rounded border border-border p-2 space-y-1">
+                        <p className="text-xs font-semibold">{tema}</p>
+                        <ul className="space-y-1">
+                          {items.map((it, idx) => (
+                            <li key={idx} className="text-[11px] leading-snug space-y-0.5">
+                              {it.ponto && <p className="text-muted-foreground">{it.ponto}</p>}
+                              {it.acao && <p><span className="font-semibold">Ação: </span>{it.acao}</p>}
+                              {it.caminho_manual && <p><span className="font-semibold">Manual: </span>{it.caminho_manual}</p>}
+                              {it.caminho_monnera && <p><span className="font-semibold">Com Monnera: </span>{it.caminho_monnera}</p>}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
             {Array.isArray(diag.pontos_atencao) && diag.pontos_atencao.length > 0 && (
               <div>
                 <p className="text-[10px] uppercase text-muted-foreground mb-1">Pontos de atenção</p>
