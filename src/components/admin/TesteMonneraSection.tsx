@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
-import { QUESTIONNAIRE, RESULT_COLOR_CLASSES, type ResultColor } from "@/lib/testeMonnera";
+import { QUESTIONNAIRE, RESULT_COLOR_CLASSES, type ResultColor, type PracticalAction } from "@/lib/testeMonnera";
 
 interface Diagnostico {
   id: string;
@@ -30,6 +30,10 @@ interface Diagnostico {
     proximo_passo?: string;
   } | null;
   solicitou_reuniao: boolean;
+  practical_actions?: PracticalAction[] | null;
+  next_steps?: string[] | null;
+  manual_path?: string | string[] | null;
+  monnera_path?: string | string[] | null;
 }
 
 const labelForOption = (blockIdx: number, qId: string, value: string): string => {
