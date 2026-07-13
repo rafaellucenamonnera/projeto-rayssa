@@ -57,6 +57,7 @@ const readUtm = (): Record<string, string> => {
 };
 
 export default function TesteMonnera() {
+  const { slugConsultor } = useParams<{ slugConsultor?: string }>();
   const [step, setStep] = useState(0);
   const [lead, setLead] = useState<LeadForm>(EMPTY_LEAD);
   const [answers, setAnswers] = useState<Answers>({});
