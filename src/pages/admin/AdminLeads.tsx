@@ -2714,6 +2714,39 @@ const AdminLeads = () => {
                 )}
               </div>
 
+              {!isCustomCrmPanel && !detailLead.teste_monnera_last_diagnostic_id && !detailLead.teste_monnera_result_color && (
+                <div className="border-t border-border pt-4 space-y-3">
+                  <h3 className="text-sm font-semibold">Link do Teste Monnera</h3>
+                  {(() => {
+                    const partner = parceirosAll.find((item: any) => item.id === detailLead.parceiro_id) as any;
+                    const partnerSlug = partner?.slug_consultor || partner?.codigo_parceiro;
+                    const linkTesteMonnera = partnerSlug
+                      ? `${window.location.origin}/testemonnera/${partnerSlug}`
+                      : `${window.location.origin}/testemonnera`;
+                    return (
+                      <>
+                        <p className="text-sm text-muted-foreground">
+                          Envie este link para o lead preencher a qualificação antes de avançar para Lead Qualificado.
+                        </p>
+                        <div className="rounded-lg bg-secondary/50 p-3">
+                          <p className="break-all font-mono text-xs text-primary">{linkTesteMonnera}</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            navigator.clipboard.writeText(buildTesteMonneraMessage(linkTesteMonnera));
+                            toast.success("Mensagem com link do Teste Monnera copiada!");
+                          }}
+                        >
+                          <Copy className="mr-1 h-3 w-3" /> Copiar mensagem com link
+                        </Button>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+
               {/* Histórico de Conversa */}
               <div className="border-t border-border pt-4">
                 {isAmbassadorPanel ? (
