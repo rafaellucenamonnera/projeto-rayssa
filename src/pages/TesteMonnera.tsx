@@ -497,7 +497,15 @@ export default function TesteMonnera() {
   const renderBlock = () => {
     const block = QUESTIONNAIRE[step - 1];
     if (!block) return null;
-    const isConfirmation = block.id === "confirmacao";
+    const isLast = step === TOTAL_STEPS;
+    const handleAdvance = () => {
+      if (!validateBlock(step - 1)) return;
+      if (isLast) {
+        void handleShowResult();
+      } else {
+        void goNext();
+      }
+    };
     return (
       <Card className="max-w-2xl mx-auto">
         <CardContent className="p-6 space-y-6">
@@ -507,39 +515,25 @@ export default function TesteMonnera() {
             {block.description && <p className="text-sm text-muted-foreground mt-1">{block.description}</p>}
           </div>
 
-          {isConfirmation ? (
-            <div className="space-y-3 text-sm">
-              <p className="text-muted-foreground">
-                Suas respostas serão usadas para gerar um diagnóstico educativo. Ao continuar,
-                registramos seus dados para retornarmos com o resultado e possíveis próximos passos.
-              </p>
-              <p className="text-xs text-muted-foreground flex items-start gap-2">
-                <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                Resultado educativo. Não substitui validação jurídica ou contábil.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {block.questions.map((q) => (
-                <div key={q.id} className="space-y-2">
-                  <Label className="text-sm font-medium">{q.label}</Label>
-                  {q.helper && <p className="text-xs text-muted-foreground">{q.helper}</p>}
-                  {renderQuestion(q)}
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="space-y-6">
+            {block.questions.map((q) => (
+              <div key={q.id} className="space-y-2">
+                <Label className="text-sm font-medium">{q.label}</Label>
+                {q.helper && <p className="text-xs text-muted-foreground">{q.helper}</p>}
+                {renderQuestion(q)}
+                {errors[q.id] && (
+                  <p className="text-xs text-destructive mt-1">{errors[q.id]}</p>
+                )}
+              </div>
+            ))}
+          </div>
 
           <div className="flex items-center justify-between">
             <Button variant="ghost" onClick={goBack} disabled={submitting}>Voltar</Button>
-            {isConfirmation ? (
-              <Button onClick={handleShowResult} disabled={submitting} size="lg">
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Ver diagnóstico
-              </Button>
-            ) : (
-              <Button onClick={goNext} disabled={submitting}>Próximo</Button>
-            )}
+            <Button onClick={handleAdvance} disabled={submitting} size={isLast ? "lg" : "default"}>
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {isLast ? "Ver diagnóstico" : "Próximo"}
+            </Button>
           </div>
         </CardContent>
       </Card>
