@@ -322,8 +322,6 @@ export function buildDiagnostico(answers: Answers): Diagnostico {
   if (scale("regras_acessiveis") <= 2) pontos.push("As regras não ficam acessíveis para o time, o que reduz engajamento e clareza de meta.");
   if (scale("apuracao") <= 2) pontos.push("A apuração está pouco previsível, o que abre espaço para retrabalho e insatisfação.");
   if (scale("auditabilidade") <= 2) pontos.push("Reconstruir cálculos passados é difícil hoje — auditoria e explicação a stakeholders ficam custosas.");
-  if (answers["meio_pagamento"] === "folha") pontos.push("Pagamento junto à folha mistura verbas trabalhistas com incentivo variável, aumentando complexidade.");
-  if (answers["meio_pagamento"] === "pix" && scale("conciliacao") <= 2) pontos.push("PIX manual sem conciliação clara costuma gerar dúvidas de \"quem recebeu quanto\".");
   if (answers["formatos_uso"] && Array.isArray(answers["formatos_uso"]) && (answers["formatos_uso"] as string[]).includes("nenhum")) {
     pontos.push("Sem formatos estruturados, o incentivo fica dependente de decisões pontuais e perde previsibilidade.");
   }
