@@ -200,6 +200,7 @@ export default function TesteMonnera() {
     setStep(0);
     setLead(EMPTY_LEAD);
     setAnswers({});
+    setErrors({});
     setLeadId(null);
     setReuniaoRequested(false);
     setInitialSubmitDone(false);
