@@ -528,11 +528,10 @@ export default function TesteMonnera() {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[
             { label: "Governança", value: diagnostico.classificacao.governanca },
             { label: "Campanhas", value: diagnostico.classificacao.campanhas },
-            { label: "Pagamentos", value: diagnostico.classificacao.pagamentos },
           ].map((c) => (
             <Card key={c.label}>
               <CardContent className="p-4">
