@@ -215,49 +215,6 @@ export const QUESTIONNAIRE: Block[] = [
     ],
   },
   {
-    id: "pagamentos",
-    title: "Pagamentos aos participantes",
-    questions: [
-      {
-        id: "meio_pagamento",
-        type: "single",
-        label: "Como o incentivo é pago hoje?",
-        options: [
-          { value: "folha", label: "Junto na folha de salário", weights: { pagamentos: 8 } },
-          { value: "pix", label: "PIX manual", weights: { pagamentos: 6 } },
-          { value: "cartao_beneficio", label: "Cartão benefício/pré-pago dedicado", weights: { pagamentos: 2 } },
-          { value: "outro", label: "Outro / não pagamos ainda", weights: { pagamentos: 5 } },
-        ],
-      },
-      {
-        id: "conciliacao",
-        type: "scale05",
-        label: "Quão fácil é conciliar quem recebeu o quê e quando?",
-        minLabel: "Quase impossível",
-        maxLabel: "Trivial",
-        scaleWeight: { pagamentos: -1.4 },
-      },
-    ],
-  },
-  {
-    id: "segmento",
-    title: "Contexto",
-    questions: [
-      {
-        id: "segmento",
-        type: "single",
-        label: "Segmento principal de atuação",
-        options: [
-          { value: "varejo", label: "Varejo" },
-          { value: "distribuidor", label: "Distribuidor" },
-          { value: "industria", label: "Indústria" },
-          { value: "servicos", label: "Serviços" },
-          { value: "outro", label: "Outro" },
-        ],
-      },
-    ],
-  },
-  {
     id: "confirmacao",
     title: "Confirmação",
     description: "Revise antes de gerar o diagnóstico.",
