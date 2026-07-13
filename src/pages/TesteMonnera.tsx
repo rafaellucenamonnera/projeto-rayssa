@@ -41,6 +41,7 @@ const EMPTY_LEAD: LeadForm = {
 };
 
 const STORAGE_KEY = "monnera_teste_monnera_v1";
+const LEAD_ID_KEY = "monnera_teste_monnera_lead_id";
 
 const TOTAL_STEPS = QUESTIONNAIRE.length + 1; // 1 dados + N blocos, último é confirmação
 const RESULT_STEP = TOTAL_STEPS + 1;
@@ -71,11 +72,17 @@ export default function TesteMonnera() {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (parsed?.lead) setLead(parsed.lead);
-      if (parsed?.answers) setAnswers(parsed.answers);
-      if (typeof parsed?.step === "number") setStep(parsed.step);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.lead) setLead(parsed.lead);
+        if (parsed?.answers) setAnswers(parsed.answers);
+        if (typeof parsed?.step === "number") setStep(parsed.step);
+      }
+      const savedLeadId = localStorage.getItem(LEAD_ID_KEY);
+      if (savedLeadId) {
+        setLeadId(savedLeadId);
+        setInitialSubmitDone(true);
+      }
     } catch {}
   }, []);
 
@@ -109,12 +116,48 @@ export default function TesteMonnera() {
     return null;
   };
 
-  const goNext = () => {
+  const goNext = async () => {
     if (step === 0) {
       const err = validateLead();
       if (err) {
         toast.error(err);
         return;
+      }
+      // Cria/atualiza lead parcial antes de avançar para o questionário
+      setSubmitting(true);
+      try {
+        const payload = {
+          lead: {
+            nome: lead.nome,
+            sobrenome: lead.sobrenome,
+            email: lead.email,
+            telefone: lead.telefone,
+            empresa: lead.empresa,
+            cargo: lead.cargo,
+            segmento: lead.segmento,
+          },
+          partner_slug: slugConsultor ?? null,
+        };
+        const { data, error } = await (supabase as any).rpc(
+          "upsert_teste_monnera_started_lead",
+          { p_payload: payload }
+        );
+        if (error) throw error;
+        const newLeadId = (data?.lead_id as string) || null;
+        if (!newLeadId) {
+          toast.error("Não foi possível registrar seu contato. Tente novamente.");
+          return;
+        }
+        setLeadId(newLeadId);
+        try {
+          localStorage.setItem(LEAD_ID_KEY, newLeadId);
+        } catch {}
+      } catch (e: any) {
+        console.error("upsert_teste_monnera_started_lead", e);
+        toast.error(e?.message || "Erro ao registrar seu contato. Tente novamente.");
+        return;
+      } finally {
+        setSubmitting(false);
       }
     }
     setStep((s) => s + 1);
@@ -141,6 +184,7 @@ export default function TesteMonnera() {
     setShowForm(false);
     try {
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(LEAD_ID_KEY);
     } catch {}
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -175,6 +219,7 @@ export default function TesteMonnera() {
         utm: readUtm(),
         user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
         partner_slug: slugConsultor ?? null,
+        lead_id: leadId ?? null,
       };
       // Reinjetamos os scores completos (o TS acima limpou por engano)
       const { computeScores } = await import("@/lib/testeMonnera");
@@ -183,7 +228,10 @@ export default function TesteMonnera() {
       const { data, error } = await (supabase as any).rpc("submit_teste_monnera", { p_payload: payload });
       if (error) throw error;
       const newLeadId = (data?.lead_id as string) || null;
-      if (newLeadId) setLeadId(newLeadId);
+      if (newLeadId) {
+        setLeadId(newLeadId);
+        try { localStorage.setItem(LEAD_ID_KEY, newLeadId); } catch {}
+      }
       return newLeadId;
     } catch (e: any) {
       console.error("submit_teste_monnera", e);
@@ -402,11 +450,14 @@ export default function TesteMonnera() {
             </div>
             <div>
               <Label htmlFor="segmento">Segmento</Label>
-              <Input id="segmento" value={lead.segmento} onChange={(e) => setLead({ ...lead, segmento: e.target.value })} />
+              <Input id="segmento" placeholder="Ex: farmácia, matcon, vestuário, veículos..." value={lead.segmento} onChange={(e) => setLead({ ...lead, segmento: e.target.value })} />
             </div>
           </div>
           <div className="flex justify-end">
-            <Button onClick={goNext} size="lg">Começar diagnóstico</Button>
+            <Button onClick={goNext} size="lg" disabled={submitting}>
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Começar diagnóstico
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -480,11 +531,10 @@ export default function TesteMonnera() {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[
             { label: "Governança", value: diagnostico.classificacao.governanca },
             { label: "Campanhas", value: diagnostico.classificacao.campanhas },
-            { label: "Pagamentos", value: diagnostico.classificacao.pagamentos },
           ].map((c) => (
             <Card key={c.label}>
               <CardContent className="p-4">

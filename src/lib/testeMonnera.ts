@@ -202,57 +202,14 @@ export const QUESTIONNAIRE: Block[] = [
       },
       {
         id: "dor_principal",
-        type: "single",
-        label: "Qual é a dor principal hoje?",
+        type: "multi",
+        label: "Qual é a dor principal hoje? (marque todas que se aplicam)",
         options: [
           { value: "regras", label: "Regras confusas e discussões toda apuração", weights: { campanhas: 8 } },
           { value: "pagamento", label: "Pagamento demorado ou errado", weights: { campanhas: 6, pagamentos: 4 } },
           { value: "engajamento", label: "Time não engaja nas campanhas", weights: { campanhas: 7 } },
           { value: "resultado", label: "Campanha não move o ponteiro", weights: { campanhas: 6 } },
           { value: "outra", label: "Outra", weights: { campanhas: 3 } },
-        ],
-      },
-    ],
-  },
-  {
-    id: "pagamentos",
-    title: "Pagamentos aos participantes",
-    questions: [
-      {
-        id: "meio_pagamento",
-        type: "single",
-        label: "Como o incentivo é pago hoje?",
-        options: [
-          { value: "folha", label: "Junto na folha de salário", weights: { pagamentos: 8 } },
-          { value: "pix", label: "PIX manual", weights: { pagamentos: 6 } },
-          { value: "cartao_beneficio", label: "Cartão benefício/pré-pago dedicado", weights: { pagamentos: 2 } },
-          { value: "outro", label: "Outro / não pagamos ainda", weights: { pagamentos: 5 } },
-        ],
-      },
-      {
-        id: "conciliacao",
-        type: "scale05",
-        label: "Quão fácil é conciliar quem recebeu o quê e quando?",
-        minLabel: "Quase impossível",
-        maxLabel: "Trivial",
-        scaleWeight: { pagamentos: -1.4 },
-      },
-    ],
-  },
-  {
-    id: "segmento",
-    title: "Contexto",
-    questions: [
-      {
-        id: "segmento",
-        type: "single",
-        label: "Segmento principal de atuação",
-        options: [
-          { value: "varejo", label: "Varejo" },
-          { value: "distribuidor", label: "Distribuidor" },
-          { value: "industria", label: "Indústria" },
-          { value: "servicos", label: "Serviços" },
-          { value: "outro", label: "Outro" },
         ],
       },
     ],
@@ -365,8 +322,6 @@ export function buildDiagnostico(answers: Answers): Diagnostico {
   if (scale("regras_acessiveis") <= 2) pontos.push("As regras não ficam acessíveis para o time, o que reduz engajamento e clareza de meta.");
   if (scale("apuracao") <= 2) pontos.push("A apuração está pouco previsível, o que abre espaço para retrabalho e insatisfação.");
   if (scale("auditabilidade") <= 2) pontos.push("Reconstruir cálculos passados é difícil hoje — auditoria e explicação a stakeholders ficam custosas.");
-  if (answers["meio_pagamento"] === "folha") pontos.push("Pagamento junto à folha mistura verbas trabalhistas com incentivo variável, aumentando complexidade.");
-  if (answers["meio_pagamento"] === "pix" && scale("conciliacao") <= 2) pontos.push("PIX manual sem conciliação clara costuma gerar dúvidas de \"quem recebeu quanto\".");
   if (answers["formatos_uso"] && Array.isArray(answers["formatos_uso"]) && (answers["formatos_uso"] as string[]).includes("nenhum")) {
     pontos.push("Sem formatos estruturados, o incentivo fica dependente de decisões pontuais e perde previsibilidade.");
   }
@@ -396,10 +351,17 @@ export function buildDiagnostico(answers: Answers): Diagnostico {
     pagamento: "Pagamento demorado ou errado",
     engajamento: "Time não engaja nas campanhas",
     resultado: "Campanha não move o ponteiro",
-    outra: "Não especificada",
+    outra: "Outra",
   };
-  const dorId = String(answers["dor_principal"] || "");
-  const dor = dorMap[dorId] || "Não informada";
+  const dorRaw = answers["dor_principal"];
+  const dorIds: string[] = Array.isArray(dorRaw)
+    ? (dorRaw as string[])
+    : dorRaw
+    ? [String(dorRaw)]
+    : [];
+  const dor = dorIds.length > 0
+    ? dorIds.map((id) => dorMap[id] || id).join(" · ")
+    : "Não informada";
 
   const gancho =
     color === "vermelho"
