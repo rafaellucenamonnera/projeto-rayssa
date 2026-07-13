@@ -117,6 +117,23 @@ export default function TesteMonnera() {
     return null;
   };
 
+  const validateBlock = (blockIndex: number): boolean => {
+    const block = QUESTIONNAIRE[blockIndex];
+    if (!block) return true;
+    const next: Record<string, string> = {};
+    block.questions.forEach((q) => {
+      if (!q.required) return;
+      const v = answers[q.id];
+      let missing = false;
+      if (q.type === "single") missing = typeof v !== "string" || v === "";
+      else if (q.type === "multi") missing = !Array.isArray(v) || (v as string[]).length === 0;
+      else if (q.type === "scale05") missing = typeof v !== "number";
+      if (missing) next[q.id] = "Escolha ao menos uma opção para seguir.";
+    });
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
   const goNext = async () => {
     if (step === 0) {
       const err = validateLead();
@@ -160,6 +177,10 @@ export default function TesteMonnera() {
       } finally {
         setSubmitting(false);
       }
+    } else {
+      // step >= 1 → validar o bloco atual antes de avançar
+      const ok = validateBlock(step - 1);
+      if (!ok) return;
     }
     setStep((s) => s + 1);
   };
