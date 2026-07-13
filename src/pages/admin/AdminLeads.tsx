@@ -54,6 +54,19 @@ type PipelineStage = { value: string; label: string; sort_order: number; followu
 
 const AMBASSADOR_PANEL_ID = "painel_mp5q4du9";
 
+const buildTesteMonneraMessage = (linkTesteMonnera: string) => `Olá, tudo bem?
+
+Quero te convidar a fazer o Teste Monnera, um diagnóstico educativo rápido para entender se a sua empresa está pagando premiações com clareza, segurança e controle.
+
+Em poucos minutos, você consegue identificar pontos importantes sobre comissão, premiação, metas, cálculo, rastreabilidade e forma de pagamento.
+
+Muitas empresas querem premiar melhor e vender mais, mas ficam na dúvida se estão fazendo do jeito certo. O teste ajuda a enxergar onde podem existir riscos, retrabalho ou oportunidades de melhorar a governança da operação.
+
+Acesse aqui:
+${linkTesteMonnera}
+
+O resultado é educativo e não substitui validação jurídica ou contábil, mas pode ajudar sua empresa a dar o próximo passo com mais clareza.`;
+
 // Etapas a partir das quais é obrigatório ter financeiro preenchido
 const FINANCEIRO_REQUIRED_FROM = [
   "proposta_enviada",
