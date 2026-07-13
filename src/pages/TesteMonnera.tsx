@@ -72,11 +72,17 @@ export default function TesteMonnera() {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (parsed?.lead) setLead(parsed.lead);
-      if (parsed?.answers) setAnswers(parsed.answers);
-      if (typeof parsed?.step === "number") setStep(parsed.step);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.lead) setLead(parsed.lead);
+        if (parsed?.answers) setAnswers(parsed.answers);
+        if (typeof parsed?.step === "number") setStep(parsed.step);
+      }
+      const savedLeadId = localStorage.getItem(LEAD_ID_KEY);
+      if (savedLeadId) {
+        setLeadId(savedLeadId);
+        setInitialSubmitDone(true);
+      }
     } catch {}
   }, []);
 
