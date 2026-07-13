@@ -124,9 +124,18 @@ const PainelParceiro = () => {
     ? `${window.location.origin}/indicacao/${slug}`
     : `${window.location.origin}/lead/${parceiro.codigo_parceiro}`;
 
+  const linkTesteMonnera = slug
+    ? `${window.location.origin}/testemonnera/${slug}`
+    : `${window.location.origin}/testemonnera/${parceiro.codigo_parceiro}`;
+
   const copyLink = () => {
     navigator.clipboard.writeText(linkIndicacao);
     toast.success("Link copiado!");
+  };
+
+  const copyTesteMonneraLink = () => {
+    navigator.clipboard.writeText(buildTesteMonneraMessage(linkTesteMonnera));
+    toast.success("Mensagem com link do Teste Monnera copiada!");
   };
 
   const whatsappMsg = encodeURIComponent(
