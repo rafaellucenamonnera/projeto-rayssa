@@ -50,6 +50,14 @@ export interface LeituraSDR {
   proximo_passo: string;
 }
 
+export type PracticalAction = {
+  tema: string;
+  ponto?: string;
+  acao?: string;
+  caminho_manual?: string;
+  caminho_monnera?: string;
+};
+
 export interface Diagnostico {
   result_color: ResultColor;
   result_title: string;
@@ -64,6 +72,10 @@ export interface Diagnostico {
     campanhas: "baixa" | "media" | "alta";
     pagamentos: "baixa" | "media" | "alta";
   };
+  practical_actions: PracticalAction[];
+  next_steps: string[];
+  manual_path: string[];
+  monnera_path: string[];
 }
 
 export const QUESTIONNAIRE: Block[] = [
