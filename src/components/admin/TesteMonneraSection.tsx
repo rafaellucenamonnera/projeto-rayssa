@@ -106,6 +106,17 @@ export function TesteMonneraSection({ leadId }: { leadId: string }) {
 
         {diag && (
           <>
+            {diag.solicitou_reuniao && (
+              <div className="rounded-md border border-primary/30 bg-primary/10 p-3">
+                <p className="text-sm font-medium text-primary">
+                  O cliente solicitou contato com um especialista Monnera ao final do Teste Monnera.
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Priorize o retorno comercial. O cliente demonstrou interesse ativo em conversar sobre o diagnóstico e próximos passos.
+                </p>
+              </div>
+            )}
+
             {(diag.result_title || diag.result_summary) && (
               <div className={`rounded-md border p-3 ${colorCls?.card || ""}`}>
                 {diag.result_title && <p className="font-semibold">{diag.result_title}</p>}
