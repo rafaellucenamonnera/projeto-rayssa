@@ -450,7 +450,7 @@ export default function TesteMonnera() {
             </div>
             <div>
               <Label htmlFor="segmento">Segmento</Label>
-              <Input id="segmento" value={lead.segmento} onChange={(e) => setLead({ ...lead, segmento: e.target.value })} />
+              <Input id="segmento" placeholder="Ex: farmácia, matcon, vestuário, veículos..." value={lead.segmento} onChange={(e) => setLead({ ...lead, segmento: e.target.value })} />
             </div>
           </div>
           <div className="flex justify-end">
