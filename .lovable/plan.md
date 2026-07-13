@@ -1,79 +1,86 @@
 ## Objetivo
-
-Aplicar o ajuste validado do Teste Monnera: criar lead parcial já na etapa 1 via nova RPC, remover blocos redundantes, transformar `dor_principal` em múltipla escolha, e garantir que ao finalizar o mesmo `lead_id` seja movido para `etapa_comercial_1783879107510` com diagnóstico persistido em `teste_monnera_diagnosticos`.
+Ajustar o questionário e a UX do Teste Monnera conforme validado localmente. Sem alterar hero, rotas, cores, RPCs ou fluxo de persistência.
 
 ## Arquivos alterados
+- `src/lib/testeMonnera.ts` — estrutura do questionário, tipos e scoring.
+- `src/pages/TesteMonnera.tsx` — renderização, escala 0-5 e validação obrigatória.
 
-- `src/lib/testeMonnera.ts`
-- `src/pages/TesteMonnera.tsx`
-- Nova migration em `supabase/migrations/` (RPC upsert + submit)
-- `src/pages/admin/AdminLeads.tsx` — só ajustar leitura se não estiver em `teste_monnera_diagnosticos`
+Nenhuma migration, nenhuma alteração em RPC, painel comercial ou `AdminLeads.tsx`.
 
-## Alterações
+## Mudanças em `src/lib/testeMonnera.ts`
 
-### 1. `src/lib/testeMonnera.ts`
+### 1. Remover o bloco `confirmacao`
+Excluir do `QUESTIONNAIRE` apenas o bloco `id: "confirmacao"`. Demais blocos preservados (`empresa`, `formatos`, `governanca`, `campanhas_capacidade`, `prioridade`).
 
-- Remover do `QUESTIONNAIRE` os blocos `pagamentos` e `segmento` (governanca permanece).
-- Pergunta `dor_principal` (bloco `prioridade`): `type: "multi"`.
-- `computeScores` já soma pesos por opção marcada — sem mudança.
-- `buildDiagnostico`:
-  - Tratar `dor_principal` como array; concatenar labels selecionadas com " · ".
-  - `leitura_sdr.dor_principal` recebe a string concatenada.
-  - Remover regras de `pontos_atencao` que dependiam de `meio_pagamento`/`conciliacao`.
-- Manter `Dimension.pagamentos` no tipo por compatibilidade de payload.
+### 2. Recolocar bloco `pagamentos`
+Adicionar bloco `pagamentos` — “Pagamentos aos participantes” — com:
 
-### 2. `src/pages/TesteMonnera.tsx`
+- `meio_pagamento` (multi, obrigatória): dinheiro em folha, PIX manual, cartão de benefício, cartão pré-pago Monnera, ainda não paga incentivo. Pesos em `pagamentos`/`governanca`.
+- `conciliacao` (scale05, obrigatória): “Quão fácil é conciliar o que foi apurado com o que foi pago?” — peso negativo em `pagamentos` (nota alta reduz risco).
+- `complexidade_encerramento` (scale05, obrigatória): “Hoje, quão complexo é encerrar uma campanha, conferir resultados e deixar tudo pronto para pagamento?” — **pontuação invertida**: quanto menor a nota, maior o incremento em `pagamentos` (nota baixa = mais dor). Implementado via `scaleWeight` negativo somado a um offset constante em `computeScores`, OU de forma direta: usar `scaleWeight: { pagamentos: -1.2 }` combinado a um baseline de `+6` adicionado ao score `pagamentos` no início — mesma técnica já usada para `governanca` (baseline 30 no `computeScores`). Equivalente: `contrib = (5 - nota) * 1.2` em `pagamentos`.
+- `ciclos_campanha` (multi, obrigatória): campanhas semanais/ciclos curtos, fechamento de mês, sazonais/datas comerciais, ações pontuais com parceiros. Pesos leves em `campanhas`.
 
-- Placeholder do input Segmento: `Ex: farmácia, matcon, vestuário, veículos...`.
-- No botão que avança da etapa 1 para o questionário (independentemente do texto atual do botão), antes de avançar chamar `supabase.rpc("upsert_teste_monnera_started_lead", { p_payload })` com dados do lead + `partner_slug`.
-  - Só avança se retornar `lead_id`; salvar em estado e em `localStorage` (`monnera_teste_monnera_lead_id`).
-  - Em erro: `toast.error` com mensagem do Postgres e não avança.
-- Em `submitDiagnostico`, incluir `lead_id` (do estado) no payload de `submit_teste_monnera`.
-- Restaurar `lead_id` do localStorage no `useEffect` de restauração.
-- `resetTeste` limpa também `lead_id`.
-- Remover o card "Pagamentos" do grid de classificação do resultado.
+### 3. Enriquecer `campanhas_capacidade`
+Manter as duas perguntas atuais e acrescentar 3 novas `single`, obrigatórias, opções `Sim` / `Parcialmente` / `Não`:
 
-### 3. Nova migration Supabase
+- `campanhas_parceiros`: estruturar campanhas com fornecedores/indústrias/parceiros. Sim → `campanhas +`, Parcialmente → neutro, Não → `governanca +`.
+- `acesso_colaboradores`: liberar acesso ao time para campanhas de parceiros. Mesma lógica de pesos.
+- `retorno_parceiros`: retornar resultados aos parceiros com clareza/rastreabilidade. Mesma lógica.
 
-**Tabela `teste_monnera_diagnosticos`** — `CREATE TABLE IF NOT EXISTS` (já existe; manter idempotência e GRANTs).
+### 4. `prioridade` — múltipla escolha em tudo
+Converter `prioridade_90d` para `type: "multi"`, enunciado `Qual é a prioridade para os próximos 90 dias? (marque todas que se aplicam)`. Opções:
 
-**RPC `upsert_teste_monnera_started_lead(p_payload jsonb) RETURNS jsonb`**
-- SECURITY DEFINER, `SET search_path = public`.
-- Valida nome, email, telefone, empresa.
-- Resolve `parceiro_id` por `partner_slug` (mesma lógica do submit) com fallback `MNRTESTE` → primeiro parceiro ativo/aprovado → qualquer parceiro.
-- Match (email → telefone → nome_fantasia) restrito a `panel_id='comercial'`.
-- Se existir: atualiza apenas campos básicos vazios; **não regride status_lead** (se já ≠ `novo_lead`, mantém).
-- Se não existir: cria com `panel_id='comercial'`, `status_lead='novo_lead'` (sem cast enum), `origem='landing_teste_monnera_partial'`, `dados_completos=false`.
-- `set_config('app.system_lead_update','on',true)` para bypass do trigger.
-- Retorna `{ "lead_id": <uuid> }`.
-- `GRANT EXECUTE ... TO anon, authenticated`.
+- Aumentar vendas com campanhas mais bem estruturadas.
+- Organizar regras, metas e governança antes de ampliar incentivos.
+- Engajar o time com metas claras, acompanhamento e reconhecimento.
+- Reduzir retrabalho, erro operacional e tempo de conferência.
 
-**RPC `submit_teste_monnera(p_payload jsonb) RETURNS jsonb`** — recriada:
-- Aceita `p_payload->>'lead_id'` opcional; se presente e existir, alvo direto (sem re-busca).
-- Caso contrário, busca por email → telefone → nome_fantasia.
-- Atualiza `status_lead = 'etapa_comercial_1783879107510'` como texto, **sem `::public.lead_status`**.
-- Insere em `teste_monnera_diagnosticos` e vincula em `leads.teste_monnera_last_diagnostic_id`.
-- Mantém criação de `lead_tasks` (24h) + `create_notification` quando `solicitou_reuniao=true`.
-- `GRANT EXECUTE ... TO anon, authenticated`.
+`dor_principal` permanece `multi`. `computeScores` já trata `multi` somando cada opção.
 
-### 4. `src/pages/admin/AdminLeads.tsx`
+### 5. Todas as perguntas ficam `required: true`
+Todas as questões de todos os blocos recebem `required: true`, **incluindo `formatos_uso`** (que deixa de ser opcional e passa a exigir pelo menos uma opção marcada antes de avançar).
 
-- Verificar que o card de Questionário de Qualificação lê de `teste_monnera_diagnosticos` por `lead_id` ordenando por `created_at desc`. Ajustar apenas se estiver lendo de outra fonte.
+### 6. `computeScores` — ajuste do baseline `pagamentos`
+Adicionar baseline `+6` a `pagamentos` no start (paralelo ao baseline 30 de `governanca`) para permitir que `complexidade_encerramento` use `scaleWeight` negativo produzindo contribuição efetiva positiva quando a nota é baixa. Sem alterar demais scorings existentes.
 
-## Roteiro de teste (após publicar preview)
+### 7. `buildDiagnostico`
+Reinserir regras de `pontos_atencao` para `meio_pagamento` (misto/manual) e `conciliacao` baixa. Sem outras mudanças.
 
-1. Aba anônima → `https://parceiros.monnera.com.br/testemonnera/rafael-lucena`.
-2. DevTools → Network, filtro `rpc`.
-3. Preencher etapa 1 com e-mail único e avançar.
-   - Esperado: `upsert_teste_monnera_started_lead` HTTP 200 com `lead_id`; card aparece em **Lead** do painel comercial.
-4. Concluir demais etapas → ver diagnóstico.
-   - Esperado: `submit_teste_monnera` HTTP 200; **mesmo card** migra para **Lead Qualificado** (`etapa_comercial_1783879107510`), sem duplicar.
-5. Abrir card → seção **Questionário de Qualificação** com as respostas.
-6. Clicar em agendar conversa → tarefa 24h + notificação para responsável.
+## Mudanças em `src/pages/TesteMonnera.tsx`
 
-## Não fazer
+### 1. Remover bloco de confirmação da UI
+- Retirar ramo `isConfirmation` e o botão intermediário “Ver diagnóstico”.
+- `TOTAL_STEPS = QUESTIONNAIRE.length`.
+- Última etapa: botão passa a “Ver diagnóstico” chamando `handleShowResult`.
 
-- Não alterar visual, textos da landing, rotas existentes, scoring dos blocos mantidos.
-- Não recriar a tabela `teste_monnera_diagnosticos`.
-- Não editar `src/integrations/supabase/{client,types}.ts`.
-- RPC parcial não pode regredir `status_lead` de card que já esteja adiante de `novo_lead`.
+### 2. Escala 0-5 sem valor pré-selecionado
+- Tratar `undefined`/`null` como sem resposta (0 deixa de ser default).
+- Nenhum botão selecionado até o clique.
+- Extremos: `quase impossível` sob 0 e `simples, rápido e bem controlado` sob 5, usando `minLabel`/`maxLabel` da pergunta como override quando definidos.
+
+### 3. Validação obrigatória com mensagem em vermelho
+- `errors: Record<string, string>` em state.
+- Ao clicar em “Próximo” / “Ver diagnóstico”, validar todas as `required` do bloco atual (agora inclui `formatos_uso`):
+  - `single`: string não vazia.
+  - `multi`: array com pelo menos 1 item.
+  - `scale05`: `typeof value === "number"`.
+- Falha: não avança, marca perguntas e exibe `<p className="text-xs text-destructive mt-1">Escolha ao menos uma opção para seguir.</p>` abaixo do input.
+- Erro da pergunta é limpo assim que o usuário responde.
+
+### 4. `handleShowResult`
+Mantém `submitDiagnostico(false)` — sem mudanças no fluxo de RPC nem no `leadId`.
+
+## Detalhes técnicos
+- `Dimension.pagamentos` preservado; agora recebe sinal real das novas perguntas.
+- Sem novas dependências.
+- Typecheck via `tsgo` após as edições.
+
+## Critérios de aceite
+- Confirmação não aparece; última etapa leva direto ao resultado.
+- `campanhas_capacidade` com 5 perguntas; bloco `pagamentos` com as 4 novas perguntas.
+- `prioridade_90d` e `dor_principal` são múltipla escolha e somam pesos.
+- `formatos_uso` obrigatório: bloqueia avanço sem seleção.
+- `complexidade_encerramento`: nota baixa aumenta mais o score `pagamentos`.
+- Escala 0-5 sem valor pré-selecionado; labels “quase impossível” / “simples, rápido e bem controlado”.
+- Perguntas obrigatórias sem resposta bloqueiam avanço com mensagem vermelha.
+- Build/typecheck passam.
