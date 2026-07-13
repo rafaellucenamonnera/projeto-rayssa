@@ -54,6 +54,19 @@ type PipelineStage = { value: string; label: string; sort_order: number; followu
 
 const AMBASSADOR_PANEL_ID = "painel_mp5q4du9";
 
+const buildTesteMonneraMessage = (linkTesteMonnera: string) => `Olá, tudo bem?
+
+Quero te convidar a fazer o Teste Monnera, um diagnóstico educativo rápido para entender se a sua empresa está pagando premiações com clareza, segurança e controle.
+
+Em poucos minutos, você consegue identificar pontos importantes sobre comissão, premiação, metas, cálculo, rastreabilidade e forma de pagamento.
+
+Muitas empresas querem premiar melhor e vender mais, mas ficam na dúvida se estão fazendo do jeito certo. O teste ajuda a enxergar onde podem existir riscos, retrabalho ou oportunidades de melhorar a governança da operação.
+
+Acesse aqui:
+${linkTesteMonnera}
+
+O resultado é educativo e não substitui validação jurídica ou contábil, mas pode ajudar sua empresa a dar o próximo passo com mais clareza.`;
+
 // Etapas a partir das quais é obrigatório ter financeiro preenchido
 const FINANCEIRO_REQUIRED_FROM = [
   "proposta_enviada",
@@ -454,7 +467,7 @@ const AdminLeads = () => {
       isCustomCrmPanel
         ? (supabase as any).from(isAmbassadorPanel ? "ambassador_cards" : "representative_cards").select("*").eq("panel_id", currentPanelId).order("created_at", { ascending: false })
         : supabase.from("leads").select("*").order("data_cadastro", { ascending: false }),
-      supabase.from("parceiros_comerciais").select("id, nome"),
+      supabase.from("parceiros_comerciais").select("id, nome, slug_consultor, codigo_parceiro"),
       supabase.from("lead_stage_history").select("lead_id, data_entrada").is("data_saida", null),
       supabase.from("reunioes").select("*").eq("realizada", false).order("data_reuniao", { ascending: true }),
       supabase.from("profiles").select("user_id,nome,ativo,can_be_responsible").eq("ativo", true).order("nome", { ascending: true }),
@@ -2700,6 +2713,39 @@ const AdminLeads = () => {
                   />
                 )}
               </div>
+
+              {!isCustomCrmPanel && !detailLead.teste_monnera_last_diagnostic_id && !detailLead.teste_monnera_result_color && (
+                <div className="border-t border-border pt-4 space-y-3">
+                  <h3 className="text-sm font-semibold">Link do Teste Monnera</h3>
+                  {(() => {
+                    const partner = parceirosAll.find((item: any) => item.id === detailLead.parceiro_id) as any;
+                    const partnerSlug = partner?.slug_consultor || partner?.codigo_parceiro;
+                    const linkTesteMonnera = partnerSlug
+                      ? `${window.location.origin}/testemonnera/${partnerSlug}`
+                      : `${window.location.origin}/testemonnera`;
+                    return (
+                      <>
+                        <p className="text-sm text-muted-foreground">
+                          Envie este link para o lead preencher a qualificação antes de avançar para Lead Qualificado.
+                        </p>
+                        <div className="rounded-lg bg-secondary/50 p-3">
+                          <p className="break-all font-mono text-xs text-primary">{linkTesteMonnera}</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            navigator.clipboard.writeText(buildTesteMonneraMessage(linkTesteMonnera));
+                            toast.success("Mensagem com link do Teste Monnera copiada!");
+                          }}
+                        >
+                          <Copy className="mr-1 h-3 w-3" /> Copiar mensagem com link
+                        </Button>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
 
               {/* Histórico de Conversa */}
               <div className="border-t border-border pt-4">

@@ -35,6 +35,19 @@ import { KitVendasSection } from "@/components/parceiro/KitVendasSection";
 
 const calendarUrl = "https://calendar.app.google/wzotf4LMLcW1vKwo6";
 
+const buildTesteMonneraMessage = (linkTesteMonnera: string) => `Olá, tudo bem?
+
+Quero te convidar a fazer o Teste Monnera, um diagnóstico educativo rápido para entender se a sua empresa está pagando premiações com clareza, segurança e controle.
+
+Em poucos minutos, você consegue identificar pontos importantes sobre comissão, premiação, metas, cálculo, rastreabilidade e forma de pagamento.
+
+Muitas empresas querem premiar melhor e vender mais, mas ficam na dúvida se estão fazendo do jeito certo. O teste ajuda a enxergar onde podem existir riscos, retrabalho ou oportunidades de melhorar a governança da operação.
+
+Acesse aqui:
+${linkTesteMonnera}
+
+O resultado é educativo e não substitui validação jurídica ou contábil, mas pode ajudar sua empresa a dar o próximo passo com mais clareza.`;
+
 const PainelParceiro = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -111,9 +124,18 @@ const PainelParceiro = () => {
     ? `${window.location.origin}/indicacao/${slug}`
     : `${window.location.origin}/lead/${parceiro.codigo_parceiro}`;
 
+  const linkTesteMonnera = slug
+    ? `${window.location.origin}/testemonnera/${slug}`
+    : `${window.location.origin}/testemonnera/${parceiro.codigo_parceiro}`;
+
   const copyLink = () => {
     navigator.clipboard.writeText(linkIndicacao);
     toast.success("Link copiado!");
+  };
+
+  const copyTesteMonneraLink = () => {
+    navigator.clipboard.writeText(buildTesteMonneraMessage(linkTesteMonnera));
+    toast.success("Mensagem com link do Teste Monnera copiada!");
   };
 
   const whatsappMsg = encodeURIComponent(
@@ -344,6 +366,26 @@ const PainelParceiro = () => {
                 </a>
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border">
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-base sm:text-lg font-display flex items-center gap-2">
+              <Link2 className="w-5 h-5 text-primary shrink-0" />
+              Link do Teste Monnera
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0 space-y-3 sm:space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Envie este teste para qualificar empresas que precisam avaliar premiações, metas, cálculo e rastreabilidade.
+            </p>
+            <div className="bg-secondary rounded-lg p-3 sm:p-4">
+              <p className="text-xs sm:text-sm font-mono text-primary break-all">{linkTesteMonnera}</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={copyTesteMonneraLink} className="w-full sm:w-auto">
+              <Copy className="mr-2 h-4 w-4" /> Copiar mensagem com link
+            </Button>
           </CardContent>
         </Card>
 
