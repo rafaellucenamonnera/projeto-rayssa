@@ -95,6 +95,20 @@ export const QUESTIONNAIRE: Block[] = [
           { value: "nenhum", label: "Sem envolvimento direto", weights: { icp: 1 } },
         ],
       },
+      {
+        id: "quantidade_cnpjs",
+        type: "single",
+        label: "A operação responde por quantos CNPJs ativos ou unidades com CNPJ próprio?",
+        required: true,
+        options: [
+          { value: "1", label: "1 CNPJ", weights: { icp: 3 } },
+          { value: "2_5", label: "Entre 2 e 5 CNPJs", weights: { icp: 6, campanhas: 1, pagamentos: 1 } },
+          { value: "5_10", label: "Entre 5 e 10 CNPJs", weights: { icp: 9, campanhas: 2, pagamentos: 2 } },
+          { value: "10_20", label: "Entre 10 e 20 CNPJs", weights: { icp: 12, campanhas: 3, pagamentos: 3 } },
+          { value: "20_50", label: "Entre 20 e 50 CNPJs", weights: { icp: 14, campanhas: 4, pagamentos: 4 } },
+          { value: "acima_50", label: "Acima de 50", weights: { icp: 15, campanhas: 5, pagamentos: 5 } },
+        ],
+      },
     ],
   },
   {
