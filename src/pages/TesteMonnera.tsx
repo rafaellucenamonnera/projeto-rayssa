@@ -350,7 +350,7 @@ export default function TesteMonnera() {
       );
     }
     // scale05
-    const num = typeof value === "number" ? value : value ? Number(value) : null;
+    const num = typeof value === "number" ? value : null;
     return (
       <div>
         <div className="flex flex-wrap gap-2">
