@@ -509,6 +509,12 @@ export function buildDiagnostico(answers: Answers): Diagnostico {
       ? "Reunião com especialista em até 48h para desenhar plano de organização."
       : "Reunião de apresentação em até 5 dias úteis.";
 
+  const { practical_actions, next_steps, manual_path, monnera_path } = buildActionPlans(
+    answers,
+    color,
+    classificacao,
+  );
+
   return {
     result_color: color,
     result_title: titulos[color],
@@ -523,6 +529,256 @@ export function buildDiagnostico(answers: Answers): Diagnostico {
     },
     priority,
     classificacao,
+    practical_actions,
+    next_steps,
+    manual_path,
+    monnera_path,
+  };
+}
+
+function buildActionPlans(
+  answers: Answers,
+  color: ResultColor,
+  classificacao: Diagnostico["classificacao"],
+): {
+  practical_actions: PracticalAction[];
+  next_steps: string[];
+  manual_path: string[];
+  monnera_path: string[];
+} {
+  const actions: PracticalAction[] = [];
+  const next_steps: string[] = [];
+  const manual_path: string[] = [];
+  const monnera_path: string[] = [];
+
+  const scale = (id: string): number => {
+    const v = answers[id];
+    if (typeof v === "number") return v;
+    if (v === undefined || v === null || v === "") return NaN;
+    const n = parseFloat(String(v));
+    return Number.isNaN(n) ? NaN : n;
+  };
+  const asArr = (id: string): string[] => {
+    const v = answers[id];
+    return Array.isArray(v) ? (v as string[]) : [];
+  };
+  const asStr = (id: string): string => {
+    const v = answers[id];
+    return typeof v === "string" ? v : "";
+  };
+
+  // ---------- Governança ----------
+  if (scale("separacao_verbas") <= 2) {
+    actions.push({
+      tema: "Governança",
+      ponto: "Salário, comissão e prêmio ainda aparecem misturados nos registros.",
+      acao: "Separe cada verba em rubricas próprias na folha e nos relatórios de campanha.",
+      caminho_manual: "Ajustar plano de contas, criar códigos distintos e treinar RH e financeiro para lançar cada verba na rubrica correta.",
+      caminho_monnera: "A Monnera separa automaticamente premiação da comissão e da folha, com trilha de auditoria por campanha.",
+    });
+  }
+  if (scale("termo_comunicacao") <= 2 || scale("regras_acessiveis") <= 2) {
+    actions.push({
+      tema: "Governança",
+      ponto: "Regras da campanha nem sempre estão formalizadas e acessíveis antes do início.",
+      acao: "Publique um regulamento padrão com metas, critérios e prazos antes de cada campanha.",
+      caminho_manual: "Modelar termo em documento, coletar aceite por e-mail e arquivar por campanha.",
+      caminho_monnera: "Regulamento publicado no app, com aceite registrado por participante e histórico versionado.",
+    });
+  }
+  if (scale("apuracao") <= 2 || scale("auditabilidade") <= 2) {
+    actions.push({
+      tema: "Governança",
+      ponto: "Apurar resultados e reconstruir cálculos passados hoje consome esforço alto.",
+      acao: "Padronize a base de apuração e mantenha histórico dos critérios aplicados em cada ciclo.",
+      caminho_manual: "Consolidar planilhas por ciclo, versionar regras e guardar evidências manualmente.",
+      caminho_monnera: "Apuração automática com memória de cálculo por participante e exportação auditável.",
+    });
+  }
+
+  // ---------- Pagamentos ----------
+  const meios = asArr("meio_pagamento");
+  if (meios.includes("folha") || meios.includes("pix_manual")) {
+    actions.push({
+      tema: "Pagamentos",
+      ponto: "Pagamento via folha ou PIX manual amplia retrabalho e risco de erro de conciliação.",
+      acao: "Centralize o pagamento em um meio próprio para incentivo, separado da folha.",
+      caminho_manual: "Criar rotina de conciliação por participante e comprovantes arquivados por campanha.",
+      caminho_monnera: "Cartão pré-pago Monnera com carga por campanha, conciliação nativa e comprovantes por participante.",
+    });
+  }
+  if (scale("conciliacao") <= 2 || scale("complexidade_encerramento") <= 2) {
+    actions.push({
+      tema: "Pagamentos",
+      ponto: "Encerrar campanha, conferir e liberar pagamento hoje é operação manual e frágil.",
+      acao: "Reduza etapas manuais entre apuração e liberação do valor ao participante.",
+      caminho_manual: "Checklist de encerramento, dupla conferência de planilha e agendamento manual de pagamentos.",
+      caminho_monnera: "Encerramento com um clique: apuração validada, carga programada e comprovante ao participante.",
+    });
+  }
+
+  // ---------- Metas & Campanhas ----------
+  if (scale("metas_definidas") <= 2) {
+    actions.push({
+      tema: "Metas & Campanhas",
+      ponto: "As metas ainda não estão calibradas ao potencial real do time.",
+      acao: "Calibre metas por loja, rede e colaborador com base em histórico dos últimos ciclos.",
+      caminho_manual: "Extrair histórico, segmentar por grupo e revisar metas manualmente a cada ciclo.",
+      caminho_monnera: "Metas por loja, rede e colaborador com sugestão baseada no histórico e ajuste em poucos cliques.",
+    });
+  }
+  if (scale("desempenho_superior") <= 2) {
+    actions.push({
+      tema: "Metas & Campanhas",
+      ponto: "Quem performa acima da média ainda não é identificado e reconhecido de forma clara.",
+      acao: "Crie faixas de reconhecimento adicionais para desempenho superior à meta.",
+      caminho_manual: "Rodar rankings em planilha e comunicar resultados por e-mail ou grupo.",
+      caminho_monnera: "Rankings automáticos por campanha, com faixas de bônus e comunicação no app.",
+    });
+  }
+  const prioridades = asArr("prioridade_90d");
+  const dores = asArr("dor_principal");
+  if (prioridades.includes("resultado") || dores.includes("resultado")) {
+    actions.push({
+      tema: "Metas & Campanhas",
+      ponto: "A meta declarada para os próximos 90 dias é mover resultado com campanhas mais estruturadas.",
+      acao: "Desenhe uma campanha piloto com meta clara, mecânica simples e prazo definido.",
+      caminho_manual: "Definir mecânica em documento, apurar por planilha e comunicar por e-mail.",
+      caminho_monnera: "Campanha lançada em minutos, com mecânica padronizada, apuração automática e comunicação nativa.",
+    });
+  }
+
+  // ---------- Parceiros ----------
+  const parceirosSim = asStr("campanhas_parceiros") === "sim" || asStr("campanhas_parceiros") === "parcialmente";
+  const acesso = asStr("acesso_colaboradores");
+  const retorno = asStr("retorno_parceiros");
+  if (parceirosSim && (acesso === "nao" || acesso === "parcialmente")) {
+    actions.push({
+      tema: "Parceiros",
+      ponto: "O time não tem acesso pleno às regras e resultados das campanhas dos parceiros.",
+      acao: "Garanta que cada colaborador enxergue regras, metas e resultados das campanhas ativas.",
+      caminho_manual: "Enviar PDFs e planilhas por grupo e responder dúvidas caso a caso.",
+      caminho_monnera: "Cada colaborador vê no app apenas as campanhas em que participa, com regras e resultados em tempo real.",
+    });
+  }
+  if (parceirosSim && (retorno === "nao" || retorno === "parcialmente")) {
+    actions.push({
+      tema: "Parceiros",
+      ponto: "O retorno de resultados para parceiros ainda não é feito com clareza e rastreabilidade.",
+      acao: "Padronize relatórios de fechamento por parceiro com base rastreável.",
+      caminho_manual: "Consolidar dados em planilha e enviar relatório em PDF a cada ciclo.",
+      caminho_monnera: "Relatórios por parceiro gerados automaticamente, com base rastreável e comparativo entre ciclos.",
+    });
+  }
+
+  // ---------- Engajamento ----------
+  if (dores.includes("engajamento")) {
+    actions.push({
+      tema: "Engajamento",
+      ponto: "O time hoje não engaja o suficiente nas campanhas.",
+      acao: "Aproxime a campanha do dia a dia: regra simples, meta visível e acompanhamento frequente.",
+      caminho_manual: "Comunicar por e-mail e grupos, coletar dúvidas manualmente e atualizar rankings periodicamente.",
+      caminho_monnera: "App do participante com meta, progresso e ranking em tempo real, além de notificações por marco atingido.",
+    });
+  }
+
+  // ---------- CNPJs e unidades ----------
+  const qtdCnpjs = asStr("quantidade_cnpjs");
+  if (["5_10", "10_20", "20_50", "acima_50"].includes(qtdCnpjs)) {
+    actions.push({
+      tema: "CNPJs e unidades",
+      ponto: "A operação envolve várias unidades com CNPJ próprio, o que aumenta a complexidade de rodar campanhas iguais em todas.",
+      acao: "Padronize regra única de campanha aplicável a todas as unidades e consolide resultados por rede.",
+      caminho_manual: "Replicar regras manualmente por unidade e consolidar apuração em planilha central.",
+      caminho_monnera: "Uma campanha aplicada a várias unidades, com apuração por unidade e visão consolidada da rede.",
+    });
+  }
+
+  // ---------- Regime tributário (leitura, sem passar recomendação jurídica) ----------
+  const regime = asStr("regime_tributario");
+  if (regime) {
+    actions.push({
+      tema: "Regime tributário",
+      ponto: `Regime tributário informado: ${regime}. A forma de pagar o incentivo precisa conversar com o regime da empresa.`,
+      acao: "Valide com contabilidade como registrar a premiação dentro do regime atual antes de escalar campanhas.",
+      caminho_manual: "Reunião com contabilidade a cada mudança relevante de campanha ou volume.",
+      caminho_monnera: "Registros padronizados e rastreáveis por campanha, que facilitam a conversa com contabilidade e auditoria.",
+    });
+  }
+
+  // ---------- Prioridade 90d ----------
+  if (prioridades.includes("governanca")) {
+    actions.push({
+      tema: "Prioridade 90d",
+      ponto: "A prioridade declarada é organizar regras, metas e governança antes de ampliar incentivos.",
+      acao: "Feche um pacote mínimo de governança (rubricas, regulamento, apuração) antes do próximo ciclo.",
+      caminho_manual: "Projetar padrão em documento e treinar equipe para aplicar em todas as campanhas.",
+      caminho_monnera: "Estrutura de governança já padronizada por campanha, pronta para uso e auditoria.",
+    });
+  }
+  if (prioridades.includes("custo")) {
+    actions.push({
+      tema: "Prioridade 90d",
+      ponto: "A prioridade declarada é reduzir retrabalho e tempo de conferência.",
+      acao: "Mapeie as etapas manuais que mais consomem tempo entre apuração e pagamento.",
+      caminho_manual: "Redesenhar processo interno com checklist e responsáveis por etapa.",
+      caminho_monnera: "Fluxo end-to-end (regra → apuração → pagamento → comprovante) automatizado em uma única operação.",
+    });
+  }
+
+  // ---------- Next steps (3 a 5) ----------
+  if (color === "vermelho") {
+    next_steps.push(
+      "Separe salário, comissão e prêmio em rubricas próprias no próximo fechamento.",
+      "Padronize um regulamento único de campanha com aceite registrado antes de rodar a próxima.",
+      "Escolha um único meio de pagamento de incentivo e concentre a operação nele.",
+    );
+  } else if (color === "amarelo") {
+    next_steps.push(
+      "Padronize um regulamento único de campanha com aceite registrado.",
+      "Torne as regras e resultados visíveis para o time durante a campanha.",
+      "Revise a rotina de encerramento e conciliação para reduzir etapas manuais.",
+    );
+  } else if (color === "verde") {
+    next_steps.push(
+      "Rode uma campanha piloto com mecânica mais ousada mantendo a governança atual.",
+      "Amplie o reconhecimento para desempenho superior à meta.",
+      "Estruture ciclo de leitura dos resultados por rede e por unidade.",
+    );
+  } else {
+    next_steps.push(
+      "Faça uma leitura interna do momento antes de investir em campanha ampla.",
+      "Converse com um especialista para desenhar um piloto pequeno e mensurável.",
+    );
+  }
+  if (dores.includes("pagamento")) {
+    next_steps.push("Priorize a rotina de pagamento: um meio próprio e conciliação por participante.");
+  }
+  if (parceirosSim && (retorno === "nao" || retorno === "parcialmente")) {
+    next_steps.push("Combine com parceiros um relatório padrão de fechamento por campanha.");
+  }
+
+  // ---------- Manual path ----------
+  manual_path.push(
+    "Formalizar regulamento por campanha, coletar aceite e arquivar evidências por ciclo.",
+    "Consolidar apuração em planilha, com dupla conferência antes de liberar pagamento.",
+    "Executar pagamento pelo meio atual e conciliar cada valor pago com cada participante.",
+    "Enviar comprovantes e relatórios por e-mail ao time, à liderança e aos parceiros envolvidos.",
+  );
+
+  // ---------- Monnera path ----------
+  monnera_path.push(
+    "Campanha configurada com regra única e regulamento com aceite registrado.",
+    "Apuração automática, com memória de cálculo por participante e exportação auditável.",
+    "Pagamento no cartão pré-pago Monnera, com conciliação nativa e comprovante por participante.",
+    "Visão de resultado por loja, rede e parceiro, com histórico comparável entre ciclos.",
+  );
+
+  return {
+    practical_actions: actions.slice(0, 10),
+    next_steps: next_steps.slice(0, 5),
+    manual_path,
+    monnera_path,
   };
 }
 
