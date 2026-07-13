@@ -228,7 +228,10 @@ export default function TesteMonnera() {
       const { data, error } = await (supabase as any).rpc("submit_teste_monnera", { p_payload: payload });
       if (error) throw error;
       const newLeadId = (data?.lead_id as string) || null;
-      if (newLeadId) setLeadId(newLeadId);
+      if (newLeadId) {
+        setLeadId(newLeadId);
+        try { localStorage.setItem(LEAD_ID_KEY, newLeadId); } catch {}
+      }
       return newLeadId;
     } catch (e: any) {
       console.error("submit_teste_monnera", e);
