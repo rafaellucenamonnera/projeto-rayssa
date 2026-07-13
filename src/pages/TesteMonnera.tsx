@@ -219,6 +219,7 @@ export default function TesteMonnera() {
         utm: readUtm(),
         user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
         partner_slug: slugConsultor ?? null,
+        lead_id: leadId ?? null,
       };
       // Reinjetamos os scores completos (o TS acima limpou por engano)
       const { computeScores } = await import("@/lib/testeMonnera");
