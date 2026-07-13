@@ -202,8 +202,8 @@ export const QUESTIONNAIRE: Block[] = [
       },
       {
         id: "dor_principal",
-        type: "single",
-        label: "Qual é a dor principal hoje?",
+        type: "multi",
+        label: "Qual é a dor principal hoje? (marque todas que se aplicam)",
         options: [
           { value: "regras", label: "Regras confusas e discussões toda apuração", weights: { campanhas: 8 } },
           { value: "pagamento", label: "Pagamento demorado ou errado", weights: { campanhas: 6, pagamentos: 4 } },
