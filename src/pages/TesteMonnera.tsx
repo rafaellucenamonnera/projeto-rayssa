@@ -289,8 +289,15 @@ export default function TesteMonnera() {
     }
   };
 
-  const setAnswer = (id: string, value: string | string[] | number) =>
+  const setAnswer = (id: string, value: string | string[] | number) => {
     setAnswers((prev) => ({ ...prev, [id]: value }));
+    setErrors((prev) => {
+      if (!prev[id]) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  };
 
   // Renderização por step
   const renderQuestion = (q: (typeof QUESTIONNAIRE)[number]["questions"][number]) => {
