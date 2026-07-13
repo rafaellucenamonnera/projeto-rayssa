@@ -116,12 +116,48 @@ export default function TesteMonnera() {
     return null;
   };
 
-  const goNext = () => {
+  const goNext = async () => {
     if (step === 0) {
       const err = validateLead();
       if (err) {
         toast.error(err);
         return;
+      }
+      // Cria/atualiza lead parcial antes de avançar para o questionário
+      setSubmitting(true);
+      try {
+        const payload = {
+          lead: {
+            nome: lead.nome,
+            sobrenome: lead.sobrenome,
+            email: lead.email,
+            telefone: lead.telefone,
+            empresa: lead.empresa,
+            cargo: lead.cargo,
+            segmento: lead.segmento,
+          },
+          partner_slug: slugConsultor ?? null,
+        };
+        const { data, error } = await (supabase as any).rpc(
+          "upsert_teste_monnera_started_lead",
+          { p_payload: payload }
+        );
+        if (error) throw error;
+        const newLeadId = (data?.lead_id as string) || null;
+        if (!newLeadId) {
+          toast.error("Não foi possível registrar seu contato. Tente novamente.");
+          return;
+        }
+        setLeadId(newLeadId);
+        try {
+          localStorage.setItem(LEAD_ID_KEY, newLeadId);
+        } catch {}
+      } catch (e: any) {
+        console.error("upsert_teste_monnera_started_lead", e);
+        toast.error(e?.message || "Erro ao registrar seu contato. Tente novamente.");
+        return;
+      } finally {
+        setSubmitting(false);
       }
     }
     setStep((s) => s + 1);
@@ -148,6 +184,7 @@ export default function TesteMonnera() {
     setShowForm(false);
     try {
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(LEAD_ID_KEY);
     } catch {}
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
