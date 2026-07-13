@@ -105,6 +105,7 @@ export const QUESTIONNAIRE: Block[] = [
         id: "formatos_uso",
         type: "multi",
         label: "Quais formatos vocês usam hoje? (marque todos)",
+        required: true,
         options: [
           { value: "comissao", label: "Comissão sobre venda", weights: { governanca: 4 } },
           { value: "premiacao", label: "Premiação por meta", weights: { governanca: 4 } },
@@ -128,6 +129,7 @@ export const QUESTIONNAIRE: Block[] = [
         maxLabel: "Totalmente separados",
         scaleWeight: { governanca: -1.2 },
         helper: "Quanto maior a nota, menor o risco de confusão contábil.",
+        required: true,
       },
       {
         id: "termo_comunicacao",
@@ -136,6 +138,7 @@ export const QUESTIONNAIRE: Block[] = [
         minLabel: "Nunca",
         maxLabel: "Sempre",
         scaleWeight: { governanca: -1.2 },
+        required: true,
       },
       {
         id: "regras_acessiveis",
@@ -144,6 +147,7 @@ export const QUESTIONNAIRE: Block[] = [
         minLabel: "Nunca",
         maxLabel: "Sempre",
         scaleWeight: { governanca: -1.0 },
+        required: true,
       },
       {
         id: "apuracao",
@@ -152,6 +156,7 @@ export const QUESTIONNAIRE: Block[] = [
         minLabel: "Muito confusa",
         maxLabel: "Muito clara",
         scaleWeight: { governanca: -1.2 },
+        required: true,
       },
       {
         id: "auditabilidade",
@@ -160,6 +165,7 @@ export const QUESTIONNAIRE: Block[] = [
         minLabel: "Impossível",
         maxLabel: "Trivial",
         scaleWeight: { governanca: -1.4 },
+        required: true,
       },
     ],
   },
@@ -174,6 +180,7 @@ export const QUESTIONNAIRE: Block[] = [
         minLabel: "Sem calibragem",
         maxLabel: "Muito bem calibradas",
         scaleWeight: { campanhas: 1.2 },
+        required: true,
       },
       {
         id: "desempenho_superior",
@@ -182,6 +189,40 @@ export const QUESTIONNAIRE: Block[] = [
         minLabel: "Não conseguem",
         maxLabel: "Conseguem sempre",
         scaleWeight: { campanhas: 1.2 },
+        required: true,
+      },
+      {
+        id: "campanhas_parceiros",
+        type: "single",
+        label: "Vocês estruturam campanhas com fornecedores, indústrias ou parceiros?",
+        required: true,
+        options: [
+          { value: "sim", label: "Sim", weights: { campanhas: 6 } },
+          { value: "parcialmente", label: "Parcialmente", weights: { campanhas: 3 } },
+          { value: "nao", label: "Não", weights: { governanca: 4 } },
+        ],
+      },
+      {
+        id: "acesso_colaboradores",
+        type: "single",
+        label: "O time tem acesso liberado às campanhas dos parceiros (regras, metas, resultados)?",
+        required: true,
+        options: [
+          { value: "sim", label: "Sim", weights: { campanhas: 6 } },
+          { value: "parcialmente", label: "Parcialmente", weights: { campanhas: 3 } },
+          { value: "nao", label: "Não", weights: { governanca: 4 } },
+        ],
+      },
+      {
+        id: "retorno_parceiros",
+        type: "single",
+        label: "Vocês retornam resultados aos parceiros com clareza e rastreabilidade?",
+        required: true,
+        options: [
+          { value: "sim", label: "Sim", weights: { campanhas: 6 } },
+          { value: "parcialmente", label: "Parcialmente", weights: { campanhas: 3 } },
+          { value: "nao", label: "Não", weights: { governanca: 4 } },
+        ],
       },
     ],
   },
@@ -191,19 +232,21 @@ export const QUESTIONNAIRE: Block[] = [
     questions: [
       {
         id: "prioridade_90d",
-        type: "single",
-        label: "Qual é a prioridade mais importante para os próximos 90 dias?",
+        type: "multi",
+        label: "Qual é a prioridade para os próximos 90 dias? (marque todas que se aplicam)",
+        required: true,
         options: [
-          { value: "resultado", label: "Aumentar volume de vendas", weights: { campanhas: 8 } },
-          { value: "governanca", label: "Organizar governança e regras", weights: { campanhas: 6 } },
-          { value: "engajamento", label: "Engajar o time", weights: { campanhas: 5 } },
-          { value: "custo", label: "Reduzir custo/erro operacional", weights: { campanhas: 4 } },
+          { value: "resultado", label: "Aumentar vendas com campanhas mais bem estruturadas", weights: { campanhas: 8 } },
+          { value: "governanca", label: "Organizar regras, metas e governança antes de ampliar incentivos", weights: { campanhas: 6, governanca: 3 } },
+          { value: "engajamento", label: "Engajar o time com metas claras, acompanhamento e reconhecimento", weights: { campanhas: 5 } },
+          { value: "custo", label: "Reduzir retrabalho, erro operacional e tempo de conferência", weights: { campanhas: 4, pagamentos: 3 } },
         ],
       },
       {
         id: "dor_principal",
         type: "multi",
         label: "Qual é a dor principal hoje? (marque todas que se aplicam)",
+        required: true,
         options: [
           { value: "regras", label: "Regras confusas e discussões toda apuração", weights: { campanhas: 8 } },
           { value: "pagamento", label: "Pagamento demorado ou errado", weights: { campanhas: 6, pagamentos: 4 } },
@@ -215,19 +258,68 @@ export const QUESTIONNAIRE: Block[] = [
     ],
   },
   {
-    id: "confirmacao",
-    title: "Confirmação",
-    description: "Revise antes de gerar o diagnóstico.",
-    questions: [],
+    id: "pagamentos",
+    title: "Pagamentos aos participantes",
+    questions: [
+      {
+        id: "meio_pagamento",
+        type: "multi",
+        label: "Como vocês pagam hoje o incentivo aos participantes? (marque todos)",
+        required: true,
+        options: [
+          { value: "folha", label: "Dinheiro em folha", weights: { pagamentos: 5, governanca: 3 } },
+          { value: "pix_manual", label: "PIX manual", weights: { pagamentos: 6, governanca: 3 } },
+          { value: "beneficio", label: "Cartão de benefício", weights: { pagamentos: 3 } },
+          { value: "monnera", label: "Cartão pré-pago Monnera", weights: { pagamentos: -2 } },
+          { value: "nenhum", label: "Ainda não paga incentivo", weights: { pagamentos: 4 } },
+        ],
+      },
+      {
+        id: "conciliacao",
+        type: "scale05",
+        label: "Quão fácil é conciliar o que foi apurado com o que foi efetivamente pago?",
+        minLabel: "Quase impossível",
+        maxLabel: "Simples, rápido e bem controlado",
+        scaleWeight: { pagamentos: -1.2 },
+        helper: "Quanto maior a nota, menor o risco.",
+        required: true,
+      },
+      {
+        id: "complexidade_encerramento",
+        type: "scale05",
+        label: "Hoje, quão complexo é encerrar uma campanha, conferir resultados e deixar tudo pronto para pagamento?",
+        minLabel: "Quase impossível",
+        maxLabel: "Simples, rápido e bem controlado",
+        // Invertido: nota BAIXA = mais dor operacional. Contribuição efetiva = (5 - nota) * 1.2 em pagamentos.
+        // Implementado como peso negativo somado ao baseline (+6) aplicado a `pagamentos` em computeScores.
+        scaleWeight: { pagamentos: -1.2 },
+        helper: "Quanto menor a nota, maior a dor operacional identificada.",
+        required: true,
+      },
+      {
+        id: "ciclos_campanha",
+        type: "multi",
+        label: "Que ciclos de campanha vocês costumam rodar? (marque todos)",
+        required: true,
+        options: [
+          { value: "semanais", label: "Campanhas semanais / ciclos curtos", weights: { campanhas: 3 } },
+          { value: "mensais", label: "Fechamento mensal", weights: { campanhas: 2 } },
+          { value: "sazonais", label: "Sazonais / datas comerciais", weights: { campanhas: 2 } },
+          { value: "parceiros", label: "Ações pontuais com parceiros", weights: { campanhas: 2 } },
+        ],
+      },
+    ],
   },
 ];
 
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
 
 export function computeScores(answers: Answers): Scores {
-  const scores: Scores = { icp: 0, governanca: 30, campanhas: 0, pagamentos: 0 };
-  // Governança começa em 30 (assumindo risco) e é reduzida por respostas boas (pesos negativos).
-  // Formatos "sem estrutura" adicionam 6.
+  // Baselines:
+  // - governanca começa em 30 (assume risco) e é reduzida por respostas boas (pesos negativos).
+  // - pagamentos começa em 6 para permitir que `complexidade_encerramento` e `conciliacao` usem
+  //   pesos negativos e produzam contribuição efetiva positiva quando a nota é baixa (mais dor).
+  const scores: Scores = { icp: 0, governanca: 30, campanhas: 0, pagamentos: 6 };
 
   QUESTIONNAIRE.forEach((block) => {
     block.questions.forEach((q) => {
@@ -322,6 +414,18 @@ export function buildDiagnostico(answers: Answers): Diagnostico {
   if (scale("regras_acessiveis") <= 2) pontos.push("As regras não ficam acessíveis para o time, o que reduz engajamento e clareza de meta.");
   if (scale("apuracao") <= 2) pontos.push("A apuração está pouco previsível, o que abre espaço para retrabalho e insatisfação.");
   if (scale("auditabilidade") <= 2) pontos.push("Reconstruir cálculos passados é difícil hoje — auditoria e explicação a stakeholders ficam custosas.");
+  if (scale("conciliacao") <= 2) pontos.push("Conciliar apurado x pago é difícil hoje — abre espaço para erro, atraso e insatisfação de participantes.");
+  if (scale("complexidade_encerramento") <= 2) pontos.push("Encerrar campanha e deixar pronto para pagar consome esforço alto — indica processo manual e frágil.");
+
+  const meio = answers["meio_pagamento"];
+  if (Array.isArray(meio)) {
+    const arr = meio as string[];
+    const manual = arr.includes("folha") || arr.includes("pix_manual");
+    const misto = arr.length >= 2 && !arr.every((v) => v === "monnera");
+    if (manual) pontos.push("Pagamento via folha ou PIX manual aumenta risco trabalhista e retrabalho de conciliação.");
+    else if (misto) pontos.push("Uso de múltiplos meios de pagamento sem trilha única dificulta rastreabilidade e conciliação.");
+  }
+
   if (answers["formatos_uso"] && Array.isArray(answers["formatos_uso"]) && (answers["formatos_uso"] as string[]).includes("nenhum")) {
     pontos.push("Sem formatos estruturados, o incentivo fica dependente de decisões pontuais e perde previsibilidade.");
   }

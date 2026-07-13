@@ -43,7 +43,7 @@ const EMPTY_LEAD: LeadForm = {
 const STORAGE_KEY = "monnera_teste_monnera_v1";
 const LEAD_ID_KEY = "monnera_teste_monnera_lead_id";
 
-const TOTAL_STEPS = QUESTIONNAIRE.length + 1; // 1 dados + N blocos, último é confirmação
+const TOTAL_STEPS = QUESTIONNAIRE.length; // 1 dados + N blocos (sem confirmação)
 const RESULT_STEP = TOTAL_STEPS + 1;
 
 const readUtm = (): Record<string, string> => {
@@ -67,6 +67,7 @@ export default function TesteMonnera() {
   const [reuniaoRequested, setReuniaoRequested] = useState(false);
   const [initialSubmitDone, setInitialSubmitDone] = useState(false);
   const [showForm, setShowForm] = useState(() => step > 0 || step >= RESULT_STEP);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Restaura progresso
   useEffect(() => {
@@ -116,6 +117,23 @@ export default function TesteMonnera() {
     return null;
   };
 
+  const validateBlock = (blockIndex: number): boolean => {
+    const block = QUESTIONNAIRE[blockIndex];
+    if (!block) return true;
+    const next: Record<string, string> = {};
+    block.questions.forEach((q) => {
+      if (!q.required) return;
+      const v = answers[q.id];
+      let missing = false;
+      if (q.type === "single") missing = typeof v !== "string" || v === "";
+      else if (q.type === "multi") missing = !Array.isArray(v) || (v as string[]).length === 0;
+      else if (q.type === "scale05") missing = typeof v !== "number";
+      if (missing) next[q.id] = "Escolha ao menos uma opção para seguir.";
+    });
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
   const goNext = async () => {
     if (step === 0) {
       const err = validateLead();
@@ -159,6 +177,10 @@ export default function TesteMonnera() {
       } finally {
         setSubmitting(false);
       }
+    } else {
+      // step >= 1 → validar o bloco atual antes de avançar
+      const ok = validateBlock(step - 1);
+      if (!ok) return;
     }
     setStep((s) => s + 1);
   };
@@ -178,6 +200,7 @@ export default function TesteMonnera() {
     setStep(0);
     setLead(EMPTY_LEAD);
     setAnswers({});
+    setErrors({});
     setLeadId(null);
     setReuniaoRequested(false);
     setInitialSubmitDone(false);
@@ -266,8 +289,15 @@ export default function TesteMonnera() {
     }
   };
 
-  const setAnswer = (id: string, value: string | string[] | number) =>
+  const setAnswer = (id: string, value: string | string[] | number) => {
     setAnswers((prev) => ({ ...prev, [id]: value }));
+    setErrors((prev) => {
+      if (!prev[id]) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  };
 
   // Renderização por step
   const renderQuestion = (q: (typeof QUESTIONNAIRE)[number]["questions"][number]) => {
@@ -320,7 +350,7 @@ export default function TesteMonnera() {
       );
     }
     // scale05
-    const num = typeof value === "number" ? value : value ? Number(value) : null;
+    const num = typeof value === "number" ? value : null;
     return (
       <div>
         <div className="flex flex-wrap gap-2">
@@ -467,7 +497,15 @@ export default function TesteMonnera() {
   const renderBlock = () => {
     const block = QUESTIONNAIRE[step - 1];
     if (!block) return null;
-    const isConfirmation = block.id === "confirmacao";
+    const isLast = step === TOTAL_STEPS;
+    const handleAdvance = () => {
+      if (!validateBlock(step - 1)) return;
+      if (isLast) {
+        void handleShowResult();
+      } else {
+        void goNext();
+      }
+    };
     return (
       <Card className="max-w-2xl mx-auto">
         <CardContent className="p-6 space-y-6">
@@ -477,39 +515,25 @@ export default function TesteMonnera() {
             {block.description && <p className="text-sm text-muted-foreground mt-1">{block.description}</p>}
           </div>
 
-          {isConfirmation ? (
-            <div className="space-y-3 text-sm">
-              <p className="text-muted-foreground">
-                Suas respostas serão usadas para gerar um diagnóstico educativo. Ao continuar,
-                registramos seus dados para retornarmos com o resultado e possíveis próximos passos.
-              </p>
-              <p className="text-xs text-muted-foreground flex items-start gap-2">
-                <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                Resultado educativo. Não substitui validação jurídica ou contábil.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {block.questions.map((q) => (
-                <div key={q.id} className="space-y-2">
-                  <Label className="text-sm font-medium">{q.label}</Label>
-                  {q.helper && <p className="text-xs text-muted-foreground">{q.helper}</p>}
-                  {renderQuestion(q)}
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="space-y-6">
+            {block.questions.map((q) => (
+              <div key={q.id} className="space-y-2">
+                <Label className="text-sm font-medium">{q.label}</Label>
+                {q.helper && <p className="text-xs text-muted-foreground">{q.helper}</p>}
+                {renderQuestion(q)}
+                {errors[q.id] && (
+                  <p className="text-xs text-destructive mt-1">{errors[q.id]}</p>
+                )}
+              </div>
+            ))}
+          </div>
 
           <div className="flex items-center justify-between">
             <Button variant="ghost" onClick={goBack} disabled={submitting}>Voltar</Button>
-            {isConfirmation ? (
-              <Button onClick={handleShowResult} disabled={submitting} size="lg">
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Ver diagnóstico
-              </Button>
-            ) : (
-              <Button onClick={goNext} disabled={submitting}>Próximo</Button>
-            )}
+            <Button onClick={handleAdvance} disabled={submitting} size={isLast ? "lg" : "default"}>
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {isLast ? "Ver diagnóstico" : "Próximo"}
+            </Button>
           </div>
         </CardContent>
       </Card>
