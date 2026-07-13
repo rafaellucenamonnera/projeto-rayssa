@@ -238,6 +238,10 @@ export default function TesteMonnera() {
         recomendacao: diagnostico.recomendacao,
         leitura_sdr: diagnostico.leitura_sdr,
         priority: diagnostico.priority,
+        practical_actions: diagnostico.practical_actions,
+        next_steps: diagnostico.next_steps,
+        manual_path: diagnostico.manual_path,
+        monnera_path: diagnostico.monnera_path,
         solicitou_reuniao: solicitouReuniao,
         utm: readUtm(),
         user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
@@ -595,6 +599,95 @@ export default function TesteMonnera() {
             </p>
           </CardContent>
         </Card>
+
+        {diagnostico.next_steps.length > 0 && (
+          <Card>
+            <CardContent className="p-6 space-y-2">
+              <h3 className="font-display text-base font-semibold">O que fazer agora</h3>
+              <ul className="space-y-2">
+                {diagnostico.next_steps.map((p, i) => (
+                  <li key={i} className="text-sm flex items-start gap-2">
+                    <ArrowRight className="h-4 w-4 mt-0.5 text-primary shrink-0" />
+                    <span>{p}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
+
+        {(() => {
+          const items = Array.isArray(diagnostico.manual_path) ? diagnostico.manual_path : [diagnostico.manual_path].filter(Boolean);
+          if (items.length === 0) return null;
+          return (
+            <Card>
+              <CardContent className="p-6 space-y-2">
+                <h3 className="font-display text-base font-semibold">Caminho manual</h3>
+                <p className="text-xs text-muted-foreground">Como resolver hoje, sem Monnera, mantendo controle e rastreabilidade.</p>
+                <ul className="space-y-2">
+                  {items.map((p, i) => (
+                    <li key={i} className="text-sm flex items-start gap-2">
+                      <AlertCircle className="h-4 w-4 mt-0.5 text-amber-600 shrink-0" />
+                      <span>{p}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          );
+        })()}
+
+        {(() => {
+          const items = Array.isArray(diagnostico.monnera_path) ? diagnostico.monnera_path : [diagnostico.monnera_path].filter(Boolean);
+          if (items.length === 0) return null;
+          return (
+            <Card className="border-primary/40">
+              <CardContent className="p-6 space-y-2">
+                <h3 className="font-display text-base font-semibold">Como a Monnera pode automatizar</h3>
+                <ul className="space-y-2">
+                  {items.map((p, i) => (
+                    <li key={i} className="text-sm flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 mt-0.5 text-primary shrink-0" />
+                      <span>{p}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          );
+        })()}
+
+        {diagnostico.practical_actions.length > 0 && (
+          <Card>
+            <CardContent className="p-6 space-y-3">
+              <h3 className="font-display text-base font-semibold">Ações práticas por tema</h3>
+              <div className="space-y-3">
+                {Array.from(
+                  diagnostico.practical_actions.reduce((map, a) => {
+                    const arr = map.get(a.tema) ?? [];
+                    arr.push(a);
+                    map.set(a.tema, arr);
+                    return map;
+                  }, new Map<string, typeof diagnostico.practical_actions>())
+                ).map(([tema, items]) => (
+                  <div key={tema} className="rounded-md border border-border p-3 space-y-2">
+                    <p className="text-sm font-semibold">{tema}</p>
+                    <ul className="space-y-2">
+                      {items.map((it, idx) => (
+                        <li key={idx} className="text-xs space-y-1">
+                          {it.ponto && <p className="text-muted-foreground">{it.ponto}</p>}
+                          {it.acao && <p><span className="font-semibold">Ação: </span>{it.acao}</p>}
+                          {it.caminho_manual && <p><span className="font-semibold">Manual: </span>{it.caminho_manual}</p>}
+                          {it.caminho_monnera && <p><span className="font-semibold">Com Monnera: </span>{it.caminho_monnera}</p>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="border-primary/40">
           <CardContent className="p-6 space-y-4 text-center">
