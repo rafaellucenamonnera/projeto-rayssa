@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   QUESTIONNAIRE,
   buildDiagnostico,
+  computeScores,
   RESULT_COLOR_CLASSES,
   type Answers,
   type Diagnostico,
