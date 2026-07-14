@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   QUESTIONNAIRE,
   buildDiagnostico,
+  computeScores,
   RESULT_COLOR_CLASSES,
   type Answers,
   type Diagnostico,
@@ -42,6 +43,42 @@ const EMPTY_LEAD: LeadForm = {
 
 const STORAGE_KEY = "monnera_teste_monnera_v1";
 const LEAD_ID_KEY = "monnera_teste_monnera_lead_id";
+
+const scoreCardInfo = {
+  governanca: {
+    label: "Governança",
+    ranges: "0-14 bons sinais | 15-29 pontos de atenção | 30+ alta fragilidade",
+    description:
+      "Avalia separação de verbas, comunicação de regulamento, regras acessíveis, clareza da apuração e rastreabilidade para auditoria.",
+    classNames: {
+      baixa: "Bons sinais de governança",
+      media: "Pontos de atenção em governança",
+      alta: "Alta fragilidade operacional",
+    },
+  },
+  campanhas: {
+    label: "Campanhas",
+    ranges: "0-14 baixa estrutura | 15-29 estrutura parcial | 30+ boa estrutura",
+    description:
+      "Avalia definição de metas, identificação de alto desempenho, campanhas com parceiros e acesso do time a regras e resultados.",
+    classNames: {
+      baixa: "Baixa estrutura para campanhas",
+      media: "Estrutura parcial para campanhas",
+      alta: "Boa estrutura para campanhas",
+    },
+  },
+  pagamentos: {
+    label: "Pagamentos",
+    ranges: "0-7 baixo controle | 8-14 controle parcial | 15+ bom controle",
+    description:
+      "Avalia fechamento, conciliação e controle entre cálculo aprovado e valor pago.",
+    classNames: {
+      baixa: "Baixo controle de pagamento",
+      media: "Controle parcial de pagamento",
+      alta: "Bom controle de pagamento",
+    },
+  },
+};
 
 const TOTAL_STEPS = QUESTIONNAIRE.length; // 1 dados + N blocos (sem confirmação)
 const RESULT_STEP = TOTAL_STEPS + 1;
@@ -547,6 +584,7 @@ export default function TesteMonnera() {
   const renderResult = () => {
     if (!diagnostico) return null;
     const colorCls = RESULT_COLOR_CLASSES[diagnostico.result_color];
+    const scores = computeScores(answers);
     return (
       <div className="max-w-3xl mx-auto space-y-6">
         <Card className={`border-2 ${colorCls.card}`}>
@@ -559,18 +597,27 @@ export default function TesteMonnera() {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {[
-            { label: "Governança", value: diagnostico.classificacao.governanca },
-            { label: "Campanhas", value: diagnostico.classificacao.campanhas },
-          ].map((c) => (
-            <Card key={c.label}>
-              <CardContent className="p-4">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">{c.label}</p>
-                <p className="text-lg font-semibold capitalize mt-1">{c.value}</p>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {(Object.keys(scoreCardInfo) as Array<keyof typeof scoreCardInfo>).map((key) => {
+            const info = scoreCardInfo[key];
+            const classKey = diagnostico.classificacao[key];
+            const score = scores[key];
+            return (
+              <Card key={key}>
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">{info.label}</p>
+                    <p className="text-sm font-semibold">{score}</p>
+                  </div>
+                  <p className="text-base font-semibold leading-snug">
+                    {info.classNames[classKey as keyof typeof info.classNames] || classKey}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">{info.ranges}</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{info.description}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {diagnostico.pontos_atencao.length > 0 && (
