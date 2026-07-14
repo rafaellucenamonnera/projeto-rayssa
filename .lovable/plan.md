@@ -1,72 +1,83 @@
 ## Objetivo
-Enriquecer o diagnóstico do Teste Monnera com quatro blocos acionáveis (`practical_actions`, `next_steps`, `manual_path`, `monnera_path`), exibidos no resultado público e no card comercial. Perguntas, pesos, rotas, tarefas e notificações permanecem inalteradas.
+Deixar os cards de score do resultado do Teste Monnera com linguagem mais clara ao cliente. Sem tocar em perguntas, pesos, scoring, RPC, payload, rotas, tarefas ou notificações.
 
-## Arquivos reais no projeto
-Confirmado por inspeção:
-- `src/lib/testeMonnera.ts` — perguntas, pesos e `buildDiagnostico`.
-- `src/pages/TesteMonnera.tsx` — resultado público e envio ao RPC `submit_teste_monnera`.
-- `src/components/admin/TesteMonneraSection.tsx` — accordion “Questionário de Qualificação” no card comercial.
+## Arquivo alterado
+- `src/pages/TesteMonnera.tsx` — apenas o bloco de renderização dos cards de classificação e o mapeamento de labels usados na UI.
 
-Nenhum arquivo novo será criado.
+Nada em `src/lib/testeMonnera.ts` neste passo. Thresholds, tipos internos e cálculo permanecem iguais.
+Nada em `TesteMonneraSection.tsx` neste passo. O card comercial continua exibindo o que já mostra.
 
-## Modelo dos novos campos
-```ts
-type PracticalAction = {
-  tema: string;
-  ponto?: string;
-  acao?: string;
-  caminho_manual?: string;
-  caminho_monnera?: string;
-};
+## Mudanças
 
-interface Diagnostico {
-  // ...campos atuais
-  practical_actions: PracticalAction[];
-  next_steps: string[];
-  manual_path: string | string[];
-  monnera_path: string | string[];
-}
-```
+1. Adicionar metadados locais no arquivo:
+   ```ts
+   const scoreCardInfo = {
+     governanca: {
+       label: "Governança",
+       ranges: "0-14 bons sinais | 15-29 pontos de atenção | 30+ alta fragilidade",
+       description: "Mede separação entre verbas, regras, aceite, desempenho superior e rastreabilidade.",
+       classNames: {
+         baixa: "bons sinais de governança",
+         media: "pontos de atenção em governança",
+         alta: "alta fragilidade operacional",
+       },
+     },
+     campanhas: {
+       label: "Campanhas",
+       ranges: "0-14 baixa estrutura | 15-29 estrutura parcial | 30+ boa estrutura",
+       description: "Indica se a operação consegue criar campanhas, metas, acesso ao time e retorno para parceiros.",
+       classNames: {
+         baixa: "baixa estrutura para campanhas",
+         media: "estrutura parcial para campanhas",
+         alta: "boa estrutura para campanhas",
+       },
+     },
+     pagamentos: {
+       label: "Pagamentos",
+       ranges: "0-7 baixo controle | 8-14 controle parcial | 15+ bom controle",
+       description: "Avalia fechamento, conciliação e controle entre cálculo aprovado e valor pago.",
+       classNames: {
+         baixa: "baixo controle de pagamento",
+         media: "controle parcial de pagamento",
+         alta: "bom controle de pagamento",
+       },
+     },
+   } as const;
+   ```
 
-Temas usados em `practical_actions`: Governança, Metas & Campanhas, Parceiros, Pagamentos, Engajamento, Prioridade 90d, CNPJs e unidades, Regime tributário.
+2. Ajustar o grid de cards do resultado para exibir três cards: Governança, Campanhas e Pagamentos.
 
-Frases derivadas por regras determinísticas sobre as respostas: porte, CNPJs, papel na decisão, formatos, separação de verbas, metas, campanhas com parceiros, acesso do time, retorno a parceiros, prioridades 90d, dores, meio de pagamento, complexidade de encerramento, ciclos, regime tributário.
+3. Cada card deve mostrar:
+   - nome do eixo (`label`);
+   - pontuação obtida;
+   - classificação em texto claro;
+   - faixa interpretativa (`ranges`);
+   - breve explicação (`description`).
 
-## Mudanças por arquivo
+4. Remover da UI a exibição de rótulos crus como `baixa`, `media`, `alta`, `Baixa aderência`, `Aderência moderada`, `Alta aderência`. Não alterar os valores internos usados pelo cálculo — a mudança é somente de apresentação para o cliente.
 
-### `src/lib/testeMonnera.ts`
-- Adicionar tipo `PracticalAction` e os quatro campos em `Diagnostico`.
-- Em `buildDiagnostico`, popular os campos a partir das respostas já usadas.
-- Não alterar perguntas, opções, pesos, classificações, scoring nem textos existentes.
-
-### `src/pages/TesteMonnera.tsx`
-- Incluir os quatro campos no `payload.result` enviado ao RPC `submit_teste_monnera`.
-- Renderizar após pontos de atenção/recomendação atuais:
-  1. “O que fazer agora” — `next_steps`.
-  2. “Caminho manual” — `manual_path` (string ou lista).
-  3. “Como a Monnera pode automatizar” — `monnera_path` (string ou lista).
-  4. “Ações práticas por tema” — `practical_actions` agrupado por `tema`, mostrando `ponto`, `acao`, `caminho_manual` e `caminho_monnera` quando presentes.
-- Manter ressalva: *“Resultado educativo. Não substitui validação jurídica ou contábil.”*
-
-### `src/components/admin/TesteMonneraSection.tsx`
-- Ampliar a interface local `Diagnostico` com os mesmos campos (todos opcionais).
-- Exibir os quatro blocos dentro do accordion “Questionário de Qualificação”, abaixo da leitura SDR, em layout compacto com tokens do design system.
-- Preservar badge “Reunião solicitada”, caixa de solicitação de contato, respostas, scores, leitura SDR e diagnóstico atual.
-- Compatibilidade retro: diagnósticos antigos sem os novos campos continuam abrindo sem erro; blocos vazios não aparecem.
-
-## Persistência
-Sem migration. O RPC `submit_teste_monnera` já grava `p_payload.result` como JSON; os novos campos entram no mesmo objeto e são lidos pelo card comercial pelo caminho atual.
-
-## Linguagem
-Tom instrutor, prático e comercial. Vetados: “blindagem trabalhista”, “sem risco”, “garantia jurídica”, “parecer jurídico”, “isento automaticamente”, “substituir comissão por prêmio”.
+## Layout
+- Layout responsivo: `grid-cols-1 md:grid-cols-3 gap-3`.
+- Tipografia e tokens já existentes.
+- Manter `text-muted-foreground`, `font-display`, `Card/CardContent` ou componentes equivalentes já usados no arquivo.
 
 ## Fora de escopo
-Perguntas, pesos, scoring, rotas, lead parcial, movimentação para Lead Qualificado, tarefa de 24h, notificações, migrations.
+Não alterar:
+- thresholds de classificação;
+- função `classify()`;
+- perguntas;
+- pesos;
+- payload enviado ao RPC;
+- card comercial (`TesteMonneraSection.tsx`);
+- lead parcial;
+- tarefas;
+- notificações;
+- migrations.
 
 ## Aceite
-- Resultado público exibe os quatro blocos novos, além do conteúdo atual.
-- Card comercial exibe os quatro blocos dentro do accordion, sem quebrar nada existente.
-- Diagnósticos antigos continuam abrindo sem erro.
-- Blocos vazios não aparecem.
-- Diagnóstico salvo contém `practical_actions`, `next_steps`, `manual_path`, `monnera_path`.
+- Cards do resultado mostram pontuação, classificação em linguagem clara, faixa e explicação para Governança, Campanhas e Pagamentos.
+- Nenhum card usa mais a palavra "aderência".
+- Nenhum card mostra rótulos crus `baixa`, `media` ou `alta`.
+- Nenhum cálculo, payload ou fluxo muda.
+- Layout responsivo mantido.
 - `npm run build` passa.
