@@ -597,18 +597,27 @@ export default function TesteMonnera() {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {[
-            { label: "Governança", value: diagnostico.classificacao.governanca },
-            { label: "Campanhas", value: diagnostico.classificacao.campanhas },
-          ].map((c) => (
-            <Card key={c.label}>
-              <CardContent className="p-4">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">{c.label}</p>
-                <p className="text-lg font-semibold capitalize mt-1">{c.value}</p>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {(Object.keys(scoreCardInfo) as Array<keyof typeof scoreCardInfo>).map((key) => {
+            const info = scoreCardInfo[key];
+            const classKey = diagnostico.classificacao[key];
+            const score = scores[key];
+            return (
+              <Card key={key}>
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">{info.label}</p>
+                    <p className="text-sm font-semibold">{score}</p>
+                  </div>
+                  <p className="text-base font-semibold leading-snug">
+                    {info.classNames[classKey as keyof typeof info.classNames] || classKey}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">{info.ranges}</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{info.description}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {diagnostico.pontos_atencao.length > 0 && (
