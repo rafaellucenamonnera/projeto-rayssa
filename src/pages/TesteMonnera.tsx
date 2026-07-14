@@ -44,6 +44,42 @@ const EMPTY_LEAD: LeadForm = {
 const STORAGE_KEY = "monnera_teste_monnera_v1";
 const LEAD_ID_KEY = "monnera_teste_monnera_lead_id";
 
+const scoreCardInfo = {
+  governanca: {
+    label: "Governança",
+    ranges: "0-14 bons sinais | 15-29 pontos de atenção | 30+ alta fragilidade",
+    description:
+      "Avalia separação de verbas, comunicação de regulamento, regras acessíveis, clareza da apuração e rastreabilidade para auditoria.",
+    classNames: {
+      baixa: "Bons sinais de governança",
+      media: "Pontos de atenção em governança",
+      alta: "Alta fragilidade operacional",
+    },
+  },
+  campanhas: {
+    label: "Campanhas",
+    ranges: "0-14 baixa estrutura | 15-29 estrutura parcial | 30+ boa estrutura",
+    description:
+      "Avalia definição de metas, identificação de alto desempenho, campanhas com parceiros e acesso do time a regras e resultados.",
+    classNames: {
+      baixa: "Baixa estrutura para campanhas",
+      media: "Estrutura parcial para campanhas",
+      alta: "Boa estrutura para campanhas",
+    },
+  },
+  pagamentos: {
+    label: "Pagamentos",
+    ranges: "0-7 baixo controle | 8-14 controle parcial | 15+ bom controle",
+    description:
+      "Avalia fechamento, conciliação e controle entre cálculo aprovado e valor pago.",
+    classNames: {
+      baixa: "Baixo controle de pagamento",
+      media: "Controle parcial de pagamento",
+      alta: "Bom controle de pagamento",
+    },
+  },
+};
+
 const TOTAL_STEPS = QUESTIONNAIRE.length; // 1 dados + N blocos (sem confirmação)
 const RESULT_STEP = TOTAL_STEPS + 1;
 
