@@ -584,6 +584,7 @@ export default function TesteMonnera() {
   const renderResult = () => {
     if (!diagnostico) return null;
     const colorCls = RESULT_COLOR_CLASSES[diagnostico.result_color];
+    const scores = computeScores(answers);
     return (
       <div className="max-w-3xl mx-auto space-y-6">
         <Card className={`border-2 ${colorCls.card}`}>
