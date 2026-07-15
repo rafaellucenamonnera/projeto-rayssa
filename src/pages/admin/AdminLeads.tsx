@@ -463,16 +463,34 @@ const AdminLeads = () => {
   };
 
   const loadData = async () => {
+    const fetchAllRows = async <T,>(buildQuery: () => any, pageSize = 1000): Promise<T[]> => {
+      const rows: T[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await buildQuery().range(from, from + pageSize - 1);
+        if (error) throw error;
+        const batch = (data || []) as T[];
+        rows.push(...batch);
+        if (batch.length < pageSize) break;
+        from += pageSize;
+      }
+      return rows;
+    };
+
     const [leadsRes, parceirosRes, stageRes, reunioesRes, usersRes] = await Promise.all([
-      isCustomCrmPanel
-        ? (supabase as any).from(isAmbassadorPanel ? "ambassador_cards" : "representative_cards").select("*").eq("panel_id", currentPanelId).order("created_at", { ascending: false })
-        : supabase.from("leads").select("*").order("data_cadastro", { ascending: false }),
+      fetchAllRows<any>(() =>
+        isCustomCrmPanel
+          ? (supabase as any).from(isAmbassadorPanel ? "ambassador_cards" : "representative_cards").select("*").eq("panel_id", currentPanelId).order("created_at", { ascending: false })
+          : supabase.from("leads").select("*").order("data_cadastro", { ascending: false })
+      ),
       supabase.from("parceiros_comerciais").select("id, nome, slug_consultor, codigo_parceiro"),
-      supabase.from("lead_stage_history").select("lead_id, data_entrada").is("data_saida", null),
+      fetchAllRows<any>(() =>
+        supabase.from("lead_stage_history").select("lead_id, data_entrada").is("data_saida", null)
+      ),
       supabase.from("reunioes").select("*").eq("realizada", false).order("data_reuniao", { ascending: true }),
       supabase.from("profiles").select("user_id,nome,ativo,can_be_responsible").eq("ativo", true).order("nome", { ascending: true }),
     ]);
-    const rawLeads = leadsRes.data || [];
+    const rawLeads = leadsRes || [];
     const mappedLeads = isCustomCrmPanel
       ? rawLeads.map((r: any) => ({
           ...r,
@@ -495,7 +513,7 @@ const AdminLeads = () => {
     setUsersAll(allUsers.filter((u: any) => u.can_be_responsible).map((u: any) => ({ user_id: u.user_id, nome: u.nome })));
 
     const sm: Record<string, string> = {};
-    (stageRes.data || []).forEach((s: any) => { sm[s.lead_id] = s.data_entrada; });
+    (stageRes || []).forEach((s: any) => { sm[s.lead_id] = s.data_entrada; });
     setStageMap(sm);
 
     // Build reunioes map: lead_id -> latest upcoming reuniao

@@ -1,45 +1,48 @@
-## Objetivo
-Corrigir a associação dos 55 leads importados do CSV de farmácias sem receita, hoje vinculados ao Embaixador **FERNANDO FERREIRA PEREIRA**, para o Embaixador **Rafael Lucena**.
+# Aplicar correções de paginação e rodar build
 
-## Diagnóstico
-- Tabela dos leads comerciais importados: `public.leads`.
-- O campo `consultor` está `NULL` nos 55 leads — o vínculo com o Embaixador não é feito por esse campo, e sim por `leads.parceiro_id → parceiros_comerciais.id`.
-- Confirmado no banco:
-  - `parceiros_comerciais`: `FERNANDO FERREIRA PEREIRA` = `ec958fea-49ee-49d2-b948-30fe2cedbe66` (64 leads vinculados no total, **55** correspondem exatamente aos CNPJs do CSV).
-  - `parceiros_comerciais`: `Rafael Lucena` = `f8e40640-e399-4b47-82af-c10babe01543`.
-- Portanto o UPDATE correto é em `parceiro_id`, não em `consultor`.
+Reissue do plano anterior + validação de build/typecheck.
 
-## Passos
+## Escopo
+Somente 3 arquivos:
+- `src/pages/admin/AdminLeads.tsx`
+- `src/components/admin/PipelineKanban.tsx`
+- `src/pages/admin/AdminDashboard.tsx`
 
-1. **SELECT de conferência** (esperado: 55 linhas), filtrando pelos 55 CNPJs + `parceiro_id = Fernando`:
-   ```sql
-   SELECT id, cnpj, nome_fantasia, parceiro_id
-   FROM public.leads
-   WHERE parceiro_id = 'ec958fea-49ee-49d2-b948-30fe2cedbe66'
-     AND regexp_replace(coalesce(cnpj,''), '\D', '', 'g') IN (<lista dos 58 CNPJs>);
-   ```
+## Mudanças
 
-2. **UPDATE** somente `parceiro_id`, sem alterar nenhum outro campo:
-   ```sql
-   UPDATE public.leads
-   SET parceiro_id = 'f8e40640-e399-4b47-82af-c10babe01543'
-   WHERE parceiro_id = 'ec958fea-49ee-49d2-b948-30fe2cedbe66'
-     AND regexp_replace(coalesce(cnpj,''), '\D', '', 'g') IN (<lista dos 58 CNPJs>)
-   RETURNING id, cnpj, nome_fantasia, parceiro_id;
-   ```
-   Executado via ferramenta de escrita de dados (não é migration, é update de dados).
+### 1. Helper `fetchAllRows` (AdminLeads.tsx e AdminDashboard.tsx)
+Loop `.range(from, from + 999)` até `batch.length < pageSize`. Retorna array acumulado.
 
-3. **SELECT de verificação pós-update**: contar quantos dos 58 CNPJs agora estão em `parceiro_id = Rafael` e confirmar que nenhum ficou com Fernando.
+### 2. AdminLeads.tsx
+- Substituir a query de `representative_cards` / `leads` por `fetchAllRows(() => query)`.
+- Substituir `lead_stage_history` (`data_saida IS NULL`) por `fetchAllRows`.
+- Consumidores usam o array direto (sem `.data`).
+- Adicionar `chunkArray(items, 500)` e buscar `commercial_proposals` em blocos via loop sobre `chunkArray(leadIds)`, acumulando em `proposalRows`.
 
-4. Retornar a **quantidade de linhas afetadas** (esperado: 55) e a lista `cnpj + nome_fantasia`.
+### 3. PipelineKanban.tsx
+- `formatCount = v => new Intl.NumberFormat("pt-BR").format(v)`.
+- Trocar `{items.length}` na contagem da coluna por `{formatCount(items.length)}`.
+
+### 4. AdminDashboard.tsx
+- `formatCount` idem.
+- Extrair `buildLeadsQuery()` com `.eq("panel_id", selectedPanel)` obrigatório + filtros de status/consultor/responsável/datas.
+- Substituir busca principal e `stalledRes` por `fetchAllRows(...)` no `Promise.all`.
+- `leadIdSet` a partir de `leadsData`; `stalledData` filtrado por esse set; detalhes de parados vêm do próprio `leadsData`.
+- `navigateToLeadsByStatus` → `/admin/painel/${selectedPanel}?status=...`.
+- Card "Total de Leads" navega para `/admin/painel/${selectedPanel}`.
+- Aplicar `formatCount(...)` em `totalParceiros`, `totalLeads`, `count` de cada etapa e ranking (`r.total`, `r.convertidos`, `r.assinados`).
+
+## Detalhes técnicos
+
+Para não estourar o typecheck do supabase-js com strings de `.select()` complexas, o helper aceita o retorno do builder como `any` e retorna `T[]` via generic:
+```ts
+const fetchAllRows = async <T,>(buildQuery: () => any, pageSize = 1000): Promise<T[]> => { ... };
+```
+Cada chamada de `buildQuery` cria um novo builder para que `.range()` não seja aplicado em cima de um filtro anterior.
+
+## Validação
+- `npm run build` (o harness roda typecheck automaticamente; corrijo qualquer erro que aparecer, mantendo o mesmo comportamento).
+- Smoke test manual (usuário): `/admin/painel/comercial` mostra contagem real formatada em colunas com >1000 cards; `/admin` bate com o painel comercial; clique em etapa abre `/admin/painel/comercial?status=...`.
 
 ## Fora de escopo
-- Não alterar `consultor`, `percentual_consultor`, `status`, `status_lead`, valores financeiros, histórico, ou qualquer outro campo dos leads.
-- Não mexer nos 3 CNPJs do CSV que não pertencem ao Fernando (não serão tocados).
-- Não alterar cadastros em `parceiros_comerciais`.
-- Sem mudança de schema, sem migration, sem código de frontend.
-
-## Aceite
-- SELECT pós-update mostra 55 leads com `parceiro_id = Rafael Lucena` e 0 com Fernando (dentro da lista de CNPJs).
-- Nenhum outro campo desses leads foi alterado.
-- Devolvo a contagem exata de linhas afetadas.
+Schema, migrations, RLS, pipeline, drag/drop, financeiro, propostas, permissões.

@@ -58,6 +58,22 @@ interface PipelineStageConfig {
   sort_order: number;
 }
 
+const formatCount = (value: number) => new Intl.NumberFormat("pt-BR").format(value);
+
+const fetchAllRows = async <T,>(buildQuery: () => any, pageSize = 1000): Promise<T[]> => {
+  const rows: T[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await buildQuery().range(from, from + pageSize - 1);
+    if (error) throw error;
+    const batch = (data || []) as T[];
+    rows.push(...batch);
+    if (batch.length < pageSize) break;
+    from += pageSize;
+  }
+  return rows;
+};
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [totalParceiros, setTotalParceiros] = useState(0);
@@ -114,28 +130,37 @@ const AdminDashboard = () => {
       setPipelineStages(activeStages);
       setStageLabels(labels);
 
-      let leadsQuery: any = supabase.from("leads").select("id, status_lead, parceiro_id, nome_responsavel, data_cadastro");
-      if (stageValues.length > 0) leadsQuery = leadsQuery.in("status_lead", stageValues);
-      if (selectedConsultor !== "all") leadsQuery = leadsQuery.eq("parceiro_id", selectedConsultor);
-      if (selectedResponsavel !== "all") leadsQuery = leadsQuery.eq("nome_responsavel", selectedResponsavel);
-      if (dateFilter.from) leadsQuery = leadsQuery.gte("data_cadastro", dateFilter.from);
-      if (dateFilter.to) leadsQuery = leadsQuery.lte("data_cadastro", dateFilter.to);
+      const buildLeadsQuery = () => {
+        let query: any = supabase
+          .from("leads")
+          .select("id, nome_fantasia, status_lead, parceiro_id, nome_responsavel, data_cadastro")
+          .eq("panel_id", selectedPanel)
+          .order("data_cadastro", { ascending: false });
+        if (stageValues.length > 0) query = query.in("status_lead", stageValues);
+        if (selectedConsultor !== "all") query = query.eq("parceiro_id", selectedConsultor);
+        if (selectedResponsavel !== "all") query = query.eq("nome_responsavel", selectedResponsavel);
+        if (dateFilter.from) query = query.gte("data_cadastro", dateFilter.from);
+        if (dateFilter.to) query = query.lte("data_cadastro", dateFilter.to);
+        return query;
+      };
 
-      let stalledQuery: any = supabase
-        .from("lead_stage_history")
-        .select("lead_id, etapa, data_entrada")
-        .is("data_saida", null)
-        .order("data_entrada", { ascending: true });
-      if (stageValues.length > 0) stalledQuery = stalledQuery.in("etapa", stageValues);
+      const buildStalledQuery = () => {
+        let query: any = supabase
+          .from("lead_stage_history")
+          .select("lead_id, etapa, data_entrada")
+          .is("data_saida", null)
+          .order("data_entrada", { ascending: true });
+        if (stageValues.length > 0) query = query.in("etapa", stageValues);
+        return query;
+      };
 
-      const [parceiros, leads, stalledRes] = await Promise.all([
+      const [parceiros, leadsData, stalledRes] = await Promise.all([
         supabase.from("parceiros_comerciais").select("id", { count: "exact", head: true }),
-        leadsQuery,
-        stalledQuery,
+        fetchAllRows<any>(buildLeadsQuery),
+        fetchAllRows<any>(buildStalledQuery),
       ]);
       setTotalParceiros(parceiros.count || 0);
 
-      const leadsData = leads.data || [];
       setTotalLeads(leadsData.length);
 
       const counts: Record<string, number> = {};
@@ -163,9 +188,9 @@ const AdminDashboard = () => {
         .slice(0, 10);
       setRanking(rankingList);
 
-      const currentStageByLead = new Map(
-        ((stalledRes.data || []) as any[]).map((s: any) => [s.lead_id, s.data_entrada])
-      );
+      const leadIdSet = new Set(leadsData.map((lead: any) => lead.id));
+      const stalledData = (stalledRes || []).filter((stage: any) => leadIdSet.has(stage.lead_id));
+      const currentStageByLead = new Map(stalledData.map((s: any) => [s.lead_id, s.data_entrada]));
       const stageTotals = new Map<string, { totalDias: number; totalLeads: number }>();
       leadsData.forEach((lead: any) => {
         const etapa = lead.status_lead || "novo_lead";
@@ -195,16 +220,10 @@ const AdminDashboard = () => {
         setBottleneck(null);
       }
 
-      const stalledData = (stalledRes.data || []) as any[];
-      const leadIds = stalledData.map((s: any) => s.lead_id);
-      if (leadIds.length > 0) {
-        const { data: leadDetails } = await supabase
-          .from("leads")
-          .select("id, nome_fantasia, parceiro_id, status_lead, data_cadastro")
-          .in("id", leadIds);
-
+      if (stalledData.length > 0) {
+        const leadById = new Map(leadsData.map((l: any) => [l.id, l]));
         const stalled: StalledLead[] = stalledData.map((s: any) => {
-          const lead = (leadDetails || []).find((l: any) => l.id === s.lead_id);
+          const lead = leadById.get(s.lead_id);
           const dias = Math.max(0, Math.floor((Date.now() - new Date(s.data_entrada).getTime()) / (1000 * 60 * 60 * 24)));
           const dias_totais = lead?.data_cadastro
             ? Math.max(0, Math.floor((Date.now() - new Date(lead.data_cadastro).getTime()) / (1000 * 60 * 60 * 24)))
@@ -218,7 +237,7 @@ const AdminDashboard = () => {
             parceiro_nome: nomeMap.get(lead?.parceiro_id || "") || "—",
           };
         })
-          .sort((a: StalledLead, b: StalledLead) => b.dias - a.dias)
+          .sort((a: StalledLead, b: StalledLead) => b.dias - a.dias);
         setStalledLeads(stalled);
       } else {
         setStalledLeads([]);
@@ -242,7 +261,7 @@ const AdminDashboard = () => {
   const navigateToLeadsByStatus = (status: string) => {
     const params = new URLSearchParams(window.location.search);
     params.set("status", status);
-    navigate(`/admin/leads?${params.toString()}`);
+    navigate(`/admin/painel/${selectedPanel}?${params.toString()}`);
   };
 
   const getDaysColor = (dias: number) =>
@@ -304,18 +323,18 @@ const AdminDashboard = () => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Embaixadores Monnera</p>
-              <p className="text-3xl font-display font-bold">{totalParceiros}</p>
+              <p className="text-3xl font-display font-bold">{formatCount(totalParceiros)}</p>
             </div>
           </div>
         </div>
-        <div className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all" onClick={() => navigate("/admin/leads")}>
+        <div className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all" onClick={() => navigate(`/admin/painel/${selectedPanel}`)}>
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-xl bg-blue-500/10 flex items-center justify-center">
               <TrendingUp className="w-7 h-7 text-blue-500" />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Total de Leads</p>
-              <p className="text-3xl font-display font-bold">{totalLeads}</p>
+              <p className="text-3xl font-display font-bold">{formatCount(totalLeads)}</p>
             </div>
           </div>
         </div>
@@ -352,7 +371,7 @@ const AdminDashboard = () => {
                   </div>
                   <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 leading-tight">{s.label}</p>
                   <div className="flex items-baseline gap-1">
-                    <p className="text-xl font-display font-bold">{count}</p>
+                    <p className="text-xl font-display font-bold">{formatCount(count)}</p>
                     <span className="text-[10px] text-muted-foreground">({pct}%)</span>
                   </div>
                   <div className="mt-2 h-1 rounded-full bg-secondary overflow-hidden">
@@ -524,9 +543,9 @@ const AdminDashboard = () => {
                     <TableRow key={r.parceiro_id}>
                       <TableCell className="font-medium">{medals[i] || i + 1}</TableCell>
                       <TableCell className="font-medium">{r.nome}</TableCell>
-                      <TableCell className="text-right">{r.total}</TableCell>
-                      <TableCell className="text-right">{r.convertidos}</TableCell>
-                      <TableCell className="text-right">{r.assinados}</TableCell>
+                      <TableCell className="text-right">{formatCount(r.total)}</TableCell>
+                      <TableCell className="text-right">{formatCount(r.convertidos)}</TableCell>
+                      <TableCell className="text-right">{formatCount(r.assinados)}</TableCell>
                       <TableCell className="text-right">{convPct}%</TableCell>
                     </TableRow>
                   );
