@@ -280,6 +280,7 @@ export const LeadComments = ({
           <Textarea
             value={newComment}
             onChange={(e) => handleCommentChange(e.target.value)}
+            onFocus={() => void ensureMentionUsersLoaded()}
             placeholder="Adicionar comentário..."
             rows={2}
             maxLength={500}
