@@ -197,7 +197,12 @@ export const LeadComments = ({
     const sliced = value.slice(0, 500);
     setNewComment(sliced);
     const match = sliced.match(/@([\p{L}\p{N}._-]*)$/u);
-    setMentionQuery(match ? match[1].toLowerCase() : "");
+    if (match) {
+      void ensureMentionUsersLoaded();
+      setMentionQuery(match[1].toLowerCase());
+    } else {
+      setMentionQuery("");
+    }
   };
 
   const addMention = (user: MentionUser) => {
