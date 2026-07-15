@@ -130,28 +130,37 @@ const AdminDashboard = () => {
       setPipelineStages(activeStages);
       setStageLabels(labels);
 
-      let leadsQuery: any = supabase.from("leads").select("id, status_lead, parceiro_id, nome_responsavel, data_cadastro");
-      if (stageValues.length > 0) leadsQuery = leadsQuery.in("status_lead", stageValues);
-      if (selectedConsultor !== "all") leadsQuery = leadsQuery.eq("parceiro_id", selectedConsultor);
-      if (selectedResponsavel !== "all") leadsQuery = leadsQuery.eq("nome_responsavel", selectedResponsavel);
-      if (dateFilter.from) leadsQuery = leadsQuery.gte("data_cadastro", dateFilter.from);
-      if (dateFilter.to) leadsQuery = leadsQuery.lte("data_cadastro", dateFilter.to);
+      const buildLeadsQuery = () => {
+        let query: any = supabase
+          .from("leads")
+          .select("id, nome_fantasia, status_lead, parceiro_id, nome_responsavel, data_cadastro")
+          .eq("panel_id", selectedPanel)
+          .order("data_cadastro", { ascending: false });
+        if (stageValues.length > 0) query = query.in("status_lead", stageValues);
+        if (selectedConsultor !== "all") query = query.eq("parceiro_id", selectedConsultor);
+        if (selectedResponsavel !== "all") query = query.eq("nome_responsavel", selectedResponsavel);
+        if (dateFilter.from) query = query.gte("data_cadastro", dateFilter.from);
+        if (dateFilter.to) query = query.lte("data_cadastro", dateFilter.to);
+        return query;
+      };
 
-      let stalledQuery: any = supabase
-        .from("lead_stage_history")
-        .select("lead_id, etapa, data_entrada")
-        .is("data_saida", null)
-        .order("data_entrada", { ascending: true });
-      if (stageValues.length > 0) stalledQuery = stalledQuery.in("etapa", stageValues);
+      const buildStalledQuery = () => {
+        let query: any = supabase
+          .from("lead_stage_history")
+          .select("lead_id, etapa, data_entrada")
+          .is("data_saida", null)
+          .order("data_entrada", { ascending: true });
+        if (stageValues.length > 0) query = query.in("etapa", stageValues);
+        return query;
+      };
 
-      const [parceiros, leads, stalledRes] = await Promise.all([
+      const [parceiros, leadsData, stalledRes] = await Promise.all([
         supabase.from("parceiros_comerciais").select("id", { count: "exact", head: true }),
-        leadsQuery,
-        stalledQuery,
+        fetchAllRows<any>(buildLeadsQuery),
+        fetchAllRows<any>(buildStalledQuery),
       ]);
       setTotalParceiros(parceiros.count || 0);
 
-      const leadsData = leads.data || [];
       setTotalLeads(leadsData.length);
 
       const counts: Record<string, number> = {};
@@ -179,9 +188,9 @@ const AdminDashboard = () => {
         .slice(0, 10);
       setRanking(rankingList);
 
-      const currentStageByLead = new Map(
-        ((stalledRes.data || []) as any[]).map((s: any) => [s.lead_id, s.data_entrada])
-      );
+      const leadIdSet = new Set(leadsData.map((lead: any) => lead.id));
+      const stalledData = (stalledRes || []).filter((stage: any) => leadIdSet.has(stage.lead_id));
+      const currentStageByLead = new Map(stalledData.map((s: any) => [s.lead_id, s.data_entrada]));
       const stageTotals = new Map<string, { totalDias: number; totalLeads: number }>();
       leadsData.forEach((lead: any) => {
         const etapa = lead.status_lead || "novo_lead";
@@ -211,16 +220,10 @@ const AdminDashboard = () => {
         setBottleneck(null);
       }
 
-      const stalledData = (stalledRes.data || []) as any[];
-      const leadIds = stalledData.map((s: any) => s.lead_id);
-      if (leadIds.length > 0) {
-        const { data: leadDetails } = await supabase
-          .from("leads")
-          .select("id, nome_fantasia, parceiro_id, status_lead, data_cadastro")
-          .in("id", leadIds);
-
+      if (stalledData.length > 0) {
+        const leadById = new Map(leadsData.map((l: any) => [l.id, l]));
         const stalled: StalledLead[] = stalledData.map((s: any) => {
-          const lead = (leadDetails || []).find((l: any) => l.id === s.lead_id);
+          const lead = leadById.get(s.lead_id);
           const dias = Math.max(0, Math.floor((Date.now() - new Date(s.data_entrada).getTime()) / (1000 * 60 * 60 * 24)));
           const dias_totais = lead?.data_cadastro
             ? Math.max(0, Math.floor((Date.now() - new Date(lead.data_cadastro).getTime()) / (1000 * 60 * 60 * 24)))
@@ -234,7 +237,7 @@ const AdminDashboard = () => {
             parceiro_nome: nomeMap.get(lead?.parceiro_id || "") || "—",
           };
         })
-          .sort((a: StalledLead, b: StalledLead) => b.dias - a.dias)
+          .sort((a: StalledLead, b: StalledLead) => b.dias - a.dias);
         setStalledLeads(stalled);
       } else {
         setStalledLeads([]);
