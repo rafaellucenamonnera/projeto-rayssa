@@ -1,83 +1,45 @@
 ## Objetivo
-Deixar os cards de score do resultado do Teste Monnera com linguagem mais clara ao cliente. Sem tocar em perguntas, pesos, scoring, RPC, payload, rotas, tarefas ou notificações.
+Corrigir a associação dos 55 leads importados do CSV de farmácias sem receita, hoje vinculados ao Embaixador **FERNANDO FERREIRA PEREIRA**, para o Embaixador **Rafael Lucena**.
 
-## Arquivo alterado
-- `src/pages/TesteMonnera.tsx` — apenas o bloco de renderização dos cards de classificação e o mapeamento de labels usados na UI.
+## Diagnóstico
+- Tabela dos leads comerciais importados: `public.leads`.
+- O campo `consultor` está `NULL` nos 55 leads — o vínculo com o Embaixador não é feito por esse campo, e sim por `leads.parceiro_id → parceiros_comerciais.id`.
+- Confirmado no banco:
+  - `parceiros_comerciais`: `FERNANDO FERREIRA PEREIRA` = `ec958fea-49ee-49d2-b948-30fe2cedbe66` (64 leads vinculados no total, **55** correspondem exatamente aos CNPJs do CSV).
+  - `parceiros_comerciais`: `Rafael Lucena` = `f8e40640-e399-4b47-82af-c10babe01543`.
+- Portanto o UPDATE correto é em `parceiro_id`, não em `consultor`.
 
-Nada em `src/lib/testeMonnera.ts` neste passo. Thresholds, tipos internos e cálculo permanecem iguais.
-Nada em `TesteMonneraSection.tsx` neste passo. O card comercial continua exibindo o que já mostra.
+## Passos
 
-## Mudanças
-
-1. Adicionar metadados locais no arquivo:
-   ```ts
-   const scoreCardInfo = {
-     governanca: {
-       label: "Governança",
-       ranges: "0-14 bons sinais | 15-29 pontos de atenção | 30+ alta fragilidade",
-       description: "Mede separação entre verbas, regras, aceite, desempenho superior e rastreabilidade.",
-       classNames: {
-         baixa: "bons sinais de governança",
-         media: "pontos de atenção em governança",
-         alta: "alta fragilidade operacional",
-       },
-     },
-     campanhas: {
-       label: "Campanhas",
-       ranges: "0-14 baixa estrutura | 15-29 estrutura parcial | 30+ boa estrutura",
-       description: "Indica se a operação consegue criar campanhas, metas, acesso ao time e retorno para parceiros.",
-       classNames: {
-         baixa: "baixa estrutura para campanhas",
-         media: "estrutura parcial para campanhas",
-         alta: "boa estrutura para campanhas",
-       },
-     },
-     pagamentos: {
-       label: "Pagamentos",
-       ranges: "0-7 baixo controle | 8-14 controle parcial | 15+ bom controle",
-       description: "Avalia fechamento, conciliação e controle entre cálculo aprovado e valor pago.",
-       classNames: {
-         baixa: "baixo controle de pagamento",
-         media: "controle parcial de pagamento",
-         alta: "bom controle de pagamento",
-       },
-     },
-   } as const;
+1. **SELECT de conferência** (esperado: 55 linhas), filtrando pelos 55 CNPJs + `parceiro_id = Fernando`:
+   ```sql
+   SELECT id, cnpj, nome_fantasia, parceiro_id
+   FROM public.leads
+   WHERE parceiro_id = 'ec958fea-49ee-49d2-b948-30fe2cedbe66'
+     AND regexp_replace(coalesce(cnpj,''), '\D', '', 'g') IN (<lista dos 58 CNPJs>);
    ```
 
-2. Ajustar o grid de cards do resultado para exibir três cards: Governança, Campanhas e Pagamentos.
+2. **UPDATE** somente `parceiro_id`, sem alterar nenhum outro campo:
+   ```sql
+   UPDATE public.leads
+   SET parceiro_id = 'f8e40640-e399-4b47-82af-c10babe01543'
+   WHERE parceiro_id = 'ec958fea-49ee-49d2-b948-30fe2cedbe66'
+     AND regexp_replace(coalesce(cnpj,''), '\D', '', 'g') IN (<lista dos 58 CNPJs>)
+   RETURNING id, cnpj, nome_fantasia, parceiro_id;
+   ```
+   Executado via ferramenta de escrita de dados (não é migration, é update de dados).
 
-3. Cada card deve mostrar:
-   - nome do eixo (`label`);
-   - pontuação obtida;
-   - classificação em texto claro;
-   - faixa interpretativa (`ranges`);
-   - breve explicação (`description`).
+3. **SELECT de verificação pós-update**: contar quantos dos 58 CNPJs agora estão em `parceiro_id = Rafael` e confirmar que nenhum ficou com Fernando.
 
-4. Remover da UI a exibição de rótulos crus como `baixa`, `media`, `alta`, `Baixa aderência`, `Aderência moderada`, `Alta aderência`. Não alterar os valores internos usados pelo cálculo — a mudança é somente de apresentação para o cliente.
-
-## Layout
-- Layout responsivo: `grid-cols-1 md:grid-cols-3 gap-3`.
-- Tipografia e tokens já existentes.
-- Manter `text-muted-foreground`, `font-display`, `Card/CardContent` ou componentes equivalentes já usados no arquivo.
+4. Retornar a **quantidade de linhas afetadas** (esperado: 55) e a lista `cnpj + nome_fantasia`.
 
 ## Fora de escopo
-Não alterar:
-- thresholds de classificação;
-- função `classify()`;
-- perguntas;
-- pesos;
-- payload enviado ao RPC;
-- card comercial (`TesteMonneraSection.tsx`);
-- lead parcial;
-- tarefas;
-- notificações;
-- migrations.
+- Não alterar `consultor`, `percentual_consultor`, `status`, `status_lead`, valores financeiros, histórico, ou qualquer outro campo dos leads.
+- Não mexer nos 3 CNPJs do CSV que não pertencem ao Fernando (não serão tocados).
+- Não alterar cadastros em `parceiros_comerciais`.
+- Sem mudança de schema, sem migration, sem código de frontend.
 
 ## Aceite
-- Cards do resultado mostram pontuação, classificação em linguagem clara, faixa e explicação para Governança, Campanhas e Pagamentos.
-- Nenhum card usa mais a palavra "aderência".
-- Nenhum card mostra rótulos crus `baixa`, `media` ou `alta`.
-- Nenhum cálculo, payload ou fluxo muda.
-- Layout responsivo mantido.
-- `npm run build` passa.
+- SELECT pós-update mostra 55 leads com `parceiro_id = Rafael Lucena` e 0 com Fernando (dentro da lista de CNPJs).
+- Nenhum outro campo desses leads foi alterado.
+- Devolvo a contagem exata de linhas afetadas.
