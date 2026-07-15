@@ -582,6 +582,11 @@ const AdminLeads = () => {
     toast.success("Mensagem da coluna atualizada");
   };
 
+  // Reset seção ativa ao trocar de card no modal de detalhe
+  useEffect(() => {
+    if (detailLead?.id) setActiveSection("detalhes");
+  }, [detailLead?.id]);
+
   useEffect(() => {
     loadData();
   }, [isCustomCrmPanel, currentPanelId]);
