@@ -58,6 +58,22 @@ interface PipelineStageConfig {
   sort_order: number;
 }
 
+const formatCount = (value: number) => new Intl.NumberFormat("pt-BR").format(value);
+
+const fetchAllRows = async <T,>(buildQuery: () => any, pageSize = 1000): Promise<T[]> => {
+  const rows: T[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await buildQuery().range(from, from + pageSize - 1);
+    if (error) throw error;
+    const batch = (data || []) as T[];
+    rows.push(...batch);
+    if (batch.length < pageSize) break;
+    from += pageSize;
+  }
+  return rows;
+};
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [totalParceiros, setTotalParceiros] = useState(0);
