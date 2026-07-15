@@ -2284,6 +2284,24 @@ const AdminLeads = () => {
                   </Button>
                 </div>
               )}
+
+              {/* Barra de abas do card */}
+              <Tabs value={activeSection} onValueChange={(v) => setActiveSection(v as DetailSection)}>
+                <TabsList className="w-full flex-wrap justify-start h-auto gap-1">
+                  <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
+                  <TabsTrigger value="conversa">Conversa</TabsTrigger>
+                  <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
+                  <TabsTrigger value="reunioes">Reuniões</TabsTrigger>
+                  <TabsTrigger value="contatos">Contatos</TabsTrigger>
+                  <TabsTrigger value="propostas">Propostas</TabsTrigger>
+                  {["comercial", "comerc"].includes(currentPanelId) && !!detailLead?.teste_monnera_last_diagnostic_id && (
+                    <TabsTrigger value="teste_monnera">Teste Monnera</TabsTrigger>
+                  )}
+                </TabsList>
+              </Tabs>
+
+              {activeSection === "detalhes" && (
+                <>
               {/* Lead Data */}
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
