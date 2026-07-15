@@ -491,6 +491,7 @@ const AdminDashboard = () => {
               <Clock className="w-5 h-5 text-amber-500" />
               Leads Mais Tempo na Mesma Etapa
             </CardTitle>
+            <p className="text-xs text-muted-foreground">Lista operacional dos 100 leads há mais tempo parados — não é base para totais exatos.</p>
           </CardHeader>
           <CardContent>
             {stalledLeads.length === 0 ? (

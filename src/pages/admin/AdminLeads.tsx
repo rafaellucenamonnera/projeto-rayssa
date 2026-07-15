@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
@@ -249,6 +250,8 @@ const AdminLeads = () => {
   // Lead detail dialog
   const [detailLead, setDetailLead] = useState<any>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  type DetailSection = "detalhes" | "conversa" | "tarefas" | "reunioes" | "contatos" | "propostas" | "teste_monnera";
+  const [activeSection, setActiveSection] = useState<DetailSection>("detalhes");
 
   // Lead perdido dialog
   const [perdidoDialogOpen, setPerdidoDialogOpen] = useState(false);
@@ -416,7 +419,7 @@ const AdminLeads = () => {
       status_lead: targetStageId,
       origem: `Clonado de ${cloneLead.nome_fantasia}`,
     };
-    const { error } = await supabase.from("leads").insert(payload as any);
+    const { data, error } = await supabase.from("leads").insert(payload as any).select("*").single();
     setCloning(false);
     if (error) {
       toast.error("Erro ao clonar card: " + error.message);
@@ -425,8 +428,9 @@ const AdminLeads = () => {
     toast.success("Card clonado com sucesso");
     setCloneDialogOpen(false);
     setCloneLead(null);
-    setCloneLead(null);
-    loadData();
+    if (data) {
+      setLeads((prev) => [data as any, ...prev]);
+    }
   };
 
   const handleSyncDriveClients = async () => {
@@ -884,7 +888,6 @@ const AdminLeads = () => {
     setCampaignMoveOpen(false);
     setPendingCampaignMove(null);
     toast.success("Card enviado para Criação de Campanhas (SLA 48h úteis)");
-    void loadData();
   };
 
   const moveCampanhaToAguardandoCliente = async (leadId: string, leadName: string, newStatus: string) => {
