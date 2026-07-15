@@ -58,6 +58,8 @@ export const LeadTasks = ({
 }: LeadTasksProps) => {
   const [tasks, setTasks] = useState<LeadTask[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);
+  const [usersLoaded, setUsersLoaded] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [titulo, setTitulo] = useState("");
   const [dueAt, setDueAt] = useState("");
@@ -89,15 +91,16 @@ export const LeadTasks = ({
     );
   };
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id || null));
-    const loadUsers = async () => {
+  const ensureUsersLoaded = async () => {
+    if (usersLoaded || loadingUsers) return;
+    setLoadingUsers(true);
+    try {
       const [{ data }, { data: roles }] = await Promise.all([
         supabase
-        .from("profiles")
-        .select("user_id,nome,ativo,can_be_responsible")
-        .eq("ativo", true)
-        .order("nome", { ascending: true }),
+          .from("profiles")
+          .select("user_id,nome,ativo,can_be_responsible")
+          .eq("ativo", true)
+          .order("nome", { ascending: true }),
         (supabase as any).from("user_roles").select("user_id,role").eq("role", "admin"),
       ]);
       const adminIds = new Set(((roles as any[]) || []).map((role) => role.user_id));
@@ -107,8 +110,14 @@ export const LeadTasks = ({
         can_be_responsible: !!u.can_be_responsible || adminIds.has(u.user_id),
       }));
       setUsers(loaded);
-    };
-    loadUsers();
+      setUsersLoaded(true);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id || null));
   }, []);
 
   useEffect(() => {
@@ -213,12 +222,20 @@ export const LeadTasks = ({
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_190px_180px_auto]">
           <Input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Nova tarefa" maxLength={120} />
           <Input type="datetime-local" value={dueAt} onChange={(e) => setDueAt(e.target.value)} />
-          <Select value={assignedTo} onValueChange={setAssignedTo}>
+          <Select
+            value={assignedTo}
+            onValueChange={setAssignedTo}
+            onOpenChange={(open) => { if (open) void ensureUsersLoaded(); }}
+          >
             <SelectTrigger><SelectValue placeholder="Responsável" /></SelectTrigger>
             <SelectContent>
-              {users.filter((u) => u.can_be_responsible).map((u) => (
-                <SelectItem key={u.user_id} value={u.user_id}>{u.nome}</SelectItem>
-              ))}
+              {loadingUsers && !usersLoaded ? (
+                <div className="px-2 py-1.5 text-xs text-muted-foreground">Carregando...</div>
+              ) : (
+                users.filter((u) => u.can_be_responsible).map((u) => (
+                  <SelectItem key={u.user_id} value={u.user_id}>{u.nome}</SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
           <Button onClick={createTask} disabled={saving} className="shrink-0">

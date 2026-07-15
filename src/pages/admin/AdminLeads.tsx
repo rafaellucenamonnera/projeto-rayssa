@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
@@ -249,6 +250,8 @@ const AdminLeads = () => {
   // Lead detail dialog
   const [detailLead, setDetailLead] = useState<any>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  type DetailSection = "detalhes" | "conversa" | "tarefas" | "reunioes" | "contatos" | "propostas" | "teste_monnera";
+  const [activeSection, setActiveSection] = useState<DetailSection>("detalhes");
 
   // Lead perdido dialog
   const [perdidoDialogOpen, setPerdidoDialogOpen] = useState(false);
@@ -416,7 +419,7 @@ const AdminLeads = () => {
       status_lead: targetStageId,
       origem: `Clonado de ${cloneLead.nome_fantasia}`,
     };
-    const { error } = await supabase.from("leads").insert(payload as any);
+    const { data, error } = await supabase.from("leads").insert(payload as any).select("*").single();
     setCloning(false);
     if (error) {
       toast.error("Erro ao clonar card: " + error.message);
@@ -425,8 +428,9 @@ const AdminLeads = () => {
     toast.success("Card clonado com sucesso");
     setCloneDialogOpen(false);
     setCloneLead(null);
-    setCloneLead(null);
-    loadData();
+    if (data) {
+      setLeads((prev) => [data as any, ...prev]);
+    }
   };
 
   const handleSyncDriveClients = async () => {
@@ -577,6 +581,11 @@ const AdminLeads = () => {
     );
     toast.success("Mensagem da coluna atualizada");
   };
+
+  // Reset seção ativa ao trocar de card no modal de detalhe
+  useEffect(() => {
+    if (detailLead?.id) setActiveSection("detalhes");
+  }, [detailLead?.id]);
 
   useEffect(() => {
     loadData();
@@ -884,7 +893,6 @@ const AdminLeads = () => {
     setCampaignMoveOpen(false);
     setPendingCampaignMove(null);
     toast.success("Card enviado para Criação de Campanhas (SLA 48h úteis)");
-    void loadData();
   };
 
   const moveCampanhaToAguardandoCliente = async (leadId: string, leadName: string, newStatus: string) => {
@@ -2281,6 +2289,24 @@ const AdminLeads = () => {
                   </Button>
                 </div>
               )}
+
+              {/* Barra de abas do card */}
+              <Tabs value={activeSection} onValueChange={(v) => setActiveSection(v as DetailSection)}>
+                <TabsList className="w-full flex-wrap justify-start h-auto gap-1">
+                  <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
+                  <TabsTrigger value="conversa">Conversa</TabsTrigger>
+                  <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
+                  <TabsTrigger value="reunioes">Reuniões</TabsTrigger>
+                  <TabsTrigger value="contatos">Contatos</TabsTrigger>
+                  <TabsTrigger value="propostas">Propostas</TabsTrigger>
+                  {["comercial", "comerc"].includes(currentPanelId) && !!detailLead?.teste_monnera_last_diagnostic_id && (
+                    <TabsTrigger value="teste_monnera">Teste Monnera</TabsTrigger>
+                  )}
+                </TabsList>
+              </Tabs>
+
+              {activeSection === "detalhes" && (
+                <>
               {/* Lead Data */}
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
@@ -2650,10 +2676,6 @@ const AdminLeads = () => {
                 </div>
               )}
 
-              {/* Histórico de propostas */}
-              <div className="border-t border-border pt-4">
-                <LeadProposalsHistory leadId={detailLead.id} />
-              </div>
 
               {/* Contract section */}
               {isConvertedOrBeyond(detailLead.status_lead) && (
@@ -2703,46 +2725,9 @@ const AdminLeads = () => {
                 </div>
               )}
 
-              {/* Reuniões */}
-              <div className="border-t border-border pt-4">
-                <LeadReuniao
-                  leadId={detailLead.id}
-                  currentStage={detailLead.status_lead || "novo_lead"}
-                  onMoveToRealizada={() => {
-                    handleStatusChange(detailLead.id, detailLead.nome_fantasia, "reuniao_realizada");
-                  }}
-                />
-              </div>
 
-              {/* Diagnóstico Teste Monnera (painel comercial) */}
-              {(currentPanelId === "comercial" || currentPanelId === "comerc") && detailLead.teste_monnera_last_diagnostic_id && (
-                <TesteMonneraSection leadId={detailLead.id} />
-              )}
 
-              {/* Contatos do Lead */}
-              <div className="border-t border-border pt-4">
-                <LeadContatos leadId={detailLead.id} />
-              </div>
 
-              <div className="border-t border-border pt-4">
-                <h3 className="text-sm font-semibold mb-3">Tarefas do card</h3>
-                {isAmbassadorPanel ? (
-                  <AmbassadorCardTasks
-                    cardId={detailLead.id}
-                    cardName={detailLead.nome_fantasia}
-                    panelId={currentPanelId}
-                    actionUrl={cardActionUrl(detailLead.id)}
-                  />
-                ) : (
-                  <LeadTasks
-                    leadId={detailLead.id}
-                    leadName={detailLead.nome_fantasia}
-                    actionBasePath={location.pathname}
-                    canCreateTask={canCreateTask}
-                    canCompleteTask={canCompleteTask}
-                  />
-                )}
-              </div>
 
               {!isCustomCrmPanel && !detailLead.teste_monnera_last_diagnostic_id && !detailLead.teste_monnera_result_color && (
                 <div className="border-t border-border pt-4 space-y-3">
@@ -2776,32 +2761,95 @@ const AdminLeads = () => {
                   })()}
                 </div>
               )}
+                </>
+              )}
 
-              {/* Histórico de Conversa */}
-              <div className="border-t border-border pt-4">
-                {isAmbassadorPanel ? (
-                  <AmbassadorCardComments
-                    cardId={detailLead.id}
-                    currentStage={detailLead.status_lead || detailLead.stage_id || "prospeccao"}
-                    userName={currentUserName}
-                    canInsertMessage={canInsertMessage}
-                    canEditMessage={canEditMessage}
-                    canDeleteMessage={canDeleteMessage}
-                    canInsertFile={canInsertFile}
-                  />
-                ) : (
-                  <LeadComments
+              {/* Aba: Conversa */}
+              {activeSection === "conversa" && (
+                <div>
+                  {isAmbassadorPanel ? (
+                    <AmbassadorCardComments
+                      cardId={detailLead.id}
+                      currentStage={detailLead.status_lead || detailLead.stage_id || "prospeccao"}
+                      userName={currentUserName}
+                      canInsertMessage={canInsertMessage}
+                      canEditMessage={canEditMessage}
+                      canDeleteMessage={canDeleteMessage}
+                      canInsertFile={canInsertFile}
+                    />
+                  ) : (
+                    <LeadComments
+                      leadId={detailLead.id}
+                      currentStage={detailLead.status_lead || "novo_lead"}
+                      userName={currentUserName}
+                      actionBasePath={location.pathname}
+                      canInsertMessage={canInsertMessage}
+                      canEditMessage={canEditMessage}
+                      canDeleteMessage={canDeleteMessage}
+                      canInsertFile={canInsertFile}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* Aba: Tarefas */}
+              {activeSection === "tarefas" && (
+                <div>
+                  <h3 className="text-sm font-semibold mb-3">Tarefas do card</h3>
+                  {isAmbassadorPanel ? (
+                    <AmbassadorCardTasks
+                      cardId={detailLead.id}
+                      cardName={detailLead.nome_fantasia}
+                      panelId={currentPanelId}
+                      actionUrl={cardActionUrl(detailLead.id)}
+                    />
+                  ) : (
+                    <LeadTasks
+                      leadId={detailLead.id}
+                      leadName={detailLead.nome_fantasia}
+                      actionBasePath={location.pathname}
+                      canCreateTask={canCreateTask}
+                      canCompleteTask={canCompleteTask}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* Aba: Reuniões */}
+              {activeSection === "reunioes" && (
+                <div>
+                  <LeadReuniao
                     leadId={detailLead.id}
                     currentStage={detailLead.status_lead || "novo_lead"}
-                    userName={currentUserName}
-                    actionBasePath={location.pathname}
-                    canInsertMessage={canInsertMessage}
-                    canEditMessage={canEditMessage}
-                    canDeleteMessage={canDeleteMessage}
-                    canInsertFile={canInsertFile}
+                    onMoveToRealizada={() => {
+                      handleStatusChange(detailLead.id, detailLead.nome_fantasia, "reuniao_realizada");
+                    }}
                   />
-                )}
-              </div>
+                </div>
+              )}
+
+              {/* Aba: Contatos */}
+              {activeSection === "contatos" && (
+                <div>
+                  <LeadContatos leadId={detailLead.id} />
+                </div>
+              )}
+
+              {/* Aba: Propostas */}
+              {activeSection === "propostas" && (
+                <div>
+                  <LeadProposalsHistory leadId={detailLead.id} />
+                </div>
+              )}
+
+              {/* Aba: Teste Monnera */}
+              {activeSection === "teste_monnera"
+                && ["comercial", "comerc"].includes(currentPanelId)
+                && !!detailLead?.teste_monnera_last_diagnostic_id && (
+                <div>
+                  <TesteMonneraSection leadId={detailLead.id} />
+                </div>
+              )}
             </div>
           )}
         </DialogContent>

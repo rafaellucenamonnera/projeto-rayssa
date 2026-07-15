@@ -130,13 +130,8 @@ const AdminDashboard = () => {
       setPipelineStages(activeStages);
       setStageLabels(labels);
 
-      const buildLeadsQuery = () => {
-        let query: any = supabase
-          .from("leads")
-          .select("id, nome_fantasia, status_lead, parceiro_id, nome_responsavel, data_cadastro")
-          .eq("panel_id", selectedPanel)
-          .order("data_cadastro", { ascending: false });
-        if (stageValues.length > 0) query = query.in("status_lead", stageValues);
+      const applyLeadFilters = (q: any) => {
+        let query = q.eq("panel_id", selectedPanel);
         if (selectedConsultor !== "all") query = query.eq("parceiro_id", selectedConsultor);
         if (selectedResponsavel !== "all") query = query.eq("nome_responsavel", selectedResponsavel);
         if (dateFilter.from) query = query.gte("data_cadastro", dateFilter.from);
@@ -144,6 +139,37 @@ const AdminDashboard = () => {
         return query;
       };
 
+      // 1. Total de parceiros (não depende de filtros de leads)
+      const parceirosCountP = supabase
+        .from("parceiros_comerciais")
+        .select("id", { count: "exact", head: true });
+
+      // 2. Contagem por etapa via count/head:true (uma query paralela por etapa)
+      const stageCountsP = Promise.all(
+        activeStages.map(async (s) => {
+          const { count } = await applyLeadFilters(
+            supabase.from("leads").select("id", { count: "exact", head: true }),
+          ).eq("status_lead", s.value);
+          return [s.value, count || 0] as const;
+        }),
+      );
+
+      // 3. Total de leads via count/head:true, sem filtro de status (inclui lead_perdido e etapas fora do painel corrente)
+      const totalLeadsP = applyLeadFilters(
+        supabase.from("leads").select("id", { count: "exact", head: true }),
+      ).then(({ count }: any) => count || 0);
+
+      // 4. Dataset leve só para ranking + filtro de responsáveis (Fase 1: RPC/agregação server-side fica para fase posterior)
+      const rankingLeadsP = fetchAllRows<any>(() =>
+        applyLeadFilters(
+          supabase
+            .from("leads")
+            .select("id, parceiro_id, status_lead, nome_responsavel, data_cadastro")
+            .order("data_cadastro", { ascending: false }),
+        ),
+      );
+
+      // 5. Histórico de etapas em aberto (leve: 3 colunas) — usado por métricas e leads parados
       const buildStalledQuery = () => {
         let query: any = supabase
           .from("lead_stage_history")
@@ -153,49 +179,53 @@ const AdminDashboard = () => {
         if (stageValues.length > 0) query = query.in("etapa", stageValues);
         return query;
       };
+      const stageHistoryP = fetchAllRows<any>(buildStalledQuery);
 
-      const [parceiros, leadsData, stalledRes] = await Promise.all([
-        supabase.from("parceiros_comerciais").select("id", { count: "exact", head: true }),
-        fetchAllRows<any>(buildLeadsQuery),
-        fetchAllRows<any>(buildStalledQuery),
+      const [parceirosRes, stageCountsPairs, totalLeadsCount, rankingLeads, stageHistoryRows] = await Promise.all([
+        parceirosCountP,
+        stageCountsP,
+        totalLeadsP,
+        rankingLeadsP,
+        stageHistoryP,
       ]);
-      setTotalParceiros(parceiros.count || 0);
 
-      setTotalLeads(leadsData.length);
-
+      setTotalParceiros(parceirosRes.count || 0);
       const counts: Record<string, number> = {};
       activeStages.forEach((s) => { counts[s.value] = 0; });
+      stageCountsPairs.forEach(([k, v]) => { counts[k] = v; });
+      setStatusCounts(counts);
+      setTotalLeads(totalLeadsCount);
+      setSignedContractsCount(counts["contrato_assinado"] || 0);
 
+      // Ranking + lista de responsáveis a partir do dataset leve
+      const nomeMap = new Map(consultores.map((p) => [p.id, p.nome]));
       const parceiroMap = new Map<string, { total: number; convertidos: number; assinados: number }>();
-      leadsData.forEach((l: any) => {
+      rankingLeads.forEach((l: any) => {
         const s = l.status_lead || "novo_lead";
-        counts[s] = (counts[s] || 0) + 1;
-
         const entry = parceiroMap.get(l.parceiro_id) || { total: 0, convertidos: 0, assinados: 0 };
         entry.total += 1;
         if (["lead_convertido", "contrato_enviado", "contrato_assinado"].includes(s)) entry.convertidos += 1;
         if (s === "contrato_assinado") entry.assinados += 1;
         parceiroMap.set(l.parceiro_id, entry);
       });
-      setStatusCounts(counts);
-      setSignedContractsCount(leadsData.filter((l: any) => l.status_lead === "contrato_assinado").length);
-
-      const nomeMap = new Map(consultores.map((p) => [p.id, p.nome]));
-      setResponsaveis(Array.from(new Set(leadsData.map((l: any) => l.nome_responsavel).filter(Boolean))).sort() as string[]);
+      setResponsaveis(
+        Array.from(new Set(rankingLeads.map((l: any) => l.nome_responsavel).filter(Boolean))).sort() as string[],
+      );
       const rankingList: RankingItem[] = Array.from(parceiroMap.entries())
         .map(([id, data]) => ({ parceiro_id: id, nome: nomeMap.get(id) || "—", ...data }))
         .sort((a, b) => b.total - a.total)
         .slice(0, 10);
       setRanking(rankingList);
 
-      const leadIdSet = new Set(leadsData.map((lead: any) => lead.id));
-      const stalledData = (stalledRes || []).filter((stage: any) => leadIdSet.has(stage.lead_id));
-      const currentStageByLead = new Map(stalledData.map((s: any) => [s.lead_id, s.data_entrada]));
+      // Métricas de tempo médio por etapa — derivadas do dataset leve + histórico de etapas
+      const leadById = new Map(rankingLeads.map((l: any) => [l.id, l]));
+      const currentStageByLead = new Map(
+        (stageHistoryRows || []).filter((s: any) => leadById.has(s.lead_id)).map((s: any) => [s.lead_id, s.data_entrada]),
+      );
       const stageTotals = new Map<string, { totalDias: number; totalLeads: number }>();
-      leadsData.forEach((lead: any) => {
+      rankingLeads.forEach((lead: any) => {
         const etapa = lead.status_lead || "novo_lead";
         if (etapa === "lead_perdido") return;
-
         const dataEntrada = currentStageByLead.get(lead.id);
         const dias = dataEntrada
           ? Math.max(0, Math.floor((Date.now() - new Date(dataEntrada as string).getTime()) / (1000 * 60 * 60 * 24)))
@@ -214,15 +244,16 @@ const AdminDashboard = () => {
         .sort((a, b) => (orders[a.etapa] ?? getPipelineStageOrder(a.etapa)) - (orders[b.etapa] ?? getPipelineStageOrder(b.etapa)));
       setStageMetrics(metrics);
       if (metrics.length > 0) {
-        const bn = metrics.reduce((max, m) => m.tempo_medio > max.tempo_medio ? m : max, metrics[0]);
+        const bn = metrics.reduce((max, m) => (m.tempo_medio > max.tempo_medio ? m : max), metrics[0]);
         setBottleneck(bn);
       } else {
         setBottleneck(null);
       }
 
-      if (stalledData.length > 0) {
-        const leadById = new Map(leadsData.map((l: any) => [l.id, l]));
-        const stalled: StalledLead[] = stalledData.map((s: any) => {
+      // Leads parados — lista operacional limitada a 100 itens (não é base para totais exatos)
+      const stalledCandidates = (stageHistoryRows || []).filter((s: any) => leadById.has(s.lead_id));
+      if (stalledCandidates.length > 0) {
+        const stalled: StalledLead[] = stalledCandidates.map((s: any) => {
           const lead = leadById.get(s.lead_id);
           const dias = Math.max(0, Math.floor((Date.now() - new Date(s.data_entrada).getTime()) / (1000 * 60 * 60 * 24)));
           const dias_totais = lead?.data_cadastro
@@ -230,14 +261,15 @@ const AdminDashboard = () => {
             : 0;
           return {
             id: s.lead_id,
-            nome_fantasia: lead?.nome_fantasia || "—",
-            etapa: lead?.status_lead || s.etapa || "novo_lead",
+            nome_fantasia: (lead as any)?.nome_fantasia || "—",
+            etapa: (lead as any)?.status_lead || s.etapa || "novo_lead",
             dias,
             dias_totais,
-            parceiro_nome: nomeMap.get(lead?.parceiro_id || "") || "—",
+            parceiro_nome: nomeMap.get((lead as any)?.parceiro_id || "") || "—",
           };
         })
-          .sort((a: StalledLead, b: StalledLead) => b.dias - a.dias);
+          .sort((a: StalledLead, b: StalledLead) => b.dias - a.dias)
+          .slice(0, 100);
         setStalledLeads(stalled);
       } else {
         setStalledLeads([]);
@@ -459,6 +491,7 @@ const AdminDashboard = () => {
               <Clock className="w-5 h-5 text-amber-500" />
               Leads Mais Tempo na Mesma Etapa
             </CardTitle>
+            <p className="text-xs text-muted-foreground">Lista operacional dos 100 leads há mais tempo parados — não é base para totais exatos.</p>
           </CardHeader>
           <CardContent>
             {stalledLeads.length === 0 ? (

@@ -63,6 +63,8 @@ export const LeadComments = ({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [users, setUsers] = useState<MentionUser[]>([]);
+  const [mentionUsersLoaded, setMentionUsersLoaded] = useState(false);
+  const [loadingMentionUsers, setLoadingMentionUsers] = useState(false);
   const [selectedMentionIds, setSelectedMentionIds] = useState<string[]>([]);
   const [mentionQuery, setMentionQuery] = useState("");
   const [stagedAttachments, setStagedAttachments] = useState<StagedAttachment[]>([]);
@@ -71,12 +73,17 @@ export const LeadComments = ({
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setCurrentUserId(user.id);
     });
-    const loadMentionUsers = async () => {
+  }, []);
+
+  const ensureMentionUsersLoaded = async () => {
+    if (mentionUsersLoaded || loadingMentionUsers) return;
+    setLoadingMentionUsers(true);
+    try {
       const [{ data: profileUsers }, { data: roles }] = await Promise.all([
         supabase
-      .from("profiles")
-      .select("user_id,nome,ativo,can_be_responsible")
-      .eq("ativo", true)
+          .from("profiles")
+          .select("user_id,nome,ativo,can_be_responsible")
+          .eq("ativo", true)
           .order("nome", { ascending: true }),
         (supabase as any).from("user_roles").select("user_id,role").eq("role", "admin"),
       ]);
@@ -85,9 +92,11 @@ export const LeadComments = ({
         .filter((u: any) => u.can_be_responsible || adminIds.has(u.user_id))
         .map((u: any) => ({ user_id: u.user_id, nome: u.nome }));
       setUsers(internalUsers);
-    };
-    loadMentionUsers();
-  }, []);
+      setMentionUsersLoaded(true);
+    } finally {
+      setLoadingMentionUsers(false);
+    }
+  };
 
   const loadComments = async () => {
     setLoading(true);
@@ -188,7 +197,12 @@ export const LeadComments = ({
     const sliced = value.slice(0, 500);
     setNewComment(sliced);
     const match = sliced.match(/@([\p{L}\p{N}._-]*)$/u);
-    setMentionQuery(match ? match[1].toLowerCase() : "");
+    if (match) {
+      void ensureMentionUsersLoaded();
+      setMentionQuery(match[1].toLowerCase());
+    } else {
+      setMentionQuery("");
+    }
   };
 
   const addMention = (user: MentionUser) => {
@@ -266,6 +280,7 @@ export const LeadComments = ({
           <Textarea
             value={newComment}
             onChange={(e) => handleCommentChange(e.target.value)}
+            onFocus={() => void ensureMentionUsersLoaded()}
             placeholder="Adicionar comentário..."
             rows={2}
             maxLength={500}
