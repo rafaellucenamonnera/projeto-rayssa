@@ -261,7 +261,7 @@ const AdminDashboard = () => {
   const navigateToLeadsByStatus = (status: string) => {
     const params = new URLSearchParams(window.location.search);
     params.set("status", status);
-    navigate(`/admin/leads?${params.toString()}`);
+    navigate(`/admin/painel/${selectedPanel}?${params.toString()}`);
   };
 
   const getDaysColor = (dias: number) =>
