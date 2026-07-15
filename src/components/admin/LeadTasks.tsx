@@ -222,12 +222,20 @@ export const LeadTasks = ({
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_190px_180px_auto]">
           <Input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Nova tarefa" maxLength={120} />
           <Input type="datetime-local" value={dueAt} onChange={(e) => setDueAt(e.target.value)} />
-          <Select value={assignedTo} onValueChange={setAssignedTo}>
+          <Select
+            value={assignedTo}
+            onValueChange={setAssignedTo}
+            onOpenChange={(open) => { if (open) void ensureUsersLoaded(); }}
+          >
             <SelectTrigger><SelectValue placeholder="Responsável" /></SelectTrigger>
             <SelectContent>
-              {users.filter((u) => u.can_be_responsible).map((u) => (
-                <SelectItem key={u.user_id} value={u.user_id}>{u.nome}</SelectItem>
-              ))}
+              {loadingUsers && !usersLoaded ? (
+                <div className="px-2 py-1.5 text-xs text-muted-foreground">Carregando...</div>
+              ) : (
+                users.filter((u) => u.can_be_responsible).map((u) => (
+                  <SelectItem key={u.user_id} value={u.user_id}>{u.nome}</SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
           <Button onClick={createTask} disabled={saving} className="shrink-0">
