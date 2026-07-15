@@ -543,9 +543,9 @@ const AdminDashboard = () => {
                     <TableRow key={r.parceiro_id}>
                       <TableCell className="font-medium">{medals[i] || i + 1}</TableCell>
                       <TableCell className="font-medium">{r.nome}</TableCell>
-                      <TableCell className="text-right">{r.total}</TableCell>
-                      <TableCell className="text-right">{r.convertidos}</TableCell>
-                      <TableCell className="text-right">{r.assinados}</TableCell>
+                      <TableCell className="text-right">{formatCount(r.total)}</TableCell>
+                      <TableCell className="text-right">{formatCount(r.convertidos)}</TableCell>
+                      <TableCell className="text-right">{formatCount(r.assinados)}</TableCell>
                       <TableCell className="text-right">{convPct}%</TableCell>
                     </TableRow>
                   );
