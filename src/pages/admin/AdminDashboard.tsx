@@ -323,7 +323,7 @@ const AdminDashboard = () => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Embaixadores Monnera</p>
-              <p className="text-3xl font-display font-bold">{totalParceiros}</p>
+              <p className="text-3xl font-display font-bold">{formatCount(totalParceiros)}</p>
             </div>
           </div>
         </div>
