@@ -2653,10 +2653,6 @@ const AdminLeads = () => {
                 </div>
               )}
 
-              {/* Histórico de propostas */}
-              <div className="border-t border-border pt-4">
-                <LeadProposalsHistory leadId={detailLead.id} />
-              </div>
 
               {/* Contract section */}
               {isConvertedOrBeyond(detailLead.status_lead) && (
@@ -2706,46 +2702,9 @@ const AdminLeads = () => {
                 </div>
               )}
 
-              {/* Reuniões */}
-              <div className="border-t border-border pt-4">
-                <LeadReuniao
-                  leadId={detailLead.id}
-                  currentStage={detailLead.status_lead || "novo_lead"}
-                  onMoveToRealizada={() => {
-                    handleStatusChange(detailLead.id, detailLead.nome_fantasia, "reuniao_realizada");
-                  }}
-                />
-              </div>
 
-              {/* Diagnóstico Teste Monnera (painel comercial) */}
-              {(currentPanelId === "comercial" || currentPanelId === "comerc") && detailLead.teste_monnera_last_diagnostic_id && (
-                <TesteMonneraSection leadId={detailLead.id} />
-              )}
 
-              {/* Contatos do Lead */}
-              <div className="border-t border-border pt-4">
-                <LeadContatos leadId={detailLead.id} />
-              </div>
 
-              <div className="border-t border-border pt-4">
-                <h3 className="text-sm font-semibold mb-3">Tarefas do card</h3>
-                {isAmbassadorPanel ? (
-                  <AmbassadorCardTasks
-                    cardId={detailLead.id}
-                    cardName={detailLead.nome_fantasia}
-                    panelId={currentPanelId}
-                    actionUrl={cardActionUrl(detailLead.id)}
-                  />
-                ) : (
-                  <LeadTasks
-                    leadId={detailLead.id}
-                    leadName={detailLead.nome_fantasia}
-                    actionBasePath={location.pathname}
-                    canCreateTask={canCreateTask}
-                    canCompleteTask={canCompleteTask}
-                  />
-                )}
-              </div>
 
               {!isCustomCrmPanel && !detailLead.teste_monnera_last_diagnostic_id && !detailLead.teste_monnera_result_color && (
                 <div className="border-t border-border pt-4 space-y-3">
