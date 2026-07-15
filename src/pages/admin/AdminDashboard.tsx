@@ -139,12 +139,12 @@ const AdminDashboard = () => {
         return query;
       };
 
-      // 1. Total de parceiros (não depende de filtros de leads)
-      const parceirosCountP = supabase
-        .from("parceiros_comerciais")
-        .select("id", { count: "exact", head: true });
+      // 1. Embaixadores Monnera = IDs distintos em parceiros_comerciais (fetchAllRows p/ evitar truncamento em 1000)
+      const parceirosIdsP = fetchAllRows<{ id: string }>(() =>
+        supabase.from("parceiros_comerciais").select("id"),
+      );
 
-      // 2. Contagem por etapa via count/head:true (uma query paralela por etapa)
+      // 2. Contagem por etapa via count/head:true (uma query paralela por etapa visível/ativa)
       const stageCountsP = Promise.all(
         activeStages.map(async (s) => {
           const { count } = await applyLeadFilters(
@@ -154,12 +154,7 @@ const AdminDashboard = () => {
         }),
       );
 
-      // 3. Total de leads via count/head:true, sem filtro de status (inclui lead_perdido e etapas fora do painel corrente)
-      const totalLeadsP = applyLeadFilters(
-        supabase.from("leads").select("id", { count: "exact", head: true }),
-      ).then(({ count }: any) => count || 0);
-
-      // 4. Dataset leve só para ranking + filtro de responsáveis (Fase 1: RPC/agregação server-side fica para fase posterior)
+      // 3. Dataset leve só para ranking + filtro de responsáveis (Fase 1: RPC/agregação server-side fica para fase posterior)
       const rankingLeadsP = fetchAllRows<any>(() =>
         applyLeadFilters(
           supabase
@@ -169,7 +164,7 @@ const AdminDashboard = () => {
         ),
       );
 
-      // 5. Histórico de etapas em aberto (leve: 3 colunas) — usado por métricas e leads parados
+      // 4. Histórico de etapas em aberto (leve: 3 colunas) — usado por métricas e leads parados
       const buildStalledQuery = () => {
         let query: any = supabase
           .from("lead_stage_history")
@@ -181,21 +176,26 @@ const AdminDashboard = () => {
       };
       const stageHistoryP = fetchAllRows<any>(buildStalledQuery);
 
-      const [parceirosRes, stageCountsPairs, totalLeadsCount, rankingLeads, stageHistoryRows] = await Promise.all([
-        parceirosCountP,
+      const [parceirosIds, stageCountsPairs, rankingLeads, stageHistoryRows] = await Promise.all([
+        parceirosIdsP,
         stageCountsP,
-        totalLeadsP,
         rankingLeadsP,
         stageHistoryP,
       ]);
 
-      setTotalParceiros(parceirosRes.count || 0);
+      // Embaixadores Monnera = IDs distintos (ignora vazio/null)
+      const idsValidos = parceirosIds.map((p) => p.id).filter((id) => !!id);
+      setTotalParceiros(new Set(idsValidos).size);
+
       const counts: Record<string, number> = {};
       activeStages.forEach((s) => { counts[s.value] = 0; });
       stageCountsPairs.forEach(([k, v]) => { counts[k] = v; });
       setStatusCounts(counts);
+      // Total de Leads = soma das contagens das etapas visíveis/ativas (bate exatamente com Pipeline Comercial)
+      const totalLeadsCount = activeStages.reduce((sum, s) => sum + (counts[s.value] || 0), 0);
       setTotalLeads(totalLeadsCount);
       setSignedContractsCount(counts["contrato_assinado"] || 0);
+
 
       // Ranking + lista de responsáveis a partir do dataset leve
       const nomeMap = new Map(consultores.map((p) => [p.id, p.nome]));
