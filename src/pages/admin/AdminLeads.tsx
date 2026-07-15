@@ -2779,32 +2779,95 @@ const AdminLeads = () => {
                   })()}
                 </div>
               )}
+                </>
+              )}
 
-              {/* Histórico de Conversa */}
-              <div className="border-t border-border pt-4">
-                {isAmbassadorPanel ? (
-                  <AmbassadorCardComments
-                    cardId={detailLead.id}
-                    currentStage={detailLead.status_lead || detailLead.stage_id || "prospeccao"}
-                    userName={currentUserName}
-                    canInsertMessage={canInsertMessage}
-                    canEditMessage={canEditMessage}
-                    canDeleteMessage={canDeleteMessage}
-                    canInsertFile={canInsertFile}
-                  />
-                ) : (
-                  <LeadComments
+              {/* Aba: Conversa */}
+              {activeSection === "conversa" && (
+                <div>
+                  {isAmbassadorPanel ? (
+                    <AmbassadorCardComments
+                      cardId={detailLead.id}
+                      currentStage={detailLead.status_lead || detailLead.stage_id || "prospeccao"}
+                      userName={currentUserName}
+                      canInsertMessage={canInsertMessage}
+                      canEditMessage={canEditMessage}
+                      canDeleteMessage={canDeleteMessage}
+                      canInsertFile={canInsertFile}
+                    />
+                  ) : (
+                    <LeadComments
+                      leadId={detailLead.id}
+                      currentStage={detailLead.status_lead || "novo_lead"}
+                      userName={currentUserName}
+                      actionBasePath={location.pathname}
+                      canInsertMessage={canInsertMessage}
+                      canEditMessage={canEditMessage}
+                      canDeleteMessage={canDeleteMessage}
+                      canInsertFile={canInsertFile}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* Aba: Tarefas */}
+              {activeSection === "tarefas" && (
+                <div>
+                  <h3 className="text-sm font-semibold mb-3">Tarefas do card</h3>
+                  {isAmbassadorPanel ? (
+                    <AmbassadorCardTasks
+                      cardId={detailLead.id}
+                      cardName={detailLead.nome_fantasia}
+                      panelId={currentPanelId}
+                      actionUrl={cardActionUrl(detailLead.id)}
+                    />
+                  ) : (
+                    <LeadTasks
+                      leadId={detailLead.id}
+                      leadName={detailLead.nome_fantasia}
+                      actionBasePath={location.pathname}
+                      canCreateTask={canCreateTask}
+                      canCompleteTask={canCompleteTask}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* Aba: Reuniões */}
+              {activeSection === "reunioes" && (
+                <div>
+                  <LeadReuniao
                     leadId={detailLead.id}
                     currentStage={detailLead.status_lead || "novo_lead"}
-                    userName={currentUserName}
-                    actionBasePath={location.pathname}
-                    canInsertMessage={canInsertMessage}
-                    canEditMessage={canEditMessage}
-                    canDeleteMessage={canDeleteMessage}
-                    canInsertFile={canInsertFile}
+                    onMoveToRealizada={() => {
+                      handleStatusChange(detailLead.id, detailLead.nome_fantasia, "reuniao_realizada");
+                    }}
                   />
-                )}
-              </div>
+                </div>
+              )}
+
+              {/* Aba: Contatos */}
+              {activeSection === "contatos" && (
+                <div>
+                  <LeadContatos leadId={detailLead.id} />
+                </div>
+              )}
+
+              {/* Aba: Propostas */}
+              {activeSection === "propostas" && (
+                <div>
+                  <LeadProposalsHistory leadId={detailLead.id} />
+                </div>
+              )}
+
+              {/* Aba: Teste Monnera */}
+              {activeSection === "teste_monnera"
+                && ["comercial", "comerc"].includes(currentPanelId)
+                && !!detailLead?.teste_monnera_last_diagnostic_id && (
+                <div>
+                  <TesteMonneraSection leadId={detailLead.id} />
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
