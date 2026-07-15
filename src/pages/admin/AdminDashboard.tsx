@@ -371,7 +371,7 @@ const AdminDashboard = () => {
                   </div>
                   <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 leading-tight">{s.label}</p>
                   <div className="flex items-baseline gap-1">
-                    <p className="text-xl font-display font-bold">{count}</p>
+                    <p className="text-xl font-display font-bold">{formatCount(count)}</p>
                     <span className="text-[10px] text-muted-foreground">({pct}%)</span>
                   </div>
                   <div className="mt-2 h-1 rounded-full bg-secondary overflow-hidden">
