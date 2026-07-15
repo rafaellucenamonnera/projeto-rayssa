@@ -125,6 +125,8 @@ const EPSILON = 0.0001;
 
 const pct = (value: number) => `${value > 0 ? "+" : ""}${Math.round(value * 100)}%`;
 
+const formatCount = (value: number) => new Intl.NumberFormat("pt-BR").format(value);
+
 const variation = (current?: number | null, previous?: number | null) => {
   const cur = Number(current || 0);
   const prev = Number(previous || 0);
