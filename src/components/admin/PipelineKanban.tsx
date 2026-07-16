@@ -188,7 +188,11 @@ export const PipelineKanban = memo(({
   commercialMode = false,
   canEditStageMessages = false,
   onUpdateStageFollowupMessage,
+  stageTotals,
+  stageLoadingMore,
+  onLoadMoreStage,
 }: PipelineKanbanProps) => {
+
   const [dragId, setDragId] = useState<string | null>(null);
   const [overStage, setOverStage] = useState<string | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
