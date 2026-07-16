@@ -231,6 +231,13 @@ const AdminLeads = () => {
   const [newCardData, setNewCardData] = useState({ full_name: "", phone: "", email: "", cnpj: "", city: "", state: "", region: "", notes: "" });
   const [reunioesMap, setReunioesMap] = useState<Record<string, any>>({});
 
+  // Commercial panel incremental loading (per stage)
+  const STAGE_PAGE_SIZE = 30;
+  const [stageTotals, setStageTotals] = useState<Record<string, number>>({});
+  const [stageLoadedPages, setStageLoadedPages] = useState<Record<string, number>>({});
+  const [stageLoadingMore, setStageLoadingMore] = useState<Record<string, boolean>>({});
+
+
   // Filters
   const [filterStatus, setFilterStatus] = useState<string>(searchParams.get("status") || "all");
   const [filterConsultor, setFilterConsultor] = useState<string>("all");
