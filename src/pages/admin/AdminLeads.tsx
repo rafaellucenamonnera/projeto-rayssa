@@ -1801,8 +1801,20 @@ const AdminLeads = () => {
       });
       return;
     }
+    // Painel comercial: atualizar contagens por etapa localmente (sem recarregar).
+    if (isCommercialPanel) {
+      const from = lead.status_lead || lead.status;
+      if (from && from !== newStage) {
+        setStageTotals((prev) => ({
+          ...prev,
+          [from]: Math.max(0, (prev[from] ?? 1) - 1),
+          [newStage]: (prev[newStage] ?? 0) + 1,
+        }));
+      }
+    }
     handleStatusChange(id, lead.nome_fantasia, newStage);
-  }, [canMovePipeline, leads, isCustomCrmPanel, moveRepresentativeCard, handleStatusChange]);
+  }, [canMovePipeline, leads, isCustomCrmPanel, isCommercialPanel, moveRepresentativeCard, handleStatusChange]);
+
 
   const isConvertedOrBeyond = (status: string) =>
     ["lead_convertido", "contrato_enviado", "contrato_assinado"].includes(status);
