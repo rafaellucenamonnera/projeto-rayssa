@@ -76,7 +76,12 @@ interface PipelineKanbanProps {
   showCsInsteadOfPartner?: boolean;
   canEditStageMessages?: boolean;
   onUpdateStageFollowupMessage?: (stageValue: string, message: string) => Promise<void>;
+  /** Totais reais por etapa vindos do servidor (usado no painel comercial com paginação por coluna). */
+  stageTotals?: Record<string, number>;
+  stageLoadingMore?: Record<string, boolean>;
+  onLoadMoreStage?: (stageValue: string) => void;
 }
+
 
 const campaignStatusClass = (status?: string | null) => {
   const s = (status || "").toUpperCase();
