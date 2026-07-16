@@ -473,6 +473,70 @@ const AdminLeads = () => {
     }
   };
 
+  const isCommercialPanel = !isCustomCrmPanel && ["comercial", "comerc"].includes(currentPanelId);
+
+  const chunkedIn = async <T,>(
+    ids: string[],
+    build: (chunk: string[]) => any,
+    chunkSize = 200,
+  ): Promise<T[]> => {
+    const rows: T[] = [];
+    for (let i = 0; i < ids.length; i += chunkSize) {
+      const { data, error } = await build(ids.slice(i, i + chunkSize));
+      if (error) throw error;
+      rows.push(...((data || []) as T[]));
+    }
+    return rows;
+  };
+
+  const loadRelatedForIds = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const [stageRows, reunioesRows] = await Promise.all([
+      chunkedIn<any>(ids, (chunk) =>
+        supabase
+          .from("lead_stage_history")
+          .select("lead_id, data_entrada")
+          .is("data_saida", null)
+          .in("lead_id", chunk),
+      ),
+      chunkedIn<any>(ids, (chunk) =>
+        supabase
+          .from("reunioes")
+          .select("*")
+          .eq("realizada", false)
+          .in("lead_id", chunk)
+          .order("data_reuniao", { ascending: true }),
+      ),
+    ]);
+    setStageMap((prev) => {
+      const next = { ...prev };
+      stageRows.forEach((s: any) => { next[s.lead_id] = s.data_entrada; });
+      return next;
+    });
+    setReunioesMap((prev) => {
+      const next = { ...prev };
+      reunioesRows.forEach((r: any) => {
+        if (!next[r.lead_id]) next[r.lead_id] = r;
+      });
+      return next;
+    });
+  };
+
+  const loadCommonRefs = async () => {
+    const [parceirosRes, usersRes] = await Promise.all([
+      supabase.from("parceiros_comerciais").select("id, nome, slug_consultor, codigo_parceiro"),
+      supabase.from("profiles").select("user_id,nome,ativo,can_be_responsible").eq("ativo", true).order("nome", { ascending: true }),
+    ]);
+    const map: Record<string, string> = {};
+    const list = parceirosRes.data || [];
+    list.forEach((p: any) => { map[p.id] = p.nome; });
+    setParceiros(map);
+    setParceirosAll(list);
+    const allUsers = ((usersRes.data as any) || []).map((u: any) => ({ user_id: u.user_id, nome: u.nome, can_be_responsible: !!u.can_be_responsible }));
+    setAllActiveUsers(allUsers.map((u: any) => ({ user_id: u.user_id, nome: u.nome })));
+    setUsersAll(allUsers.filter((u: any) => u.can_be_responsible).map((u: any) => ({ user_id: u.user_id, nome: u.nome })));
+  };
+
   const loadData = async () => {
     const fetchAllRows = async <T,>(buildQuery: () => any, pageSize = 1000): Promise<T[]> => {
       const rows: T[] = [];
@@ -487,6 +551,59 @@ const AdminLeads = () => {
       }
       return rows;
     };
+
+    // Painel Comercial: carregamento incremental por coluna.
+    if (isCommercialPanel) {
+      await loadCommonRefs();
+
+      // Reset paging state on (re)load.
+      setStageMap({});
+      setReunioesMap({});
+      setStageLoadedPages({});
+
+      const stagesToLoad = pipelineStages;
+      const results = await Promise.all(
+        stagesToLoad.map(async (stage) => {
+          const [countRes, dataRes] = await Promise.all([
+            supabase
+              .from("leads")
+              .select("id", { count: "exact", head: true })
+              .eq("panel_id", currentPanelId)
+              .eq("status_lead", stage.value),
+            supabase
+              .from("leads")
+              .select("*")
+              .eq("panel_id", currentPanelId)
+              .eq("status_lead", stage.value)
+              .order("data_cadastro", { ascending: false })
+              .range(0, STAGE_PAGE_SIZE - 1),
+          ]);
+          return {
+            stage: stage.value,
+            total: countRes.count ?? 0,
+            rows: (dataRes.data as any[]) || [],
+          };
+        }),
+      );
+
+      const totals: Record<string, number> = {};
+      const pages: Record<string, number> = {};
+      const allRows: any[] = [];
+      results.forEach(({ stage, total, rows }) => {
+        totals[stage] = total;
+        pages[stage] = 1;
+        allRows.push(...rows);
+      });
+      setStageTotals(totals);
+      setStageLoadedPages(pages);
+      // Dedupe por id (proteção contra corridas / múltiplas cargas).
+      const seen = new Set<string>();
+      const deduped = allRows.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
+      setLeads(deduped);
+
+      await loadRelatedForIds(deduped.map((r) => r.id));
+      return;
+    }
 
     const [leadsRes, parceirosRes, stageRes, reunioesRes, usersRes] = await Promise.all([
       fetchAllRows<any>(() =>
@@ -534,6 +651,43 @@ const AdminLeads = () => {
     });
     setReunioesMap(rm);
   };
+
+  const loadMoreCommercialStage = async (stageValue: string) => {
+    if (!isCommercialPanel) return;
+    if (stageLoadingMore[stageValue]) return;
+    const page = stageLoadedPages[stageValue] ?? 1;
+    const offset = page * STAGE_PAGE_SIZE;
+    setStageLoadingMore((prev) => ({ ...prev, [stageValue]: true }));
+    try {
+      const { data, error } = await supabase
+        .from("leads")
+        .select("*")
+        .eq("panel_id", currentPanelId)
+        .eq("status_lead", stageValue)
+        .order("data_cadastro", { ascending: false })
+        .range(offset, offset + STAGE_PAGE_SIZE - 1);
+      if (error) {
+        toast.error("Erro ao carregar mais cards");
+        return;
+      }
+      const novos = (data as any[]) || [];
+      // Merge dedupe por id.
+      let newlyAddedIds: string[] = [];
+      setLeads((prev) => {
+        const existingIds = new Set(prev.map((p) => p.id));
+        const filtered = novos.filter((n) => !existingIds.has(n.id));
+        newlyAddedIds = filtered.map((n) => n.id);
+        return [...prev, ...filtered];
+      });
+      setStageLoadedPages((prev) => ({ ...prev, [stageValue]: page + 1 }));
+      if (newlyAddedIds.length > 0) {
+        await loadRelatedForIds(newlyAddedIds);
+      }
+    } finally {
+      setStageLoadingMore((prev) => ({ ...prev, [stageValue]: false }));
+    }
+  };
+
 
   useEffect(() => {
     const loadPipelineStages = async () => {
