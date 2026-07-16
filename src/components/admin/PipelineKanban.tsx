@@ -637,6 +637,24 @@ export const PipelineKanban = memo(({
               {items.length === 0 && (
                 <p className="text-[11px] text-muted-foreground/70 text-center py-4">Solte um lead aqui</p>
               )}
+              {onLoadMoreStage && (() => {
+                const total = stageTotals?.[s.value] ?? items.length;
+                const remaining = total - items.length;
+                if (remaining <= 0) return null;
+                const isLoading = !!stageLoadingMore?.[s.value];
+                return (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full h-7 text-[11px]"
+                    disabled={isLoading}
+                    onClick={() => onLoadMoreStage(s.value)}
+                  >
+                    {isLoading ? "Carregando..." : `Carregar mais (${formatCount(remaining)})`}
+                  </Button>
+                );
+              })()}
+
             </div>
           </div>
         );
