@@ -292,7 +292,7 @@ export const PipelineKanban = memo(({
             <div className="shrink-0 z-50 border-b border-border/70 bg-card px-3 py-2 shadow-sm">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-semibold uppercase tracking-wide truncate">{s.label}</p>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{formatCount(items.length)}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{formatCount(stageTotals?.[s.value] ?? items.length)}</span>
               </div>
               <p className="text-[11px] text-muted-foreground mt-0.5">Total: <span className="font-medium text-foreground">{fmt(totals[s.value])}</span></p>
               {(() => {
