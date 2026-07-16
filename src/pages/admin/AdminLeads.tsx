@@ -1490,7 +1490,21 @@ const AdminLeads = () => {
     setEditFormData(leadToEditFormData(lead));
     setFinancialInfoExpanded(!isFinanceiroZerado(lead));
     setDetailOpen(true);
-  }, []);
+    // Buscar detalhes completos do card (garantia de dados frescos) para painéis não-custom.
+    if (!isCustomCrmPanel && lead?.id) {
+      supabase
+        .from("leads")
+        .select("*")
+        .eq("id", lead.id)
+        .single()
+        .then(({ data, error }) => {
+          if (error || !data) return;
+          setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, ...data } : l)));
+          setDetailLead((prev: any) => (prev && prev.id === lead.id ? { ...prev, ...data } : prev));
+        });
+    }
+  }, [isCustomCrmPanel]);
+
 
   const startEditCard = useCallback((lead: any) => {
     if (!canEditLead) {
