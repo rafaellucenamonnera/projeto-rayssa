@@ -76,7 +76,12 @@ interface PipelineKanbanProps {
   showCsInsteadOfPartner?: boolean;
   canEditStageMessages?: boolean;
   onUpdateStageFollowupMessage?: (stageValue: string, message: string) => Promise<void>;
+  /** Totais reais por etapa vindos do servidor (usado no painel comercial com paginação por coluna). */
+  stageTotals?: Record<string, number>;
+  stageLoadingMore?: Record<string, boolean>;
+  onLoadMoreStage?: (stageValue: string) => void;
 }
+
 
 const campaignStatusClass = (status?: string | null) => {
   const s = (status || "").toUpperCase();
@@ -183,7 +188,11 @@ export const PipelineKanban = memo(({
   commercialMode = false,
   canEditStageMessages = false,
   onUpdateStageFollowupMessage,
+  stageTotals,
+  stageLoadingMore,
+  onLoadMoreStage,
 }: PipelineKanbanProps) => {
+
   const [dragId, setDragId] = useState<string | null>(null);
   const [overStage, setOverStage] = useState<string | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
@@ -283,7 +292,7 @@ export const PipelineKanban = memo(({
             <div className="shrink-0 z-50 border-b border-border/70 bg-card px-3 py-2 shadow-sm">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-semibold uppercase tracking-wide truncate">{s.label}</p>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{formatCount(items.length)}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{formatCount(stageTotals?.[s.value] ?? items.length)}</span>
               </div>
               <p className="text-[11px] text-muted-foreground mt-0.5">Total: <span className="font-medium text-foreground">{fmt(totals[s.value])}</span></p>
               {(() => {
@@ -628,6 +637,24 @@ export const PipelineKanban = memo(({
               {items.length === 0 && (
                 <p className="text-[11px] text-muted-foreground/70 text-center py-4">Solte um lead aqui</p>
               )}
+              {onLoadMoreStage && (() => {
+                const total = stageTotals?.[s.value] ?? items.length;
+                const remaining = total - items.length;
+                if (remaining <= 0) return null;
+                const isLoading = !!stageLoadingMore?.[s.value];
+                return (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full h-7 text-[11px]"
+                    disabled={isLoading}
+                    onClick={() => onLoadMoreStage(s.value)}
+                  >
+                    {isLoading ? "Carregando..." : `Carregar mais (${formatCount(remaining)})`}
+                  </Button>
+                );
+              })()}
+
             </div>
           </div>
         );

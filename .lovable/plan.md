@@ -1,106 +1,101 @@
-## Escopo desta rodada (Fase 1 — quick wins)
+## Fase 2 — Performance no Painel Comercial
 
-Não mexo em: Kanban incremental, "Carregar mais" por coluna, chunking de propostas. Fica para Fase 2.
+Escopo restrito a 4 arquivos. Sem tocar em schema, permissões, propostas públicas ou financeiro. Fase 1 permanece intacta.
 
 ---
 
-## 1. Modal do card com abas sob demanda (`AdminLeads.tsx`)
+### 1. `src/pages/admin/AdminLeads.tsx` — carregamento incremental por coluna
 
-- Novo estado `activeSection` iniciando em `"detalhes"`, resetado ao trocar de card.
-- Abas dentro do `DialogContent`:
-  - **Detalhes** — cadastrais, endereço, implantação, financeiro, contrato, dossiê, link do Teste Monnera. **Sem** `TesteMonneraSection`.
-  - **Conversa** — `LeadComments` / `AmbassadorCardComments`
-  - **Tarefas** — `LeadTasks` / `AmbassadorCardTasks`
-  - **Reuniões** — `LeadReuniao`
-  - **Contatos** — `LeadContatos`
-  - **Propostas** — `LeadProposalsHistory`
-  - **Teste Monnera** — só quando `["comercial","comerc"].includes(currentPanelId) && !!detailLead?.teste_monnera_last_diagnostic_id`
-- Componentes pesados só montam quando a aba está ativa. Header/badges/ações de topo continuam fora das abas.
+Aplicado **apenas** quando `["comercial","comerc"].includes(currentPanelId)` e não houver painel customizado. Outros painéis mantêm o fluxo atual de `loadData()`.
 
-## 2. Fetches internos sob demanda
+**Novos estados:**
+```ts
+const [stageTotals, setStageTotals] = useState<Record<string, number>>({});
+const [stageLoadedPages, setStageLoadedPages] = useState<Record<string, number>>({});
+const [stageLoadingMore, setStageLoadingMore] = useState<Record<string, boolean>>({});
+const STAGE_PAGE_SIZE = 30;
+```
 
-- **`LeadComments`** — `mentionUsersLoaded` + `ensureMentionUsersLoaded()` disparado por `focus` no textarea ou digitação de `@`.
-- **`LeadTasks`** — usuários só carregam quando `canCreateTask === true` e o `Select` de responsável é aberto (`onFocus`/`onOpenChange`).
-- **`LeadProposalsHistory`** — se ainda houver `.select("*")`, reduzir para os campos usados na UI; se já estiver explícito, não alterar.
-
-## 3. `AdminDashboard.tsx` — contagens via `count/head:true` (regra revisada)
-
-### Contagens por etapa
-- Para cada `stage` das etapas visíveis/ativas de `pipeline_stages_config` para `selectedPanel`, em paralelo:
+**Carga inicial (`loadData` no ramo comercial):**
+- Sem `.select("*")` global de leads.
+- Para cada `stage` de `pipelineStages` em paralelo:
+  1. `supabase.from("leads").select("id", { count: "exact", head: true }).eq("panel_id", currentPanelId).eq("status_lead", stage.value)` → alimenta `stageTotals[stage.value]`.
+  2. `supabase.from("leads").select("<campos do card>").eq("panel_id", currentPanelId).eq("status_lead", stage.value).order("data_cadastro", { ascending: false }).range(0, STAGE_PAGE_SIZE - 1)`.
+- **Campos do card:** exatamente os lidos pelo `PipelineKanban`, incluindo pelo menos:
+  `id, panel_id, nome_fantasia, razao_social, nome_responsavel, status_lead, valor_setup, valor_mensalidade, valor_campanhas, proposta_url, numero_proposta, qtd_parcelas, quantidade_lojas, parceiro_id, data_cadastro, updated_at, valor_mensalidade_anterior, valor_campanhas_anterior, valor_pagamento, valor_pagamento_anterior, juros_recebidos, multas_recebidas, receita_taxa_boleto, revenue_total, campaign_status_current, campaign_status_previous, campaign_status_current_month, campaign_status_previous_month, csat_current, csat_previous, csat_variation, csat_direction, health_status, impact_level, consultor, revenue_current, revenue_previous, revenue_variation, revenue_current_month, revenue_previous_month, dados_completos, responsible_user_id, responsible_slack_user_id`.
+- **Merge sem duplicar por `id`** ao popular `leads`:
   ```ts
-  supabase.from("leads")
-    .select("id", { count: "exact", head: true })
-    .eq("panel_id", selectedPanel)
-    .eq("status_lead", stage.value)
-    // + filtros de consultor/responsável/data ativos
+  setLeads(prev => [...prev, ...novos.filter(n => !prev.some(p => p.id === n.id))]);
   ```
-  → alimenta `statusCounts[stage.value]`.
+- Inicializa `stageLoadedPages[stage.value] = 1`.
+- `lead_stage_history`, `commercial_proposals` e `reunioes` passam a ser buscados **apenas para os IDs carregados**, em chunks de ~200 via `.in("lead_id", chunk)`. Reexecuta incremental quando novos IDs chegam.
 
-### Total de Leads (regra obrigatória)
-- **`totalLeads` = soma de `statusCounts[stage.value]` de todas as etapas visíveis/ativas** carregadas de `pipeline_stages_config` para `selectedPanel` — a mesma lista que alimenta os cards de `Pipeline Comercial`.
-- Inclui `lead_perdido` se estiver na configuração visível/ativa.
-- **Não** contar etapas inativas, ocultas ou fora da configuração do painel.
-- **Não** usar `count` geral sem status. Garante que `Total de Leads` bata exatamente com a soma das colunas do `Pipeline Comercial`.
+**`loadMoreCommercialStage(stageValue)`:**
+- Guarda por `stageLoadingMore[stageValue]`.
+- `page = stageLoadedPages[stageValue] ?? 1`, offset `page * STAGE_PAGE_SIZE`.
+- `.range(offset, offset + STAGE_PAGE_SIZE - 1)` com mesmo `select` e filtros.
+- Merge dedupe por `id` (mesmo padrão acima).
+- Incrementa `stageLoadedPages[stageValue]`.
+- Fetch incremental de history/proposals/reunioes só para novos IDs.
 
-### Embaixadores Monnera (regra obrigatória)
-- Contagem de `id` distintos do painel `/admin/parceiros`.
-- Buscar `parceiros_comerciais.id` com payload mínimo apenas do campo `id`.
-- Usar `fetchAllRows` (não query simples) para evitar truncamento em 1000 linhas.
-- Ignorar `id` vazio/null; métrica = `new Set(idsValidos).size`.
-- **Não** contar por CPF. **Não** usar `count` simples se houver risco de limite/paginação divergente.
+**Abrir card:**
+- `supabase.from("leads").select("*").eq("id", id).single()`.
+- Setar `detailLead` com o retorno completo.
+- Merge no card local: `setLeads(prev => prev.map(l => l.id === id ? { ...l, ...full } : l))`.
 
-### Taxa de Conversão (regra obrigatória)
-- `signedContractsCount = statusCounts["contrato_assinado"] ?? 0`.
-- `taxaConversao = totalLeads > 0 ? signedContractsCount / totalLeads : 0`.
-- Exibir `0%` quando `totalLeads === 0`. Mesmo denominador do card Total de Leads.
+**Editar card:** local (`setLeads` + `setDetailLead`). Nada de `loadData()`.
 
-### Ranking (top 10) — Fase 1
-- Mantém `fetchAllRows` sobre `leads` com payload mínimo: `id, parceiro_id, status_lead, nome_responsavel, data_cadastro`. Filtros iguais.
-- Aceitável nesta fase por payload pequeno. **Agregação real por parceiro via RPC/server-side fica para Fase 2.**
-- `nome_responsavel` preserva o filtro "Responsável" com todos os valores do painel.
+**Mover card (`moveTo` no ramo comercial):**
+- Atualiza `status_lead` local.
+- `setStageTotals(prev => ({ ...prev, [from]: Math.max(0, (prev[from] ?? 1) - 1), [to]: (prev[to] ?? 0) + 1 }))`.
+- **Não** chamar `loadData()`.
 
-### Tempo médio por etapa
-- Derivado do mesmo array leve + `stageMap` de `lead_stage_history`. Sem mudança semântica.
+Clone/import/troca de painel: comportamento herdado da Fase 1.
 
-### Leads mais tempo na mesma etapa (lista operacional)
-- Query em `lead_stage_history` (`data_saida is null`, `etapa in stageValues`, ordenada por `data_entrada asc`, `.limit(100)`).
-- Join com `leads.in("id", ids)` selecionando `id, nome_fantasia, status_lead, parceiro_id, data_cadastro` com os mesmos filtros.
-- Cabeçalho: lista operacional limitada a 100 itens, **não** base de totais.
+### 2. `src/components/admin/PipelineKanban.tsx`
 
-## 4. Evitar `loadData()` após pequenas edições (`AdminLeads.tsx`)
+Props opcionais novas:
+```ts
+stageTotals?: Record<string, number>;
+stageLoadingMore?: Record<string, boolean>;
+onLoadMoreStage?: (stageValue: string) => void;
+```
 
-| Linha | Contexto | Ação |
-|---|---|---|
-| 429 | `handleClone` | Substituir por insert local no `setLeads` usando `data` do clone |
-| 455 | `sync-drive-clients` | **Manter** |
-| 582 | Troca de painel | **Manter** |
-| 887 | Mover para "Criação de Campanhas" (já faz `setLeads` na 883) | **Remover** o `void loadData()` |
-| 1527 | Fallback do novo cadastro | **Manter** |
-| 1773 | `onImported` do `LeadImportDialog` | **Manter** |
+- Badge da coluna: `stageTotals?.[stage.value] ?? items.length`.
+- Renderiza apenas `items` recebidos.
+- Se `onLoadMoreStage` presente e `items.length < (stageTotals?.[stage.value] ?? items.length)`, renderiza no fim da coluna:
+  - Label: `Carregar mais (${total - items.length})`.
+  - `disabled` + `Carregando...` quando `stageLoadingMore?.[stage.value]`.
+  - `onClick={() => onLoadMoreStage(stage.value)}`.
+- Drag/drop, seleção, edição, exclusão, follow-up: inalterados.
 
-Edições de campo simples/financeiro/parcelas/proposta/follow-up/status já são locais via `setLeads(prev => prev.map(...))` + `setDetailLead(...)`.
+### 3. `src/components/admin/LeadComments.tsx`
 
-## Detalhes técnicos
+- Remover fetch automático de usuários de menção no mount.
+- Estados `mentionUsersLoaded`, `loadingMentionUsers`.
+- `ensureMentionUsersLoaded()` retorna cedo se já carregado/carregando.
+- Disparar em `onFocus` do textarea e ao digitar `@`.
 
-- Sem novas dependências; abas via `Tabs` do shadcn.
-- Todos os fetches novos do dashboard mantêm `panel_id = selectedPanel` + filtros atuais.
-- `loadData()` em `AdminLeads` continua existindo — só reduzo call sites redundantes.
+### 4. `src/components/admin/LeadTasks.tsx` (revalidar obrigatoriamente)
 
-## Validação
+- Se ainda houver fetch de usuários no mount, remover.
+- Implementar `usersLoaded`, `loadingUsers`, `ensureUsersLoaded()`.
+- Disparar apenas no `onOpenChange`/`onFocus` do `Select` de responsável, respeitando `canCreateTask === true`.
+- Evitar chamadas duplicadas via as duas flags.
 
+---
+
+### Fora do escopo
+Kanban virtualizado, RPC de agregação, mudanças de schema/policies, painéis não-comerciais, financeiro, propostas públicas.
+
+### Validação
 1. `npm run build` limpo.
-2. `/admin/painel/comercial`: abrir card, alternar abas — cada uma carrega ao abrir; `Teste Monnera` só quando painel `comercial`/`comerc` **e** lead com diagnóstico.
-3. Editar campo simples: painel não pisca/recarrega.
-4. Clonar card: aparece imediatamente sem full reload.
-5. `/admin`: `Total de Leads` = soma exata das colunas visíveis/ativas de `Pipeline Comercial` (se etapas somam 1.324, card mostra 1.324).
-6. `Embaixadores Monnera` = IDs distintos de `parceiros_comerciais`, igual ao painel `/admin/parceiros`.
-7. `Taxa de Conversão` = `contrato_assinado / totalLeads`, `0%` quando `totalLeads === 0`.
-8. Filtro "Responsável" continua populado.
-9. Seção "leads mais tempo na etapa" até 100 itens.
-
-## Fora do escopo (Fase 2)
-
-- `visibleCardsPerColumn` + "Carregar mais" no `PipelineKanban`.
-- `stageCounts` / `stageLoadedPages` / `stageLoadingMore` em `AdminLeads`.
-- Propostas por chunk de IDs carregados.
-- RPC/agregação server-side substituindo `fetchAllRows` do ranking.
+2. `/admin/painel/comercial`: colunas com >1000 cards mostram total real no badge; só 30 cards por coluna inicialmente.
+3. "Carregar mais (N)" carrega +30 na coluna clicada; sem full reload; botão desabilita com "Carregando...".
+4. Nenhum card duplicado após múltiplos "Carregar mais" nem após mover/editar/reabrir painel.
+5. Abrir card mostra todos os campos.
+6. Editar campo não recarrega painel.
+7. Mover card ajusta imediatamente os badges de origem/destino.
+8. Aba Conversa: usuários de menção só buscam ao focar textarea ou digitar `@`.
+9. Aba Tarefas: usuários só buscam ao abrir o Select de responsável.
+10. Outros painéis (não comerciais) mantêm comportamento antigo.
