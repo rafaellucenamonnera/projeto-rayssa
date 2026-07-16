@@ -2223,6 +2223,10 @@ const AdminLeads = () => {
             onOpenLead={openLeadDetail}
             canEditStageMessages={canEditLead || isAdmin}
             onUpdateStageFollowupMessage={updateStageFollowupMessage}
+            stageTotals={isCommercialPanel ? stageTotals : undefined}
+            stageLoadingMore={isCommercialPanel ? stageLoadingMore : undefined}
+            onLoadMoreStage={isCommercialPanel ? loadMoreCommercialStage : undefined}
+
           />
         </div>
       )}
