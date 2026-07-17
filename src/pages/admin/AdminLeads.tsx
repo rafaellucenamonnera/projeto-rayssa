@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useMemo, useState, useEffect } from "react";
+import { useCallback, useDeferredValue, useMemo, useRef, useState, useEffect } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -92,6 +92,44 @@ const LEAD_PERMISSION_ACTIONS = [
   "editar_financeiro",
   "receber_notificacao_lead_perdido",
 ] as const;
+
+const normalizeSearchTerm = (value: string) =>
+  value.trim().replace(/\s+/g, " ").toLowerCase();
+
+const onlyDigits = (value: string) =>
+  value.replace(/\D/g, "");
+
+const escapePostgrestLike = (value: string) =>
+  value.replace(/[%_*\\]/g, (match) => `\\${match}`);
+
+const COMMERCIAL_SEARCH_FIELDS = [
+  "nome_fantasia",
+  "razao_social",
+  "cnpj",
+  "nome_responsavel",
+  "telefone_responsavel",
+  "email_responsavel",
+] as const;
+
+const buildEmpresaOrFilter = (term: string): string | null => {
+  if (!term || term.length < 2) return null;
+  const textTerms = Array.from(new Set([term, ...term.split(" ")]))
+    .filter((t) => t.length >= 2)
+    .slice(0, 5);
+  const orParts: string[] = [];
+  textTerms.forEach((t) => {
+    const value = `%${escapePostgrestLike(t)}%`;
+    COMMERCIAL_SEARCH_FIELDS.forEach((field) => {
+      orParts.push(`${field}.ilike.${value}`);
+    });
+  });
+  const numericTerm = onlyDigits(term);
+  if (numericTerm.length >= 2) {
+    orParts.push(`cnpj.ilike.%${numericTerm}%`);
+    orParts.push(`telefone_responsavel.ilike.%${numericTerm}%`);
+  }
+  return orParts.length > 0 ? orParts.join(",") : null;
+};
 
 const emptyEditFormData = {
   nome_fantasia: "",
@@ -244,12 +282,25 @@ const AdminLeads = () => {
   const [filterCs, setFilterCs] = useState<string>("all");
   const [filterEmpresa, setFilterEmpresa] = useState("");
   const deferredFilterEmpresa = useDeferredValue(filterEmpresa);
+  const [debouncedFilterEmpresa, setDebouncedFilterEmpresa] = useState("");
+  const [searchingEmpresa, setSearchingEmpresa] = useState(false);
   const [filterResponsibleUser, setFilterResponsibleUser] = useState<string>("all");
   const [filterCampaignStatus, setFilterCampaignStatus] = useState<string>("all");
   const [filterImpactLevel, setFilterImpactLevel] = useState<string>("all");
   const [filterHealthStatus, setFilterHealthStatus] = useState<string>("all");
   const [filterDataInicio, setFilterDataInicio] = useState("");
   const [filterDataFim, setFilterDataFim] = useState("");
+
+  // Debounce do filtro de empresa (evita 1 query por tecla no ramo comercial).
+  useEffect(() => {
+    setSearchingEmpresa(true);
+    const timeout = window.setTimeout(() => {
+      setDebouncedFilterEmpresa(normalizeSearchTerm(filterEmpresa));
+      setSearchingEmpresa(false);
+    }, 300);
+    return () => window.clearTimeout(timeout);
+  }, [filterEmpresa]);
+
 
   // (Removido) Proposta dialog state — fluxo migrou para /admin/gerador-proposta/:leadId
 
@@ -556,28 +607,38 @@ const AdminLeads = () => {
     if (isCommercialPanel) {
       await loadCommonRefs();
 
-      // Reset paging state on (re)load.
+      // Reset paging + card state on (re)load para não misturar com busca anterior.
       setStageMap({});
       setReunioesMap({});
       setStageLoadedPages({});
+      setStageTotals({});
+      setStageLoadingMore({});
+      setLeads([]);
+
+      const orFilter = buildEmpresaOrFilter(debouncedFilterEmpresa);
+      const applyEmpresaSearch = <T extends { or: (...args: any[]) => any }>(q: T): T =>
+        (orFilter ? q.or(orFilter) : q) as T;
 
       const stagesToLoad = pipelineStages;
       const results = await Promise.all(
         stagesToLoad.map(async (stage) => {
-          const [countRes, dataRes] = await Promise.all([
+          const countQuery = applyEmpresaSearch(
             supabase
               .from("leads")
               .select("id", { count: "exact", head: true })
               .eq("panel_id", currentPanelId)
-              .eq("status_lead", stage.value),
+              .eq("status_lead", stage.value) as any,
+          );
+          const dataQuery = applyEmpresaSearch(
             supabase
               .from("leads")
               .select("*")
               .eq("panel_id", currentPanelId)
               .eq("status_lead", stage.value)
               .order("data_cadastro", { ascending: false })
-              .range(0, STAGE_PAGE_SIZE - 1),
-          ]);
+              .range(0, STAGE_PAGE_SIZE - 1) as any,
+          );
+          const [countRes, dataRes] = await Promise.all([countQuery, dataQuery]);
           return {
             stage: stage.value,
             total: countRes.count ?? 0,
@@ -596,7 +657,6 @@ const AdminLeads = () => {
       });
       setStageTotals(totals);
       setStageLoadedPages(pages);
-      // Dedupe por id (proteção contra corridas / múltiplas cargas).
       const seen = new Set<string>();
       const deduped = allRows.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
       setLeads(deduped);
@@ -604,6 +664,7 @@ const AdminLeads = () => {
       await loadRelatedForIds(deduped.map((r) => r.id));
       return;
     }
+
 
     const [leadsRes, parceirosRes, stageRes, reunioesRes, usersRes] = await Promise.all([
       fetchAllRows<any>(() =>
@@ -659,13 +720,16 @@ const AdminLeads = () => {
     const offset = page * STAGE_PAGE_SIZE;
     setStageLoadingMore((prev) => ({ ...prev, [stageValue]: true }));
     try {
-      const { data, error } = await supabase
+      const orFilter = buildEmpresaOrFilter(debouncedFilterEmpresa);
+      let query: any = supabase
         .from("leads")
         .select("*")
         .eq("panel_id", currentPanelId)
         .eq("status_lead", stageValue)
         .order("data_cadastro", { ascending: false })
         .range(offset, offset + STAGE_PAGE_SIZE - 1);
+      if (orFilter) query = query.or(orFilter);
+      const { data, error } = await query;
       if (error) {
         toast.error("Erro ao carregar mais cards");
         return;
@@ -751,6 +815,19 @@ const AdminLeads = () => {
   useEffect(() => {
     loadData();
   }, [isCustomCrmPanel, currentPanelId, isCommercialPanel, pipelineStages]);
+
+  // Recarga server-side do painel comercial quando o termo debounced muda.
+  const commercialSearchInitRef = useRef(true);
+  useEffect(() => {
+    if (!isCommercialPanel) return;
+    if (commercialSearchInitRef.current) {
+      commercialSearchInitRef.current = false;
+      return;
+    }
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedFilterEmpresa, isCommercialPanel]);
+
 
 
   const formatCurrencyBRL = (value: number) =>
@@ -1730,7 +1807,7 @@ const AdminLeads = () => {
   const filteredExceptStatus = useMemo(() => leads.filter((l) => {
     if (currentPanelId !== "sucesso" && filterConsultor !== "all" && l.parceiro_id !== filterConsultor) return false;
     if (currentPanelId === "sucesso" && filterCs !== "all" && (l.consultor || "") !== filterCs) return false;
-    if (filterEmpresaLower && !((l.full_name || l.nome_fantasia) || "").toLowerCase().includes(filterEmpresaLower)) return false;
+    if (!isCommercialPanel && filterEmpresaLower && !((l.full_name || l.nome_fantasia) || "").toLowerCase().includes(filterEmpresaLower)) return false;
     if (isCustomCrmPanel && filterResponsibleUser !== "all" && l.responsible_user_id !== filterResponsibleUser) return false;
     if (currentPanelId === "sucesso" && filterCampaignStatus !== "all" && (l.campaign_status_current || "SEM_STATUS") !== filterCampaignStatus) return false;
     if ((currentPanelId === "sucesso" || currentPanelId === "campanhas") && filterImpactLevel !== "all" && normalizeImpact(l.impact_level) !== filterImpactLevel) return false;
@@ -1751,6 +1828,7 @@ const AdminLeads = () => {
     filterCs,
     filterEmpresaLower,
     isCustomCrmPanel,
+    isCommercialPanel,
     filterResponsibleUser,
     filterCampaignStatus,
     filterImpactLevel,
@@ -2011,7 +2089,12 @@ const AdminLeads = () => {
 
       {/* Filters */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2 sm:gap-3">
-        <Input placeholder={isCustomCrmPanel ? "Filtrar por nome..." : "Filtrar por empresa..."} value={filterEmpresa} onChange={(e) => setFilterEmpresa(e.target.value)} />
+        <div className="relative">
+          <Input placeholder={isCustomCrmPanel ? "Filtrar por nome..." : "Filtrar por empresa..."} value={filterEmpresa} onChange={(e) => setFilterEmpresa(e.target.value)} />
+          {isCommercialPanel && searchingEmpresa && filterEmpresa.trim().length >= 2 && (
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">Buscando…</span>
+          )}
+        </div>
         {currentPanelId === "sucesso" ? (
           <Select value={filterCs} onValueChange={setFilterCs}>
             <SelectTrigger><SelectValue placeholder="CS" /></SelectTrigger>
