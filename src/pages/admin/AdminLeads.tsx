@@ -2089,7 +2089,12 @@ const AdminLeads = () => {
 
       {/* Filters */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2 sm:gap-3">
-        <Input placeholder={isCustomCrmPanel ? "Filtrar por nome..." : "Filtrar por empresa..."} value={filterEmpresa} onChange={(e) => setFilterEmpresa(e.target.value)} />
+        <div className="relative">
+          <Input placeholder={isCustomCrmPanel ? "Filtrar por nome..." : "Filtrar por empresa..."} value={filterEmpresa} onChange={(e) => setFilterEmpresa(e.target.value)} />
+          {isCommercialPanel && searchingEmpresa && filterEmpresa.trim().length >= 2 && (
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">Buscando…</span>
+          )}
+        </div>
         {currentPanelId === "sucesso" ? (
           <Select value={filterCs} onValueChange={setFilterCs}>
             <SelectTrigger><SelectValue placeholder="CS" /></SelectTrigger>
