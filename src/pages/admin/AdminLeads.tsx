@@ -816,6 +816,19 @@ const AdminLeads = () => {
     loadData();
   }, [isCustomCrmPanel, currentPanelId, isCommercialPanel, pipelineStages]);
 
+  // Recarga server-side do painel comercial quando o termo debounced muda.
+  const commercialSearchInitRef = useRef(true);
+  useEffect(() => {
+    if (!isCommercialPanel) return;
+    if (commercialSearchInitRef.current) {
+      commercialSearchInitRef.current = false;
+      return;
+    }
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedFilterEmpresa, isCommercialPanel]);
+
+
 
   const formatCurrencyBRL = (value: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
