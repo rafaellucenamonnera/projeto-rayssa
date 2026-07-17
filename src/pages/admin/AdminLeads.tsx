@@ -1828,6 +1828,7 @@ const AdminLeads = () => {
     filterCs,
     filterEmpresaLower,
     isCustomCrmPanel,
+    isCommercialPanel,
     filterResponsibleUser,
     filterCampaignStatus,
     filterImpactLevel,
