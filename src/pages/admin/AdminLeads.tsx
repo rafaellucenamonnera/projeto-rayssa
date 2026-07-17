@@ -282,6 +282,8 @@ const AdminLeads = () => {
   const [filterCs, setFilterCs] = useState<string>("all");
   const [filterEmpresa, setFilterEmpresa] = useState("");
   const deferredFilterEmpresa = useDeferredValue(filterEmpresa);
+  const [debouncedFilterEmpresa, setDebouncedFilterEmpresa] = useState("");
+  const [searchingEmpresa, setSearchingEmpresa] = useState(false);
   const [filterResponsibleUser, setFilterResponsibleUser] = useState<string>("all");
   const [filterCampaignStatus, setFilterCampaignStatus] = useState<string>("all");
   const [filterImpactLevel, setFilterImpactLevel] = useState<string>("all");
