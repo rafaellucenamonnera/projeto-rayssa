@@ -720,13 +720,16 @@ const AdminLeads = () => {
     const offset = page * STAGE_PAGE_SIZE;
     setStageLoadingMore((prev) => ({ ...prev, [stageValue]: true }));
     try {
-      const { data, error } = await supabase
+      const orFilter = buildEmpresaOrFilter(debouncedFilterEmpresa);
+      let query: any = supabase
         .from("leads")
         .select("*")
         .eq("panel_id", currentPanelId)
         .eq("status_lead", stageValue)
         .order("data_cadastro", { ascending: false })
         .range(offset, offset + STAGE_PAGE_SIZE - 1);
+      if (orFilter) query = query.or(orFilter);
+      const { data, error } = await query;
       if (error) {
         toast.error("Erro ao carregar mais cards");
         return;
