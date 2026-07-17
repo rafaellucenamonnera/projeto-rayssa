@@ -291,6 +291,17 @@ const AdminLeads = () => {
   const [filterDataInicio, setFilterDataInicio] = useState("");
   const [filterDataFim, setFilterDataFim] = useState("");
 
+  // Debounce do filtro de empresa (evita 1 query por tecla no ramo comercial).
+  useEffect(() => {
+    setSearchingEmpresa(true);
+    const timeout = window.setTimeout(() => {
+      setDebouncedFilterEmpresa(normalizeSearchTerm(filterEmpresa));
+      setSearchingEmpresa(false);
+    }, 300);
+    return () => window.clearTimeout(timeout);
+  }, [filterEmpresa]);
+
+
   // (Removido) Proposta dialog state — fluxo migrou para /admin/gerador-proposta/:leadId
 
 
