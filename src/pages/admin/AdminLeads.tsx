@@ -607,28 +607,38 @@ const AdminLeads = () => {
     if (isCommercialPanel) {
       await loadCommonRefs();
 
-      // Reset paging state on (re)load.
+      // Reset paging + card state on (re)load para não misturar com busca anterior.
       setStageMap({});
       setReunioesMap({});
       setStageLoadedPages({});
+      setStageTotals({});
+      setStageLoadingMore({});
+      setLeads([]);
+
+      const orFilter = buildEmpresaOrFilter(debouncedFilterEmpresa);
+      const applyEmpresaSearch = <T extends { or: (...args: any[]) => any }>(q: T): T =>
+        (orFilter ? q.or(orFilter) : q) as T;
 
       const stagesToLoad = pipelineStages;
       const results = await Promise.all(
         stagesToLoad.map(async (stage) => {
-          const [countRes, dataRes] = await Promise.all([
+          const countQuery = applyEmpresaSearch(
             supabase
               .from("leads")
               .select("id", { count: "exact", head: true })
               .eq("panel_id", currentPanelId)
-              .eq("status_lead", stage.value),
+              .eq("status_lead", stage.value) as any,
+          );
+          const dataQuery = applyEmpresaSearch(
             supabase
               .from("leads")
               .select("*")
               .eq("panel_id", currentPanelId)
               .eq("status_lead", stage.value)
               .order("data_cadastro", { ascending: false })
-              .range(0, STAGE_PAGE_SIZE - 1),
-          ]);
+              .range(0, STAGE_PAGE_SIZE - 1) as any,
+          );
+          const [countRes, dataRes] = await Promise.all([countQuery, dataQuery]);
           return {
             stage: stage.value,
             total: countRes.count ?? 0,
@@ -647,7 +657,6 @@ const AdminLeads = () => {
       });
       setStageTotals(totals);
       setStageLoadedPages(pages);
-      // Dedupe por id (proteção contra corridas / múltiplas cargas).
       const seen = new Set<string>();
       const deduped = allRows.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
       setLeads(deduped);
@@ -655,6 +664,7 @@ const AdminLeads = () => {
       await loadRelatedForIds(deduped.map((r) => r.id));
       return;
     }
+
 
     const [leadsRes, parceirosRes, stageRes, reunioesRes, usersRes] = await Promise.all([
       fetchAllRows<any>(() =>
