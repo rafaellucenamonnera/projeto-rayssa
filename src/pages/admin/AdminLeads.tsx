@@ -1807,7 +1807,7 @@ const AdminLeads = () => {
   const filteredExceptStatus = useMemo(() => leads.filter((l) => {
     if (currentPanelId !== "sucesso" && filterConsultor !== "all" && l.parceiro_id !== filterConsultor) return false;
     if (currentPanelId === "sucesso" && filterCs !== "all" && (l.consultor || "") !== filterCs) return false;
-    if (filterEmpresaLower && !((l.full_name || l.nome_fantasia) || "").toLowerCase().includes(filterEmpresaLower)) return false;
+    if (!isCommercialPanel && filterEmpresaLower && !((l.full_name || l.nome_fantasia) || "").toLowerCase().includes(filterEmpresaLower)) return false;
     if (isCustomCrmPanel && filterResponsibleUser !== "all" && l.responsible_user_id !== filterResponsibleUser) return false;
     if (currentPanelId === "sucesso" && filterCampaignStatus !== "all" && (l.campaign_status_current || "SEM_STATUS") !== filterCampaignStatus) return false;
     if ((currentPanelId === "sucesso" || currentPanelId === "campanhas") && filterImpactLevel !== "all" && normalizeImpact(l.impact_level) !== filterImpactLevel) return false;
