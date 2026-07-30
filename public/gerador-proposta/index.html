@@ -2307,7 +2307,7 @@
           ${setupPaymentHtml}
           ${setupNotes ? `<p><strong>Observações:</strong> ${escapeHtml(setupNotes)}</p>` : ""}
           <p>O setup contempla configuração do painel do gestor, validação inicial das informações, apoio à estruturação das bases, parametrização inicial dos fluxos e orientação de implantação.</p>
-          <p>O lançamento é conduzido pelo time Monnera. Gestores recebem orientação sobre painel gerencial, acompanhamento de resultados por CNPJ, resultados do time, cadastros no app, cadastro de campanhas, saque e funcionalidades. Usuários recebem orientação sobre cadastro no app, saque, acompanhamento de resultados e valores, mensageria, obrigatoriedades e demais funcionalidades de apoio às vendas.</p>
+          <p>O lançamento é conduzido pelo time Monnera. Gestores recebem orientação sobre painel gerencial, acompanhamento de resultados por CNPJ, resultados do time, cadastros no app, ${isPaymentsOnly() ? "gestão de pagamentos, documentos e saques" : "cadastro de campanhas, saque"} e funcionalidades. Usuários recebem orientação sobre cadastro no app, saque, acompanhamento de resultados e valores, mensageria, obrigatoriedades e demais funcionalidades de apoio às vendas.</p>
           ${hasCross ? `<p>Para Monnera Cross, o setup inclui também a conexão técnica com clientes ou parceiros do contratante, dependente da colaboração ativa dos times envolvidos para conectar tecnologia, bases e operação.</p>` : ""}
         </div>
       `;
