@@ -2076,7 +2076,10 @@
             <img class="print-media-poster" src="/__l5e/assets-v1/716a538b-2b0e-4baa-bf61-e5e294f95469/canva-app-07-4095f91b27d0a40d76cc9dd4a35d4fc9.png" alt="Painel gestor Monnera">
             <div class="media-card-caption">
               <strong>Painel gestor Monnera</strong>
-              <p>O gestor acompanha boletos, notas fiscais, dashboard de gestão de campanhas, termos de aceite, pagamentos, documentos e resultados em um único painel, com mais controle e rastreabilidade.</p>
+              <p>${isPaymentsOnly()
+                ? "O gestor acompanha boletos, notas fiscais, dashboard de pagamentos, beneficiários, documentos e resultados em um único painel, com mais controle e rastreabilidade."
+                : "O gestor acompanha boletos, notas fiscais, dashboard de gestão de campanhas, termos de aceite, pagamentos, documentos e resultados em um único painel, com mais controle e rastreabilidade."}</p>
+
             </div>
           </article>
         `);
