@@ -2060,7 +2060,10 @@
             <img class="print-media-poster" src="/__l5e/assets-v1/dfdbf387-a267-4437-92a6-95ee9fff3ac1/canva-app-01-026b2a5859cd3b30398dd6b2424c9c8e.png" alt="Tela do app Monnera">
             <div class="media-card-caption">
               <strong>App Monnera para participantes</strong>
-              <p>O participante visualiza saldo, origem dos valores, campanhas relacionadas e saque em uma experiência simples no celular.</p>
+              <p>${isPaymentsOnly()
+                ? "O participante visualiza saldo, origem dos valores, documentos e saque em uma experiência simples no celular."
+                : "O participante visualiza saldo, origem dos valores, campanhas relacionadas e saque em uma experiência simples no celular."}</p>
+
             </div>
           </article>
         `);
