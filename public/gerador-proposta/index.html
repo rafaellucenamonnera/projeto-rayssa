@@ -1777,6 +1777,15 @@
       return Object.keys(productCatalog()).filter((key) => state.products[key]);
     }
 
+    // Copy adaptativa por produto (2026-07-30)
+    const PRODUCT_COPY_VERSION = "2026-07-30-product-specific-v1";
+
+    function isPaymentsOnly() {
+      const keys = selectedProductKeys();
+      return keys.length === 1 && keys[0] === "paymentOrder";
+    }
+
+
     function selectedMonthlyTotal() {
       return selectedProductKeys().reduce((total, key) => {
         return total + numberValue(state.productPricing[key].monthlyFee);
@@ -1792,7 +1801,28 @@
     }
 
     function currentModelCopy() {
+      if (isPaymentsOnly()) {
+        return {
+          label: state.model === "enterprise" ? "Modelo Enterprise" : "Modelo Geral",
+          title: "Pagamentos centralizados, seguros e rastreáveis para sua operação.",
+          subtitle: "Proposta para empresas que precisam distribuir valores a beneficiários com conformidade fiscal, split automático, compensação via Pix e total controle de documentos e saldos.",
+          challengeTitle: "Cenário atual",
+          challenge: [
+            "Pagamentos centralizados e seguros, garantindo conformidade fiscal. Operação com split automático, compensação via Pix e distribuição dos valores em até 2 horas. Inclui emissão de Cartão Visa Monnera NFC sem custo para toda a base, além de saque do valor integral da premiação, sem restrição de dia, horário ou limite de valor."
+          ],
+          solutionTitle: "A Experiência Monnera",
+          solution: "A Monnera conecta gestor e beneficiário em uma jornada mais transparente: quem recebe acompanha seus ganhos pelo app; quem gerencia acompanha pagamentos, documentos e resultados pelo painel.",
+          valueTitle: "Benefícios principais",
+          valueCards: [
+            ["Automação operacional", "Eliminação de planilhas e redução drástica de conferências manuais de pagamentos."],
+            ["Clareza para o participante", "Acompanhamento da origem do saldo e saques via app exclusivo, individual e intransferível da Monnera, com suporte individualizado e personalizado para cada usuário."],
+            ["Mensageria automatizada", "Mensageria e notificações automatizadas via app Monnera a cada novo valor creditado."]
+          ]
+        };
+      }
+
       if (state.model === "enterprise") {
+
         return {
           label: "Modelo Enterprise",
           title: "Infraestrutura de campanhas, pagamentos e governança comercial para operações em escala.",
@@ -1830,7 +1860,7 @@
           ["Automação operacional", "Menos planilhas e menos conferências manuais na criação, apuração e pagamento de campanhas."],
           ["Clareza para o participante", "O usuário acompanha origem do saldo, campanha relacionada e saque, tudo pelo app Monnera."],
           ["Segurança jurídica e fiscal", "Fluxo mais organizado para premiações, registros, pagamentos e emissão fiscal sobre o valor transacionado."],
-          ["Gestão em um só lugar", "Campanhas, regras, beneficiários e pagamentos reunidos em uma operação mais simples de acompanhar."]
+          ["Gestão em um só lugar", "Campanhas, regras, beneficiários e pagamentos reunidos em uma operação simples. Acompanhe os resultados detalhados de suas campanhas por loja, campanha e vendedores em um dashboard centralizado."]
         ]
       };
     }
@@ -2030,7 +2060,10 @@
             <img class="print-media-poster" src="/__l5e/assets-v1/dfdbf387-a267-4437-92a6-95ee9fff3ac1/canva-app-01-026b2a5859cd3b30398dd6b2424c9c8e.png" alt="Tela do app Monnera">
             <div class="media-card-caption">
               <strong>App Monnera para participantes</strong>
-              <p>O participante visualiza saldo, origem dos valores, campanhas relacionadas e saque em uma experiência simples no celular.</p>
+              <p>${isPaymentsOnly()
+                ? "O participante visualiza saldo, origem dos valores, documentos e saque em uma experiência simples no celular."
+                : "O participante visualiza saldo, origem dos valores, campanhas relacionadas e saque em uma experiência simples no celular."}</p>
+
             </div>
           </article>
         `);
@@ -2043,7 +2076,10 @@
             <img class="print-media-poster" src="/__l5e/assets-v1/716a538b-2b0e-4baa-bf61-e5e294f95469/canva-app-07-4095f91b27d0a40d76cc9dd4a35d4fc9.png" alt="Painel gestor Monnera">
             <div class="media-card-caption">
               <strong>Painel gestor Monnera</strong>
-              <p>O gestor acompanha boletos, notas fiscais, dashboard de gestão de campanhas, termos de aceite, pagamentos, documentos e resultados em um único painel, com mais controle e rastreabilidade.</p>
+              <p>${isPaymentsOnly()
+                ? "O gestor acompanha boletos, notas fiscais, dashboard de pagamentos, beneficiários, documentos e resultados em um único painel, com mais controle e rastreabilidade."
+                : "O gestor acompanha boletos, notas fiscais, dashboard de gestão de campanhas, termos de aceite, pagamentos, documentos e resultados em um único painel, com mais controle e rastreabilidade."}</p>
+
             </div>
           </article>
         `);
@@ -2073,7 +2109,10 @@
               <h2>A operação fica clara para quem gerencia e simples para quem participa.</h2>
             </div>
             <div>
-              <p>A Monnera conecta gestor, campanha e participante em uma jornada mais transparente: quem recebe acompanha seus ganhos pelo app; quem gerencia acompanha regras, pagamentos, documentos e resultados pelo painel.</p>
+              <p>${isPaymentsOnly()
+                ? "A Monnera conecta gestor e beneficiário em uma jornada mais transparente: quem recebe acompanha seus ganhos pelo app; quem gerencia acompanha pagamentos, documentos e resultados pelo painel."
+                : "A Monnera conecta gestor, campanha e participante em uma jornada mais transparente: quem recebe acompanha seus ganhos pelo app; quem gerencia acompanha regras, pagamentos, documentos e resultados pelo painel."}</p>
+
             </div>
           </div>
           <div class="media-stage">
@@ -2128,7 +2167,7 @@
         benefitBlock = `
           <div class="card" style="margin-top:16px; border:2px solid var(--brand, #0f766e);">
             <strong>Benefício máximo por volume atingido</strong>
-            <p>Atingindo ${currency(lastPrize)} em pagamentos de campanhas, a mensalidade pode ser reduzida conforme a faixa máxima cadastrada na tabela dinâmica.</p>
+            <p>Atingindo ${currency(lastPrize)} em ${isPaymentsOnly() ? "valores distribuídos em lote" : "pagamentos de campanhas"}, a mensalidade pode ser reduzida conforme a faixa máxima cadastrada na tabela dinâmica.</p>
             <ul style="margin:8px 0 0 0; padding-left:18px;">
               <li><strong>Atingindo:</strong> ${currency(lastPrize)}</li>
               <li><strong>Desconto aplicado:</strong> ${lastDiscount.toLocaleString("pt-BR")}%</li>
@@ -2145,7 +2184,8 @@
         <table class="discount-table" aria-label="Tabela de mensalidade dinâmica">
           <thead>
             <tr>
-              <th>Valor total pago em campanhas</th>
+              <th>${isPaymentsOnly() ? "Valor total distribuído em lote" : "Valor total pago em campanhas"}</th>
+
               <th>Desconto na Mensalidade (%)</th>
               <th>Mensalidade total</th>
               <th>Valor mensalidade por CNPJ</th>
@@ -2157,7 +2197,7 @@
         <div class="card" style="margin-top:16px;">
           <strong>Mensalidade dinâmica</strong>
           <p>Quanto maior o volume pago aos beneficiários, menor pode ser a mensalidade, mantendo o alinhamento econômico da operação: o beneficiário recebe mais e o contratante reduz custo fixo.</p>
-          <p>A tabela de mensalidade dinâmica é demonstrativa: ilustra o benefício por volume transacionado e não substitui os valores comerciais contratados. O desconto passa a valer no mês subsequente ao fechamento das campanhas.</p>
+          <p>A tabela de mensalidade dinâmica é demonstrativa: ilustra o benefício por volume transacionado e não substitui os valores comerciais contratados. O desconto passa a valer no mês subsequente ao ${isPaymentsOnly() ? "fechamento do período de pagamentos" : "fechamento das campanhas"}.</p>
         </div>
       `;
     }
@@ -2267,7 +2307,7 @@
           ${setupPaymentHtml}
           ${setupNotes ? `<p><strong>Observações:</strong> ${escapeHtml(setupNotes)}</p>` : ""}
           <p>O setup contempla configuração do painel do gestor, validação inicial das informações, apoio à estruturação das bases, parametrização inicial dos fluxos e orientação de implantação.</p>
-          <p>O lançamento é conduzido pelo time Monnera. Gestores recebem orientação sobre painel gerencial, acompanhamento de resultados por CNPJ, resultados do time, cadastros no app, cadastro de campanhas, saque e funcionalidades. Usuários recebem orientação sobre cadastro no app, saque, acompanhamento de resultados e valores, mensageria, obrigatoriedades e demais funcionalidades de apoio às vendas.</p>
+          <p>O lançamento é conduzido pelo time Monnera. Gestores recebem orientação sobre painel gerencial, acompanhamento de resultados por CNPJ, resultados do time, cadastros no app, ${isPaymentsOnly() ? "gestão de pagamentos, documentos e saques" : "cadastro de campanhas, saque"} e funcionalidades. Usuários recebem orientação sobre cadastro no app, saque, acompanhamento de resultados e valores, mensageria, obrigatoriedades e demais funcionalidades de apoio às vendas.</p>
           ${hasCross ? `<p>Para Monnera Cross, o setup inclui também a conexão técnica com clientes ou parceiros do contratante, dependente da colaboração ativa dos times envolvidos para conectar tecnologia, bases e operação.</p>` : ""}
         </div>
       `;
@@ -2310,6 +2350,8 @@
 
     function renderProposal() {
       const copy = currentModelCopy();
+      const paymentsOnly = isPaymentsOnly();
+
       proposalEl.innerHTML = `
         <header class="proposal-cover">
           <div class="cover-content">
@@ -2388,9 +2430,13 @@
           title: "Controle, dados e rastreabilidade para uma operação mais segura.",
           image: "/__l5e/assets-v1/bad8f610-17e6-4d76-9ce9-6a2124e4dec2/seguranca-documentacao.jpg",
           bodyHtml: `<div class="feature-grid">${valueCardsHtml([
-            ["Segurança de dados", "Operação estruturada com controle de acesso, organização de informações e tratamento de dados alinhado à legislação vigente de segurança e proteção de dados."],
-            ["Auditoria", "Histórico de campanhas, regras, participantes, saldos e pagamentos para consulta e conferência."],
-            ["Rastreio de informações", "Cada etapa da campanha passa a ter registros mais claros, reduzindo dependência de arquivos paralelos."],
+            ["Segurança de dados", "Operação estruturada com rígidos padrões de segurança e governança, operando em total conformidade com as normas da LGPD, controle de acesso e rastreabilidade total de informações."],
+            paymentsOnly
+              ? ["Auditoria", "Histórico de beneficiários, saldos, documentos e pagamentos para consulta e conferência."]
+              : ["Auditoria", "Histórico de campanhas, regras, participantes, saldos e pagamentos para consulta e conferência."],
+            paymentsOnly
+              ? ["Rastreio de informações", "Cada etapa do pagamento passa a ter registros mais claros, reduzindo dependência de arquivos paralelos."]
+              : ["Rastreio de informações", "Cada etapa da campanha passa a ter registros mais claros, reduzindo dependência de arquivos paralelos."],
             ["Conformidade operacional", "Apoio a uma operação mais segura do ponto de vista jurídico, fiscal, tributário e trabalhista."]
           ])}</div>`
         })}
@@ -2399,7 +2445,9 @@
           <p class="eyebrow">Eficiência trabalhista e fiscal</p>
           <h2>Mais documentação, mais controle e menos exposição operacional.</h2>
           <div class="value-grid" style="margin-top:22px;">
-            ${valueCardsHtml([
+            ${valueCardsHtml(paymentsOnly ? [
+              ["Eficiência fiscal e tributária", "Mais eficiência fiscal e tributária, assegurando maior documentação, controle e menor exposição operacional."]
+            ] : [
               ["Base trabalhista para premiações", "O modelo apoia campanhas de premiação alinhadas ao Art. 457 da CLT, especialmente para programas vinculados a desempenho superior ao ordinariamente esperado."],
               ["Termo de aceite por campanha", "Cada campanha exige anuência prévia do colaborador, com aceite individualizado e assinatura digital no início da campanha. Assim, o participante conhece as regras desde o começo da operação."],
               ["Documentação para eventual demanda", "O gestor pode acessar pelo app Monnera os documentos da campanha, termos assinados, regras e registros relacionados, facilitando a organização de evidências em caso de demanda trabalhista."],
@@ -2410,6 +2458,7 @@
           </div>
         </section>
 
+
         <section class="section">
           <div class="section-grid">
             <div>
@@ -2417,7 +2466,10 @@
               <h2>Empresas que já utilizam a plataforma na gestão de suas operações comerciais.</h2>
             </div>
             <div>
-              <p>As marcas abaixo reforçam a presença da Monnera em operações reais de incentivo, campanhas, pagamentos e relacionamento com quem está na ponta.</p>
+              <p>${paymentsOnly
+                ? "As marcas abaixo reforçam a presença da Monnera em operações reais de pagamentos, distribuição de valores e relacionamento com quem está na ponta."
+                : "As marcas abaixo reforçam a presença da Monnera em operações reais de incentivo, campanhas, pagamentos e relacionamento com quem está na ponta."}</p>
+
             </div>
           </div>
           ${state.showLogoRail === "sim" ? clientMarqueeHtml() : `<div class="client-grid" style="margin-top:22px;">${clientsHtml()}</div>`}
@@ -2433,7 +2485,10 @@
 
         <section class="section closing">
           <p class="eyebrow">Próximo passo</p>
-          <h2>Confirme esta proposta e comece a operar campanhas, pagamentos e premiações com mais clareza, segurança e retorno.</h2>
+          <h2>${paymentsOnly
+            ? "Confirme esta proposta e comece a operar pagamentos e distribuição de valores com mais clareza, segurança e controle."
+            : "Confirme esta proposta e comece a operar campanhas, pagamentos e premiações com mais clareza, segurança e retorno."}</h2>
+
           <div class="inline-accept-wrap">
             <button class="button button-primary inline-accept-cta" type="button" data-accept-proposal aria-label="Aceitar proposta comercial">Aceitar proposta comercial</button>
           </div>
@@ -2903,8 +2958,14 @@
       }
 
       function serializeState() {
-        try { return JSON.parse(JSON.stringify(state)); } catch (_) { return null; }
+        try {
+          const snapshot = JSON.parse(JSON.stringify(state));
+          snapshot.productCopyVersion = PRODUCT_COPY_VERSION;
+          snapshot.selectedProducts = selectedProductKeys();
+          return snapshot;
+        } catch (_) { return null; }
       }
+
 
       window.addEventListener("message", (e) => {
         if (e.origin !== ALLOWED_ORIGIN) return;
