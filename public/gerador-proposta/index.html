@@ -2958,8 +2958,14 @@
       }
 
       function serializeState() {
-        try { return JSON.parse(JSON.stringify(state)); } catch (_) { return null; }
+        try {
+          const snapshot = JSON.parse(JSON.stringify(state));
+          snapshot.productCopyVersion = PRODUCT_COPY_VERSION;
+          snapshot.selectedProducts = selectedProductKeys();
+          return snapshot;
+        } catch (_) { return null; }
       }
+
 
       window.addEventListener("message", (e) => {
         if (e.origin !== ALLOWED_ORIGIN) return;
