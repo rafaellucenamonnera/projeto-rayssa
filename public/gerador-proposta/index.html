@@ -2103,7 +2103,10 @@
               <h2>A operação fica clara para quem gerencia e simples para quem participa.</h2>
             </div>
             <div>
-              <p>A Monnera conecta gestor, campanha e participante em uma jornada mais transparente: quem recebe acompanha seus ganhos pelo app; quem gerencia acompanha regras, pagamentos, documentos e resultados pelo painel.</p>
+              <p>${isPaymentsOnly()
+                ? "A Monnera conecta gestor e beneficiário em uma jornada mais transparente: quem recebe acompanha seus ganhos pelo app; quem gerencia acompanha pagamentos, documentos e resultados pelo painel."
+                : "A Monnera conecta gestor, campanha e participante em uma jornada mais transparente: quem recebe acompanha seus ganhos pelo app; quem gerencia acompanha regras, pagamentos, documentos e resultados pelo painel."}</p>
+
             </div>
           </div>
           <div class="media-stage">
