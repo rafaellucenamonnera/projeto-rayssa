@@ -2418,9 +2418,13 @@
           title: "Controle, dados e rastreabilidade para uma operação mais segura.",
           image: "/__l5e/assets-v1/bad8f610-17e6-4d76-9ce9-6a2124e4dec2/seguranca-documentacao.jpg",
           bodyHtml: `<div class="feature-grid">${valueCardsHtml([
-            ["Segurança de dados", "Operação estruturada com controle de acesso, organização de informações e tratamento de dados alinhado à legislação vigente de segurança e proteção de dados."],
-            ["Auditoria", "Histórico de campanhas, regras, participantes, saldos e pagamentos para consulta e conferência."],
-            ["Rastreio de informações", "Cada etapa da campanha passa a ter registros mais claros, reduzindo dependência de arquivos paralelos."],
+            ["Segurança de dados", "Operação estruturada com rígidos padrões de segurança e governança, operando em total conformidade com as normas da LGPD, controle de acesso e rastreabilidade total de informações."],
+            paymentsOnly
+              ? ["Auditoria", "Histórico de beneficiários, saldos, documentos e pagamentos para consulta e conferência."]
+              : ["Auditoria", "Histórico de campanhas, regras, participantes, saldos e pagamentos para consulta e conferência."],
+            paymentsOnly
+              ? ["Rastreio de informações", "Cada etapa do pagamento passa a ter registros mais claros, reduzindo dependência de arquivos paralelos."]
+              : ["Rastreio de informações", "Cada etapa da campanha passa a ter registros mais claros, reduzindo dependência de arquivos paralelos."],
             ["Conformidade operacional", "Apoio a uma operação mais segura do ponto de vista jurídico, fiscal, tributário e trabalhista."]
           ])}</div>`
         })}
@@ -2429,7 +2433,9 @@
           <p class="eyebrow">Eficiência trabalhista e fiscal</p>
           <h2>Mais documentação, mais controle e menos exposição operacional.</h2>
           <div class="value-grid" style="margin-top:22px;">
-            ${valueCardsHtml([
+            ${valueCardsHtml(paymentsOnly ? [
+              ["Eficiência fiscal e tributária", "Mais eficiência fiscal e tributária, assegurando maior documentação, controle e menor exposição operacional."]
+            ] : [
               ["Base trabalhista para premiações", "O modelo apoia campanhas de premiação alinhadas ao Art. 457 da CLT, especialmente para programas vinculados a desempenho superior ao ordinariamente esperado."],
               ["Termo de aceite por campanha", "Cada campanha exige anuência prévia do colaborador, com aceite individualizado e assinatura digital no início da campanha. Assim, o participante conhece as regras desde o começo da operação."],
               ["Documentação para eventual demanda", "O gestor pode acessar pelo app Monnera os documentos da campanha, termos assinados, regras e registros relacionados, facilitando a organização de evidências em caso de demanda trabalhista."],
@@ -2439,6 +2445,7 @@
             ])}
           </div>
         </section>
+
 
         <section class="section">
           <div class="section-grid">
