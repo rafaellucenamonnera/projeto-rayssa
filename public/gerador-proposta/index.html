@@ -1777,6 +1777,15 @@
       return Object.keys(productCatalog()).filter((key) => state.products[key]);
     }
 
+    // Copy adaptativa por produto (2026-07-30)
+    const PRODUCT_COPY_VERSION = "2026-07-30-product-specific-v1";
+
+    function isPaymentsOnly() {
+      const keys = selectedProductKeys();
+      return keys.length === 1 && keys[0] === "paymentOrder";
+    }
+
+
     function selectedMonthlyTotal() {
       return selectedProductKeys().reduce((total, key) => {
         return total + numberValue(state.productPricing[key].monthlyFee);
