@@ -2466,7 +2466,10 @@
               <h2>Empresas que já utilizam a plataforma na gestão de suas operações comerciais.</h2>
             </div>
             <div>
-              <p>As marcas abaixo reforçam a presença da Monnera em operações reais de incentivo, campanhas, pagamentos e relacionamento com quem está na ponta.</p>
+              <p>${paymentsOnly
+                ? "As marcas abaixo reforçam a presença da Monnera em operações reais de pagamentos, distribuição de valores e relacionamento com quem está na ponta."
+                : "As marcas abaixo reforçam a presença da Monnera em operações reais de incentivo, campanhas, pagamentos e relacionamento com quem está na ponta."}</p>
+
             </div>
           </div>
           ${state.showLogoRail === "sim" ? clientMarqueeHtml() : `<div class="client-grid" style="margin-top:22px;">${clientsHtml()}</div>`}
