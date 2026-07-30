@@ -2167,7 +2167,7 @@
         benefitBlock = `
           <div class="card" style="margin-top:16px; border:2px solid var(--brand, #0f766e);">
             <strong>Benefício máximo por volume atingido</strong>
-            <p>Atingindo ${currency(lastPrize)} em pagamentos de campanhas, a mensalidade pode ser reduzida conforme a faixa máxima cadastrada na tabela dinâmica.</p>
+            <p>Atingindo ${currency(lastPrize)} em ${isPaymentsOnly() ? "valores distribuídos em lote" : "pagamentos de campanhas"}, a mensalidade pode ser reduzida conforme a faixa máxima cadastrada na tabela dinâmica.</p>
             <ul style="margin:8px 0 0 0; padding-left:18px;">
               <li><strong>Atingindo:</strong> ${currency(lastPrize)}</li>
               <li><strong>Desconto aplicado:</strong> ${lastDiscount.toLocaleString("pt-BR")}%</li>
