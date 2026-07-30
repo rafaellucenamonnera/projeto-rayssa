@@ -2197,7 +2197,7 @@
         <div class="card" style="margin-top:16px;">
           <strong>Mensalidade dinâmica</strong>
           <p>Quanto maior o volume pago aos beneficiários, menor pode ser a mensalidade, mantendo o alinhamento econômico da operação: o beneficiário recebe mais e o contratante reduz custo fixo.</p>
-          <p>A tabela de mensalidade dinâmica é demonstrativa: ilustra o benefício por volume transacionado e não substitui os valores comerciais contratados. O desconto passa a valer no mês subsequente ao fechamento das campanhas.</p>
+          <p>A tabela de mensalidade dinâmica é demonstrativa: ilustra o benefício por volume transacionado e não substitui os valores comerciais contratados. O desconto passa a valer no mês subsequente ao ${isPaymentsOnly() ? "fechamento do período de pagamentos" : "fechamento das campanhas"}.</p>
         </div>
       `;
     }
