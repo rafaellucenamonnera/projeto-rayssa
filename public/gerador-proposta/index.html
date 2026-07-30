@@ -1801,7 +1801,28 @@
     }
 
     function currentModelCopy() {
+      if (isPaymentsOnly()) {
+        return {
+          label: state.model === "enterprise" ? "Modelo Enterprise" : "Modelo Geral",
+          title: "Pagamentos centralizados, seguros e rastreáveis para sua operação.",
+          subtitle: "Proposta para empresas que precisam distribuir valores a beneficiários com conformidade fiscal, split automático, compensação via Pix e total controle de documentos e saldos.",
+          challengeTitle: "Cenário atual",
+          challenge: [
+            "Pagamentos centralizados e seguros, garantindo conformidade fiscal. Operação com split automático, compensação via Pix e distribuição dos valores em até 2 horas. Inclui emissão de Cartão Visa Monnera NFC sem custo para toda a base, além de saque do valor integral da premiação, sem restrição de dia, horário ou limite de valor."
+          ],
+          solutionTitle: "A Experiência Monnera",
+          solution: "A Monnera conecta gestor e beneficiário em uma jornada mais transparente: quem recebe acompanha seus ganhos pelo app; quem gerencia acompanha pagamentos, documentos e resultados pelo painel.",
+          valueTitle: "Benefícios principais",
+          valueCards: [
+            ["Automação operacional", "Eliminação de planilhas e redução drástica de conferências manuais de pagamentos."],
+            ["Clareza para o participante", "Acompanhamento da origem do saldo e saques via app exclusivo, individual e intransferível da Monnera, com suporte individualizado e personalizado para cada usuário."],
+            ["Mensageria automatizada", "Mensageria e notificações automatizadas via app Monnera a cada novo valor creditado."]
+          ]
+        };
+      }
+
       if (state.model === "enterprise") {
+
         return {
           label: "Modelo Enterprise",
           title: "Infraestrutura de campanhas, pagamentos e governança comercial para operações em escala.",
