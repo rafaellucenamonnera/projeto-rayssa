@@ -2184,7 +2184,8 @@
         <table class="discount-table" aria-label="Tabela de mensalidade dinâmica">
           <thead>
             <tr>
-              <th>Valor total pago em campanhas</th>
+              <th>${isPaymentsOnly() ? "Valor total distribuído em lote" : "Valor total pago em campanhas"}</th>
+
               <th>Desconto na Mensalidade (%)</th>
               <th>Mensalidade total</th>
               <th>Valor mensalidade por CNPJ</th>
