@@ -2086,10 +2086,21 @@ const AdminLeads = () => {
             </>
           )}
           {isCustomCrmPanel && canCreateLead && (
-            <Button onClick={() => setNewCardOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
-              + Card
+            <Button
+              onClick={() => {
+                if (isCrossClientPanel) {
+                  setClienteDialogCard(null);
+                  setClienteDialogOpen(true);
+                } else {
+                  setNewCardOpen(true);
+                }
+              }}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {isCrossClientPanel ? "+ Add Cliente" : "+ Card"}
             </Button>
           )}
+
           {currentPanelId === "sucesso" && (
             <Button
               onClick={handleSyncDriveClients}
