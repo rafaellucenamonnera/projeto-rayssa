@@ -50,6 +50,9 @@ import {
   SLA_CAMPANHAS_AGUARDANDO_CLIENTE_HOURS,
 } from "@/lib/campaignFlow";
 import { CampaignMoveDialog, CampanhaConcluidaDialog } from "@/components/admin/CampaignFlowDialogs";
+import CardAttachments from "@/components/admin/CardAttachments";
+import ClienteCrossDialog from "@/components/admin/ClienteCrossDialog";
+
 
 type PipelineStage = { value: string; label: string; sort_order: number; followup_message?: string | null };
 
