@@ -3232,7 +3232,17 @@ const AdminLeads = () => {
         </DialogContent>
       </Dialog>
 
+      <ClienteCrossDialog
+        open={clienteDialogOpen}
+        onOpenChange={(v) => { setClienteDialogOpen(v); if (!v) setClienteDialogCard(null); }}
+        panelId={currentPanelId}
+        firstStageId={pipelineStages[0]?.value}
+        card={clienteDialogCard}
+        onSaved={handleClienteSaved}
+      />
+
       <Dialog open={newCardOpen} onOpenChange={setNewCardOpen}>
+
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Novo cadastro</DialogTitle>
