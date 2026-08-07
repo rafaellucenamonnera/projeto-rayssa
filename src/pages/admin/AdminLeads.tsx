@@ -387,10 +387,13 @@ const AdminLeads = () => {
   const painelTitleNormalized = painelTitle.toLowerCase();
   const isRepresentantesOuEmbaixadoresPanel =
     painelTitleNormalized.includes("representante") || painelTitleNormalized.includes("embaixador");
+  const isCrossClientPanel = currentPanelId === CROSS_CLIENT_PANEL_ID;
   const isCustomCrmPanel =
-    isRepresentantesOuEmbaixadoresPanel &&
-    !["comercial", "sucesso", "onboarding", "campanhas"].includes(currentPanelId);
+    isCrossClientPanel ||
+    (isRepresentantesOuEmbaixadoresPanel &&
+      !["comercial", "sucesso", "onboarding", "campanhas"].includes(currentPanelId));
   const isAmbassadorPanel = currentPanelId === AMBASSADOR_PANEL_ID;
+
 
   useEffect(() => {
     const fetchUserName = async () => {
