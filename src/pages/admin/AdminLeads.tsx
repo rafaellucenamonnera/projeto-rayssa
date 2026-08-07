@@ -2632,8 +2632,55 @@ const AdminLeads = () => {
                 </TabsList>
               </Tabs>
 
-              {activeSection === "detalhes" && (
+              {activeSection === "detalhes" && isCrossClientPanel && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">Nome do Parceiro</p>
+                      <p className="font-medium">{detailLead.full_name || detailLead.nome_fantasia || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">CNPJ do Parceiro</p>
+                      <p className="font-mono">{detailLead.cnpj || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">Focal Parceiro</p>
+                      <p>{detailLead.focal_name || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">Contratante Monnera</p>
+                      <p>{detailLead.contratante_monnera || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">Telefone</p>
+                      <p>{detailLead.phone || detailLead.telefone_responsavel || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">E-mail</p>
+                      <p className="break-all">{detailLead.email || detailLead.email_responsavel || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">Vendedor responsável</p>
+                      <p>{detailLead.vendor_name || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">Contato do vendedor</p>
+                      <p className="break-all">
+                        {[detailLead.vendor_phone, detailLead.vendor_email].filter(Boolean).join(" • ") || "—"}
+                      </p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-muted-foreground text-xs mb-1">Anotações</p>
+                      <p className="whitespace-pre-wrap">{detailLead.notes || detailLead.descricao_necessidade || "—"}</p>
+                    </div>
+                  </div>
+                  <CardAttachments cardId={detailLead.id} canEdit={canEditLead} />
+                </div>
+              )}
+
+              {activeSection === "detalhes" && !isCrossClientPanel && (
                 <>
+
               {/* Lead Data */}
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
