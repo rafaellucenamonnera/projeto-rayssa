@@ -1797,7 +1797,31 @@ const AdminLeads = () => {
     }
   };
 
+  const normalizeCrossClientCard = (data: any) => ({
+    ...data,
+    nome_fantasia: data.full_name,
+    nome_responsavel: data.full_name,
+    telefone_responsavel: data.phone,
+    email_responsavel: data.email,
+    cidade: data.city,
+    descricao_necessidade: data.notes,
+    data_cadastro: data.created_at,
+  });
+
+  const handleClienteSaved = (data: any) => {
+    if (!data) {
+      loadData();
+      return;
+    }
+    const normalized = normalizeCrossClientCard(data);
+    setLeads((prev) => (prev.some((l) => l.id === normalized.id)
+      ? prev.map((l) => (l.id === normalized.id ? { ...l, ...normalized } : l))
+      : [normalized, ...prev]));
+    setDetailLead((prev: any) => (prev && prev.id === normalized.id ? { ...prev, ...normalized } : prev));
+  };
+
   const updateRepresentativeCard = useCallback(async (id: string, payload: Record<string, any>) =>
+
     (supabase as any).from(isAmbassadorPanel ? "ambassador_cards" : "representative_cards").update(payload).eq("id", id), [isAmbassadorPanel]);
 
   const moveRepresentativeCard = useCallback(async (id: string, stageId: string) =>
