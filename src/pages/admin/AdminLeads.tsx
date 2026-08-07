@@ -2592,7 +2592,15 @@ const AdminLeads = () => {
           </DialogHeader>
           {detailLead && (
             <div className="space-y-6">
-              {isEditingCard ? (
+              {isCrossClientPanel ? (
+                canEditLead && (
+                  <div className="flex items-center justify-end gap-2">
+                    <Button size="sm" onClick={() => { setClienteDialogCard(detailLead); setClienteDialogOpen(true); }}>
+                      Editar cliente
+                    </Button>
+                  </div>
+                )
+              ) : isEditingCard ? (
                 <div className="flex items-center justify-end gap-2">
                   <Button size="sm" variant="outline" onClick={cancelEditCard} disabled={savingCard}>Cancelar</Button>
                   <Button size="sm" onClick={saveEditedCard} disabled={savingCard}>
@@ -2607,6 +2615,7 @@ const AdminLeads = () => {
                   </Button>
                 </div>
               )}
+
 
               {/* Barra de abas do card */}
               <Tabs value={activeSection} onValueChange={(v) => setActiveSection(v as DetailSection)}>
