@@ -50,10 +50,15 @@ import {
   SLA_CAMPANHAS_AGUARDANDO_CLIENTE_HOURS,
 } from "@/lib/campaignFlow";
 import { CampaignMoveDialog, CampanhaConcluidaDialog } from "@/components/admin/CampaignFlowDialogs";
+import CardAttachments from "@/components/admin/CardAttachments";
+import ClienteCrossDialog from "@/components/admin/ClienteCrossDialog";
+
 
 type PipelineStage = { value: string; label: string; sort_order: number; followup_message?: string | null };
 
 const AMBASSADOR_PANEL_ID = "painel_mp5q4du9";
+const CROSS_CLIENT_PANEL_ID = "painel_msj9fyji";
+
 
 const buildTesteMonneraMessage = (linkTesteMonnera: string) => `Olá, tudo bem?
 
@@ -265,6 +270,9 @@ const AdminLeads = () => {
   const [usersAll, setUsersAll] = useState<{ user_id: string; nome: string }[]>([]);
   const [allActiveUsers, setAllActiveUsers] = useState<{ user_id: string; nome: string }[]>([]);
   const [newCardOpen, setNewCardOpen] = useState(false);
+  const [clienteDialogOpen, setClienteDialogOpen] = useState(false);
+  const [clienteDialogCard, setClienteDialogCard] = useState<any | null>(null);
+
   const [savingNewCard, setSavingNewCard] = useState(false);
   const [newCardData, setNewCardData] = useState({ full_name: "", phone: "", email: "", cnpj: "", city: "", state: "", region: "", notes: "" });
   const [reunioesMap, setReunioesMap] = useState<Record<string, any>>({});
@@ -387,10 +395,13 @@ const AdminLeads = () => {
   const painelTitleNormalized = painelTitle.toLowerCase();
   const isRepresentantesOuEmbaixadoresPanel =
     painelTitleNormalized.includes("representante") || painelTitleNormalized.includes("embaixador");
+  const isCrossClientPanel = currentPanelId === CROSS_CLIENT_PANEL_ID;
   const isCustomCrmPanel =
-    isRepresentantesOuEmbaixadoresPanel &&
-    !["comercial", "sucesso", "onboarding", "campanhas"].includes(currentPanelId);
+    isCrossClientPanel ||
+    (isRepresentantesOuEmbaixadoresPanel &&
+      !["comercial", "sucesso", "onboarding", "campanhas"].includes(currentPanelId));
   const isAmbassadorPanel = currentPanelId === AMBASSADOR_PANEL_ID;
+
 
   useEffect(() => {
     const fetchUserName = async () => {
@@ -1789,7 +1800,31 @@ const AdminLeads = () => {
     }
   };
 
+  const normalizeCrossClientCard = (data: any) => ({
+    ...data,
+    nome_fantasia: data.full_name,
+    nome_responsavel: data.full_name,
+    telefone_responsavel: data.phone,
+    email_responsavel: data.email,
+    cidade: data.city,
+    descricao_necessidade: data.notes,
+    data_cadastro: data.created_at,
+  });
+
+  const handleClienteSaved = (data: any) => {
+    if (!data) {
+      loadData();
+      return;
+    }
+    const normalized = normalizeCrossClientCard(data);
+    setLeads((prev) => (prev.some((l) => l.id === normalized.id)
+      ? prev.map((l) => (l.id === normalized.id ? { ...l, ...normalized } : l))
+      : [normalized, ...prev]));
+    setDetailLead((prev: any) => (prev && prev.id === normalized.id ? { ...prev, ...normalized } : prev));
+  };
+
   const updateRepresentativeCard = useCallback(async (id: string, payload: Record<string, any>) =>
+
     (supabase as any).from(isAmbassadorPanel ? "ambassador_cards" : "representative_cards").update(payload).eq("id", id), [isAmbassadorPanel]);
 
   const moveRepresentativeCard = useCallback(async (id: string, stageId: string) =>
@@ -2054,10 +2089,21 @@ const AdminLeads = () => {
             </>
           )}
           {isCustomCrmPanel && canCreateLead && (
-            <Button onClick={() => setNewCardOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
-              + Card
+            <Button
+              onClick={() => {
+                if (isCrossClientPanel) {
+                  setClienteDialogCard(null);
+                  setClienteDialogOpen(true);
+                } else {
+                  setNewCardOpen(true);
+                }
+              }}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {isCrossClientPanel ? "+ Add Cliente" : "+ Card"}
             </Button>
           )}
+
           {currentPanelId === "sucesso" && (
             <Button
               onClick={handleSyncDriveClients}
@@ -2549,7 +2595,15 @@ const AdminLeads = () => {
           </DialogHeader>
           {detailLead && (
             <div className="space-y-6">
-              {isEditingCard ? (
+              {isCrossClientPanel ? (
+                canEditLead && (
+                  <div className="flex items-center justify-end gap-2">
+                    <Button size="sm" onClick={() => { setClienteDialogCard(detailLead); setClienteDialogOpen(true); }}>
+                      Editar cliente
+                    </Button>
+                  </div>
+                )
+              ) : isEditingCard ? (
                 <div className="flex items-center justify-end gap-2">
                   <Button size="sm" variant="outline" onClick={cancelEditCard} disabled={savingCard}>Cancelar</Button>
                   <Button size="sm" onClick={saveEditedCard} disabled={savingCard}>
@@ -2564,6 +2618,7 @@ const AdminLeads = () => {
                   </Button>
                 </div>
               )}
+
 
               {/* Barra de abas do card */}
               <Tabs value={activeSection} onValueChange={(v) => setActiveSection(v as DetailSection)}>
@@ -2580,8 +2635,55 @@ const AdminLeads = () => {
                 </TabsList>
               </Tabs>
 
-              {activeSection === "detalhes" && (
+              {activeSection === "detalhes" && isCrossClientPanel && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">Nome do Parceiro</p>
+                      <p className="font-medium">{detailLead.full_name || detailLead.nome_fantasia || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">CNPJ do Parceiro</p>
+                      <p className="font-mono">{detailLead.cnpj || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">Focal Parceiro</p>
+                      <p>{detailLead.focal_name || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">Contratante Monnera</p>
+                      <p>{detailLead.contratante_monnera || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">Telefone</p>
+                      <p>{detailLead.phone || detailLead.telefone_responsavel || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">E-mail</p>
+                      <p className="break-all">{detailLead.email || detailLead.email_responsavel || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">Vendedor responsável</p>
+                      <p>{detailLead.vendor_name || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">Contato do vendedor</p>
+                      <p className="break-all">
+                        {[detailLead.vendor_phone, detailLead.vendor_email].filter(Boolean).join(" • ") || "—"}
+                      </p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-muted-foreground text-xs mb-1">Anotações</p>
+                      <p className="whitespace-pre-wrap">{detailLead.notes || detailLead.descricao_necessidade || "—"}</p>
+                    </div>
+                  </div>
+                  <CardAttachments cardId={detailLead.id} canEdit={canEditLead} />
+                </div>
+              )}
+
+              {activeSection === "detalhes" && !isCrossClientPanel && (
                 <>
+
               {/* Lead Data */}
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
@@ -3130,7 +3232,17 @@ const AdminLeads = () => {
         </DialogContent>
       </Dialog>
 
+      <ClienteCrossDialog
+        open={clienteDialogOpen}
+        onOpenChange={(v) => { setClienteDialogOpen(v); if (!v) setClienteDialogCard(null); }}
+        panelId={currentPanelId}
+        firstStageId={pipelineStages[0]?.value}
+        card={clienteDialogCard}
+        onSaved={handleClienteSaved}
+      />
+
       <Dialog open={newCardOpen} onOpenChange={setNewCardOpen}>
+
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Novo cadastro</DialogTitle>
