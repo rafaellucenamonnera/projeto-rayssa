@@ -1965,6 +1965,47 @@ export type Database = {
         }
         Relationships: []
       }
+      representative_card_attachments: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          file_name: string
+          id: string
+          mime_type: string | null
+          representative_card_id: string
+          size_bytes: number | null
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          file_name: string
+          id?: string
+          mime_type?: string | null
+          representative_card_id: string
+          size_bytes?: number | null
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          file_name?: string
+          id?: string
+          mime_type?: string | null
+          representative_card_id?: string
+          size_bytes?: number | null
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "representative_card_attachments_representative_card_id_fkey"
+            columns: ["representative_card_id"]
+            isOneToOne: false
+            referencedRelation: "representative_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       representative_card_comments: {
         Row: {
           comment: string
@@ -2103,10 +2144,14 @@ export type Database = {
       representative_cards: {
         Row: {
           city: string | null
+          contratante_monnera: string | null
           created_at: string
           created_by_user_id: string
           csv_import_batch_id: string | null
           email: string
+          focal_email: string | null
+          focal_name: string | null
+          focal_phone: string | null
           full_name: string
           id: string
           notes: string | null
@@ -2121,13 +2166,20 @@ export type Database = {
           state: string | null
           status: string | null
           updated_at: string
+          vendor_email: string | null
+          vendor_name: string | null
+          vendor_phone: string | null
         }
         Insert: {
           city?: string | null
+          contratante_monnera?: string | null
           created_at?: string
           created_by_user_id: string
           csv_import_batch_id?: string | null
           email: string
+          focal_email?: string | null
+          focal_name?: string | null
+          focal_phone?: string | null
           full_name: string
           id?: string
           notes?: string | null
@@ -2142,13 +2194,20 @@ export type Database = {
           state?: string | null
           status?: string | null
           updated_at?: string
+          vendor_email?: string | null
+          vendor_name?: string | null
+          vendor_phone?: string | null
         }
         Update: {
           city?: string | null
+          contratante_monnera?: string | null
           created_at?: string
           created_by_user_id?: string
           csv_import_batch_id?: string | null
           email?: string
+          focal_email?: string | null
+          focal_name?: string | null
+          focal_phone?: string | null
           full_name?: string
           id?: string
           notes?: string | null
@@ -2163,6 +2222,9 @@ export type Database = {
           state?: string | null
           status?: string | null
           updated_at?: string
+          vendor_email?: string | null
+          vendor_name?: string | null
+          vendor_phone?: string | null
         }
         Relationships: [
           {
