@@ -1,67 +1,37 @@
-## Busca global performática no filtro "Filtrar por empresa"
+# Add Cliente — Painel Onboarding Clientes Cross
 
-Escopo restrito a `src/pages/admin/AdminLeads.tsx`. Sem tocar em schema, RPCs, outros painéis ou fluxo do Kanban.
+Criar um botão único "Add Cliente" no painel **Onboarding Clientes Cross**, abrindo um formulário completo de cadastro de cliente, com anexos e edição posterior do card.
 
----
+## Campos do card
 
-### 1. Payload mínimo do Kanban
-Acrescentar ao select incremental por etapa (mesmos campos hoje) os dois abaixo, mantendo sem `select("*")`:
-- `telefone_responsavel`
-- `email_responsavel`
+- Nome do Parceiro (obrigatório)
+- CNPJ do Parceiro (14 dígitos, opcional)
+- Focal Parceiro (nome), telefone, e-mail
+- Contratante Monnera
+- Vendedor responsável (texto livre), telefone, e-mail
+- Anotações (até 500 caracteres)
+- Anexos: PDF, Excel (xls/xlsx/csv), JPG/PNG
 
-### 2. Helpers locais
-No topo do módulo:
-```ts
-const normalizeSearchTerm = (v: string) => v.trim().replace(/\s+/g, " ").toLowerCase();
-const onlyDigits = (v: string) => v.replace(/\D/g, "");
-const escapePostgrestLike = (v: string) => v.replace(/[%_*\\]/g, m => `\\${m}`);
-```
+## Comportamento
 
-### 3. Debounce do termo
-Novos estados + effect de 300 ms:
-```ts
-const [debouncedFilterEmpresa, setDebouncedFilterEmpresa] = useState("");
-const [searchingEmpresa, setSearchingEmpresa] = useState(false);
-```
-`useEffect` observa `filterEmpresa`, seta `searchingEmpresa=true`, e após 300 ms grava o termo normalizado em `debouncedFilterEmpresa`.
+- O botão aparece **apenas** neste painel; os outros painéis continuam com o formulário atual.
+- Ao salvar, o card entra na primeira coluna ("Cadastro").
+- Abrindo o card, todos os campos ficam editáveis e salvam no mesmo lugar.
+- Anexos podem ser adicionados e removidos tanto na criação quanto na edição, com download por link temporário.
+- O card no kanban continua mostrando nome, telefone e e-mail como hoje.
 
-### 4. Busca server-side por etapa (ramo comercial)
-Criar helper `applyEmpresaSearch(query)` que, quando `debouncedFilterEmpresa.length >= 2`, monta `.or(...)`:
-- Termos: `[termo, ...split(" ")]`, únicos, `length >= 2`, no máx. 5.
-- Campos: `nome_fantasia, razao_social, cnpj, nome_responsavel, telefone_responsavel, email_responsavel`.
-- Extra numérico: se `onlyDigits(term).length >= 2`, adiciona `cnpj.ilike.%N%` e `telefone_responsavel.ilike.%N%`.
-- Usa `escapePostgrestLike` em cada valor.
+## Detalhes técnicos
 
-Aplicar o mesmo helper nas 3 chamadas por etapa:
-1. `count/head:true`
-2. `.range()` inicial paginado
-3. `loadMoreCommercialStage` (`.range()` da próxima página)
+1. **Migração de banco**
+   - Novas colunas em `representative_cards`: `focal_name`, `focal_phone`, `focal_email`, `contratante_monnera`, `vendor_name`, `vendor_phone`, `vendor_email` (todas texto, nulas).
+   - Nova tabela `representative_card_attachments` (card_id, storage_path, file_name, mime_type, size_bytes, created_by) com GRANTs para `authenticated`/`service_role`, RLS ativa e políticas alinhadas às de `representative_cards` (usuários internos leem/escrevem; exclusão pelo autor ou admin).
+   - Bucket privado `representative-card-attachments` com políticas em `storage.objects` para usuários autenticados internos.
 
-Passar o termo como parâmetro nas funções para o `loadMoreCommercialStage` respeitar o filtro ativo.
+2. **Frontend**
+   - `src/pages/admin/AdminLeads.tsx`: constante `CROSS_CLIENT_PANEL_ID = "painel_msj9fyji"`; quando ativo, o botão de criação vira "Add Cliente" e abre o novo diálogo; `createRepresentativeCard` passa a gravar os campos extras (mapeando Nome do Parceiro → `full_name`, telefone/e-mail do focal → `phone`/`email` para manter a listagem e a checagem de duplicidade).
+   - Novo componente `src/components/admin/ClienteCrossDialog.tsx` reutilizado em criação e edição, com validação (e-mails, CNPJ, limite de 500 caracteres) e feedback via toast.
+   - Novo componente `src/components/admin/CardAttachments.tsx` para upload/listagem/remoção de anexos, com validação de tipo e tamanho (limite 10 MB por arquivo) e URL assinada para download.
+   - No detalhe do card deste painel, a aba de detalhes exibe os novos campos e a seção de anexos.
 
-### 5. Recarga reativa ao debounce
-Ajustar (ou criar) o `useEffect` de recarga comercial para depender de `debouncedFilterEmpresa`, `filterConsultor`, `filterDataInicio`, `filterDataFim` — nunca `filterEmpresa` cru — evitando 1 query por tecla.
-
-### 6. Filtro local não pode anular o server-side
-Em `filtered` e `filteredExceptStatus`, quando `isCommercialPanel && !isCustomCrmPanel`, **pular** a checagem em memória de `filterEmpresa`. Outros painéis mantêm o filtro local atual.
-
-Ao recarregar o ramo comercial por mudança de filtro/busca, garantir que `leads`, `stageTotals`, `stageLoadedPages` e `stageLoadingMore` sejam reconstruídos a partir da nova query, sem manter restos da busca anterior.
-
-### 7. UX discreta
-Envolver o `<Input>` de "Filtrar por empresa..." num wrapper `relative` e mostrar `Buscando...` (span absoluto, `text-[10px] text-muted-foreground`) enquanto `searchingEmpresa && filterEmpresa.trim().length >= 2`.
-
----
-
-### Fora do escopo
-- Migration/`unaccent` (limitação de acentos aceita nesta rodada).
-- Kanban virtualizado, RPCs, painéis não-comerciais.
-- Alterações em `lead_stage_history`, `commercial_proposals`, `reunioes` além de continuarem buscando somente para os IDs já carregados.
-
-### Validação
-1. `npm run build` limpo.
-2. Buscar `Vida Farmácias` e `vida` acha card fora dos 30 iniciais via `razao_social`.
-3. Busca por CNPJ, telefone (com máscara ou só dígitos), e-mail e responsável retorna cards.
-4. Badges refletem total filtrado real por coluna (`count/head:true` com o `.or`).
-5. "Carregar mais" respeita o filtro ativo, sem duplicar IDs.
-6. Limpar campo restaura carregamento incremental normal.
-7. Sem query nova a cada tecla (só após 300 ms).
+3. **Verificação**
+   - Typecheck limpo e teste manual: criar cliente, anexar PDF/Excel/JPG, reabrir, editar e remover anexo.
