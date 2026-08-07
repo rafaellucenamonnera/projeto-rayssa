@@ -54,6 +54,8 @@ import { CampaignMoveDialog, CampanhaConcluidaDialog } from "@/components/admin/
 type PipelineStage = { value: string; label: string; sort_order: number; followup_message?: string | null };
 
 const AMBASSADOR_PANEL_ID = "painel_mp5q4du9";
+const CROSS_CLIENT_PANEL_ID = "painel_msj9fyji";
+
 
 const buildTesteMonneraMessage = (linkTesteMonnera: string) => `Olá, tudo bem?
 
