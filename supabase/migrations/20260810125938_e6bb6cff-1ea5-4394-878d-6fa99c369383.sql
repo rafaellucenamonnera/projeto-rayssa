@@ -1,0 +1,1 @@
+ALTER TABLE public.representative_cards ADD COLUMN IF NOT EXISTS cnpj text;

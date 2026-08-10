@@ -2144,6 +2144,7 @@ export type Database = {
       representative_cards: {
         Row: {
           city: string | null
+          cnpj: string | null
           contratante_monnera: string | null
           created_at: string
           created_by_user_id: string
@@ -2172,6 +2173,7 @@ export type Database = {
         }
         Insert: {
           city?: string | null
+          cnpj?: string | null
           contratante_monnera?: string | null
           created_at?: string
           created_by_user_id: string
@@ -2200,6 +2202,7 @@ export type Database = {
         }
         Update: {
           city?: string | null
+          cnpj?: string | null
           contratante_monnera?: string | null
           created_at?: string
           created_by_user_id?: string
