@@ -1881,7 +1881,7 @@ const AdminLeads = () => {
     const counts: Record<string, number> = {};
     pipelineStages.forEach((s) => { counts[s.value] = 0; });
     filteredExceptStatus.forEach((l) => {
-      const s = l.status_lead || l.status || "novo_lead";
+      const s = l.stage_id || l.status_lead || l.status || "novo_lead";
       if (counts[s] !== undefined) counts[s]++;
     });
     return counts;
