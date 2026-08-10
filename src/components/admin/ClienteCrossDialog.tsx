@@ -94,6 +94,22 @@ export const ClienteCrossDialog = ({ open, onOpenChange, panelId, firstStageId, 
 
     setSaving(true);
     try {
+      if (cnpj) {
+        let dupQuery = (supabase as any)
+          .from("representative_cards")
+          .select("id")
+          .eq("panel_id", isEdit ? card.panel_id : panelId)
+          .eq("cnpj", cnpj)
+          .limit(1);
+        if (isEdit) dupQuery = dupQuery.neq("id", card.id);
+        const { data: dup } = await dupQuery;
+        if (dup && dup.length > 0) {
+          toast.error("Já existe um cliente com este CNPJ.");
+          setSaving(false);
+          return;
+        }
+      }
+
       const payload: any = {
         full_name: fullName,
         cnpj: cnpj || null,
@@ -152,7 +168,13 @@ export const ClienteCrossDialog = ({ open, onOpenChange, panelId, firstStageId, 
       onSaved(saved);
       onOpenChange(false);
     } catch (e: any) {
-      toast.error(e?.message || "Erro ao salvar cliente");
+      const msg = String(e?.message || "");
+      if (msg.includes("representative_cards_panel_cnpj_uniq")) {
+        toast.error("Já existe um cliente com este CNPJ.");
+      } else {
+        toast.error(msg || "Erro ao salvar cliente");
+      }
+
     } finally {
       setSaving(false);
     }
