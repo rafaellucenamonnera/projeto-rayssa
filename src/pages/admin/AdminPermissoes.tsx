@@ -195,7 +195,7 @@ const AdminPermissoes = () => {
       .from("module_permissions")
       .upsert(updates, { onConflict: "user_id,modulo,acao" });
     if (error) {
-      toast.error("Não foi possível salvar as permissões.");
+      toast.error(`Não foi possível salvar as permissões de módulos: ${error.message || "erro desconhecido"}`);
       setSaving(false);
       return;
     }
@@ -208,19 +208,22 @@ const AdminPermissoes = () => {
     const { error: panelError } = await (supabase as any)
       .from("user_panel_permissions")
       .upsert(panelRows, { onConflict: "user_id,panel_id" });
-
-    const { data: responsibleData, error: responsibleError } = await supabase.functions.invoke("admin-create-user", {
-      method: "PATCH",
-      body: {
-        user_id: selectedUserId,
-        can_be_responsible: canBeResponsible,
-      },
-    });
-    if (panelError || responsibleError || responsibleData?.error) {
-      toast.error("Não foi possível salvar as permissões.");
+    if (panelError) {
+      toast.error(`Não foi possível salvar as permissões por painel: ${panelError.message || "erro desconhecido"}`);
       setSaving(false);
       return;
     }
+
+    // Grava a marcação de responsável direto no perfil (admin tem permissão via RLS).
+    const { error: responsibleError } = await (supabase as any)
+      .from("profiles")
+      .update({ can_be_responsible: canBeResponsible })
+      .eq("user_id", selectedUserId);
+    if (responsibleError) {
+      console.error("[AdminPermissoes] Falha ao atualizar can_be_responsible", responsibleError);
+      toast.warning("Permissões salvas, mas não foi possível atualizar 'Responsáveis por tarefas'.");
+    }
+
     await (supabase as any).from("permission_change_logs").insert(
       updates.map((u) => ({
         user_id: u.user_id,
