@@ -168,7 +168,13 @@ export const ClienteCrossDialog = ({ open, onOpenChange, panelId, firstStageId, 
       onSaved(saved);
       onOpenChange(false);
     } catch (e: any) {
-      toast.error(e?.message || "Erro ao salvar cliente");
+      const msg = String(e?.message || "");
+      if (msg.includes("representative_cards_panel_cnpj_uniq")) {
+        toast.error("Já existe um cliente com este CNPJ.");
+      } else {
+        toast.error(msg || "Erro ao salvar cliente");
+      }
+
     } finally {
       setSaving(false);
     }
