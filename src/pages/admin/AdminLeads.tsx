@@ -35,6 +35,7 @@ import {
 import { LeadContatos } from "@/components/admin/LeadContatos";
 import { LeadTasks } from "@/components/admin/LeadTasks";
 import { AmbassadorCardTasks } from "@/components/admin/AmbassadorCardTasks";
+import { AmbassadorLinksSection } from "@/components/admin/AmbassadorLinksSection";
 import { DaysInStage } from "@/components/admin/DaysInStage";
 import { PipelineKanban } from "@/components/admin/PipelineKanban";
 import { TesteMonneraSection } from "@/components/admin/TesteMonneraSection";
