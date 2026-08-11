@@ -2844,6 +2844,18 @@ const AdminLeads = () => {
                 </div>
               )}
 
+              {isAmbassadorPanel && (() => {
+                const partner = parceirosAll.find((item: any) => item.id === detailLead.parceiro_id) as any;
+                return (
+                  <AmbassadorLinksSection
+                    parceiroId={detailLead.parceiro_id}
+                    codigoParceiro={detailLead.partner_code || partner?.codigo_parceiro}
+                    slugConsultor={partner?.slug_consultor}
+                    canEdit={isAdmin}
+                  />
+                );
+              })()}
+
               {/* Pipeline Status */}
               <div className="border-t border-border pt-4">
                 <h3 className="text-sm font-semibold mb-3">Pipeline</h3>
