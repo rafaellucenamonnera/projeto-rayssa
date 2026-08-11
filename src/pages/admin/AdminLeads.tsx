@@ -35,6 +35,7 @@ import {
 import { LeadContatos } from "@/components/admin/LeadContatos";
 import { LeadTasks } from "@/components/admin/LeadTasks";
 import { AmbassadorCardTasks } from "@/components/admin/AmbassadorCardTasks";
+import { AmbassadorLinksSection } from "@/components/admin/AmbassadorLinksSection";
 import { DaysInStage } from "@/components/admin/DaysInStage";
 import { PipelineKanban } from "@/components/admin/PipelineKanban";
 import { TesteMonneraSection } from "@/components/admin/TesteMonneraSection";
@@ -2843,6 +2844,18 @@ const AdminLeads = () => {
                   )}
                 </div>
               )}
+
+              {isAmbassadorPanel && (() => {
+                const partner = parceirosAll.find((item: any) => item.id === detailLead.parceiro_id) as any;
+                return (
+                  <AmbassadorLinksSection
+                    parceiroId={detailLead.parceiro_id}
+                    codigoParceiro={detailLead.partner_code || partner?.codigo_parceiro}
+                    slugConsultor={partner?.slug_consultor}
+                    canEdit={isAdmin}
+                  />
+                );
+              })()}
 
               {/* Pipeline Status */}
               <div className="border-t border-border pt-4">
