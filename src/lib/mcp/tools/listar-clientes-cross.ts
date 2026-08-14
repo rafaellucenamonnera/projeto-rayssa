@@ -91,6 +91,8 @@ export default defineTool({
       vendedor_telefone: c.vendor_phone,
       stage_id: c.stage_id,
       stage_label: labels.get(c.stage_id) ?? c.stage_id,
+      etapa: labels.get(c.stage_id) ?? c.stage_id,
+
       anotacoes: c.notes,
       responsavel_user_id: c.responsible_user_id,
       created_at: c.created_at,
