@@ -18,7 +18,7 @@ export interface CardAttachment {
 export const validateAttachment = (file: File): string | null => {
   const ext = file.name.split(".").pop()?.toLowerCase() || "";
   if (!ALLOWED_ATTACHMENT_EXTENSIONS.includes(ext)) {
-    return `Formato não permitido em "${file.name}". Use PDF, Excel (xls/xlsx/csv) ou imagem (jpg/png).`;
+    return `Formato não permitido em "${file.name}". Use PDF, Word (doc/docx), Excel (xls/xlsx/csv) ou imagem (jpg/png).`;
   }
   if (file.size > MAX_ATTACHMENT_BYTES) {
     return `O arquivo "${file.name}" excede o limite de 10 MB.`;
