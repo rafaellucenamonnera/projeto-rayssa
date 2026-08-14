@@ -566,9 +566,11 @@ import { defineTool as defineTool14 } from "npm:@lovable.dev/mcp-js@0.26.2";
 import { z as z12 } from "npm:zod@^3.25.76";
 var BUCKET = "representative-card-attachments";
 var MAX_BYTES = 10 * 1024 * 1024;
-var ALLOWED = ["pdf", "xls", "xlsx", "csv", "jpg", "jpeg", "png"];
+var ALLOWED = ["pdf", "xls", "xlsx", "csv", "jpg", "jpeg", "png", "doc", "docx"];
 var MIME = {
   pdf: "application/pdf",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   xls: "application/vnd.ms-excel",
   xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   csv: "text/csv",

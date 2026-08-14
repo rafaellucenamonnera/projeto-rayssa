@@ -5,10 +5,12 @@ import { CROSS_PANEL_ID, fail, ok, requireAuth } from "../helpers";
 
 const BUCKET = "representative-card-attachments";
 const MAX_BYTES = 10 * 1024 * 1024;
-const ALLOWED = ["pdf", "xls", "xlsx", "csv", "jpg", "jpeg", "png"];
+const ALLOWED = ["pdf", "xls", "xlsx", "csv", "jpg", "jpeg", "png", "doc", "docx"];
 
 const MIME: Record<string, string> = {
   pdf: "application/pdf",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   xls: "application/vnd.ms-excel",
   xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   csv: "text/csv",
