@@ -31,7 +31,7 @@ export default defineTool({
   name: "anexar_arquivo_cliente_cross",
   title: "Anexar arquivo ao cliente do painel Onb Clientes Cross",
   description:
-    "Envia um anexo (PDF, Excel/CSV ou imagem JPG/PNG, até 10 MB) para um card do painel Onb Clientes Cross. O conteúdo do arquivo deve vir em base64. Arquivos idênticos já anexados no card não são duplicados (verificação por hash SHA-256).",
+    "Envia um anexo (PDF, Word doc/docx, Excel/CSV ou imagem JPG/PNG, até 10 MB) para um card do painel Onb Clientes Cross. O conteúdo do arquivo deve vir em base64. Arquivos idênticos já anexados no card não são duplicados (verificação por hash SHA-256).",
   inputSchema: {
     card_id: z.string().describe("UUID do card do cliente."),
     file_name: z.string().describe("Nome do arquivo com extensão, ex.: contrato.pdf."),
