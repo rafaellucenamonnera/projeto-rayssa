@@ -586,7 +586,7 @@ function decodeBase64(input) {
 var anexar_arquivo_cliente_cross_default = defineTool14({
   name: "anexar_arquivo_cliente_cross",
   title: "Anexar arquivo ao cliente do painel Onb Clientes Cross",
-  description: "Envia um anexo (PDF, Excel/CSV ou imagem JPG/PNG, at\xE9 10 MB) para um card do painel Onb Clientes Cross. O conte\xFAdo do arquivo deve vir em base64.",
+  description: "Envia um anexo (PDF, Excel/CSV ou imagem JPG/PNG, at\xE9 10 MB) para um card do painel Onb Clientes Cross. O conte\xFAdo do arquivo deve vir em base64. Arquivos id\xEAnticos j\xE1 anexados no card n\xE3o s\xE3o duplicados (verifica\xE7\xE3o por hash SHA-256).",
   inputSchema: {
     card_id: z12.string().describe("UUID do card do cliente."),
     file_name: z12.string().describe("Nome do arquivo com extens\xE3o, ex.: contrato.pdf."),
@@ -608,9 +608,15 @@ var anexar_arquivo_cliente_cross_default = defineTool14({
     }
     if (!bytes.length) return fail("O arquivo est\xE1 vazio.");
     if (bytes.length > MAX_BYTES) return fail("O arquivo excede o limite de 10 MB.");
+    const digest = await crypto.subtle.digest("SHA-256", bytes.slice().buffer);
+    const hash = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
     const { data: card, error: cardError } = await supabase.from("representative_cards").select("id").eq("id", card_id).eq("panel_id", CROSS_PANEL_ID).maybeSingle();
     if (cardError) return fail(cardError.message);
     if (!card) return fail("Card n\xE3o encontrado no painel Onb Clientes Cross ou sem permiss\xE3o de acesso.");
+    const { data: existente } = await supabase.from("representative_card_attachments").select("id, file_name, size_bytes, created_at").eq("representative_card_id", card_id).eq("content_sha256", hash).maybeSingle();
+    if (existente) {
+      return ok({ anexado: false, duplicado: true, hash, anexo: existente });
+    }
     const safeName = file_name.replace(/[^\w.\-]+/g, "_");
     const path = `${card_id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName}`;
     const contentType = MIME[ext] ?? "application/octet-stream";
@@ -622,13 +628,14 @@ var anexar_arquivo_cliente_cross_default = defineTool14({
       file_name,
       mime_type: contentType,
       size_bytes: bytes.length,
-      created_by: userId
+      created_by: userId,
+      content_sha256: hash
     }).select("id, file_name, size_bytes, created_at").single();
     if (error) {
       await supabase.storage.from(BUCKET).remove([path]);
       return fail(error.message);
     }
-    return ok({ anexado: true, anexo: data });
+    return ok({ anexado: true, duplicado: false, hash, anexo: data });
   }
 });
 
@@ -649,7 +656,7 @@ var listar_anexos_cliente_cross_default = defineTool15({
     const supabase = supabaseForUser(ctx);
     const { data: card } = await supabase.from("representative_cards").select("id").eq("id", card_id).eq("panel_id", CROSS_PANEL_ID).maybeSingle();
     if (!card) return fail("Card n\xE3o encontrado no painel Onb Clientes Cross ou sem permiss\xE3o de acesso.");
-    const { data, error } = await supabase.from("representative_card_attachments").select("id, file_name, mime_type, size_bytes, storage_path, created_at").eq("representative_card_id", card_id).order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("representative_card_attachments").select("id, file_name, mime_type, size_bytes, storage_path, content_sha256, created_at").eq("representative_card_id", card_id).order("created_at", { ascending: false });
     if (error) return fail(error.message);
     const anexos = await Promise.all(
       (data ?? []).map(async (a) => {
@@ -660,11 +667,235 @@ var listar_anexos_cliente_cross_default = defineTool15({
           mime_type: a.mime_type,
           size_bytes: a.size_bytes,
           created_at: a.created_at,
+          hash_sha256: a.content_sha256,
           url: signed?.signedUrl ?? null
         };
       })
     );
     return ok({ total: anexos.length, anexos });
+  }
+});
+
+// src/lib/mcp/tools/listar-clientes-cross.ts
+import { defineTool as defineTool16 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z14 } from "npm:zod@^3.25.76";
+var listar_clientes_cross_default = defineTool16({
+  name: "listar_clientes_cross",
+  title: "Listar clientes do painel Onb Clientes Cross",
+  description: "Busca cards de cliente do painel Onb Clientes Cross por CNPJ, nome do parceiro, focal, contratante Monnera ou vendedor, com filtro opcional por etapa.",
+  inputSchema: {
+    busca: z14.string().optional().describe("Texto livre: CNPJ, nome do parceiro, focal, contratante ou vendedor."),
+    etapa: z14.string().optional().describe("Filtra por stage_id da etapa."),
+    limite: z14.number().int().optional().describe("Quantidade de registros (padr\xE3o 25, m\xE1ximo 100)."),
+    offset: z14.number().int().optional().describe("Deslocamento para pagina\xE7\xE3o.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ busca, etapa, limite, offset }, ctx) => {
+    requireAuth(ctx);
+    const supabase = supabaseForUser(ctx);
+    const take = Math.min(Math.max(limite ?? 25, 1), 100);
+    const skip = Math.max(offset ?? 0, 0);
+    let query = supabase.from("representative_cards").select(
+      "id, full_name, cnpj, stage_id, focal_name, focal_phone, focal_email, contratante_monnera, vendor_name, responsible_user_id, updated_at",
+      { count: "exact" }
+    ).eq("panel_id", CROSS_PANEL_ID).order("updated_at", { ascending: false }).range(skip, skip + take - 1);
+    if (etapa) query = query.eq("stage_id", etapa);
+    if (busca?.trim()) {
+      const termo = busca.trim();
+      const digits = onlyDigits(termo);
+      const like = `%${termo}%`;
+      const filtros = [
+        `full_name.ilike.${like}`,
+        `focal_name.ilike.${like}`,
+        `focal_email.ilike.${like}`,
+        `contratante_monnera.ilike.${like}`,
+        `vendor_name.ilike.${like}`,
+        `vendor_email.ilike.${like}`
+      ];
+      if (digits) filtros.push(`cnpj.ilike.%${digits}%`);
+      query = query.or(filtros.join(","));
+    }
+    const { data, error, count } = await query;
+    if (error) return fail(error.message);
+    const { data: stages } = await supabase.from("pipeline_stages_config").select("value, label").eq("panel_key", CROSS_PANEL_ID);
+    const labels = new Map((stages ?? []).map((s) => [s.value, s.label]));
+    const clientes = (data ?? []).map((c) => ({
+      ...c,
+      etapa_label: labels.get(c.stage_id) ?? c.stage_id
+    }));
+    return ok({ total: count ?? clientes.length, retornados: clientes.length, clientes });
+  }
+});
+
+// src/lib/mcp/tools/obter-cliente-cross.ts
+import { defineTool as defineTool17 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z15 } from "npm:zod@^3.25.76";
+var obter_cliente_cross_default = defineTool17({
+  name: "obter_cliente_cross",
+  title: "Detalhe do cliente Onb Clientes Cross",
+  description: "Retorna o card completo de um cliente do painel Onb Clientes Cross, com etapa, coment\xE1rios, tarefas e anexos.",
+  inputSchema: {
+    card_id: z15.string().describe("UUID do card do cliente.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ card_id }, ctx) => {
+    requireAuth(ctx);
+    const supabase = supabaseForUser(ctx);
+    const { data: card, error } = await supabase.from("representative_cards").select("*").eq("id", card_id).eq("panel_id", CROSS_PANEL_ID).maybeSingle();
+    if (error) return fail(error.message);
+    if (!card) return fail("Card n\xE3o encontrado no painel Onb Clientes Cross ou sem permiss\xE3o de acesso.");
+    const [{ data: stage }, { data: comentarios }, { data: tarefas }, { data: anexos }] = await Promise.all([
+      supabase.from("pipeline_stages_config").select("value, label, sort_order").eq("panel_key", CROSS_PANEL_ID).eq("value", card.stage_id).maybeSingle(),
+      supabase.from("representative_card_comments").select("id, usuario, comentario, etapa, data_comentario").eq("representative_card_id", card_id).order("data_comentario", { ascending: false }).limit(50),
+      supabase.from("representative_card_tasks").select("id, titulo, due_at, assigned_to, status, completed_at, completed_note").eq("representative_card_id", card_id).order("due_at", { ascending: true }),
+      supabase.from("representative_card_attachments").select("id, file_name, mime_type, size_bytes, content_sha256, created_at").eq("representative_card_id", card_id).order("created_at", { ascending: false })
+    ]);
+    return ok({
+      cliente: card,
+      etapa: stage ? { stage_id: stage.value, label: stage.label, ordem: stage.sort_order } : { stage_id: card.stage_id },
+      comentarios: comentarios ?? [],
+      tarefas: tarefas ?? [],
+      anexos: anexos ?? []
+    });
+  }
+});
+
+// src/lib/mcp/tools/listar-etapas-cross.ts
+import { defineTool as defineTool18 } from "npm:@lovable.dev/mcp-js@0.26.2";
+var listar_etapas_cross_default = defineTool18({
+  name: "listar_etapas_cross",
+  title: "Listar etapas do painel Onb Clientes Cross",
+  description: 'Lista todas as etapas do painel Onb Clientes Cross (stage_id, r\xF3tulo e ordem), incluindo "Aguardando Informa\xE7\xF5es".',
+  inputSchema: {},
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async (_input, ctx) => {
+    requireAuth(ctx);
+    const supabase = supabaseForUser(ctx);
+    const { data, error } = await supabase.from("pipeline_stages_config").select("value, label, sort_order").eq("panel_key", CROSS_PANEL_ID).order("sort_order");
+    if (error) return fail(error.message);
+    return ok({
+      panel_id: CROSS_PANEL_ID,
+      etapas: (data ?? []).map((s) => ({ stage_id: s.value, label: s.label, ordem: s.sort_order }))
+    });
+  }
+});
+
+// src/lib/mcp/tools/adicionar-comentario-cliente-cross.ts
+import { defineTool as defineTool19 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z16 } from "npm:zod@^3.25.76";
+var adicionar_comentario_cliente_cross_default = defineTool19({
+  name: "adicionar_comentario_cliente_cross",
+  title: "Adicionar coment\xE1rio no cliente Onb Clientes Cross",
+  description: "Registra um coment\xE1rio no hist\xF3rico de um card do painel Onb Clientes Cross, na etapa atual do card.",
+  inputSchema: {
+    card_id: z16.string().describe("UUID do card do cliente."),
+    comentario: z16.string().describe("Texto do coment\xE1rio.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  handler: async ({ card_id, comentario }, ctx) => {
+    const userId = requireAuth(ctx);
+    const supabase = supabaseForUser(ctx);
+    const texto = comentario.trim();
+    if (!texto) return fail("O coment\xE1rio n\xE3o pode ficar vazio.");
+    const { data: card, error: cardError } = await supabase.from("representative_cards").select("id, stage_id").eq("id", card_id).eq("panel_id", CROSS_PANEL_ID).maybeSingle();
+    if (cardError) return fail(cardError.message);
+    if (!card) return fail("Card n\xE3o encontrado no painel Onb Clientes Cross ou sem permiss\xE3o de acesso.");
+    const { data: profile } = await supabase.from("profiles").select("nome").eq("user_id", userId).maybeSingle();
+    const { data, error } = await supabase.from("representative_card_comments").insert({
+      representative_card_id: card_id,
+      user_id: userId,
+      etapa: card.stage_id,
+      usuario: profile?.nome ?? ctx.getUserEmail() ?? "Agente",
+      comentario: texto
+    }).select("id, comentario, data_comentario").single();
+    if (error) return fail(error.message);
+    return ok({ criado: true, comentario: data });
+  }
+});
+
+// src/lib/mcp/tools/listar-comentarios-cliente-cross.ts
+import { defineTool as defineTool20 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z17 } from "npm:zod@^3.25.76";
+var listar_comentarios_cliente_cross_default = defineTool20({
+  name: "listar_comentarios_cliente_cross",
+  title: "Listar hist\xF3rico do cliente Onb Clientes Cross",
+  description: "Lista os coment\xE1rios (hist\xF3rico) de um card do painel Onb Clientes Cross, do mais recente para o mais antigo.",
+  inputSchema: {
+    card_id: z17.string().describe("UUID do card do cliente."),
+    limite: z17.number().int().optional().describe("Quantidade de coment\xE1rios (padr\xE3o 50, m\xE1ximo 200).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ card_id, limite }, ctx) => {
+    requireAuth(ctx);
+    const supabase = supabaseForUser(ctx);
+    const { data: card } = await supabase.from("representative_cards").select("id").eq("id", card_id).eq("panel_id", CROSS_PANEL_ID).maybeSingle();
+    if (!card) return fail("Card n\xE3o encontrado no painel Onb Clientes Cross ou sem permiss\xE3o de acesso.");
+    const take = Math.min(Math.max(limite ?? 50, 1), 200);
+    const { data, error } = await supabase.from("representative_card_comments").select("id, usuario, comentario, etapa, data_comentario").eq("representative_card_id", card_id).order("data_comentario", { ascending: false }).limit(take);
+    if (error) return fail(error.message);
+    return ok({ total: data?.length ?? 0, comentarios: data ?? [] });
+  }
+});
+
+// src/lib/mcp/tools/criar-tarefa-cliente-cross.ts
+import { defineTool as defineTool21 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z18 } from "npm:zod@^3.25.76";
+var criar_tarefa_cliente_cross_default = defineTool21({
+  name: "criar_tarefa_cliente_cross",
+  title: "Criar tarefa no cliente Onb Clientes Cross",
+  description: "Cria uma tarefa vinculada a um card do painel Onb Clientes Cross, com prazo e respons\xE1vel.",
+  inputSchema: {
+    card_id: z18.string().describe("UUID do card do cliente."),
+    titulo: z18.string().describe("T\xEDtulo da tarefa."),
+    due_at: z18.string().describe("Prazo em ISO 8601, ex.: 2026-08-20T14:00:00Z."),
+    assigned_to: z18.string().optional().describe("UUID do respons\xE1vel (padr\xE3o: usu\xE1rio autenticado).")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  handler: async ({ card_id, titulo, due_at, assigned_to }, ctx) => {
+    const userId = requireAuth(ctx);
+    const supabase = supabaseForUser(ctx);
+    const texto = titulo.trim();
+    if (!texto) return fail("Informe o t\xEDtulo da tarefa.");
+    const prazo = new Date(due_at);
+    if (Number.isNaN(prazo.getTime())) return fail("Prazo inv\xE1lido. Use o formato ISO 8601.");
+    const { data: card, error: cardError } = await supabase.from("representative_cards").select("id").eq("id", card_id).eq("panel_id", CROSS_PANEL_ID).maybeSingle();
+    if (cardError) return fail(cardError.message);
+    if (!card) return fail("Card n\xE3o encontrado no painel Onb Clientes Cross ou sem permiss\xE3o de acesso.");
+    const { data, error } = await supabase.from("representative_card_tasks").insert({
+      representative_card_id: card_id,
+      titulo: texto,
+      due_at: prazo.toISOString(),
+      assigned_to: assigned_to ?? userId,
+      status: "pendente",
+      created_by: userId
+    }).select("id, titulo, due_at, assigned_to, status").single();
+    if (error) return fail(error.message);
+    return ok({ criada: true, tarefa: data });
+  }
+});
+
+// src/lib/mcp/tools/listar-tarefas-cliente-cross.ts
+import { defineTool as defineTool22 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z19 } from "npm:zod@^3.25.76";
+var listar_tarefas_cliente_cross_default = defineTool22({
+  name: "listar_tarefas_cliente_cross",
+  title: "Listar tarefas do cliente Onb Clientes Cross",
+  description: "Lista as tarefas de um card do painel Onb Clientes Cross, com prazo, respons\xE1vel e status.",
+  inputSchema: {
+    card_id: z19.string().describe("UUID do card do cliente."),
+    status: z19.enum(["pendente", "concluida", "todas"]).optional().describe("Filtro de status (padr\xE3o: todas).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ card_id, status }, ctx) => {
+    requireAuth(ctx);
+    const supabase = supabaseForUser(ctx);
+    const { data: card } = await supabase.from("representative_cards").select("id").eq("id", card_id).eq("panel_id", CROSS_PANEL_ID).maybeSingle();
+    if (!card) return fail("Card n\xE3o encontrado no painel Onb Clientes Cross ou sem permiss\xE3o de acesso.");
+    let query = supabase.from("representative_card_tasks").select("id, titulo, due_at, assigned_to, status, completed_at, completed_note, created_at").eq("representative_card_id", card_id).order("due_at", { ascending: true });
+    if (status && status !== "todas") query = query.eq("status", status);
+    const { data, error } = await query;
+    if (error) return fail(error.message);
+    return ok({ total: data?.length ?? 0, tarefas: data ?? [] });
   }
 });
 
@@ -674,7 +905,7 @@ var mcp_default = defineMcp({
   name: "monnera-parceiros",
   title: "Monnera Parceiros",
   version: "0.1.0",
-  instructions: 'Ferramentas do CRM Monnera Parceiros. Use listar_paineis para descobrir pain\xE9is e etapas, listar_embaixadores para obter o parceiro_id antes de criar um lead e listar_responsaveis para definir respons\xE1veis. Cards de lead vivem no painel comercial; clientes do painel Onb Clientes Cross usam as ferramentas *_cliente_cross \u2014 inclusive mover_cliente_cross_etapa (aceita o r\xF3tulo da etapa, ex.: "Aguardando Informa\xE7\xF5es") e anexar_arquivo_cliente_cross para upload de anexos em base64. Todas as a\xE7\xF5es respeitam as permiss\xF5es do usu\xE1rio autenticado.',
+  instructions: 'Ferramentas do CRM Monnera Parceiros. Use listar_paineis para descobrir pain\xE9is e etapas, listar_embaixadores para obter o parceiro_id antes de criar um lead e listar_responsaveis para definir respons\xE1veis. Cards de lead vivem no painel comercial; clientes do painel Onb Clientes Cross usam as ferramentas *_cliente_cross \u2014 inclusive mover_cliente_cross_etapa (aceita o r\xF3tulo da etapa, ex.: "Aguardando Informa\xE7\xF5es") e anexar_arquivo_cliente_cross para upload de anexos em base64. Para o painel Onb Clientes Cross use listar_clientes_cross e obter_cliente_cross para localizar cards, listar_etapas_cross para descobrir stage_ids, e as ferramentas de coment\xE1rio, tarefa e anexo espec\xEDficas desse painel. Todas as a\xE7\xF5es respeitam as permiss\xF5es do usu\xE1rio autenticado.',
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
@@ -694,7 +925,14 @@ var mcp_default = defineMcp({
     atualizar_cliente_cross_default,
     mover_cliente_cross_etapa_default,
     anexar_arquivo_cliente_cross_default,
-    listar_anexos_cliente_cross_default
+    listar_anexos_cliente_cross_default,
+    listar_clientes_cross_default,
+    obter_cliente_cross_default,
+    listar_etapas_cross_default,
+    adicionar_comentario_cliente_cross_default,
+    listar_comentarios_cliente_cross_default,
+    criar_tarefa_cliente_cross_default,
+    listar_tarefas_cliente_cross_default
   ]
 });
 

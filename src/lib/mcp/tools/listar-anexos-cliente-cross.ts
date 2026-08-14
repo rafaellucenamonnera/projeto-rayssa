@@ -27,7 +27,7 @@ export default defineTool({
 
     const { data, error } = await supabase
       .from("representative_card_attachments")
-      .select("id, file_name, mime_type, size_bytes, storage_path, created_at")
+      .select("id, file_name, mime_type, size_bytes, storage_path, content_sha256, created_at")
       .eq("representative_card_id", card_id)
       .order("created_at", { ascending: false });
     if (error) return fail(error.message);
@@ -43,6 +43,7 @@ export default defineTool({
           mime_type: a.mime_type,
           size_bytes: a.size_bytes,
           created_at: a.created_at,
+          hash_sha256: a.content_sha256,
           url: signed?.signedUrl ?? null,
         };
       }),

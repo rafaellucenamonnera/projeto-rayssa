@@ -29,7 +29,7 @@ export default defineTool({
   name: "anexar_arquivo_cliente_cross",
   title: "Anexar arquivo ao cliente do painel Onb Clientes Cross",
   description:
-    "Envia um anexo (PDF, Excel/CSV ou imagem JPG/PNG, até 10 MB) para um card do painel Onb Clientes Cross. O conteúdo do arquivo deve vir em base64.",
+    "Envia um anexo (PDF, Excel/CSV ou imagem JPG/PNG, até 10 MB) para um card do painel Onb Clientes Cross. O conteúdo do arquivo deve vir em base64. Arquivos idênticos já anexados no card não são duplicados (verificação por hash SHA-256).",
   inputSchema: {
     card_id: z.string().describe("UUID do card do cliente."),
     file_name: z.string().describe("Nome do arquivo com extensão, ex.: contrato.pdf."),
@@ -54,6 +54,11 @@ export default defineTool({
     if (!bytes.length) return fail("O arquivo está vazio.");
     if (bytes.length > MAX_BYTES) return fail("O arquivo excede o limite de 10 MB.");
 
+    const digest = await crypto.subtle.digest("SHA-256", bytes.slice().buffer as ArrayBuffer);
+    const hash = Array.from(new Uint8Array(digest))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
     const { data: card, error: cardError } = await supabase
       .from("representative_cards")
       .select("id")
@@ -62,6 +67,16 @@ export default defineTool({
       .maybeSingle();
     if (cardError) return fail(cardError.message);
     if (!card) return fail("Card não encontrado no painel Onb Clientes Cross ou sem permissão de acesso.");
+
+    const { data: existente } = await supabase
+      .from("representative_card_attachments")
+      .select("id, file_name, size_bytes, created_at")
+      .eq("representative_card_id", card_id)
+      .eq("content_sha256", hash)
+      .maybeSingle();
+    if (existente) {
+      return ok({ anexado: false, duplicado: true, hash, anexo: existente });
+    }
 
     const safeName = file_name.replace(/[^\w.\-]+/g, "_");
     const path = `${card_id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName}`;
@@ -81,6 +96,7 @@ export default defineTool({
         mime_type: contentType,
         size_bytes: bytes.length,
         created_by: userId,
+        content_sha256: hash,
       })
       .select("id, file_name, size_bytes, created_at")
       .single();
@@ -89,6 +105,6 @@ export default defineTool({
       await supabase.storage.from(BUCKET).remove([path]);
       return fail(error.message);
     }
-    return ok({ anexado: true, anexo: data });
+    return ok({ anexado: true, duplicado: false, hash, anexo: data });
   },
 });

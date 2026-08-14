@@ -534,7 +534,7 @@
       {
         "name": "anexar_arquivo_cliente_cross",
         "title": "Anexar arquivo ao cliente do painel Onb Clientes Cross",
-        "description": "Envia um anexo (PDF, Excel/CSV ou imagem JPG/PNG, até 10 MB) para um card do painel Onb Clientes Cross. O conteúdo do arquivo deve vir em base64.",
+        "description": "Envia um anexo (PDF, Excel/CSV ou imagem JPG/PNG, até 10 MB) para um card do painel Onb Clientes Cross. O conteúdo do arquivo deve vir em base64. Arquivos idênticos já anexados no card não são duplicados (verificação por hash SHA-256).",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
@@ -581,6 +581,213 @@
             "card_id": {
               "type": "string",
               "description": "UUID do card do cliente."
+            }
+          },
+          "required": [
+            "card_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "listar_clientes_cross",
+        "title": "Listar clientes do painel Onb Clientes Cross",
+        "description": "Busca cards de cliente do painel Onb Clientes Cross por CNPJ, nome do parceiro, focal, contratante Monnera ou vendedor, com filtro opcional por etapa.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "busca": {
+              "type": "string",
+              "description": "Texto livre: CNPJ, nome do parceiro, focal, contratante ou vendedor."
+            },
+            "etapa": {
+              "type": "string",
+              "description": "Filtra por stage_id da etapa."
+            },
+            "limite": {
+              "type": "integer",
+              "description": "Quantidade de registros (padrão 25, máximo 100)."
+            },
+            "offset": {
+              "type": "integer",
+              "description": "Deslocamento para paginação."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "obter_cliente_cross",
+        "title": "Detalhe do cliente Onb Clientes Cross",
+        "description": "Retorna o card completo de um cliente do painel Onb Clientes Cross, com etapa, comentários, tarefas e anexos.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "card_id": {
+              "type": "string",
+              "description": "UUID do card do cliente."
+            }
+          },
+          "required": [
+            "card_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "listar_etapas_cross",
+        "title": "Listar etapas do painel Onb Clientes Cross",
+        "description": "Lista todas as etapas do painel Onb Clientes Cross (stage_id, rótulo e ordem), incluindo \"Aguardando Informações\".",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "adicionar_comentario_cliente_cross",
+        "title": "Adicionar comentário no cliente Onb Clientes Cross",
+        "description": "Registra um comentário no histórico de um card do painel Onb Clientes Cross, na etapa atual do card.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "card_id": {
+              "type": "string",
+              "description": "UUID do card do cliente."
+            },
+            "comentario": {
+              "type": "string",
+              "description": "Texto do comentário."
+            }
+          },
+          "required": [
+            "card_id",
+            "comentario"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "listar_comentarios_cliente_cross",
+        "title": "Listar histórico do cliente Onb Clientes Cross",
+        "description": "Lista os comentários (histórico) de um card do painel Onb Clientes Cross, do mais recente para o mais antigo.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "card_id": {
+              "type": "string",
+              "description": "UUID do card do cliente."
+            },
+            "limite": {
+              "type": "integer",
+              "description": "Quantidade de comentários (padrão 50, máximo 200)."
+            }
+          },
+          "required": [
+            "card_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "criar_tarefa_cliente_cross",
+        "title": "Criar tarefa no cliente Onb Clientes Cross",
+        "description": "Cria uma tarefa vinculada a um card do painel Onb Clientes Cross, com prazo e responsável.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "card_id": {
+              "type": "string",
+              "description": "UUID do card do cliente."
+            },
+            "titulo": {
+              "type": "string",
+              "description": "Título da tarefa."
+            },
+            "due_at": {
+              "type": "string",
+              "description": "Prazo em ISO 8601, ex.: 2026-08-20T14:00:00Z."
+            },
+            "assigned_to": {
+              "type": "string",
+              "description": "UUID do responsável (padrão: usuário autenticado)."
+            }
+          },
+          "required": [
+            "card_id",
+            "titulo",
+            "due_at"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "listar_tarefas_cliente_cross",
+        "title": "Listar tarefas do cliente Onb Clientes Cross",
+        "description": "Lista as tarefas de um card do painel Onb Clientes Cross, com prazo, responsável e status.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "card_id": {
+              "type": "string",
+              "description": "UUID do card do cliente."
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "pendente",
+                "concluida",
+                "todas"
+              ],
+              "description": "Filtro de status (padrão: todas)."
             }
           },
           "required": [
