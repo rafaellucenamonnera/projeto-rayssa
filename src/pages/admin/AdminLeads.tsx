@@ -25,6 +25,7 @@ import { AgendarReuniaoDialog } from "@/components/admin/AgendarReuniaoDialog";
 import { CadastroFinanceiroDialog } from "@/components/admin/CadastroFinanceiroDialog";
 import { LeadComments } from "@/components/admin/LeadComments";
 import { AmbassadorCardComments } from "@/components/admin/AmbassadorCardComments";
+import { RepresentativeCardComments } from "@/components/admin/RepresentativeCardComments";
 import { LeadReuniao } from "@/components/admin/LeadReuniao";
 import LeadProposalsHistory from "@/components/admin/LeadProposalsHistory";
 import {
