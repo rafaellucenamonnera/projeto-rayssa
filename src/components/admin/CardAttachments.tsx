@@ -90,7 +90,7 @@ export const CardAttachments = ({ cardId, canEdit = true }: CardAttachmentsProps
         type="file"
         multiple
         className="hidden"
-        accept=".pdf,.xls,.xlsx,.csv,.jpg,.jpeg,.png"
+        accept=".pdf,.xls,.xlsx,.csv,.jpg,.jpeg,.png,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         onChange={(e) => handleFiles(e.target.files)}
       />
       {loading ? (
