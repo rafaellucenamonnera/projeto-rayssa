@@ -1765,24 +1765,25 @@ const AdminLeads = () => {
       return toast.error("Usuário autenticado não identificado.");
     }
 
-    if (!usersAll.some((u) => u.user_id === currentUserId)) {
+    const responsibleUserId = (newCardData as any).responsible_user_id || null;
+    if (responsibleUserId && !usersAll.some((u) => u.user_id === responsibleUserId)) {
       setSavingNewCard(false);
-      return toast.error("Seu usuário não possui permissão para ser responsável por cards.");
+      return toast.error("O usuário responsável selecionado não pode ser responsável por cards.");
     }
 
     const payload: any = {
       panel_id: currentPanelId,
       stage_id: firstStage,
       full_name: fullName,
-      phone,
-      email,
+      phone: phone || null,
+      email: email || null,
       city: newCardData.city.trim() || null,
       state: newCardData.state.trim() || null,
       region: newCardData.region.trim() || null,
       cnpj: cnpj || null,
       notes: newCardData.notes.trim() || null,
       source: "Cadastro manual",
-      responsible_user_id: currentUserId,
+      responsible_user_id: responsibleUserId,
       created_by_user_id: currentUserId,
     };
     const { data, error } = await (supabase as any).from(isAmbassadorPanel ? "ambassador_cards" : "representative_cards").insert(payload).select("*").single();
