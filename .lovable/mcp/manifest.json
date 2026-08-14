@@ -594,7 +594,7 @@
       {
         "name": "listar_clientes_cross",
         "title": "Listar clientes do painel Onb Clientes Cross",
-        "description": "Busca cards de cliente do painel Onb Clientes Cross por CNPJ, nome do parceiro, focal, contratante Monnera ou vendedor, com filtro opcional por etapa.",
+        "description": "Lista/busca cards de cliente do painel Onb Clientes Cross por CNPJ, nome do parceiro, focal, contratante Monnera ou vendedor, com filtro opcional por etapa, paginação explícita e detecção de CNPJs duplicados.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -613,11 +613,15 @@
             },
             "limite": {
               "type": "integer",
-              "description": "Quantidade de registros (padrão 25, máximo 100)."
+              "description": "Quantidade de registros (padrão 25, máximo 200)."
             },
             "offset": {
               "type": "integer",
               "description": "Deslocamento para paginação."
+            },
+            "agrupar_por_cnpj": {
+              "type": "boolean",
+              "description": "Se true, retorna também os CNPJs com mais de um card (duplicidades) na página consultada."
             }
           },
           "additionalProperties": false,
