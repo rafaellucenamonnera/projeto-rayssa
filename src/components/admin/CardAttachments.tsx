@@ -76,7 +76,7 @@ export const CardAttachments = ({ cardId, canEdit = true }: CardAttachmentsProps
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground flex items-center gap-1">
-          <Paperclip className="h-3.5 w-3.5" /> Documentos anexados
+          <Paperclip className="h-3.5 w-3.5" /> Documentos anexados (PDF, Word, Excel/CSV, JPG/PNG — máx. 10 MB)
         </p>
         {canEdit && (
           <Button size="sm" variant="outline" disabled={uploading} onClick={() => inputRef.current?.click()}>
