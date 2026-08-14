@@ -59,6 +59,8 @@ const AdminLogin = () => {
 
       if (profile?.primeiro_acesso) {
         navigate("/primeiro-acesso");
+      } else if (nextPath) {
+        navigate(nextPath);
       } else {
         navigate("/admin");
       }
