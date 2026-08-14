@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const CARD_ATTACHMENTS_BUCKET = "representative-card-attachments";
 export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 
-export const ALLOWED_ATTACHMENT_EXTENSIONS = ["pdf", "xls", "xlsx", "csv", "jpg", "jpeg", "png"];
+export const ALLOWED_ATTACHMENT_EXTENSIONS = ["pdf", "xls", "xlsx", "csv", "jpg", "jpeg", "png", "doc", "docx"];
 
 export interface CardAttachment {
   id: string;
