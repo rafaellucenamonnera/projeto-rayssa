@@ -2006,27 +2006,90 @@ export type Database = {
           },
         ]
       }
+      representative_card_comment_attachments: {
+        Row: {
+          comment_id: string
+          created_at: string
+          created_by: string
+          file_name: string
+          id: string
+          mime_type: string
+          representative_card_id: string
+          size_bytes: number
+          storage_path: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          created_by: string
+          file_name: string
+          id?: string
+          mime_type: string
+          representative_card_id: string
+          size_bytes: number
+          storage_path: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          created_by?: string
+          file_name?: string
+          id?: string
+          mime_type?: string
+          representative_card_id?: string
+          size_bytes?: number
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "representative_card_comment_attachm_representative_card_id_fkey"
+            columns: ["representative_card_id"]
+            isOneToOne: false
+            referencedRelation: "representative_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "representative_card_comment_attachments_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "representative_card_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       representative_card_comments: {
         Row: {
-          comment: string
+          comentario: string | null
+          comment: string | null
           created_at: string
+          data_comentario: string
+          etapa: string | null
           id: string
           representative_card_id: string
           user_id: string
+          usuario: string | null
         }
         Insert: {
-          comment: string
+          comentario?: string | null
+          comment?: string | null
           created_at?: string
+          data_comentario?: string
+          etapa?: string | null
           id?: string
           representative_card_id: string
           user_id: string
+          usuario?: string | null
         }
         Update: {
-          comment?: string
+          comentario?: string | null
+          comment?: string | null
           created_at?: string
+          data_comentario?: string
+          etapa?: string | null
           id?: string
           representative_card_id?: string
           user_id?: string
+          usuario?: string | null
         }
         Relationships: [
           {

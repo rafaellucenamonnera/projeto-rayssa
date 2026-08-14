@@ -25,6 +25,7 @@ import { AgendarReuniaoDialog } from "@/components/admin/AgendarReuniaoDialog";
 import { CadastroFinanceiroDialog } from "@/components/admin/CadastroFinanceiroDialog";
 import { LeadComments } from "@/components/admin/LeadComments";
 import { AmbassadorCardComments } from "@/components/admin/AmbassadorCardComments";
+import { RepresentativeCardComments } from "@/components/admin/RepresentativeCardComments";
 import { LeadReuniao } from "@/components/admin/LeadReuniao";
 import LeadProposalsHistory from "@/components/admin/LeadProposalsHistory";
 import {
@@ -3161,6 +3162,16 @@ const AdminLeads = () => {
                     <AmbassadorCardComments
                       cardId={detailLead.id}
                       currentStage={detailLead.status_lead || detailLead.stage_id || "prospeccao"}
+                      userName={currentUserName}
+                      canInsertMessage={canInsertMessage}
+                      canEditMessage={canEditMessage}
+                      canDeleteMessage={canDeleteMessage}
+                      canInsertFile={canInsertFile}
+                    />
+                  ) : isCustomCrmPanel ? (
+                    <RepresentativeCardComments
+                      cardId={detailLead.id}
+                      currentStage={detailLead.status_lead || detailLead.stage_id || ""}
                       userName={currentUserName}
                       canInsertMessage={canInsertMessage}
                       canEditMessage={canEditMessage}
