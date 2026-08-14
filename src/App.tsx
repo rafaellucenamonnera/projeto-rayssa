@@ -87,6 +87,7 @@ const App = () => (
               <Route path="/indicacao/:slugConsultor" element={<CadastroLead />} />
               <Route path="/completar-cadastro/:token" element={<FormularioConversao />} />
               <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="financeiro" element={<AdminFinanceiro />} />
