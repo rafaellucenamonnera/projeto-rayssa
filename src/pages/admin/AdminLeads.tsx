@@ -2164,7 +2164,7 @@ const AdminLeads = () => {
           </Select>
         ) : isCustomCrmPanel ? (
           <Select value={filterResponsibleUser} onValueChange={setFilterResponsibleUser}>
-            <SelectTrigger><SelectValue placeholder="Responsável" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Responsável (opcional)" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos responsáveis</SelectItem>
               {usersAll.map((u) => (
@@ -2381,7 +2381,7 @@ const AdminLeads = () => {
                     {!isCustomCrmPanel && <th className="text-left py-3 px-4 text-muted-foreground font-medium">Embaixador Monnera</th>}
                     <th className="text-left py-3 px-4 text-muted-foreground font-medium">{isCustomCrmPanel ? "Nome" : "Empresa"}</th>
                     <th className="text-left py-3 px-4 text-muted-foreground font-medium">Cidade</th>
-                    <th className="text-left py-3 px-4 text-muted-foreground font-medium">Responsável</th>
+                    <th className="text-left py-3 px-4 text-muted-foreground font-medium">Responsável (opcional)</th>
                     <th className="text-left py-3 px-4 text-muted-foreground font-medium">Telefone</th>
                     <th className="text-left py-3 px-4 text-muted-foreground font-medium">Pipeline</th>
                     {!isCustomCrmPanel && <th className="text-left py-3 px-4 text-muted-foreground font-medium">Docs</th>}
@@ -2805,7 +2805,7 @@ const AdminLeads = () => {
 
               {/* Responsável */}
               <div className="border-t border-border pt-4">
-                <h3 className="text-sm font-semibold mb-3">Responsável</h3>
+                <h3 className="text-sm font-semibold mb-3">Responsável (opcional)</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="text-muted-foreground text-xs mb-1">Nome</p>
@@ -3286,9 +3286,9 @@ const AdminLeads = () => {
             <DialogTitle>Novo cadastro</DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <Input className="sm:col-span-2" placeholder="Nome completo *" value={newCardData.full_name} onChange={(e) => setNewCardData((p) => ({ ...p, full_name: e.target.value }))} />
-            <Input placeholder="Telefone *" value={newCardData.phone} onChange={(e) => setNewCardData((p) => ({ ...p, phone: e.target.value }))} />
-            <Input placeholder="E-mail *" value={newCardData.email} onChange={(e) => setNewCardData((p) => ({ ...p, email: e.target.value }))} />
+            <Input className="sm:col-span-2" placeholder="Nome do parceiro *" value={newCardData.full_name} onChange={(e) => setNewCardData((p) => ({ ...p, full_name: e.target.value }))} />
+            <Input placeholder="Telefone" value={newCardData.phone} onChange={(e) => setNewCardData((p) => ({ ...p, phone: e.target.value }))} />
+            <Input placeholder="E-mail" value={newCardData.email} onChange={(e) => setNewCardData((p) => ({ ...p, email: e.target.value }))} />
             <Input className="sm:col-span-2" placeholder="CNPJ opcional" value={newCardData.cnpj} onChange={(e) => setNewCardData((p) => ({ ...p, cnpj: e.target.value }))} />
             <Input placeholder="Cidade" value={newCardData.city} onChange={(e) => setNewCardData((p) => ({ ...p, city: e.target.value }))} />
             <Input placeholder="Estado" value={newCardData.state} onChange={(e) => setNewCardData((p) => ({ ...p, state: e.target.value }))} />
