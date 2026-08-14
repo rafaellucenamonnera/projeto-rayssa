@@ -9,8 +9,14 @@ export default defineTool({
   description:
     "Lista/busca cards de cliente do painel Onb Clientes Cross por CNPJ, nome do parceiro, focal, contratante Monnera ou vendedor, com filtro opcional por etapa, paginação explícita e detecção de CNPJs duplicados.",
   inputSchema: {
+    panel_id: z
+      .string()
+      .optional()
+      .describe(`Opcional. Somente o painel Onb Clientes Cross (${CROSS_PANEL_ID}) é permitido.`),
     busca: z.string().optional().describe("Texto livre: CNPJ, nome do parceiro, focal, contratante ou vendedor."),
-    etapa: z.string().optional().describe("Filtra por stage_id da etapa."),
+    cnpj: z.string().optional().describe("Filtra pelos dígitos do CNPJ."),
+    stage_id: z.string().optional().describe("Filtra por stage_id da etapa."),
+    etapa: z.string().optional().describe("Alias de stage_id (compatibilidade)."),
     limite: z.number().int().optional().describe("Quantidade de registros (padrão 25, máximo 200)."),
     offset: z.number().int().optional().describe("Deslocamento para paginação."),
     agrupar_por_cnpj: z
@@ -19,12 +25,16 @@ export default defineTool({
       .describe("Se true, retorna também os CNPJs com mais de um card (duplicidades) na página consultada."),
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ busca, etapa, limite, offset, agrupar_por_cnpj }, ctx) => {
+  handler: async ({ panel_id, busca, cnpj, stage_id, etapa, limite, offset, agrupar_por_cnpj }, ctx) => {
     requireAuth(ctx);
+    if (panel_id && panel_id !== CROSS_PANEL_ID) {
+      return fail(`Esta ferramenta consulta apenas o painel ${CROSS_PANEL_ID}.`);
+    }
     const supabase = supabaseForUser(ctx);
 
     const take = Math.min(Math.max(limite ?? 25, 1), 200);
     const skip = Math.max(offset ?? 0, 0);
+    const etapaFiltro = stage_id ?? etapa;
 
     let query = supabase
       .from("representative_cards")
@@ -36,10 +46,14 @@ export default defineTool({
       .order("created_at", { ascending: true })
       .range(skip, skip + take - 1);
 
-    if (etapa) query = query.eq("stage_id", etapa);
+    if (etapaFiltro) query = query.eq("stage_id", etapaFiltro);
+
+    const cnpjDigits = onlyDigits(cnpj);
+    if (cnpj && !cnpjDigits) return fail("CNPJ inválido: informe ao menos um dígito.");
+    if (cnpjDigits) query = query.ilike("cnpj", `%${cnpjDigits}%`);
 
     if (busca?.trim()) {
-      const termo = busca.trim();
+      const termo = busca.trim().replace(/[,()]/g, " ");
       const digits = onlyDigits(termo);
       const like = `%${termo}%`;
       const filtros = [
@@ -53,6 +67,7 @@ export default defineTool({
       if (digits) filtros.push(`cnpj.ilike.%${digits}%`);
       query = query.or(filtros.join(","));
     }
+
 
     const { data, error, count } = await query;
     if (error) return fail(error.message);

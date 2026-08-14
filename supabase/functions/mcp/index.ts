@@ -684,25 +684,35 @@ var listar_clientes_cross_default = defineTool16({
   title: "Listar clientes do painel Onb Clientes Cross",
   description: "Lista/busca cards de cliente do painel Onb Clientes Cross por CNPJ, nome do parceiro, focal, contratante Monnera ou vendedor, com filtro opcional por etapa, pagina\xE7\xE3o expl\xEDcita e detec\xE7\xE3o de CNPJs duplicados.",
   inputSchema: {
+    panel_id: z14.string().optional().describe(`Opcional. Somente o painel Onb Clientes Cross (${CROSS_PANEL_ID}) \xE9 permitido.`),
     busca: z14.string().optional().describe("Texto livre: CNPJ, nome do parceiro, focal, contratante ou vendedor."),
-    etapa: z14.string().optional().describe("Filtra por stage_id da etapa."),
+    cnpj: z14.string().optional().describe("Filtra pelos d\xEDgitos do CNPJ."),
+    stage_id: z14.string().optional().describe("Filtra por stage_id da etapa."),
+    etapa: z14.string().optional().describe("Alias de stage_id (compatibilidade)."),
     limite: z14.number().int().optional().describe("Quantidade de registros (padr\xE3o 25, m\xE1ximo 200)."),
     offset: z14.number().int().optional().describe("Deslocamento para pagina\xE7\xE3o."),
     agrupar_por_cnpj: z14.boolean().optional().describe("Se true, retorna tamb\xE9m os CNPJs com mais de um card (duplicidades) na p\xE1gina consultada.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ busca, etapa, limite, offset, agrupar_por_cnpj }, ctx) => {
+  handler: async ({ panel_id, busca, cnpj, stage_id, etapa, limite, offset, agrupar_por_cnpj }, ctx) => {
     requireAuth(ctx);
+    if (panel_id && panel_id !== CROSS_PANEL_ID) {
+      return fail(`Esta ferramenta consulta apenas o painel ${CROSS_PANEL_ID}.`);
+    }
     const supabase = supabaseForUser(ctx);
     const take = Math.min(Math.max(limite ?? 25, 1), 200);
     const skip = Math.max(offset ?? 0, 0);
+    const etapaFiltro = stage_id ?? etapa;
     let query = supabase.from("representative_cards").select(
       "id, full_name, cnpj, stage_id, notes, focal_name, focal_phone, focal_email, contratante_monnera, vendor_name, vendor_phone, vendor_email, responsible_user_id, created_at, updated_at",
       { count: "exact" }
     ).eq("panel_id", CROSS_PANEL_ID).order("created_at", { ascending: true }).range(skip, skip + take - 1);
-    if (etapa) query = query.eq("stage_id", etapa);
+    if (etapaFiltro) query = query.eq("stage_id", etapaFiltro);
+    const cnpjDigits = onlyDigits(cnpj);
+    if (cnpj && !cnpjDigits) return fail("CNPJ inv\xE1lido: informe ao menos um d\xEDgito.");
+    if (cnpjDigits) query = query.ilike("cnpj", `%${cnpjDigits}%`);
     if (busca?.trim()) {
-      const termo = busca.trim();
+      const termo = busca.trim().replace(/[,()]/g, " ");
       const digits = onlyDigits(termo);
       const like = `%${termo}%`;
       const filtros = [
@@ -755,7 +765,7 @@ var listar_clientes_cross_default = defineTool16({
         if (!key) continue;
         grupos.set(key, [...grupos.get(key) ?? [], c.card_id]);
       }
-      resposta.duplicidades_cnpj = Array.from(grupos.entries()).filter(([, ids]) => ids.length > 1).map(([cnpj, card_ids]) => ({ cnpj, quantidade: card_ids.length, card_ids }));
+      resposta.duplicidades_cnpj = Array.from(grupos.entries()).filter(([, ids]) => ids.length > 1).map(([cnpj2, card_ids]) => ({ cnpj: cnpj2, quantidade: card_ids.length, card_ids }));
     }
     return ok(resposta);
   }

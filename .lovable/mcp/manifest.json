@@ -603,13 +603,25 @@
         "inputSchema": {
           "type": "object",
           "properties": {
+            "panel_id": {
+              "type": "string",
+              "description": "Opcional. Somente o painel Onb Clientes Cross (painel_msj9fyji) é permitido."
+            },
             "busca": {
               "type": "string",
               "description": "Texto livre: CNPJ, nome do parceiro, focal, contratante ou vendedor."
             },
-            "etapa": {
+            "cnpj": {
+              "type": "string",
+              "description": "Filtra pelos dígitos do CNPJ."
+            },
+            "stage_id": {
               "type": "string",
               "description": "Filtra por stage_id da etapa."
+            },
+            "etapa": {
+              "type": "string",
+              "description": "Alias de stage_id (compatibilidade)."
             },
             "limite": {
               "type": "integer",
