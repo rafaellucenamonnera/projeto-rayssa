@@ -16,6 +16,8 @@ import anexarArquivoClienteCross from "./tools/anexar-arquivo-cliente-cross";
 import listarAnexosClienteCross from "./tools/listar-anexos-cliente-cross";
 import listarClientesCross from "./tools/listar-clientes-cross";
 import obterClienteCross from "./tools/obter-cliente-cross";
+import buscarClienteCrossPorCnpj from "./tools/buscar-cliente-cross-por-cnpj";
+
 import listarEtapasCross from "./tools/listar-etapas-cross";
 import adicionarComentarioClienteCross from "./tools/adicionar-comentario-cliente-cross";
 import listarComentariosClienteCross from "./tools/listar-comentarios-cliente-cross";
@@ -52,6 +54,8 @@ export default defineMcp({
     listarAnexosClienteCross,
     listarClientesCross,
     obterClienteCross,
+    buscarClienteCrossPorCnpj,
+
     listarEtapasCross,
     adicionarComentarioClienteCross,
     listarComentariosClienteCross,
