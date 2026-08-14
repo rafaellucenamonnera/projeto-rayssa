@@ -2164,7 +2164,7 @@ const AdminLeads = () => {
           </Select>
         ) : isCustomCrmPanel ? (
           <Select value={filterResponsibleUser} onValueChange={setFilterResponsibleUser}>
-            <SelectTrigger><SelectValue placeholder="Responsável (opcional)" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Responsável" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos responsáveis</SelectItem>
               {usersAll.map((u) => (
@@ -2381,7 +2381,7 @@ const AdminLeads = () => {
                     {!isCustomCrmPanel && <th className="text-left py-3 px-4 text-muted-foreground font-medium">Embaixador Monnera</th>}
                     <th className="text-left py-3 px-4 text-muted-foreground font-medium">{isCustomCrmPanel ? "Nome" : "Empresa"}</th>
                     <th className="text-left py-3 px-4 text-muted-foreground font-medium">Cidade</th>
-                    <th className="text-left py-3 px-4 text-muted-foreground font-medium">Responsável (opcional)</th>
+                    <th className="text-left py-3 px-4 text-muted-foreground font-medium">Responsável</th>
                     <th className="text-left py-3 px-4 text-muted-foreground font-medium">Telefone</th>
                     <th className="text-left py-3 px-4 text-muted-foreground font-medium">Pipeline</th>
                     {!isCustomCrmPanel && <th className="text-left py-3 px-4 text-muted-foreground font-medium">Docs</th>}
@@ -2805,7 +2805,7 @@ const AdminLeads = () => {
 
               {/* Responsável */}
               <div className="border-t border-border pt-4">
-                <h3 className="text-sm font-semibold mb-3">Responsável (opcional)</h3>
+                <h3 className="text-sm font-semibold mb-3">Responsável</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="text-muted-foreground text-xs mb-1">Nome</p>
