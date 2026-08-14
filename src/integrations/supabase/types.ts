@@ -2268,7 +2268,7 @@ export type Database = {
           created_at: string
           created_by_user_id: string
           csv_import_batch_id: string | null
-          email: string
+          email: string | null
           focal_email: string | null
           focal_name: string | null
           focal_phone: string | null
@@ -2278,9 +2278,9 @@ export type Database = {
           panel_id: string
           parceiro_id: string | null
           partner_code: string | null
-          phone: string
+          phone: string | null
           region: string | null
-          responsible_user_id: string
+          responsible_user_id: string | null
           source: string | null
           stage_id: string
           state: string | null
@@ -2297,7 +2297,7 @@ export type Database = {
           created_at?: string
           created_by_user_id: string
           csv_import_batch_id?: string | null
-          email: string
+          email?: string | null
           focal_email?: string | null
           focal_name?: string | null
           focal_phone?: string | null
@@ -2307,9 +2307,9 @@ export type Database = {
           panel_id: string
           parceiro_id?: string | null
           partner_code?: string | null
-          phone: string
+          phone?: string | null
           region?: string | null
-          responsible_user_id: string
+          responsible_user_id?: string | null
           source?: string | null
           stage_id: string
           state?: string | null
@@ -2326,7 +2326,7 @@ export type Database = {
           created_at?: string
           created_by_user_id?: string
           csv_import_batch_id?: string | null
-          email?: string
+          email?: string | null
           focal_email?: string | null
           focal_name?: string | null
           focal_phone?: string | null
@@ -2336,9 +2336,9 @@ export type Database = {
           panel_id?: string
           parceiro_id?: string | null
           partner_code?: string | null
-          phone?: string
+          phone?: string | null
           region?: string | null
-          responsible_user_id?: string
+          responsible_user_id?: string | null
           source?: string | null
           stage_id?: string
           state?: string | null
