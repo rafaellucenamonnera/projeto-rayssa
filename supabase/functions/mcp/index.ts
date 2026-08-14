@@ -528,13 +528,153 @@ var atualizar_cliente_cross_default = defineTool12({
   }
 });
 
+// src/lib/mcp/tools/mover-cliente-cross-etapa.ts
+import { defineTool as defineTool13 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z11 } from "npm:zod@^3.25.76";
+var normalize = (value) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+var mover_cliente_cross_etapa_default = defineTool13({
+  name: "mover_cliente_cross_etapa",
+  title: "Mover cliente do painel Onb Clientes Cross de etapa",
+  description: 'Move um card do painel Onb Clientes Cross para outra etapa. Aceita o stage_id ou o nome da etapa (ex.: "Aguardando Informa\xE7\xF5es").',
+  inputSchema: {
+    card_id: z11.string().describe("UUID do card do cliente."),
+    etapa: z11.string().describe("Etapa de destino: stage_id (ex.: etapa_painel_msj9fyji_1786676252012) ou o r\xF3tulo, ex.: Aguardando Informa\xE7\xF5es.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  handler: async ({ card_id, etapa }, ctx) => {
+    requireAuth(ctx);
+    const supabase = supabaseForUser(ctx);
+    const { data: stages, error: stagesError } = await supabase.from("pipeline_stages_config").select("value, label, sort_order").eq("panel_key", CROSS_PANEL_ID).order("sort_order");
+    if (stagesError) return fail(stagesError.message);
+    const alvo = normalize(etapa);
+    const stage = (stages ?? []).find(
+      (s) => normalize(s.value) === alvo || normalize(s.label) === alvo
+    );
+    if (!stage) {
+      const disponiveis = (stages ?? []).map((s) => `${s.label} (${s.value})`).join(", ");
+      return fail(`Etapa "${etapa}" n\xE3o existe no painel Onb Clientes Cross. Dispon\xEDveis: ${disponiveis}`);
+    }
+    const { data, error } = await supabase.from("representative_cards").update({ stage_id: stage.value }).eq("id", card_id).eq("panel_id", CROSS_PANEL_ID).select("id, full_name, cnpj, stage_id").maybeSingle();
+    if (error) return fail(error.message);
+    if (!data) return fail("Card n\xE3o encontrado no painel Onb Clientes Cross ou sem permiss\xE3o para editar.");
+    return ok({ movido: true, etapa: stage.label, cliente: data });
+  }
+});
+
+// src/lib/mcp/tools/anexar-arquivo-cliente-cross.ts
+import { defineTool as defineTool14 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z12 } from "npm:zod@^3.25.76";
+var BUCKET = "representative-card-attachments";
+var MAX_BYTES = 10 * 1024 * 1024;
+var ALLOWED = ["pdf", "xls", "xlsx", "csv", "jpg", "jpeg", "png"];
+var MIME = {
+  pdf: "application/pdf",
+  xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  csv: "text/csv",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png"
+};
+function decodeBase64(input) {
+  const clean = input.includes(",") && input.startsWith("data:") ? input.slice(input.indexOf(",") + 1) : input;
+  const binary = atob(clean.replace(/\s+/g, ""));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+var anexar_arquivo_cliente_cross_default = defineTool14({
+  name: "anexar_arquivo_cliente_cross",
+  title: "Anexar arquivo ao cliente do painel Onb Clientes Cross",
+  description: "Envia um anexo (PDF, Excel/CSV ou imagem JPG/PNG, at\xE9 10 MB) para um card do painel Onb Clientes Cross. O conte\xFAdo do arquivo deve vir em base64.",
+  inputSchema: {
+    card_id: z12.string().describe("UUID do card do cliente."),
+    file_name: z12.string().describe("Nome do arquivo com extens\xE3o, ex.: contrato.pdf."),
+    conteudo_base64: z12.string().describe("Conte\xFAdo do arquivo codificado em base64 (aceita data URL).")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  handler: async ({ card_id, file_name, conteudo_base64 }, ctx) => {
+    const userId = requireAuth(ctx);
+    const supabase = supabaseForUser(ctx);
+    const ext = file_name.split(".").pop()?.toLowerCase() ?? "";
+    if (!ALLOWED.includes(ext)) {
+      return fail(`Formato n\xE3o permitido em "${file_name}". Use PDF, Excel (xls/xlsx/csv) ou imagem (jpg/png).`);
+    }
+    let bytes;
+    try {
+      bytes = decodeBase64(conteudo_base64);
+    } catch {
+      return fail("Conte\xFAdo base64 inv\xE1lido.");
+    }
+    if (!bytes.length) return fail("O arquivo est\xE1 vazio.");
+    if (bytes.length > MAX_BYTES) return fail("O arquivo excede o limite de 10 MB.");
+    const { data: card, error: cardError } = await supabase.from("representative_cards").select("id").eq("id", card_id).eq("panel_id", CROSS_PANEL_ID).maybeSingle();
+    if (cardError) return fail(cardError.message);
+    if (!card) return fail("Card n\xE3o encontrado no painel Onb Clientes Cross ou sem permiss\xE3o de acesso.");
+    const safeName = file_name.replace(/[^\w.\-]+/g, "_");
+    const path = `${card_id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName}`;
+    const contentType = MIME[ext] ?? "application/octet-stream";
+    const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, bytes, { contentType, upsert: false });
+    if (uploadError) return fail(uploadError.message);
+    const { data, error } = await supabase.from("representative_card_attachments").insert({
+      representative_card_id: card_id,
+      storage_path: path,
+      file_name,
+      mime_type: contentType,
+      size_bytes: bytes.length,
+      created_by: userId
+    }).select("id, file_name, size_bytes, created_at").single();
+    if (error) {
+      await supabase.storage.from(BUCKET).remove([path]);
+      return fail(error.message);
+    }
+    return ok({ anexado: true, anexo: data });
+  }
+});
+
+// src/lib/mcp/tools/listar-anexos-cliente-cross.ts
+import { defineTool as defineTool15 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z13 } from "npm:zod@^3.25.76";
+var BUCKET2 = "representative-card-attachments";
+var listar_anexos_cliente_cross_default = defineTool15({
+  name: "listar_anexos_cliente_cross",
+  title: "Listar anexos do cliente Onb Clientes Cross",
+  description: "Lista os anexos de um card do painel Onb Clientes Cross, com link tempor\xE1rio para download.",
+  inputSchema: {
+    card_id: z13.string().describe("UUID do card do cliente.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ card_id }, ctx) => {
+    requireAuth(ctx);
+    const supabase = supabaseForUser(ctx);
+    const { data: card } = await supabase.from("representative_cards").select("id").eq("id", card_id).eq("panel_id", CROSS_PANEL_ID).maybeSingle();
+    if (!card) return fail("Card n\xE3o encontrado no painel Onb Clientes Cross ou sem permiss\xE3o de acesso.");
+    const { data, error } = await supabase.from("representative_card_attachments").select("id, file_name, mime_type, size_bytes, storage_path, created_at").eq("representative_card_id", card_id).order("created_at", { ascending: false });
+    if (error) return fail(error.message);
+    const anexos = await Promise.all(
+      (data ?? []).map(async (a) => {
+        const { data: signed } = await supabase.storage.from(BUCKET2).createSignedUrl(a.storage_path, 60 * 10);
+        return {
+          id: a.id,
+          file_name: a.file_name,
+          mime_type: a.mime_type,
+          size_bytes: a.size_bytes,
+          created_at: a.created_at,
+          url: signed?.signedUrl ?? null
+        };
+      })
+    );
+    return ok({ total: anexos.length, anexos });
+  }
+});
+
 // src/lib/mcp/index.ts
 var projectRef = "bapxuzodzgahscatvofs";
 var mcp_default = defineMcp({
   name: "monnera-parceiros",
   title: "Monnera Parceiros",
   version: "0.1.0",
-  instructions: "Ferramentas do CRM Monnera Parceiros. Use listar_paineis para descobrir pain\xE9is e etapas, listar_embaixadores para obter o parceiro_id antes de criar um lead e listar_responsaveis para definir respons\xE1veis. Cards de lead vivem no painel comercial; clientes do painel Onb Clientes Cross usam as ferramentas *_cliente_cross. Todas as a\xE7\xF5es respeitam as permiss\xF5es do usu\xE1rio autenticado.",
+  instructions: 'Ferramentas do CRM Monnera Parceiros. Use listar_paineis para descobrir pain\xE9is e etapas, listar_embaixadores para obter o parceiro_id antes de criar um lead e listar_responsaveis para definir respons\xE1veis. Cards de lead vivem no painel comercial; clientes do painel Onb Clientes Cross usam as ferramentas *_cliente_cross \u2014 inclusive mover_cliente_cross_etapa (aceita o r\xF3tulo da etapa, ex.: "Aguardando Informa\xE7\xF5es") e anexar_arquivo_cliente_cross para upload de anexos em base64. Todas as a\xE7\xF5es respeitam as permiss\xF5es do usu\xE1rio autenticado.',
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
@@ -551,7 +691,10 @@ var mcp_default = defineMcp({
     adicionar_comentario_default,
     criar_tarefa_default,
     criar_cliente_cross_default,
-    atualizar_cliente_cross_default
+    atualizar_cliente_cross_default,
+    mover_cliente_cross_etapa_default,
+    anexar_arquivo_cliente_cross_default,
+    listar_anexos_cliente_cross_default
   ]
 });
 

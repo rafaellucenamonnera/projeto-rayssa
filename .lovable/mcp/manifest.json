@@ -500,6 +500,96 @@
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
         "outputSchema": null
+      },
+      {
+        "name": "mover_cliente_cross_etapa",
+        "title": "Mover cliente do painel Onb Clientes Cross de etapa",
+        "description": "Move um card do painel Onb Clientes Cross para outra etapa. Aceita o stage_id ou o nome da etapa (ex.: \"Aguardando Informações\").",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "card_id": {
+              "type": "string",
+              "description": "UUID do card do cliente."
+            },
+            "etapa": {
+              "type": "string",
+              "description": "Etapa de destino: stage_id (ex.: etapa_painel_msj9fyji_1786676252012) ou o rótulo, ex.: Aguardando Informações."
+            }
+          },
+          "required": [
+            "card_id",
+            "etapa"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "anexar_arquivo_cliente_cross",
+        "title": "Anexar arquivo ao cliente do painel Onb Clientes Cross",
+        "description": "Envia um anexo (PDF, Excel/CSV ou imagem JPG/PNG, até 10 MB) para um card do painel Onb Clientes Cross. O conteúdo do arquivo deve vir em base64.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "card_id": {
+              "type": "string",
+              "description": "UUID do card do cliente."
+            },
+            "file_name": {
+              "type": "string",
+              "description": "Nome do arquivo com extensão, ex.: contrato.pdf."
+            },
+            "conteudo_base64": {
+              "type": "string",
+              "description": "Conteúdo do arquivo codificado em base64 (aceita data URL)."
+            }
+          },
+          "required": [
+            "card_id",
+            "file_name",
+            "conteudo_base64"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "listar_anexos_cliente_cross",
+        "title": "Listar anexos do cliente Onb Clientes Cross",
+        "description": "Lista os anexos de um card do painel Onb Clientes Cross, com link temporário para download.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "card_id": {
+              "type": "string",
+              "description": "UUID do card do cliente."
+            }
+          },
+          "required": [
+            "card_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
       }
     ]
   }

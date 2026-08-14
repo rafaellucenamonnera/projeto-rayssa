@@ -11,6 +11,9 @@ import adicionarComentario from "./tools/adicionar-comentario";
 import criarTarefa from "./tools/criar-tarefa";
 import criarClienteCross from "./tools/criar-cliente-cross";
 import atualizarClienteCross from "./tools/atualizar-cliente-cross";
+import moverClienteCrossEtapa from "./tools/mover-cliente-cross-etapa";
+import anexarArquivoClienteCross from "./tools/anexar-arquivo-cliente-cross";
+import listarAnexosClienteCross from "./tools/listar-anexos-cliente-cross";
 
 const projectRef = import.meta.env.VITE_SUPABASE_PROJECT_ID ?? "project-ref-unset";
 
@@ -19,7 +22,7 @@ export default defineMcp({
   title: "Monnera Parceiros",
   version: "0.1.0",
   instructions:
-    "Ferramentas do CRM Monnera Parceiros. Use listar_paineis para descobrir painéis e etapas, listar_embaixadores para obter o parceiro_id antes de criar um lead e listar_responsaveis para definir responsáveis. Cards de lead vivem no painel comercial; clientes do painel Onb Clientes Cross usam as ferramentas *_cliente_cross. Todas as ações respeitam as permissões do usuário autenticado.",
+    "Ferramentas do CRM Monnera Parceiros. Use listar_paineis para descobrir painéis e etapas, listar_embaixadores para obter o parceiro_id antes de criar um lead e listar_responsaveis para definir responsáveis. Cards de lead vivem no painel comercial; clientes do painel Onb Clientes Cross usam as ferramentas *_cliente_cross — inclusive mover_cliente_cross_etapa (aceita o rótulo da etapa, ex.: \"Aguardando Informações\") e anexar_arquivo_cliente_cross para upload de anexos em base64. Todas as ações respeitam as permissões do usuário autenticado.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",
@@ -37,5 +40,8 @@ export default defineMcp({
     criarTarefa,
     criarClienteCross,
     atualizarClienteCross,
+    moverClienteCrossEtapa,
+    anexarArquivoClienteCross,
+    listarAnexosClienteCross,
   ],
 });
