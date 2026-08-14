@@ -3167,6 +3167,16 @@ const AdminLeads = () => {
                       canDeleteMessage={canDeleteMessage}
                       canInsertFile={canInsertFile}
                     />
+                  ) : isCustomCrmPanel ? (
+                    <RepresentativeCardComments
+                      cardId={detailLead.id}
+                      currentStage={detailLead.status_lead || detailLead.stage_id || ""}
+                      userName={currentUserName}
+                      canInsertMessage={canInsertMessage}
+                      canEditMessage={canEditMessage}
+                      canDeleteMessage={canDeleteMessage}
+                      canInsertFile={canInsertFile}
+                    />
                   ) : (
                     <LeadComments
                       leadId={detailLead.id}
