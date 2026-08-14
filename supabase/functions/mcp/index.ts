@@ -805,9 +805,64 @@ var obter_cliente_cross_default = defineTool17({
   }
 });
 
-// src/lib/mcp/tools/listar-etapas-cross.ts
+// src/lib/mcp/tools/buscar-cliente-cross-por-cnpj.ts
 import { defineTool as defineTool18 } from "npm:@lovable.dev/mcp-js@0.26.2";
-var listar_etapas_cross_default = defineTool18({
+import { z as z16 } from "npm:zod@^3.25.76";
+var buscar_cliente_cross_por_cnpj_default = defineTool18({
+  name: "buscar_cliente_cross_por_cnpj",
+  title: "Buscar cliente Cross por CNPJ",
+  description: "Busca exata por CNPJ (comparando apenas d\xEDgitos) no painel Onb Clientes Cross. Retorna todos os cards com aquele CNPJ, sinalizando duplicidade. Somente leitura.",
+  inputSchema: {
+    cnpj: z16.string().describe("CNPJ do parceiro, com ou sem m\xE1scara."),
+    panel_id: z16.string().optional().describe(`Opcional. Somente o painel Onb Clientes Cross (${CROSS_PANEL_ID}) \xE9 permitido.`)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ cnpj, panel_id }, ctx) => {
+    requireAuth(ctx);
+    if (panel_id && panel_id !== CROSS_PANEL_ID) {
+      return fail(`Esta ferramenta consulta apenas o painel ${CROSS_PANEL_ID}.`);
+    }
+    const digits = onlyDigits(cnpj);
+    if (!digits) return fail("CNPJ inv\xE1lido: informe ao menos um d\xEDgito.");
+    const supabase = supabaseForUser(ctx);
+    const { data, error } = await supabase.from("representative_cards").select(
+      "id, full_name, cnpj, stage_id, notes, focal_name, focal_phone, focal_email, contratante_monnera, vendor_name, vendor_phone, vendor_email, responsible_user_id, created_at, updated_at"
+    ).eq("panel_id", CROSS_PANEL_ID).order("created_at", { ascending: true }).limit(200);
+    if (error) return fail(error.message);
+    const encontrados = (data ?? []).filter((c) => onlyDigits(c.cnpj) === digits);
+    const { data: stages } = await supabase.from("pipeline_stages_config").select("value, label").eq("panel_key", CROSS_PANEL_ID);
+    const labels = new Map((stages ?? []).map((s) => [s.value, s.label]));
+    const clientes = encontrados.map((c) => ({
+      card_id: c.id,
+      nome_parceiro: c.full_name,
+      cnpj: c.cnpj,
+      focal_nome: c.focal_name,
+      focal_email: c.focal_email,
+      focal_telefone: c.focal_phone,
+      contratante_monnera: c.contratante_monnera,
+      vendedor_nome: c.vendor_name,
+      vendedor_email: c.vendor_email,
+      vendedor_telefone: c.vendor_phone,
+      stage_id: c.stage_id,
+      stage_label: labels.get(c.stage_id) ?? c.stage_id,
+      etapa: labels.get(c.stage_id) ?? c.stage_id,
+      anotacoes: c.notes,
+      responsavel_user_id: c.responsible_user_id,
+      created_at: c.created_at,
+      updated_at: c.updated_at
+    }));
+    return ok({
+      cnpj_consultado: digits,
+      encontrados: clientes.length,
+      duplicado: clientes.length > 1,
+      clientes
+    });
+  }
+});
+
+// src/lib/mcp/tools/listar-etapas-cross.ts
+import { defineTool as defineTool19 } from "npm:@lovable.dev/mcp-js@0.26.2";
+var listar_etapas_cross_default = defineTool19({
   name: "listar_etapas_cross",
   title: "Listar etapas do painel Onb Clientes Cross",
   description: 'Lista todas as etapas do painel Onb Clientes Cross (stage_id, r\xF3tulo e ordem), incluindo "Aguardando Informa\xE7\xF5es".',
@@ -826,15 +881,15 @@ var listar_etapas_cross_default = defineTool18({
 });
 
 // src/lib/mcp/tools/adicionar-comentario-cliente-cross.ts
-import { defineTool as defineTool19 } from "npm:@lovable.dev/mcp-js@0.26.2";
-import { z as z16 } from "npm:zod@^3.25.76";
-var adicionar_comentario_cliente_cross_default = defineTool19({
+import { defineTool as defineTool20 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z17 } from "npm:zod@^3.25.76";
+var adicionar_comentario_cliente_cross_default = defineTool20({
   name: "adicionar_comentario_cliente_cross",
   title: "Adicionar coment\xE1rio no cliente Onb Clientes Cross",
   description: "Registra um coment\xE1rio no hist\xF3rico de um card do painel Onb Clientes Cross, na etapa atual do card.",
   inputSchema: {
-    card_id: z16.string().describe("UUID do card do cliente."),
-    comentario: z16.string().describe("Texto do coment\xE1rio.")
+    card_id: z17.string().describe("UUID do card do cliente."),
+    comentario: z17.string().describe("Texto do coment\xE1rio.")
   },
   annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   handler: async ({ card_id, comentario }, ctx) => {
@@ -859,15 +914,15 @@ var adicionar_comentario_cliente_cross_default = defineTool19({
 });
 
 // src/lib/mcp/tools/listar-comentarios-cliente-cross.ts
-import { defineTool as defineTool20 } from "npm:@lovable.dev/mcp-js@0.26.2";
-import { z as z17 } from "npm:zod@^3.25.76";
-var listar_comentarios_cliente_cross_default = defineTool20({
+import { defineTool as defineTool21 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z18 } from "npm:zod@^3.25.76";
+var listar_comentarios_cliente_cross_default = defineTool21({
   name: "listar_comentarios_cliente_cross",
   title: "Listar hist\xF3rico do cliente Onb Clientes Cross",
   description: "Lista os coment\xE1rios (hist\xF3rico) de um card do painel Onb Clientes Cross, do mais recente para o mais antigo.",
   inputSchema: {
-    card_id: z17.string().describe("UUID do card do cliente."),
-    limite: z17.number().int().optional().describe("Quantidade de coment\xE1rios (padr\xE3o 50, m\xE1ximo 200).")
+    card_id: z18.string().describe("UUID do card do cliente."),
+    limite: z18.number().int().optional().describe("Quantidade de coment\xE1rios (padr\xE3o 50, m\xE1ximo 200).")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ card_id, limite }, ctx) => {
@@ -883,17 +938,17 @@ var listar_comentarios_cliente_cross_default = defineTool20({
 });
 
 // src/lib/mcp/tools/criar-tarefa-cliente-cross.ts
-import { defineTool as defineTool21 } from "npm:@lovable.dev/mcp-js@0.26.2";
-import { z as z18 } from "npm:zod@^3.25.76";
-var criar_tarefa_cliente_cross_default = defineTool21({
+import { defineTool as defineTool22 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z19 } from "npm:zod@^3.25.76";
+var criar_tarefa_cliente_cross_default = defineTool22({
   name: "criar_tarefa_cliente_cross",
   title: "Criar tarefa no cliente Onb Clientes Cross",
   description: "Cria uma tarefa vinculada a um card do painel Onb Clientes Cross, com prazo e respons\xE1vel.",
   inputSchema: {
-    card_id: z18.string().describe("UUID do card do cliente."),
-    titulo: z18.string().describe("T\xEDtulo da tarefa."),
-    due_at: z18.string().describe("Prazo em ISO 8601, ex.: 2026-08-20T14:00:00Z."),
-    assigned_to: z18.string().optional().describe("UUID do respons\xE1vel (padr\xE3o: usu\xE1rio autenticado).")
+    card_id: z19.string().describe("UUID do card do cliente."),
+    titulo: z19.string().describe("T\xEDtulo da tarefa."),
+    due_at: z19.string().describe("Prazo em ISO 8601, ex.: 2026-08-20T14:00:00Z."),
+    assigned_to: z19.string().optional().describe("UUID do respons\xE1vel (padr\xE3o: usu\xE1rio autenticado).")
   },
   annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   handler: async ({ card_id, titulo, due_at, assigned_to }, ctx) => {
@@ -920,15 +975,15 @@ var criar_tarefa_cliente_cross_default = defineTool21({
 });
 
 // src/lib/mcp/tools/listar-tarefas-cliente-cross.ts
-import { defineTool as defineTool22 } from "npm:@lovable.dev/mcp-js@0.26.2";
-import { z as z19 } from "npm:zod@^3.25.76";
-var listar_tarefas_cliente_cross_default = defineTool22({
+import { defineTool as defineTool23 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z20 } from "npm:zod@^3.25.76";
+var listar_tarefas_cliente_cross_default = defineTool23({
   name: "listar_tarefas_cliente_cross",
   title: "Listar tarefas do cliente Onb Clientes Cross",
   description: "Lista as tarefas de um card do painel Onb Clientes Cross, com prazo, respons\xE1vel e status.",
   inputSchema: {
-    card_id: z19.string().describe("UUID do card do cliente."),
-    status: z19.enum(["pendente", "concluida", "todas"]).optional().describe("Filtro de status (padr\xE3o: todas).")
+    card_id: z20.string().describe("UUID do card do cliente."),
+    status: z20.enum(["pendente", "concluida", "todas"]).optional().describe("Filtro de status (padr\xE3o: todas).")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ card_id, status }, ctx) => {
@@ -973,6 +1028,7 @@ var mcp_default = defineMcp({
     listar_anexos_cliente_cross_default,
     listar_clientes_cross_default,
     obter_cliente_cross_default,
+    buscar_cliente_cross_por_cnpj_default,
     listar_etapas_cross_default,
     adicionar_comentario_cliente_cross_default,
     listar_comentarios_cliente_cross_default,

@@ -54,6 +54,8 @@ export default defineMcp({
     listarAnexosClienteCross,
     listarClientesCross,
     obterClienteCross,
+    buscarClienteCrossPorCnpj,
+
     listarEtapasCross,
     adicionarComentarioClienteCross,
     listarComentariosClienteCross,

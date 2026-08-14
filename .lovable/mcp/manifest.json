@@ -667,6 +667,35 @@
         "outputSchema": null
       },
       {
+        "name": "buscar_cliente_cross_por_cnpj",
+        "title": "Buscar cliente Cross por CNPJ",
+        "description": "Busca exata por CNPJ (comparando apenas dígitos) no painel Onb Clientes Cross. Retorna todos os cards com aquele CNPJ, sinalizando duplicidade. Somente leitura.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "cnpj": {
+              "type": "string",
+              "description": "CNPJ do parceiro, com ou sem máscara."
+            },
+            "panel_id": {
+              "type": "string",
+              "description": "Opcional. Somente o painel Onb Clientes Cross (painel_msj9fyji) é permitido."
+            }
+          },
+          "required": [
+            "cnpj"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
         "name": "listar_etapas_cross",
         "title": "Listar etapas do painel Onb Clientes Cross",
         "description": "Lista todas as etapas do painel Onb Clientes Cross (stage_id, rótulo e ordem), incluindo \"Aguardando Informações\".",
