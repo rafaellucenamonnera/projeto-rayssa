@@ -36,6 +36,7 @@ import {
 import { LeadContatos } from "@/components/admin/LeadContatos";
 import { LeadTasks } from "@/components/admin/LeadTasks";
 import { AmbassadorCardTasks } from "@/components/admin/AmbassadorCardTasks";
+import { RepresentativeCardTasks } from "@/components/admin/RepresentativeCardTasks";
 import { AmbassadorLinksSection } from "@/components/admin/AmbassadorLinksSection";
 import { DaysInStage } from "@/components/admin/DaysInStage";
 import { PipelineKanban } from "@/components/admin/PipelineKanban";
@@ -3199,6 +3200,13 @@ const AdminLeads = () => {
                   <h3 className="text-sm font-semibold mb-3">Tarefas do card</h3>
                   {isAmbassadorPanel ? (
                     <AmbassadorCardTasks
+                      cardId={detailLead.id}
+                      cardName={detailLead.nome_fantasia}
+                      panelId={currentPanelId}
+                      actionUrl={cardActionUrl(detailLead.id)}
+                    />
+                  ) : isCustomCrmPanel ? (
+                    <RepresentativeCardTasks
                       cardId={detailLead.id}
                       cardName={detailLead.nome_fantasia}
                       panelId={currentPanelId}
