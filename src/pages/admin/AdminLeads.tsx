@@ -1730,17 +1730,22 @@ const AdminLeads = () => {
     const phone = newCardData.phone.trim();
     const email = newCardData.email.trim().toLowerCase();
     const cnpj = newCardData.cnpj.replace(/\D/g, "");
-    if (!fullName || !phone || !email) return toast.error("Nome completo, telefone e e-mail são obrigatórios.");
+    if (!fullName) return toast.error("Nome do parceiro é obrigatório.");
     if (cnpj && cnpj.length !== 14) return toast.error("CNPJ deve conter 14 dígitos.");
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return toast.error("Formato de e-mail inválido.");
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return toast.error("Formato de e-mail inválido.");
 
-    const { data: duplicate } = await (supabase as any)
-      .from(isAmbassadorPanel ? "ambassador_cards" : "representative_cards")
-      .select("id")
-      .eq("panel_id", currentPanelId)
-      .or(`email.eq.${email},phone.eq.${phone}`)
-      .limit(1);
-    if (duplicate && duplicate.length > 0) return toast.error("Já existe cadastro com este telefone ou e-mail.");
+    if (phone || email) {
+      const filters = [email ? `email.eq.${email}` : null, phone ? `phone.eq.${phone}` : null]
+        .filter(Boolean)
+        .join(",");
+      const { data: duplicate } = await (supabase as any)
+        .from(isAmbassadorPanel ? "ambassador_cards" : "representative_cards")
+        .select("id")
+        .eq("panel_id", currentPanelId)
+        .or(filters)
+        .limit(1);
+      if (duplicate && duplicate.length > 0) return toast.error("Já existe cadastro com este telefone ou e-mail.");
+    }
 
     const firstStage =
       (isAmbassadorPanel
