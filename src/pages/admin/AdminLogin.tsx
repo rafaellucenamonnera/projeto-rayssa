@@ -106,7 +106,7 @@ const AdminLogin = () => {
               onClick={async () => {
                 setLoading(true);
                 const { error } = await lovable.auth.signInWithOAuth("google", {
-                  redirect_uri: window.location.origin,
+                  redirect_uri: oauthRedirect,
                 });
                 if (error) toast.error("Erro ao entrar com Google");
                 setLoading(false);
@@ -123,7 +123,7 @@ const AdminLogin = () => {
               onClick={async () => {
                 setLoading(true);
                 const { error } = await lovable.auth.signInWithOAuth("apple", {
-                  redirect_uri: window.location.origin,
+                  redirect_uri: oauthRedirect,
                 });
                 if (error) toast.error("Erro ao entrar com Apple");
                 setLoading(false);
