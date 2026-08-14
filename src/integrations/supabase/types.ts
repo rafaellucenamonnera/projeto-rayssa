@@ -1967,6 +1967,7 @@ export type Database = {
       }
       representative_card_attachments: {
         Row: {
+          content_sha256: string | null
           created_at: string
           created_by: string | null
           file_name: string
@@ -1977,6 +1978,7 @@ export type Database = {
           storage_path: string
         }
         Insert: {
+          content_sha256?: string | null
           created_at?: string
           created_by?: string | null
           file_name: string
@@ -1987,6 +1989,7 @@ export type Database = {
           storage_path: string
         }
         Update: {
+          content_sha256?: string | null
           created_at?: string
           created_by?: string | null
           file_name?: string
@@ -2197,6 +2200,59 @@ export type Database = {
           },
           {
             foreignKeyName: "representative_card_meetings_representative_card_id_fkey"
+            columns: ["representative_card_id"]
+            isOneToOne: false
+            referencedRelation: "representative_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      representative_card_tasks: {
+        Row: {
+          assigned_to: string
+          completed_at: string | null
+          completed_note: string | null
+          created_at: string
+          created_by: string | null
+          due_at: string
+          due_date: string | null
+          id: string
+          representative_card_id: string
+          status: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to: string
+          completed_at?: string | null
+          completed_note?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_at: string
+          due_date?: string | null
+          id?: string
+          representative_card_id: string
+          status?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string
+          completed_at?: string | null
+          completed_note?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_at?: string
+          due_date?: string | null
+          id?: string
+          representative_card_id?: string
+          status?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "representative_card_tasks_representative_card_id_fkey"
             columns: ["representative_card_id"]
             isOneToOne: false
             referencedRelation: "representative_cards"
