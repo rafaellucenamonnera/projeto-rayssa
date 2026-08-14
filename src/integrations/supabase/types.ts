@@ -540,6 +540,111 @@ export type Database = {
           },
         ]
       }
+      gmail_processed_messages: {
+        Row: {
+          attachments_count: number
+          created_at: string
+          error: string | null
+          extracted: Json
+          from_address: string | null
+          id: string
+          message_id: string
+          received_at: string | null
+          representative_card_id: string | null
+          run_id: string | null
+          status: string
+          subject: string | null
+          thread_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          attachments_count?: number
+          created_at?: string
+          error?: string | null
+          extracted?: Json
+          from_address?: string | null
+          id?: string
+          message_id: string
+          received_at?: string | null
+          representative_card_id?: string | null
+          run_id?: string | null
+          status?: string
+          subject?: string | null
+          thread_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attachments_count?: number
+          created_at?: string
+          error?: string | null
+          extracted?: Json
+          from_address?: string | null
+          id?: string
+          message_id?: string
+          received_at?: string | null
+          representative_card_id?: string | null
+          run_id?: string | null
+          status?: string
+          subject?: string | null
+          thread_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gmail_processed_messages_representative_card_id_fkey"
+            columns: ["representative_card_id"]
+            isOneToOne: false
+            referencedRelation: "representative_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gmail_processed_messages_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "gmail_sync_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gmail_sync_runs: {
+        Row: {
+          created_at: string
+          created_count: number
+          error_count: number
+          error_details: string | null
+          fetched_count: number
+          finished_at: string | null
+          id: string
+          processed_count: number
+          skipped_count: number
+          started_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_count?: number
+          error_count?: number
+          error_details?: string | null
+          fetched_count?: number
+          finished_at?: string | null
+          id?: string
+          processed_count?: number
+          skipped_count?: number
+          started_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_count?: number
+          error_count?: number
+          error_details?: string | null
+          fetched_count?: number
+          finished_at?: string | null
+          id?: string
+          processed_count?: number
+          skipped_count?: number
+          started_at?: string
+        }
+        Relationships: []
+      }
       kit_argumentos: {
         Row: {
           created_at: string
