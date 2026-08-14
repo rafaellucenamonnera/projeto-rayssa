@@ -1,0 +1,506 @@
+{
+  "version": 1,
+  "sdk_version": "0.26.2",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://bapxuzodzgahscatvofs.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "monnera-parceiros",
+      "version": "0.1.0",
+      "title": "Monnera Parceiros"
+    },
+    "tools": [
+      {
+        "name": "listar_paineis",
+        "title": "Listar painéis e etapas",
+        "description": "Lista os painéis do CRM (comercial, onboarding, Onb Clientes Cross etc.) e as etapas de cada um.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "listar_leads",
+        "title": "Listar leads",
+        "description": "Busca cards de lead do CRM por texto (nome fantasia, razão social, CNPJ, responsável, e-mail), painel e etapa.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "busca": {
+              "type": "string",
+              "description": "Texto livre para buscar por nome, CNPJ, responsável ou e-mail."
+            },
+            "panel_id": {
+              "type": "string",
+              "description": "ID do painel, ex.: comercial."
+            },
+            "stage_id": {
+              "type": "string",
+              "description": "Etapa do funil, ex.: novo_lead."
+            },
+            "limite": {
+              "type": "integer",
+              "description": "Quantidade de registros (padrão 25, máximo 100)."
+            },
+            "offset": {
+              "type": "integer",
+              "description": "Deslocamento para paginação."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "obter_lead",
+        "title": "Detalhe do lead",
+        "description": "Retorna o card completo de um lead, com comentários e tarefas.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "UUID do lead."
+            }
+          },
+          "required": [
+            "lead_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "listar_embaixadores",
+        "title": "Listar Embaixadores Monnera",
+        "description": "Lista os Embaixadores Monnera ativos e aprovados, com id e código, para vincular a novos leads.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "busca": {
+              "type": "string",
+              "description": "Filtra por nome, e-mail ou código do embaixador."
+            },
+            "limite": {
+              "type": "integer",
+              "description": "Quantidade de registros (padrão 50, máximo 200)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "listar_responsaveis",
+        "title": "Listar responsáveis disponíveis",
+        "description": "Lista os usuários que podem ser responsáveis por um card (para preencher responsible_user_id).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "criar_lead",
+        "title": "Criar card de lead",
+        "description": "Cria um novo card de lead no funil comercial. Exige o embaixador (parceiro_id, obtido em listar_embaixadores).",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "nome_fantasia": {
+              "type": "string",
+              "description": "Nome fantasia da empresa."
+            },
+            "nome_responsavel": {
+              "type": "string",
+              "description": "Nome do contato responsável."
+            },
+            "telefone_responsavel": {
+              "type": "string",
+              "description": "Telefone do responsável."
+            },
+            "parceiro_id": {
+              "type": "string",
+              "description": "UUID do Embaixador Monnera responsável pela indicação."
+            },
+            "email_responsavel": {
+              "type": "string"
+            },
+            "razao_social": {
+              "type": "string"
+            },
+            "cnpj": {
+              "type": "string"
+            },
+            "cidade": {
+              "type": "string"
+            },
+            "quantidade_lojas": {
+              "type": "integer"
+            },
+            "erp_utilizado": {
+              "type": "string"
+            },
+            "descricao_necessidade": {
+              "type": "string"
+            },
+            "panel_id": {
+              "type": "string",
+              "description": "Painel do card (padrão: comercial)."
+            },
+            "stage_id": {
+              "type": "string",
+              "description": "Etapa inicial (padrão: novo_lead)."
+            },
+            "origem": {
+              "type": "string",
+              "description": "Origem do lead (padrão: agente_codex)."
+            },
+            "responsible_user_id": {
+              "type": "string",
+              "description": "Usuário responsável pelo card."
+            }
+          },
+          "required": [
+            "nome_fantasia",
+            "nome_responsavel",
+            "telefone_responsavel",
+            "parceiro_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "atualizar_lead",
+        "title": "Atualizar card de lead",
+        "description": "Atualiza campos cadastrais de um card de lead existente. Só envie os campos que devem mudar.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "UUID do lead."
+            },
+            "nome_fantasia": {
+              "type": "string"
+            },
+            "razao_social": {
+              "type": "string"
+            },
+            "cnpj": {
+              "type": "string"
+            },
+            "cidade": {
+              "type": "string"
+            },
+            "quantidade_lojas": {
+              "type": "integer"
+            },
+            "nome_responsavel": {
+              "type": "string"
+            },
+            "telefone_responsavel": {
+              "type": "string"
+            },
+            "email_responsavel": {
+              "type": "string"
+            },
+            "erp_utilizado": {
+              "type": "string"
+            },
+            "descricao_necessidade": {
+              "type": "string"
+            },
+            "valor_mensalidade": {
+              "type": "number"
+            },
+            "valor_campanhas": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "lead_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "mover_lead_etapa",
+        "title": "Mover lead de etapa",
+        "description": "Move um card de lead para outra etapa do funil. Ao mover para lead_perdido, o motivo da perda é obrigatório.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "UUID do lead."
+            },
+            "stage_id": {
+              "type": "string",
+              "description": "Etapa de destino, ex.: reuniao_agendada."
+            },
+            "motivo_perda": {
+              "type": "string",
+              "description": "Obrigatório quando a etapa for lead_perdido."
+            }
+          },
+          "required": [
+            "lead_id",
+            "stage_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "adicionar_comentario",
+        "title": "Adicionar comentário no card",
+        "description": "Registra um comentário no card de lead, na etapa atual do card.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "UUID do lead."
+            },
+            "comentario": {
+              "type": "string",
+              "description": "Texto do comentário."
+            }
+          },
+          "required": [
+            "lead_id",
+            "comentario"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "criar_tarefa",
+        "title": "Criar tarefa no card",
+        "description": "Cria uma tarefa vinculada a um card de lead, com prazo e responsável.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "description": "UUID do lead."
+            },
+            "titulo": {
+              "type": "string",
+              "description": "Título da tarefa."
+            },
+            "due_at": {
+              "type": "string",
+              "description": "Prazo em ISO 8601, ex.: 2026-08-20T14:00:00Z."
+            },
+            "assigned_to": {
+              "type": "string",
+              "description": "UUID do usuário responsável (padrão: usuário autenticado)."
+            }
+          },
+          "required": [
+            "lead_id",
+            "titulo",
+            "due_at"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "criar_cliente_cross",
+        "title": "Criar cliente no painel Onb Clientes Cross",
+        "description": "Cria um card de cliente no painel Onb Clientes Cross com dados do parceiro, focal, contratante Monnera e vendedor. CNPJ é único neste painel.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "nome_parceiro": {
+              "type": "string",
+              "description": "Nome do parceiro."
+            },
+            "cnpj": {
+              "type": "string",
+              "description": "CNPJ do parceiro (14 dígitos)."
+            },
+            "focal_nome": {
+              "type": "string"
+            },
+            "focal_telefone": {
+              "type": "string"
+            },
+            "focal_email": {
+              "type": "string"
+            },
+            "contratante_monnera": {
+              "type": "string"
+            },
+            "vendedor_nome": {
+              "type": "string"
+            },
+            "vendedor_telefone": {
+              "type": "string"
+            },
+            "vendedor_email": {
+              "type": "string"
+            },
+            "anotacoes": {
+              "type": "string",
+              "description": "Anotações livres, até 500 caracteres."
+            },
+            "stage_id": {
+              "type": "string",
+              "description": "Etapa inicial (padrão: primeira etapa do painel)."
+            },
+            "responsible_user_id": {
+              "type": "string",
+              "description": "Usuário responsável (padrão: usuário autenticado)."
+            }
+          },
+          "required": [
+            "nome_parceiro",
+            "cnpj"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "atualizar_cliente_cross",
+        "title": "Atualizar cliente do painel Onb Clientes Cross",
+        "description": "Atualiza dados ou etapa de um card do painel Onb Clientes Cross. Só envie os campos que devem mudar.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "card_id": {
+              "type": "string",
+              "description": "UUID do card do cliente."
+            },
+            "nome_parceiro": {
+              "type": "string"
+            },
+            "cnpj": {
+              "type": "string"
+            },
+            "focal_nome": {
+              "type": "string"
+            },
+            "focal_telefone": {
+              "type": "string"
+            },
+            "focal_email": {
+              "type": "string"
+            },
+            "contratante_monnera": {
+              "type": "string"
+            },
+            "vendedor_nome": {
+              "type": "string"
+            },
+            "vendedor_telefone": {
+              "type": "string"
+            },
+            "vendedor_email": {
+              "type": "string"
+            },
+            "anotacoes": {
+              "type": "string",
+              "description": "Anotações livres, até 500 caracteres."
+            },
+            "stage_id": {
+              "type": "string",
+              "description": "Nova etapa do card."
+            }
+          },
+          "required": [
+            "card_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
