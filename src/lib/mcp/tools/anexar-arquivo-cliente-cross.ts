@@ -5,10 +5,12 @@ import { CROSS_PANEL_ID, fail, ok, requireAuth } from "../helpers";
 
 const BUCKET = "representative-card-attachments";
 const MAX_BYTES = 10 * 1024 * 1024;
-const ALLOWED = ["pdf", "xls", "xlsx", "csv", "jpg", "jpeg", "png"];
+const ALLOWED = ["pdf", "xls", "xlsx", "csv", "jpg", "jpeg", "png", "doc", "docx"];
 
 const MIME: Record<string, string> = {
   pdf: "application/pdf",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   xls: "application/vnd.ms-excel",
   xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   csv: "text/csv",
@@ -29,7 +31,7 @@ export default defineTool({
   name: "anexar_arquivo_cliente_cross",
   title: "Anexar arquivo ao cliente do painel Onb Clientes Cross",
   description:
-    "Envia um anexo (PDF, Excel/CSV ou imagem JPG/PNG, até 10 MB) para um card do painel Onb Clientes Cross. O conteúdo do arquivo deve vir em base64. Arquivos idênticos já anexados no card não são duplicados (verificação por hash SHA-256).",
+    "Envia um anexo (PDF, Word doc/docx, Excel/CSV ou imagem JPG/PNG, até 10 MB) para um card do painel Onb Clientes Cross. O conteúdo do arquivo deve vir em base64. Arquivos idênticos já anexados no card não são duplicados (verificação por hash SHA-256).",
   inputSchema: {
     card_id: z.string().describe("UUID do card do cliente."),
     file_name: z.string().describe("Nome do arquivo com extensão, ex.: contrato.pdf."),
@@ -42,7 +44,7 @@ export default defineTool({
 
     const ext = file_name.split(".").pop()?.toLowerCase() ?? "";
     if (!ALLOWED.includes(ext)) {
-      return fail(`Formato não permitido em "${file_name}". Use PDF, Excel (xls/xlsx/csv) ou imagem (jpg/png).`);
+      return fail(`Formato não permitido em "${file_name}". Use PDF, Word (doc/docx), Excel (xls/xlsx/csv) ou imagem (jpg/png).`);
     }
 
     let bytes: Uint8Array;

@@ -566,9 +566,11 @@ import { defineTool as defineTool14 } from "npm:@lovable.dev/mcp-js@0.26.2";
 import { z as z12 } from "npm:zod@^3.25.76";
 var BUCKET = "representative-card-attachments";
 var MAX_BYTES = 10 * 1024 * 1024;
-var ALLOWED = ["pdf", "xls", "xlsx", "csv", "jpg", "jpeg", "png"];
+var ALLOWED = ["pdf", "xls", "xlsx", "csv", "jpg", "jpeg", "png", "doc", "docx"];
 var MIME = {
   pdf: "application/pdf",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   xls: "application/vnd.ms-excel",
   xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   csv: "text/csv",
@@ -586,7 +588,7 @@ function decodeBase64(input) {
 var anexar_arquivo_cliente_cross_default = defineTool14({
   name: "anexar_arquivo_cliente_cross",
   title: "Anexar arquivo ao cliente do painel Onb Clientes Cross",
-  description: "Envia um anexo (PDF, Excel/CSV ou imagem JPG/PNG, at\xE9 10 MB) para um card do painel Onb Clientes Cross. O conte\xFAdo do arquivo deve vir em base64. Arquivos id\xEAnticos j\xE1 anexados no card n\xE3o s\xE3o duplicados (verifica\xE7\xE3o por hash SHA-256).",
+  description: "Envia um anexo (PDF, Word doc/docx, Excel/CSV ou imagem JPG/PNG, at\xE9 10 MB) para um card do painel Onb Clientes Cross. O conte\xFAdo do arquivo deve vir em base64. Arquivos id\xEAnticos j\xE1 anexados no card n\xE3o s\xE3o duplicados (verifica\xE7\xE3o por hash SHA-256).",
   inputSchema: {
     card_id: z12.string().describe("UUID do card do cliente."),
     file_name: z12.string().describe("Nome do arquivo com extens\xE3o, ex.: contrato.pdf."),
@@ -598,7 +600,7 @@ var anexar_arquivo_cliente_cross_default = defineTool14({
     const supabase = supabaseForUser(ctx);
     const ext = file_name.split(".").pop()?.toLowerCase() ?? "";
     if (!ALLOWED.includes(ext)) {
-      return fail(`Formato n\xE3o permitido em "${file_name}". Use PDF, Excel (xls/xlsx/csv) ou imagem (jpg/png).`);
+      return fail(`Formato n\xE3o permitido em "${file_name}". Use PDF, Word (doc/docx), Excel (xls/xlsx/csv) ou imagem (jpg/png).`);
     }
     let bytes;
     try {

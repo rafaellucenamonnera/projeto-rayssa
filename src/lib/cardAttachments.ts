@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const CARD_ATTACHMENTS_BUCKET = "representative-card-attachments";
 export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 
-export const ALLOWED_ATTACHMENT_EXTENSIONS = ["pdf", "xls", "xlsx", "csv", "jpg", "jpeg", "png"];
+export const ALLOWED_ATTACHMENT_EXTENSIONS = ["pdf", "xls", "xlsx", "csv", "jpg", "jpeg", "png", "doc", "docx"];
 
 export interface CardAttachment {
   id: string;
@@ -18,7 +18,7 @@ export interface CardAttachment {
 export const validateAttachment = (file: File): string | null => {
   const ext = file.name.split(".").pop()?.toLowerCase() || "";
   if (!ALLOWED_ATTACHMENT_EXTENSIONS.includes(ext)) {
-    return `Formato não permitido em "${file.name}". Use PDF, Excel (xls/xlsx/csv) ou imagem (jpg/png).`;
+    return `Formato não permitido em "${file.name}". Use PDF, Word (doc/docx), Excel (xls/xlsx/csv) ou imagem (jpg/png).`;
   }
   if (file.size > MAX_ATTACHMENT_BYTES) {
     return `O arquivo "${file.name}" excede o limite de 10 MB.`;
