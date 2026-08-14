@@ -600,7 +600,7 @@ var anexar_arquivo_cliente_cross_default = defineTool14({
     const supabase = supabaseForUser(ctx);
     const ext = file_name.split(".").pop()?.toLowerCase() ?? "";
     if (!ALLOWED.includes(ext)) {
-      return fail(`Formato n\xE3o permitido em "${file_name}". Use PDF, Excel (xls/xlsx/csv) ou imagem (jpg/png).`);
+      return fail(`Formato n\xE3o permitido em "${file_name}". Use PDF, Word (doc/docx), Excel (xls/xlsx/csv) ou imagem (jpg/png).`);
     }
     let bytes;
     try {

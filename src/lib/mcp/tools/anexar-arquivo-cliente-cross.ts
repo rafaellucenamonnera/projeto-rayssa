@@ -44,7 +44,7 @@ export default defineTool({
 
     const ext = file_name.split(".").pop()?.toLowerCase() ?? "";
     if (!ALLOWED.includes(ext)) {
-      return fail(`Formato não permitido em "${file_name}". Use PDF, Excel (xls/xlsx/csv) ou imagem (jpg/png).`);
+      return fail(`Formato não permitido em "${file_name}". Use PDF, Word (doc/docx), Excel (xls/xlsx/csv) ou imagem (jpg/png).`);
     }
 
     let bytes: Uint8Array;
