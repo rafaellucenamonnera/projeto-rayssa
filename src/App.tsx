@@ -38,6 +38,7 @@ const CadastroLead = lazy(() => import("./pages/CadastroLead"));
 const FormularioConversao = lazy(() => import("./pages/FormularioConversao"));
 const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
 const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
+const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminFinanceiro = lazy(() => import("./pages/admin/AdminFinanceiro"));
 const AdminParceiros = lazyWithRetry(() => import("./pages/admin/AdminParceiros"));
@@ -86,6 +87,7 @@ const App = () => (
               <Route path="/indicacao/:slugConsultor" element={<CadastroLead />} />
               <Route path="/completar-cadastro/:token" element={<FormularioConversao />} />
               <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="financeiro" element={<AdminFinanceiro />} />
