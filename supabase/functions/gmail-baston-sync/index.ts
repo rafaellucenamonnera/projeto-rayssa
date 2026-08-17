@@ -501,14 +501,17 @@ Deno.serve(async (req) => {
   let maxMessages = DEFAULT_MAX_MESSAGES;
   // reprocess: reanalisa somente mensagens já registradas, sem criar novos registros
   let reprocess = false;
+  let batchSize = 20;
   try {
     const body = await req.json().catch(() => ({}));
     const rawDays = Number(body?.days);
     const rawMax = Number(body?.max_messages);
+    const rawBatch = Number(body?.batch_size);
     if (Number.isFinite(rawDays) && rawDays >= 1) days = Math.min(Math.floor(rawDays), MAX_DAYS);
     if (Number.isFinite(rawMax) && rawMax >= 1) {
       maxMessages = Math.min(Math.floor(rawMax), MAX_MESSAGES_LIMIT);
     }
+    if (Number.isFinite(rawBatch) && rawBatch >= 1) batchSize = Math.min(Math.floor(rawBatch), 20);
     reprocess = body?.reprocess === true;
   } catch {
     // corpo ausente ou inválido — mantém os padrões
@@ -522,8 +525,27 @@ Deno.serve(async (req) => {
     .single();
   const runId = run?.id ?? null;
 
-  const stats = { mode: SYNC_MODE, days, max_messages: maxMessages, fetched: 0, processed: 0, created: 0, skipped: 0, errors: 0, discarded_out_of_domain: 0, cnpj_por_fonte: {} as Record<string, number> };
+  const startedMs = Date.now();
+  const TIME_BUDGET_MS = 50_000;
+
+  const stats = {
+    mode: SYNC_MODE,
+    days,
+    max_messages: maxMessages,
+    reprocess,
+    batch_size: reprocess ? batchSize : null,
+    fetched: 0,
+    processed: 0,
+    created: 0,
+    skipped: 0,
+    errors: 0,
+    discarded_out_of_domain: 0,
+    remaining: 0,
+    stopped_on_timeout: false,
+    cnpj_por_fonte: {} as Record<string, number>,
+  };
   const cnpjSourceStats = stats.cnpj_por_fonte;
+
 
   const errorDetails: string[] = [];
 
