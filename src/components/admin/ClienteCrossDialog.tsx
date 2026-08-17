@@ -164,6 +164,15 @@ export const ClienteCrossDialog = ({ open, onOpenChange, panelId, firstStageId, 
         }
       }
 
+      if (saved?.id) {
+        await logCardEvent(
+          saved.id,
+          isEdit ? "card_updated" : "card_created",
+          { nome: saved.full_name, cnpj: saved.cnpj || null },
+          null,
+          isEdit ? null : saved.stage_id,
+        );
+      }
       toast.success(isEdit ? "Cliente atualizado." : "Cliente cadastrado.");
       onSaved(saved);
       onOpenChange(false);

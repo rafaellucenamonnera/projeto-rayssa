@@ -1828,9 +1828,6 @@ const AdminLeads = () => {
   });
 
   const handleClienteSaved = (data: any) => {
-    if (data?.id) {
-      logCardEvent(data.id, "card_updated", { nome: data.full_name, cnpj: data.cnpj || null });
-    }
     if (!data) {
       loadData();
       return;
