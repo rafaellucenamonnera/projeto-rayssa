@@ -919,6 +919,15 @@ Deno.serve(async (req) => {
       }
     }
 
+
+    {
+      const { count } = await admin
+        .from("gmail_processed_messages")
+        .select("id", { count: "exact", head: true })
+        .is("reprocessed_at", null);
+      stats.remaining = count ?? 0;
+    }
+
     if (runId) {
       await admin
         .from("gmail_sync_runs")
@@ -929,10 +938,13 @@ Deno.serve(async (req) => {
           created_count: stats.created,
           skipped_count: stats.skipped,
           error_count: stats.errors,
-          error_details: errorDetails.length ? errorDetails.join("\n").slice(0, 4000) : null,
+          error_details: errorDetails.length
+            ? errorDetails.join("\n").slice(0, 4000)
+            : `reprocess=${reprocess} lote=${stats.fetched} restantes=${stats.remaining}${stats.stopped_on_timeout ? " (interrompido por tempo)" : ""}`,
         })
         .eq("id", runId);
     }
+
 
     return new Response(JSON.stringify({ ok: true, ...stats }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
