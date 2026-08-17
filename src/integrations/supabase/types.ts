@@ -545,6 +545,7 @@ export type Database = {
           analysis_result: string | null
           attachments: Json
           attachments_count: number
+          body_snippet: string | null
           codigo_encontrado: string | null
           created_at: string
           error: string | null
@@ -555,6 +556,7 @@ export type Database = {
           message_id: string
           mode: string
           pending_reason: string | null
+          pending_reasons: Json
           received_at: string | null
           representative_card_id: string | null
           review_decision: string | null
@@ -573,6 +575,7 @@ export type Database = {
           analysis_result?: string | null
           attachments?: Json
           attachments_count?: number
+          body_snippet?: string | null
           codigo_encontrado?: string | null
           created_at?: string
           error?: string | null
@@ -583,6 +586,7 @@ export type Database = {
           message_id: string
           mode?: string
           pending_reason?: string | null
+          pending_reasons?: Json
           received_at?: string | null
           representative_card_id?: string | null
           review_decision?: string | null
@@ -601,6 +605,7 @@ export type Database = {
           analysis_result?: string | null
           attachments?: Json
           attachments_count?: number
+          body_snippet?: string | null
           codigo_encontrado?: string | null
           created_at?: string
           error?: string | null
@@ -611,6 +616,7 @@ export type Database = {
           message_id?: string
           mode?: string
           pending_reason?: string | null
+          pending_reasons?: Json
           received_at?: string | null
           representative_card_id?: string | null
           review_decision?: string | null
