@@ -367,17 +367,33 @@ async function addComment(cardId: string, systemUserId: string | null, texto: st
 // válidos nem normalizados: são marcados como "formato não confirmado".
 const MONNERA_CODE_RE = /^[A-Z0-9]{8}$/;
 
-function extractCodigo(text: string): { codigo: string | null; unconfirmed: string | null } {
+// Códigos demonstrativos: mesmo no formato válido, NUNCA são código real.
+const DEMO_CODES = new Set(["3SAXJF92", "UB5PXGDB", "XXXXXXX", "XXXXXXXX"]);
+const isDemoCode = (v: string) => DEMO_CODES.has(v.trim().toUpperCase());
+
+function extractCodigo(
+  text: string,
+): { codigo: string | null; unconfirmed: string | null; demo: string | null } {
+  const demoHit = text.match(/\b(3SAXJF92|UB5PXGDB|X{7,8})\b/i)?.[0];
   const labeled = labelValue(text, ["c[oó]digo", "c[oó]digo do card", "c[oó]digo do cliente", "protocolo"]);
-  const labeledCode = labeled?.match(/[A-Z0-9]{8}/i)?.[0];
-  if (labeledCode && MONNERA_CODE_RE.test(labeledCode.toUpperCase())) {
-    return { codigo: labeledCode.toUpperCase(), unconfirmed: null };
+  const labeledCode = labeled?.match(/[A-Z0-9]{8}/i)?.[0]?.toUpperCase();
+  if (labeledCode && MONNERA_CODE_RE.test(labeledCode) && !isDemoCode(labeledCode)) {
+    return { codigo: labeledCode, unconfirmed: null, demo: demoHit?.toUpperCase() ?? null };
   }
-  const inline = text.match(/\b(?=[A-Z0-9]{8}\b)(?=[A-Z0-9]*\d)(?=[A-Z0-9]*[A-Z])[A-Z0-9]{8}\b/)?.[0];
-  if (inline) return { codigo: inline.toUpperCase(), unconfirmed: null };
+  const inline = text
+    .match(/\b(?=[A-Z0-9]{8}\b)(?=[A-Z0-9]*\d)(?=[A-Z0-9]*[A-Z])[A-Z0-9]{8}\b/)?.[0]
+    ?.toUpperCase();
+  if (inline && !isDemoCode(inline)) {
+    return { codigo: inline, unconfirmed: null, demo: demoHit?.toUpperCase() ?? null };
+  }
   const legacy = text.match(/\b(?:MNR|CROSS|MON)[-_\s]?[A-Z0-9]{3,12}\b/i)?.[0];
-  return { codigo: null, unconfirmed: legacy ? legacy.replace(/\s+/g, "-").toUpperCase() : null };
+  return {
+    codigo: null,
+    unconfirmed: legacy ? legacy.replace(/\s+/g, "-").toUpperCase() : null,
+    demo: demoHit?.toUpperCase() ?? (inline && isDemoCode(inline) ? inline : labeledCode && isDemoCode(labeledCode) ? labeledCode : null),
+  };
 }
+
 
 
 function describeAttachments(
