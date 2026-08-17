@@ -454,15 +454,28 @@ Deno.serve(async (req) => {
 
     for (const { id: messageId } of ids.slice(0, maxMessages)) {
 
-      // idempotência: reserva a mensagem antes de qualquer gravação
-      const { data: reserved, error: reserveErr } = await admin
-        .from("gmail_processed_messages")
-        .insert({ message_id: messageId, run_id: runId, status: "pending", mode: SYNC_MODE })
-        .select("id")
-        .maybeSingle();
-      if (reserveErr || !reserved) continue; // já processada anteriormente
+      let rowId: string | null = null;
+      if (reprocess) {
+        // reprocessa apenas registros já existentes — nunca insere novas linhas
+        const { data: existingRow } = await admin
+          .from("gmail_processed_messages")
+          .select("id")
+          .eq("message_id", messageId)
+          .maybeSingle();
+        if (!existingRow) continue;
+        rowId = existingRow.id;
+      } else {
+        // idempotência: reserva a mensagem antes de qualquer gravação
+        const { data: reserved, error: reserveErr } = await admin
+          .from("gmail_processed_messages")
+          .insert({ message_id: messageId, run_id: runId, status: "pending", mode: SYNC_MODE })
+          .select("id")
+          .maybeSingle();
+        if (reserveErr || !reserved) continue; // já processada anteriormente
+        rowId = reserved.id;
+      }
 
-      const rowId = reserved.id;
+
       try {
         const msg = await gmailFetch(`/users/me/messages/${messageId}?format=full`);
         const payload = msg?.payload ?? {};
