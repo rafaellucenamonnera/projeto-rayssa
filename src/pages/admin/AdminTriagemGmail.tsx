@@ -95,6 +95,8 @@ const STATUS_LABEL: Record<string, string> = {
   triage_ambiguo: "Vínculo ambíguo",
   triage_fora_do_escopo: "Fora do escopo",
   triage_divergencia_cnpj: "CNPJ divergente do card",
+  triage_codigo_formato_nao_confirmado: "Código em formato não confirmado",
+
   created: "Card criado (modo ativo)",
   duplicate_cnpj: "CNPJ duplicado",
   skipped_no_name: "Ignorada",
@@ -117,11 +119,13 @@ const PENDING_LABEL: Record<string, string> = {
   sem_cnpj: "Sem CNPJ",
   sem_nome: "Sem nome",
   sem_codigo: "Sem código Monnera",
+  codigo_formato_nao_confirmado: "Código em formato não confirmado",
   duplicado: "CNPJ já tem card",
   ambiguo: "Vínculo ambíguo",
   divergencia_cnpj: "CNPJ divergente do card",
   fora_do_escopo: "Fora do escopo",
 };
+
 
 const CNPJ_SOURCE_LABEL: Record<string, string> = {
   assunto: "Assunto da mensagem",

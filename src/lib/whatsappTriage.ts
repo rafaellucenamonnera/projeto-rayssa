@@ -70,12 +70,29 @@ export const PENDING_LABEL: Record<string, string> = {
   sem_cnpj: "Sem CNPJ",
   sem_nome: "Sem nome do cliente",
   sem_codigo: "Sem código Monnera",
+  codigo_formato_nao_confirmado: "Código em formato não confirmado",
   multiplos_cnpj: "Múltiplos CNPJs na conversa",
   divergencia_cnpj: "CNPJ divergente do card sugerido",
   duplicado: "CNPJ já possui card",
   info_ambigua: "Informação ambígua",
   midia_ignorada: "Mídia não processada nesta versão",
 };
+
+/**
+ * Regra oficial do código Monnera: exatamente 8 caracteres, apenas letras
+ * maiúsculas (A-Z) e números (0-9), sem hífen, espaço ou outros símbolos.
+ * Exemplo válido: 8K2M9P4L.
+ */
+export const MONNERA_CODE_RE = /^[A-Z0-9]{8}$/;
+
+export const isValidMonneraCode = (value: string) => MONNERA_CODE_RE.test(value.trim());
+
+/**
+ * Formatos históricos com prefixo (ex.: MNR-A1B2C3) não são reprovados nem
+ * normalizados: ficam marcados como "formato não confirmado" para revisão.
+ */
+export const UNCONFIRMED_CODE_RE = /\b(?:MNR|MON|CROSS)[-_ ]?[A-Z0-9]{3,12}\b/i;
+
 
 const MEDIA_MARKERS = [
   "<mídia oculta>",
@@ -256,10 +273,32 @@ export const extractFromConversation = (messages: WhatsappMessage[]): WhatsappEx
   if (nome) addEvidence("cliente_nome", nome.value, nome.snippet, nome.msg);
   else addPending("sem_nome");
 
-  // Código Monnera
-  const codigo = firstMatch(usable, /\b(MNR[-_ ]?[A-Z0-9]{4,10})\b/i, 1);
-  if (codigo) addEvidence("codigo_monnera", codigo.value.toUpperCase(), codigo.snippet, codigo.msg);
-  else addPending("sem_codigo");
+  // Código Monnera — regra oficial: 8 caracteres [A-Z0-9], sem símbolos.
+  const codigoOficial =
+    firstMatch(usable, /(?:c[oó]digo(?:\s+monnera)?|protocolo)\s*[:\-]?\s*([A-Z0-9]{8})\b/i, 1) ??
+    firstMatch(usable, /\b(?=[A-Z0-9]{8}\b)(?=[A-Z0-9]*\d)(?=[A-Z0-9]*[A-Z])[A-Z0-9]{8}\b/, 0);
+  const codigoNaoConfirmado = codigoOficial
+    ? null
+    : firstMatch(usable, UNCONFIRMED_CODE_RE, 0);
+
+  let codigo: { value: string; snippet: string; msg: WhatsappMessage } | null = null;
+  if (codigoOficial && isValidMonneraCode(codigoOficial.value)) {
+    codigo = { ...codigoOficial, value: codigoOficial.value.toUpperCase() };
+    addEvidence("codigo_monnera", codigo.value, codigo.snippet, codigo.msg);
+  } else if (codigoNaoConfirmado) {
+    // não altera a regra: apenas sinaliza para revisão manual
+    addPending("codigo_formato_nao_confirmado");
+    addEvidence(
+      "codigo_monnera_nao_confirmado",
+      codigoNaoConfirmado.value.toUpperCase(),
+      codigoNaoConfirmado.snippet,
+      codigoNaoConfirmado.msg,
+    );
+    addPending("sem_codigo");
+  } else {
+    addPending("sem_codigo");
+  }
+
 
   // Contatos
   const email = firstMatch(usable, /[\w.+-]+@[\w-]+\.[\w.]{2,}/i);
@@ -309,7 +348,7 @@ export const extractFromConversation = (messages: WhatsappMessage[]): WhatsappEx
     cnpj_candidates: cnpjs,
     email: email ? email.value.toLowerCase() : null,
     telefone: telefone?.value ?? null,
-    codigo_monnera: codigo ? codigo.value.toUpperCase().replace(/[_ ]/g, "-") : null,
+    codigo_monnera: codigo ? codigo.value : null,
     campanhas: campanhas.map((c) => c.value),
     metas: metas.map((c) => c.value),
     regras: regras.map((c) => c.value),
