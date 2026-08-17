@@ -3068,6 +3068,178 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_extractions: {
+        Row: {
+          campanhas: Json
+          cliente_nome: string | null
+          cnpj: string | null
+          cnpj_candidates: Json
+          codigo_monnera: string | null
+          confidence: number
+          conversation_ended_at: string | null
+          conversation_started_at: string | null
+          created_at: string
+          email: string | null
+          evidences: Json
+          id: string
+          import_id: string
+          linked_card_id: string | null
+          matched_card_id: string | null
+          message_count: number
+          metas: Json
+          mode: string
+          pendencias: Json
+          pending_reasons: Json
+          regras: Json
+          review_decision: string | null
+          review_notes: string | null
+          reviewed: boolean
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          telefone: string | null
+          updated_at: string
+        }
+        Insert: {
+          campanhas?: Json
+          cliente_nome?: string | null
+          cnpj?: string | null
+          cnpj_candidates?: Json
+          codigo_monnera?: string | null
+          confidence?: number
+          conversation_ended_at?: string | null
+          conversation_started_at?: string | null
+          created_at?: string
+          email?: string | null
+          evidences?: Json
+          id?: string
+          import_id: string
+          linked_card_id?: string | null
+          matched_card_id?: string | null
+          message_count?: number
+          metas?: Json
+          mode?: string
+          pendencias?: Json
+          pending_reasons?: Json
+          regras?: Json
+          review_decision?: string | null
+          review_notes?: string | null
+          reviewed?: boolean
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          telefone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          campanhas?: Json
+          cliente_nome?: string | null
+          cnpj?: string | null
+          cnpj_candidates?: Json
+          codigo_monnera?: string | null
+          confidence?: number
+          conversation_ended_at?: string | null
+          conversation_started_at?: string | null
+          created_at?: string
+          email?: string | null
+          evidences?: Json
+          id?: string
+          import_id?: string
+          linked_card_id?: string | null
+          matched_card_id?: string | null
+          message_count?: number
+          metas?: Json
+          mode?: string
+          pendencias?: Json
+          pending_reasons?: Json
+          regras?: Json
+          review_decision?: string | null
+          review_notes?: string | null
+          reviewed?: boolean
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          telefone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_extractions_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_imports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_extractions_linked_card_id_fkey"
+            columns: ["linked_card_id"]
+            isOneToOne: false
+            referencedRelation: "representative_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_extractions_matched_card_id_fkey"
+            columns: ["matched_card_id"]
+            isOneToOne: false
+            referencedRelation: "representative_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_imports: {
+        Row: {
+          content_sha256: string
+          created_at: string
+          created_by: string | null
+          error: string | null
+          file_name: string
+          file_type: string | null
+          first_message_at: string | null
+          id: string
+          last_message_at: string | null
+          message_count: number
+          mode: string
+          participants: Json
+          size_bytes: number | null
+          status: string
+          storage_path: string
+        }
+        Insert: {
+          content_sha256: string
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          file_name: string
+          file_type?: string | null
+          first_message_at?: string | null
+          id?: string
+          last_message_at?: string | null
+          message_count?: number
+          mode?: string
+          participants?: Json
+          size_bytes?: number | null
+          status?: string
+          storage_path: string
+        }
+        Update: {
+          content_sha256?: string
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          file_name?: string
+          file_type?: string | null
+          first_message_at?: string | null
+          id?: string
+          last_message_at?: string | null
+          message_count?: number
+          mode?: string
+          participants?: Json
+          size_bytes?: number | null
+          status?: string
+          storage_path?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       success_customer_cards_view: {

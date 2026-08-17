@@ -21,7 +21,9 @@ export type CrossCardAction =
   | "block_resolved"
   | "note_updated"
   | "notification_created"
-  | "notification_read";
+  | "notification_read"
+  | "whatsapp_triage_reviewed";
+
 
 export const crossCardActionUrl = (panelId: string, cardId: string) =>
   `/admin/painel-comercial?panel=${panelId}&card=${cardId}`;
