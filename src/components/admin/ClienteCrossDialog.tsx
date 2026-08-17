@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { FileText, Loader2, Paperclip, Trash2 } from "lucide-react";
 import CardAttachments from "@/components/admin/CardAttachments";
 import { formatBytes, uploadCardAttachment, validateAttachment } from "@/lib/cardAttachments";
+import { logCardEvent } from "@/lib/crossCardEvents";
 
 const emptyForm = {
   full_name: "",
@@ -164,6 +165,15 @@ export const ClienteCrossDialog = ({ open, onOpenChange, panelId, firstStageId, 
         }
       }
 
+      if (saved?.id) {
+        await logCardEvent(
+          saved.id,
+          isEdit ? "card_updated" : "card_created",
+          { nome: saved.full_name, cnpj: saved.cnpj || null },
+          null,
+          isEdit ? null : saved.stage_id,
+        );
+      }
       toast.success(isEdit ? "Cliente atualizado." : "Cliente cadastrado.");
       onSaved(saved);
       onOpenChange(false);
