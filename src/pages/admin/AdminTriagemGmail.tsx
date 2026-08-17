@@ -51,6 +51,10 @@ type TriageMessage = {
   pending_reason: string | null;
   pending_reasons: PendingReason[] | null;
   body_snippet: string | null;
+  cnpj_source: string | null;
+  cnpj_snippet: string | null;
+  cnpj_candidates: Array<{ cnpj: string; source: string; snippet?: string }> | null;
+
   codigo_encontrado: string | null;
   attachments: TriageAttachment[] | null;
   attachments_count: number;
