@@ -1,0 +1,1 @@
+DELETE FROM public.gmail_processed_messages WHERE mode = 'triage';
