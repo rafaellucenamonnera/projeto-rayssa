@@ -1,68 +1,35 @@
-# Fase B — Modo Triagem (sem efeitos operacionais)
+# Concluir o reprocessamento das 72 mensagens restantes (modo triagem)
 
-Objetivo: o worker do Gmail passa a ler e analisar mensagens e gravar apenas registros de triagem, sem criar cards, mover cards, criar tarefas ou enviar e-mails. O conector da conta `rafael.lucena@monnera.com.br` só será vinculado depois que o modo triagem estiver confirmado.
+Hoje o parâmetro `reprocess: true` percorre novamente a lista do Gmail desde o início a cada execução, então lotes sucessivos repetem sempre as mesmas mensagens e as 72 restantes nunca chegam ao fim. A correção é trocar a origem do lote: em vez de varrer o Gmail, o worker passa a ler do banco quais registros ainda não foram reprocessados.
 
 ## Como vai funcionar
 
-1. O worker roda no modo `triage` por padrão. Nesse modo ele lê as mensagens, extrai os dados e grava o resultado da análise — e para por aí.
-2. Nada é criado no painel: nenhum card novo, nenhuma movimentação de etapa, nenhuma tarefa, nenhum comentário, nenhum anexo salvo no storage.
-3. Anexos são apenas listados (nome, tipo, tamanho e se seriam aceitos) — não são baixados nem armazenados.
-4. Cada mensagem é registrada uma única vez (idempotência atual por `message_id` preservada).
-5. A primeira varredura usa 90 dias e até 100 mensagens; depois volta ao padrão de 7 dias e 50 mensagens a cada 2 horas.
-6. O cron continua ativo exatamente como está, mas sem efeito operacional enquanto o modo for triagem.
+1. Nova coluna `reprocessed_at` (timestamptz) em `gmail_processed_messages`, preenchida sempre que o registro é reanalisado pela nova regra de CNPJ.
+2. Em `reprocess: true`, o worker seleciona no banco até `batch_size` registros (padrão 20, teto 20) com `reprocessed_at` nulo, ordenados por `received_at`, e reanalisa apenas esses `message_id`.
+3. Cada registro é atualizado no lugar (mesma linha, mesmo `message_id`) e recebe `reprocessed_at = now()`. Nenhuma linha nova é inserida.
+4. Falha isolada em uma mensagem marca erro no registro, incrementa o contador e segue para a próxima; a mensagem fica sem `reprocessed_at` e volta no lote seguinte.
+5. Guarda de tempo: o loop interrompe com segurança ao atingir ~50s de execução, gravando o run como concluído parcialmente. Como o progresso é por linha, a execução seguinte retoma exatamente onde parou.
+6. A resposta de cada execução informa lote processado, restantes e contadores.
 
-## Migrations
+Restrições mantidas integralmente: `GMAIL_SYNC_MODE` permanece `triage`; nenhum card criado ou movido, nenhuma tarefa, nenhum comentário, nenhum anexo baixado ou salvo, nenhum e-mail enviado. Classificação e evidências já registradas são preservadas — os campos são recalculados pela mesma regra multi-fonte já aprovada, sem apagar dados de revisão manual (`reviewed`, `review_decision`).
 
-**1. Novas colunas em `gmail_processed_messages`**
-- `to_address` (text) — destinatário da mensagem.
-- `codigo_encontrado` (text) — código alfanumérico detectado no assunto/corpo, quando houver.
-- `attachments` (jsonb, default `[]`) — nome, mime, tamanho e se a extensão é aceita.
-- `analysis_result` (text) — resultado da triagem.
-- `pending_reason` (text) — motivo do bloqueio ou pendência, em linguagem clara.
-- `mode` (text, default `triage`) — registra em que modo a mensagem foi processada.
-- `matched_card_id` (uuid, FK opcional) — card que **seria** usado, apenas como indicação.
+## Alterações
 
-**2. Ampliação do `status` permitido**
-Novos valores, sem remover os atuais: `triage_ok`, `triage_sem_cnpj`, `triage_sem_nome`, `triage_sem_codigo`, `triage_duplicado`, `triage_ambiguo`, `triage_fora_do_escopo`.
-
-**3. Coluna `mode` em `gmail_sync_runs`**
-Para diferenciar execuções de triagem das operacionais.
-
-Grants e RLS seguem o padrão atual: leitura somente para admin, escrita apenas pelo `service_role`.
-
-## Arquivos alterados
+**Migration**
+- `ALTER TABLE public.gmail_processed_messages ADD COLUMN reprocessed_at timestamptz;`
+- Índice parcial em `(received_at) WHERE reprocessed_at IS NULL` para o lote.
+- Marcar como já reprocessados os registros que a rodada anterior atualizou (os que possuem `cnpj_source` não nulo ou já foram reclassificados), para que o contador de restantes reflita as 72 pendentes.
 
 **`supabase/functions/gmail-baston-sync/index.ts`**
-- Constante `SYNC_MODE` lida de `Deno.env.get("GMAIL_SYNC_MODE")`, com padrão `triage`.
-- Parâmetros de varredura por corpo da requisição: `days` e `max_messages`, com limites (padrão 7/50, teto 90/100).
-- Query passa a incluir o destinatário: `(from:baston.com.br OR to:rafael.lucena@monnera.com.br) newer_than:Nd`.
-- Nova função `runTriage(msg)` que extrai remetente, destinatário, assunto, thread, CNPJ, nome, código e lista de anexos, classifica o resultado e grava tudo em `gmail_processed_messages`.
-- Todo o bloco operacional (criar card, `storeAttachments`, `addComment`, tarefas) fica atrás de `if (SYNC_MODE === 'active')` — no modo triagem esse caminho não executa.
-- Nenhum código de envio de e-mail é adicionado.
-- Cabeçalho do arquivo documentando a conta autorizada, os filtros ativos e a regra de não envio.
+- Novo parâmetro `batch_size` (padrão 20, máximo 20), usado apenas em `reprocess: true`.
+- Em modo reprocessamento, a lista de mensagens vem de uma query no banco (`reprocessed_at is null`), não da API de listagem do Gmail.
+- Gravação de `reprocessed_at` em cada linha atualizada.
+- Guarda de tempo por execução e campo `remaining` na resposta e no run.
+- Contadores por fonte de CNPJ (`assunto`, `corpo`, `metadados`, `thread`, `anexo`), sem CNPJ, ambíguos, divergências e erros, acumulados no `gmail_sync_runs`.
 
-**Nenhum outro arquivo é alterado.** Jira, Canva, cron, regras de tarefas e notificações permanecem intactos.
+**`src/pages/admin/AdminTriagemGmail.tsx`**
+- Coluna/indicador de "reprocessado" no detalhe do registro, para conferência visual do progresso.
 
-## Como ativar/desativar o modo triagem
+## Execução
 
-- Padrão: triagem. Sem nenhuma configuração, o worker nunca cria nada.
-- Para passar ao modo operacional: definir o secret `GMAIL_SYNC_MODE = active`. Para voltar: apagar o secret ou definir `triage`.
-- Varredura inicial de 90 dias / 100 mensagens: execução manual única com `{"days": 90, "max_messages": 100}`. O cron continua chamando com o padrão 7 dias / 50 mensagens.
-
-## Onde os resultados aparecem
-
-- Tabela `gmail_processed_messages` — uma linha por mensagem, com todos os campos pedidos (message_id, thread_id, remetente, destinatário, assunto, CNPJ, nome, código, anexos, resultado e motivo da pendência). Visível apenas a administradores.
-- Tabela `gmail_sync_runs` — uma linha por execução, com contadores e erros.
-- Se preferir ver isso dentro do painel em vez de consulta ao banco, posso incluir depois uma aba de triagem em Onb Clientes Cross — não está neste escopo.
-
-## Ordem de execução
-
-1. Aplicar as migrations.
-2. Atualizar e publicar a função no modo triagem.
-3. Vincular a conexão Gmail de `rafael.lucena@monnera.com.br`.
-4. Rodar manualmente a varredura de 90 dias / 100 mensagens.
-5. Revisar juntos os registros de triagem antes de qualquer ativação operacional.
-
-## Garantias desta etapa
-
-Nenhum card, tarefa, comentário, anexo, movimentação de etapa ou e-mail será criado. Até aqui nada foi alterado no projeto — este é o plano para aprovação.
+Chamadas manuais sucessivas com `{"reprocess": true, "batch_size": 20}` até `remaining` chegar a zero (4 execuções previstas para as 72 mensagens). Ao final, apresento: total reprocessado, CNPJ por fonte, sem CNPJ, ambíguos, divergências, erros e a confirmação de que nenhum efeito operacional ocorreu (verificada por consulta às tabelas de cards, tarefas, comentários e anexos).
