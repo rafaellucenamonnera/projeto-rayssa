@@ -95,6 +95,8 @@ const STATUS_LABEL: Record<string, string> = {
   triage_ambiguo: "Vínculo ambíguo",
   triage_fora_do_escopo: "Fora do escopo",
   triage_divergencia_cnpj: "CNPJ divergente do card",
+  triage_codigo_formato_nao_confirmado: "Código em formato não confirmado",
+
   created: "Card criado (modo ativo)",
   duplicate_cnpj: "CNPJ duplicado",
   skipped_no_name: "Ignorada",
