@@ -387,6 +387,102 @@ function describeAttachments(
   });
 }
 
+// --------------------------------------------------------- extração de CNPJ
+// Procura CNPJ em várias fontes, normaliza (somente 14 dígitos) e guarda o
+// trecho de origem. NUNCA baixa anexos — usa apenas o nome do arquivo.
+type CnpjHit = { cnpj: string; source: string; snippet: string };
+
+const CNPJ_RE = /\d{2}[.\s]?\d{3}[.\s]?\d{3}[\/\s]?\d{4}[-\s]?\d{2}/g;
+
+function findCnpjsIn(text: string, source: string): CnpjHit[] {
+  if (!text) return [];
+  const hits: CnpjHit[] = [];
+  const clean = text.replace(/\u00a0/g, " ");
+  for (const match of clean.matchAll(CNPJ_RE)) {
+    const digits = onlyDigits(match[0]);
+    if (!digits || digits.length !== 14) continue;
+    if (/^(\d)\1{13}$/.test(digits)) continue; // sequências inválidas
+    const idx = match.index ?? 0;
+    const snippet = clean
+      .slice(Math.max(0, idx - 80), idx + match[0].length + 80)
+      .replace(/\s+/g, " ")
+      .trim();
+    hits.push({ cnpj: digits, source, snippet: snippet.slice(0, 240) });
+  }
+  return hits;
+}
+
+async function collectThreadText(threadId: string | null): Promise<string> {
+  if (!threadId) return "";
+  try {
+    const thread = await gmailFetch(`/users/me/threads/${threadId}?format=full`);
+    const parts: string[] = [];
+    for (const msg of thread?.messages ?? []) {
+      const p = msg?.payload ?? {};
+      parts.push(gmailHeader(p, "Subject"));
+      const acc = { text: [] as string[], html: [] as string[] };
+      collectBody(p, acc);
+      parts.push(acc.text.join("\n").trim() || stripHtml(acc.html.join("\n")));
+      const atts: Array<{ filename: string; attachmentId: string; size: number }> = [];
+      collectAttachments(p, atts);
+      parts.push(atts.map((a) => a.filename).join(" "));
+    }
+    return parts.filter(Boolean).join("\n").slice(0, 40000);
+  } catch (err) {
+    console.error("thread fetch falhou", err);
+    return "";
+  }
+}
+
+type CnpjResolution = {
+  cnpj: string | null;
+  source: string | null;
+  snippet: string | null;
+  candidates: Array<{ cnpj: string; source: string; snippet: string }>;
+  ambiguous: boolean;
+};
+
+async function resolveCnpj(params: {
+  subject: string;
+  body: string;
+  metadataCnpj: string | null;
+  attachmentNames: string[];
+  threadId: string | null;
+}): Promise<CnpjResolution> {
+  const hits: CnpjHit[] = [];
+  hits.push(...findCnpjsIn(params.subject, "assunto"));
+  hits.push(...findCnpjsIn(params.body, "corpo"));
+  if (params.metadataCnpj && params.metadataCnpj.length === 14) {
+    hits.push({ cnpj: params.metadataCnpj, source: "metadados", snippet: "Extraído dos metadados estruturados." });
+  }
+  hits.push(...findCnpjsIn(params.attachmentNames.join(" | "), "anexo"));
+
+  // thread completa somente se ainda não houver CNPJ
+  if (!hits.length) {
+    const threadText = await collectThreadText(params.threadId);
+    hits.push(...findCnpjsIn(threadText, "thread"));
+  }
+
+  const unique = new Map<string, CnpjHit>();
+  for (const h of hits) if (!unique.has(h.cnpj)) unique.set(h.cnpj, h);
+  const list = Array.from(unique.values());
+
+  if (!list.length) {
+    return { cnpj: null, source: null, snippet: null, candidates: [], ambiguous: false };
+  }
+  const ORDER = ["assunto", "corpo", "metadados", "thread", "anexo"];
+  list.sort((a, b) => ORDER.indexOf(a.source) - ORDER.indexOf(b.source));
+  const primary = list[0];
+  return {
+    cnpj: primary.cnpj,
+    source: primary.source,
+    snippet: primary.snippet,
+    candidates: list,
+    ambiguous: list.length > 1,
+  };
+}
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -426,7 +522,9 @@ Deno.serve(async (req) => {
     .single();
   const runId = run?.id ?? null;
 
-  const stats = { mode: SYNC_MODE, days, max_messages: maxMessages, fetched: 0, processed: 0, created: 0, skipped: 0, errors: 0, discarded_out_of_domain: 0 };
+  const stats = { mode: SYNC_MODE, days, max_messages: maxMessages, fetched: 0, processed: 0, created: 0, skipped: 0, errors: 0, discarded_out_of_domain: 0, cnpj_por_fonte: {} as Record<string, number> };
+  const cnpjSourceStats = stats.cnpj_por_fonte;
+
   const errorDetails: string[] = [];
 
   try {
@@ -544,6 +642,17 @@ Deno.serve(async (req) => {
           const codigo = extractCodigo(fullText);
           let matchedCardId: string | null = null;
 
+          // CNPJ: assunto > corpo > metadados > thread > nome de anexo
+          const resolution = await resolveCnpj({
+            subject,
+            body: plain,
+            metadataCnpj: extracted.cnpj,
+            attachmentNames: atts.map((a) => a.filename),
+            threadId,
+          });
+          extracted = { ...extracted, cnpj: resolution.cnpj };
+          if (resolution.source) cnpjSourceStats[resolution.source] = (cnpjSourceStats[resolution.source] ?? 0) + 1;
+
           // TODAS as pendências são acumuladas — uma mensagem pode ter várias.
           const reasons: Array<{ code: string; label: string }> = [];
           const addReason = (code: string, label: string) => {
@@ -559,20 +668,26 @@ Deno.serve(async (req) => {
           if (!extracted.nome_parceiro) {
             addReason("sem_nome", "Nome do parceiro não identificado no e-mail.");
           }
-          if (!extracted.cnpj) {
-            addReason("sem_cnpj", "CNPJ não identificado no e-mail.");
+          if (!resolution.cnpj) {
+            addReason("sem_cnpj", "CNPJ não identificado no assunto, corpo, thread, metadados ou anexos.");
+          }
+          if (resolution.ambiguous) {
+            addReason(
+              "ambiguo",
+              `Mais de um CNPJ encontrado na mensagem (${resolution.candidates.map((c) => c.cnpj).join(", ")}).`,
+            );
           }
           // ausência de código é sempre registrada, mesmo com outras pendências
           if (!codigo) {
             addReason("sem_codigo", "Nenhum código alfanumérico de card encontrado na mensagem.");
           }
 
-          if (extracted.cnpj) {
+          if (resolution.cnpj) {
             const { data: matches } = await admin
               .from("representative_cards")
-              .select("id")
+              .select("id, cnpj")
               .eq("panel_id", CROSS_PANEL_ID)
-              .eq("cnpj", extracted.cnpj)
+              .eq("cnpj", resolution.cnpj)
               .limit(5);
             if (matches && matches.length === 1) {
               matchedCardId = matches[0].id;
@@ -588,10 +703,28 @@ Deno.serve(async (req) => {
             }
           }
 
+          // divergência: código aponta para um card com CNPJ diferente
+          if (codigo && resolution.cnpj) {
+            const { data: byCode } = await admin
+              .from("representative_cards")
+              .select("id, cnpj")
+              .eq("panel_id", CROSS_PANEL_ID)
+              .ilike("full_name", `%${codigo}%`)
+              .limit(2);
+            const codeCard = byCode?.length === 1 ? byCode[0] : null;
+            if (codeCard?.cnpj && onlyDigits(codeCard.cnpj) !== resolution.cnpj) {
+              addReason(
+                "divergencia_cnpj",
+                "CNPJ da mensagem diverge do CNPJ do card indicado pelo código — requer revisão manual.",
+              );
+            }
+          }
+
           // status principal: primeira pendência pela ordem de severidade
           const PRIORITY = [
             "fora_do_escopo",
             "ambiguo",
+            "divergencia_cnpj",
             "sem_nome",
             "sem_cnpj",
             "duplicado",
@@ -623,6 +756,9 @@ Deno.serve(async (req) => {
               pending_reason: pendingReason,
               pending_reasons: reasons,
               body_snippet: plain.slice(0, 1200),
+              cnpj_source: resolution.source,
+              cnpj_snippet: resolution.snippet,
+              cnpj_candidates: resolution.candidates,
               mode: "triage",
               run_id: runId,
             })
@@ -632,6 +768,7 @@ Deno.serve(async (req) => {
           if (status !== "triage_ok") stats.skipped += 1;
           continue;
         }
+
 
 
         if (!extracted.nome_parceiro) {
