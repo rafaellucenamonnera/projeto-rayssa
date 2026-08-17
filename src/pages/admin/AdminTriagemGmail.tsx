@@ -117,11 +117,13 @@ const PENDING_LABEL: Record<string, string> = {
   sem_cnpj: "Sem CNPJ",
   sem_nome: "Sem nome",
   sem_codigo: "Sem código Monnera",
+  codigo_formato_nao_confirmado: "Código em formato não confirmado",
   duplicado: "CNPJ já tem card",
   ambiguo: "Vínculo ambíguo",
   divergencia_cnpj: "CNPJ divergente do card",
   fora_do_escopo: "Fora do escopo",
 };
+
 
 const CNPJ_SOURCE_LABEL: Record<string, string> = {
   assunto: "Assunto da mensagem",
