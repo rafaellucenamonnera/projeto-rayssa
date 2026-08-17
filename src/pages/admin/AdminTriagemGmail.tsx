@@ -62,6 +62,8 @@ type TriageMessage = {
   matched_card_id: string | null;
   representative_card_id: string | null;
   mode: string;
+  reprocessed_at: string | null;
+
   reviewed: boolean;
   reviewed_at: string | null;
   reviewed_by: string | null;
