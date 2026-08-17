@@ -565,30 +565,44 @@ Deno.serve(async (req) => {
       `(from:(@${SENDER_DOMAIN}) OR to:(@${SENDER_DOMAIN})) newer_than:${days}d -in:spam -in:trash`,
     );
 
-    const ids: Array<{ id: string; threadId: string }> = [];
-    let pageToken = "";
-    do {
-      const list = await gmailFetch(
-        `/users/me/messages?q=${query}&maxResults=100${pageToken ? `&pageToken=${pageToken}` : ""}`,
-      );
-      for (const m of list?.messages ?? []) ids.push({ id: m.id, threadId: m.threadId });
-      pageToken = list?.nextPageToken ?? "";
-    } while (pageToken && ids.length < maxMessages);
+    const ids: Array<{ id: string; rowId?: string }> = [];
+
+    if (reprocess) {
+      // fila de reprocessamento vem do banco: retoma exatamente de onde parou
+      const { data: pending, error: pendingErr } = await admin
+        .from("gmail_processed_messages")
+        .select("id, message_id")
+        .is("reprocessed_at", null)
+        .order("received_at", { ascending: true, nullsFirst: true })
+        .limit(batchSize);
+      if (pendingErr) throw new Error(pendingErr.message);
+      for (const row of pending ?? []) ids.push({ id: row.message_id, rowId: row.id });
+    } else {
+      let pageToken = "";
+      do {
+        const list = await gmailFetch(
+          `/users/me/messages?q=${query}&maxResults=100${pageToken ? `&pageToken=${pageToken}` : ""}`,
+        );
+        for (const m of list?.messages ?? []) ids.push({ id: m.id });
+        pageToken = list?.nextPageToken ?? "";
+      } while (pageToken && ids.length < maxMessages);
+    }
 
     stats.fetched = ids.length;
 
-    for (const { id: messageId } of ids.slice(0, maxMessages)) {
+    for (const item of ids.slice(0, reprocess ? batchSize : maxMessages)) {
+      const messageId = item.id;
+
+      if (Date.now() - startedMs > TIME_BUDGET_MS) {
+        stats.stopped_on_timeout = true;
+        break;
+      }
 
       let rowId: string | null = null;
       if (reprocess) {
         // reprocessa apenas registros já existentes — nunca insere novas linhas
-        const { data: existingRow } = await admin
-          .from("gmail_processed_messages")
-          .select("id")
-          .eq("message_id", messageId)
-          .maybeSingle();
-        if (!existingRow) continue;
-        rowId = existingRow.id;
+        rowId = item.rowId ?? null;
+        if (!rowId) continue;
       } else {
         // idempotência: reserva a mensagem antes de qualquer gravação
         const { data: reserved, error: reserveErr } = await admin
@@ -599,6 +613,7 @@ Deno.serve(async (req) => {
         if (reserveErr || !reserved) continue; // já processada anteriormente
         rowId = reserved.id;
       }
+
 
 
       try {
