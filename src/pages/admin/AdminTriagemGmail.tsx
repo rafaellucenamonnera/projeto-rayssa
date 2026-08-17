@@ -35,6 +35,8 @@ type TriageAttachment = {
   aceito?: boolean;
 };
 
+type PendingReason = { code: string; label: string };
+
 type TriageMessage = {
   id: string;
   message_id: string;
@@ -47,6 +49,8 @@ type TriageMessage = {
   status: string;
   analysis_result: string | null;
   pending_reason: string | null;
+  pending_reasons: PendingReason[] | null;
+  body_snippet: string | null;
   codigo_encontrado: string | null;
   attachments: TriageAttachment[] | null;
   attachments_count: number;
@@ -60,6 +64,7 @@ type TriageMessage = {
   review_decision: string | null;
   review_notes: string | null;
 };
+
 
 type CrossCard = { id: string; full_name: string; cnpj: string | null };
 
