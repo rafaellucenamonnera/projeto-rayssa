@@ -92,6 +92,7 @@ const STATUS_LABEL: Record<string, string> = {
   triage_duplicado: "CNPJ já tem card",
   triage_ambiguo: "Vínculo ambíguo",
   triage_fora_do_escopo: "Fora do escopo",
+  triage_divergencia_cnpj: "CNPJ divergente do card",
   created: "Card criado (modo ativo)",
   duplicate_cnpj: "CNPJ duplicado",
   skipped_no_name: "Ignorada",
@@ -102,6 +103,7 @@ const STATUS_TONE: Record<string, string> = {
   triage_ok: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
   triage_duplicado: "bg-sky-500/15 text-sky-400 border-sky-500/30",
   triage_ambiguo: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+  triage_divergencia_cnpj: "bg-orange-500/15 text-orange-400 border-orange-500/30",
   triage_sem_cnpj: "bg-amber-500/15 text-amber-400 border-amber-500/30",
   triage_sem_nome: "bg-amber-500/15 text-amber-400 border-amber-500/30",
   triage_sem_codigo: "bg-amber-500/15 text-amber-400 border-amber-500/30",
@@ -115,8 +117,18 @@ const PENDING_LABEL: Record<string, string> = {
   sem_codigo: "Sem código Monnera",
   duplicado: "CNPJ já tem card",
   ambiguo: "Vínculo ambíguo",
+  divergencia_cnpj: "CNPJ divergente do card",
   fora_do_escopo: "Fora do escopo",
 };
+
+const CNPJ_SOURCE_LABEL: Record<string, string> = {
+  assunto: "Assunto da mensagem",
+  corpo: "Corpo da mensagem",
+  metadados: "Metadados extraídos",
+  thread: "Histórico da thread",
+  anexo: "Nome de anexo",
+};
+
 
 const PENDING_CODES = Object.keys(PENDING_LABEL);
 
