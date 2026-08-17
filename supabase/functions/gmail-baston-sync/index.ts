@@ -699,7 +699,7 @@ Deno.serve(async (req) => {
         // Apenas registra a análise. Não cria card, não move card, não cria
         // tarefa, não grava comentário, não baixa anexos, não envia e-mail.
         if (SYNC_MODE === "triage") {
-          const { codigo, unconfirmed: codigoNaoConfirmado } = extractCodigo(fullText);
+          const { codigo, unconfirmed: codigoNaoConfirmado, demo: codigoDemo } = extractCodigo(fullText);
           let matchedCardId: string | null = null;
 
           // CNPJ: assunto > corpo > metadados > thread > nome de anexo
@@ -742,6 +742,12 @@ Deno.serve(async (req) => {
             addReason(
               "sem_codigo",
               "Nenhum código Monnera válido (8 caracteres A-Z/0-9) encontrado na mensagem.",
+            );
+          }
+          if (codigoDemo) {
+            addReason(
+              "codigo_exemplo_invalido",
+              `Código demonstrativo inválido encontrado ("${codigoDemo}") — não é um código Monnera real.`,
             );
           }
           if (codigoNaoConfirmado) {
@@ -799,6 +805,7 @@ Deno.serve(async (req) => {
             "sem_cnpj",
             "duplicado",
             "sem_codigo",
+            "codigo_exemplo_invalido",
             "codigo_formato_nao_confirmado",
 
           ];
