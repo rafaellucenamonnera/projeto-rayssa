@@ -426,7 +426,7 @@ Deno.serve(async (req) => {
     .single();
   const runId = run?.id ?? null;
 
-  const stats = { mode: SYNC_MODE, days, max_messages: maxMessages, fetched: 0, processed: 0, created: 0, skipped: 0, errors: 0 };
+  const stats = { mode: SYNC_MODE, days, max_messages: maxMessages, fetched: 0, processed: 0, created: 0, skipped: 0, errors: 0, discarded_out_of_domain: 0 };
   const errorDetails: string[] = [];
 
   try {
@@ -442,8 +442,9 @@ Deno.serve(async (req) => {
     }
 
     const query = encodeURIComponent(
-      `(from:${SENDER_DOMAIN} OR to:${MONITORED_RECIPIENT}) newer_than:${days}d`,
+      `(from:(@${SENDER_DOMAIN}) OR to:(@${SENDER_DOMAIN})) newer_than:${days}d -in:spam -in:trash`,
     );
+
     const ids: Array<{ id: string; threadId: string }> = [];
     let pageToken = "";
     do {
@@ -490,7 +491,18 @@ Deno.serve(async (req) => {
         const receivedAt = msg?.internalDate ? new Date(Number(msg.internalDate)).toISOString() : null;
         const inScope =
           from.toLowerCase().includes(`@${SENDER_DOMAIN}`) ||
-          to.toLowerCase().includes(MONITORED_RECIPIENT);
+          to.toLowerCase().includes(`@${SENDER_DOMAIN}`);
+
+        // revalidação: descarta qualquer mensagem fora do domínio Baston
+        if (!inScope) {
+          if (!reprocess) {
+            await admin.from("gmail_processed_messages").delete().eq("id", rowId);
+          } else {
+            await admin.from("gmail_processed_messages").delete().eq("id", rowId);
+          }
+          stats.discarded_out_of_domain += 1;
+          continue;
+        }
 
         // modo operacional: só processa remetentes do domínio monitorado
         if (SYNC_MODE === "active" && !from.toLowerCase().includes(`@${SENDER_DOMAIN}`)) {
@@ -510,6 +522,7 @@ Deno.serve(async (req) => {
           stats.processed += 1;
           continue;
         }
+
 
         const bodyAcc = { text: [] as string[], html: [] as string[] };
         collectBody(payload, bodyAcc);
