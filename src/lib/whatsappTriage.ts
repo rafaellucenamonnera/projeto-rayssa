@@ -273,10 +273,32 @@ export const extractFromConversation = (messages: WhatsappMessage[]): WhatsappEx
   if (nome) addEvidence("cliente_nome", nome.value, nome.snippet, nome.msg);
   else addPending("sem_nome");
 
-  // Código Monnera
-  const codigo = firstMatch(usable, /\b(MNR[-_ ]?[A-Z0-9]{4,10})\b/i, 1);
-  if (codigo) addEvidence("codigo_monnera", codigo.value.toUpperCase(), codigo.snippet, codigo.msg);
-  else addPending("sem_codigo");
+  // Código Monnera — regra oficial: 8 caracteres [A-Z0-9], sem símbolos.
+  const codigoOficial =
+    firstMatch(usable, /(?:c[oó]digo(?:\s+monnera)?|protocolo)\s*[:\-]?\s*([A-Z0-9]{8})\b/i, 1) ??
+    firstMatch(usable, /\b(?=[A-Z0-9]{8}\b)(?=[A-Z0-9]*\d)(?=[A-Z0-9]*[A-Z])[A-Z0-9]{8}\b/, 0);
+  const codigoNaoConfirmado = codigoOficial
+    ? null
+    : firstMatch(usable, UNCONFIRMED_CODE_RE, 0);
+
+  let codigo: { value: string; snippet: string; msg: WhatsappMessage } | null = null;
+  if (codigoOficial && isValidMonneraCode(codigoOficial.value)) {
+    codigo = { ...codigoOficial, value: codigoOficial.value.toUpperCase() };
+    addEvidence("codigo_monnera", codigo.value, codigo.snippet, codigo.msg);
+  } else if (codigoNaoConfirmado) {
+    // não altera a regra: apenas sinaliza para revisão manual
+    addPending("codigo_formato_nao_confirmado");
+    addEvidence(
+      "codigo_monnera_nao_confirmado",
+      codigoNaoConfirmado.value.toUpperCase(),
+      codigoNaoConfirmado.snippet,
+      codigoNaoConfirmado.msg,
+    );
+    addPending("sem_codigo");
+  } else {
+    addPending("sem_codigo");
+  }
+
 
   // Contatos
   const email = firstMatch(usable, /[\w.+-]+@[\w-]+\.[\w.]{2,}/i);
