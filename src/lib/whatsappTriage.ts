@@ -348,7 +348,7 @@ export const extractFromConversation = (messages: WhatsappMessage[]): WhatsappEx
     cnpj_candidates: cnpjs,
     email: email ? email.value.toLowerCase() : null,
     telefone: telefone?.value ?? null,
-    codigo_monnera: codigo ? codigo.value.toUpperCase().replace(/[_ ]/g, "-") : null,
+    codigo_monnera: codigo ? codigo.value : null,
     campanhas: campanhas.map((c) => c.value),
     metas: metas.map((c) => c.value),
     regras: regras.map((c) => c.value),
