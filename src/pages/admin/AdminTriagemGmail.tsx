@@ -62,6 +62,8 @@ type TriageMessage = {
   matched_card_id: string | null;
   representative_card_id: string | null;
   mode: string;
+  reprocessed_at: string | null;
+
   reviewed: boolean;
   reviewed_at: string | null;
   reviewed_by: string | null;
@@ -431,7 +433,12 @@ export default function AdminTriagemGmail() {
                   value={STATUS_LABEL[selected.analysis_result ?? selected.status] ?? selected.analysis_result ?? selected.status}
                 />
                 <Field label="Status de revisão" value={selected.reviewed ? `Revisada em ${fmtDate(selected.reviewed_at)}` : "Não revisada"} />
+                <Field
+                  label="Reanálise de CNPJ"
+                  value={selected.reprocessed_at ? `Reprocessada em ${fmtDate(selected.reprocessed_at)}` : "Pendente de reprocessamento"}
+                />
               </div>
+
 
               {selected.cnpj_snippet && (
                 <div>

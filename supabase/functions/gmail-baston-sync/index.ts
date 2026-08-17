@@ -501,14 +501,17 @@ Deno.serve(async (req) => {
   let maxMessages = DEFAULT_MAX_MESSAGES;
   // reprocess: reanalisa somente mensagens já registradas, sem criar novos registros
   let reprocess = false;
+  let batchSize = 20;
   try {
     const body = await req.json().catch(() => ({}));
     const rawDays = Number(body?.days);
     const rawMax = Number(body?.max_messages);
+    const rawBatch = Number(body?.batch_size);
     if (Number.isFinite(rawDays) && rawDays >= 1) days = Math.min(Math.floor(rawDays), MAX_DAYS);
     if (Number.isFinite(rawMax) && rawMax >= 1) {
       maxMessages = Math.min(Math.floor(rawMax), MAX_MESSAGES_LIMIT);
     }
+    if (Number.isFinite(rawBatch) && rawBatch >= 1) batchSize = Math.min(Math.floor(rawBatch), 20);
     reprocess = body?.reprocess === true;
   } catch {
     // corpo ausente ou inválido — mantém os padrões
@@ -522,8 +525,27 @@ Deno.serve(async (req) => {
     .single();
   const runId = run?.id ?? null;
 
-  const stats = { mode: SYNC_MODE, days, max_messages: maxMessages, fetched: 0, processed: 0, created: 0, skipped: 0, errors: 0, discarded_out_of_domain: 0, cnpj_por_fonte: {} as Record<string, number> };
+  const startedMs = Date.now();
+  const TIME_BUDGET_MS = 50_000;
+
+  const stats = {
+    mode: SYNC_MODE,
+    days,
+    max_messages: maxMessages,
+    reprocess,
+    batch_size: reprocess ? batchSize : null,
+    fetched: 0,
+    processed: 0,
+    created: 0,
+    skipped: 0,
+    errors: 0,
+    discarded_out_of_domain: 0,
+    remaining: 0,
+    stopped_on_timeout: false,
+    cnpj_por_fonte: {} as Record<string, number>,
+  };
   const cnpjSourceStats = stats.cnpj_por_fonte;
+
 
   const errorDetails: string[] = [];
 
@@ -543,30 +565,44 @@ Deno.serve(async (req) => {
       `(from:(@${SENDER_DOMAIN}) OR to:(@${SENDER_DOMAIN})) newer_than:${days}d -in:spam -in:trash`,
     );
 
-    const ids: Array<{ id: string; threadId: string }> = [];
-    let pageToken = "";
-    do {
-      const list = await gmailFetch(
-        `/users/me/messages?q=${query}&maxResults=100${pageToken ? `&pageToken=${pageToken}` : ""}`,
-      );
-      for (const m of list?.messages ?? []) ids.push({ id: m.id, threadId: m.threadId });
-      pageToken = list?.nextPageToken ?? "";
-    } while (pageToken && ids.length < maxMessages);
+    const ids: Array<{ id: string; rowId?: string }> = [];
+
+    if (reprocess) {
+      // fila de reprocessamento vem do banco: retoma exatamente de onde parou
+      const { data: pending, error: pendingErr } = await admin
+        .from("gmail_processed_messages")
+        .select("id, message_id")
+        .is("reprocessed_at", null)
+        .order("received_at", { ascending: true, nullsFirst: true })
+        .limit(batchSize);
+      if (pendingErr) throw new Error(pendingErr.message);
+      for (const row of pending ?? []) ids.push({ id: row.message_id, rowId: row.id });
+    } else {
+      let pageToken = "";
+      do {
+        const list = await gmailFetch(
+          `/users/me/messages?q=${query}&maxResults=100${pageToken ? `&pageToken=${pageToken}` : ""}`,
+        );
+        for (const m of list?.messages ?? []) ids.push({ id: m.id });
+        pageToken = list?.nextPageToken ?? "";
+      } while (pageToken && ids.length < maxMessages);
+    }
 
     stats.fetched = ids.length;
 
-    for (const { id: messageId } of ids.slice(0, maxMessages)) {
+    for (const item of ids.slice(0, reprocess ? batchSize : maxMessages)) {
+      const messageId = item.id;
+
+      if (Date.now() - startedMs > TIME_BUDGET_MS) {
+        stats.stopped_on_timeout = true;
+        break;
+      }
 
       let rowId: string | null = null;
       if (reprocess) {
         // reprocessa apenas registros já existentes — nunca insere novas linhas
-        const { data: existingRow } = await admin
-          .from("gmail_processed_messages")
-          .select("id")
-          .eq("message_id", messageId)
-          .maybeSingle();
-        if (!existingRow) continue;
-        rowId = existingRow.id;
+        rowId = item.rowId ?? null;
+        if (!rowId) continue;
       } else {
         // idempotência: reserva a mensagem antes de qualquer gravação
         const { data: reserved, error: reserveErr } = await admin
@@ -577,6 +613,7 @@ Deno.serve(async (req) => {
         if (reserveErr || !reserved) continue; // já processada anteriormente
         rowId = reserved.id;
       }
+
 
 
       try {
@@ -761,6 +798,8 @@ Deno.serve(async (req) => {
               cnpj_candidates: resolution.candidates,
               mode: "triage",
               run_id: runId,
+              reprocessed_at: new Date().toISOString(),
+
             })
             .eq("id", rowId);
 
@@ -880,6 +919,15 @@ Deno.serve(async (req) => {
       }
     }
 
+
+    {
+      const { count } = await admin
+        .from("gmail_processed_messages")
+        .select("id", { count: "exact", head: true })
+        .is("reprocessed_at", null);
+      stats.remaining = count ?? 0;
+    }
+
     if (runId) {
       await admin
         .from("gmail_sync_runs")
@@ -890,10 +938,13 @@ Deno.serve(async (req) => {
           created_count: stats.created,
           skipped_count: stats.skipped,
           error_count: stats.errors,
-          error_details: errorDetails.length ? errorDetails.join("\n").slice(0, 4000) : null,
+          error_details: errorDetails.length
+            ? errorDetails.join("\n").slice(0, 4000)
+            : `reprocess=${reprocess} lote=${stats.fetched} restantes=${stats.remaining}${stats.stopped_on_timeout ? " (interrompido por tempo)" : ""}`,
         })
         .eq("id", runId);
     }
+
 
     return new Response(JSON.stringify({ ok: true, ...stats }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
