@@ -640,6 +640,17 @@ Deno.serve(async (req) => {
           const codigo = extractCodigo(fullText);
           let matchedCardId: string | null = null;
 
+          // CNPJ: assunto > corpo > metadados > thread > nome de anexo
+          const resolution = await resolveCnpj({
+            subject,
+            body: plain,
+            metadataCnpj: extracted.cnpj,
+            attachmentNames: atts.map((a) => a.filename),
+            threadId,
+          });
+          extracted = { ...extracted, cnpj: resolution.cnpj };
+          if (resolution.source) cnpjSourceStats[resolution.source] = (cnpjSourceStats[resolution.source] ?? 0) + 1;
+
           // TODAS as pendências são acumuladas — uma mensagem pode ter várias.
           const reasons: Array<{ code: string; label: string }> = [];
           const addReason = (code: string, label: string) => {
@@ -655,20 +666,26 @@ Deno.serve(async (req) => {
           if (!extracted.nome_parceiro) {
             addReason("sem_nome", "Nome do parceiro não identificado no e-mail.");
           }
-          if (!extracted.cnpj) {
-            addReason("sem_cnpj", "CNPJ não identificado no e-mail.");
+          if (!resolution.cnpj) {
+            addReason("sem_cnpj", "CNPJ não identificado no assunto, corpo, thread, metadados ou anexos.");
+          }
+          if (resolution.ambiguous) {
+            addReason(
+              "ambiguo",
+              `Mais de um CNPJ encontrado na mensagem (${resolution.candidates.map((c) => c.cnpj).join(", ")}).`,
+            );
           }
           // ausência de código é sempre registrada, mesmo com outras pendências
           if (!codigo) {
             addReason("sem_codigo", "Nenhum código alfanumérico de card encontrado na mensagem.");
           }
 
-          if (extracted.cnpj) {
+          if (resolution.cnpj) {
             const { data: matches } = await admin
               .from("representative_cards")
-              .select("id")
+              .select("id, cnpj")
               .eq("panel_id", CROSS_PANEL_ID)
-              .eq("cnpj", extracted.cnpj)
+              .eq("cnpj", resolution.cnpj)
               .limit(5);
             if (matches && matches.length === 1) {
               matchedCardId = matches[0].id;
@@ -684,10 +701,28 @@ Deno.serve(async (req) => {
             }
           }
 
+          // divergência: código aponta para um card com CNPJ diferente
+          if (codigo && resolution.cnpj) {
+            const { data: byCode } = await admin
+              .from("representative_cards")
+              .select("id, cnpj")
+              .eq("panel_id", CROSS_PANEL_ID)
+              .ilike("full_name", `%${codigo}%`)
+              .limit(2);
+            const codeCard = byCode?.length === 1 ? byCode[0] : null;
+            if (codeCard?.cnpj && onlyDigits(codeCard.cnpj) !== resolution.cnpj) {
+              addReason(
+                "divergencia_cnpj",
+                "CNPJ da mensagem diverge do CNPJ do card indicado pelo código — requer revisão manual.",
+              );
+            }
+          }
+
           // status principal: primeira pendência pela ordem de severidade
           const PRIORITY = [
             "fora_do_escopo",
             "ambiguo",
+            "divergencia_cnpj",
             "sem_nome",
             "sem_cnpj",
             "duplicado",
@@ -719,6 +754,9 @@ Deno.serve(async (req) => {
               pending_reason: pendingReason,
               pending_reasons: reasons,
               body_snippet: plain.slice(0, 1200),
+              cnpj_source: resolution.source,
+              cnpj_snippet: resolution.snippet,
+              cnpj_candidates: resolution.candidates,
               mode: "triage",
               run_id: runId,
             })
@@ -728,6 +766,7 @@ Deno.serve(async (req) => {
           if (status !== "triage_ok") stats.skipped += 1;
           continue;
         }
+
 
 
         if (!extracted.nome_parceiro) {
