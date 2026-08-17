@@ -723,8 +723,18 @@ Deno.serve(async (req) => {
           }
           // ausência de código é sempre registrada, mesmo com outras pendências
           if (!codigo) {
-            addReason("sem_codigo", "Nenhum código alfanumérico de card encontrado na mensagem.");
+            addReason(
+              "sem_codigo",
+              "Nenhum código Monnera válido (8 caracteres A-Z/0-9) encontrado na mensagem.",
+            );
           }
+          if (codigoNaoConfirmado) {
+            addReason(
+              "codigo_formato_nao_confirmado",
+              `Código em formato não confirmado encontrado ("${codigoNaoConfirmado}") — fora da regra oficial de 8 caracteres A-Z/0-9. Requer confirmação manual.`,
+            );
+          }
+
 
           if (resolution.cnpj) {
             const { data: matches } = await admin
