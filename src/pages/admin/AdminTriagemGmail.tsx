@@ -56,6 +56,7 @@ type TriageMessage = {
   mode: string;
   reviewed: boolean;
   reviewed_at: string | null;
+  reviewed_by: string | null;
   review_decision: string | null;
   review_notes: string | null;
 };
