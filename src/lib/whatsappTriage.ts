@@ -70,12 +70,29 @@ export const PENDING_LABEL: Record<string, string> = {
   sem_cnpj: "Sem CNPJ",
   sem_nome: "Sem nome do cliente",
   sem_codigo: "Sem código Monnera",
+  codigo_formato_nao_confirmado: "Código em formato não confirmado",
   multiplos_cnpj: "Múltiplos CNPJs na conversa",
   divergencia_cnpj: "CNPJ divergente do card sugerido",
   duplicado: "CNPJ já possui card",
   info_ambigua: "Informação ambígua",
   midia_ignorada: "Mídia não processada nesta versão",
 };
+
+/**
+ * Regra oficial do código Monnera: exatamente 8 caracteres, apenas letras
+ * maiúsculas (A-Z) e números (0-9), sem hífen, espaço ou outros símbolos.
+ * Exemplo válido: 8K2M9P4L.
+ */
+export const MONNERA_CODE_RE = /^[A-Z0-9]{8}$/;
+
+export const isValidMonneraCode = (value: string) => MONNERA_CODE_RE.test(value.trim());
+
+/**
+ * Formatos históricos com prefixo (ex.: MNR-A1B2C3) não são reprovados nem
+ * normalizados: ficam marcados como "formato não confirmado" para revisão.
+ */
+export const UNCONFIRMED_CODE_RE = /\b(?:MNR|MON|CROSS)[-_ ]?[A-Z0-9]{3,12}\b/i;
+
 
 const MEDIA_MARKERS = [
   "<mídia oculta>",
