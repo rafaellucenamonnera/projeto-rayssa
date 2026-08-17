@@ -546,6 +546,9 @@ export type Database = {
           attachments: Json
           attachments_count: number
           body_snippet: string | null
+          cnpj_candidates: Json
+          cnpj_snippet: string | null
+          cnpj_source: string | null
           codigo_encontrado: string | null
           created_at: string
           error: string | null
@@ -576,6 +579,9 @@ export type Database = {
           attachments?: Json
           attachments_count?: number
           body_snippet?: string | null
+          cnpj_candidates?: Json
+          cnpj_snippet?: string | null
+          cnpj_source?: string | null
           codigo_encontrado?: string | null
           created_at?: string
           error?: string | null
@@ -606,6 +612,9 @@ export type Database = {
           attachments?: Json
           attachments_count?: number
           body_snippet?: string | null
+          cnpj_candidates?: Json
+          cnpj_snippet?: string | null
+          cnpj_source?: string | null
           codigo_encontrado?: string | null
           created_at?: string
           error?: string | null
