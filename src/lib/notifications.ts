@@ -8,6 +8,7 @@ export type NotificationPayload = {
   leadId?: string | null;
   taskId?: string | null;
   commentId?: string | null;
+  representativeCardId?: string | null;
   actionUrl?: string | null;
   metadata?: Record<string, unknown>;
   deliveryKey?: string;
@@ -27,17 +28,19 @@ export const createNotification = async (payload: NotificationPayload) => {
     p_action_url: payload.actionUrl || (payload.leadId ? cardActionUrl(payload.leadId) : null),
     p_metadata: payload.metadata || {},
     p_delivery_key: payload.deliveryKey || payload.type,
+    p_representative_card_id: payload.representativeCardId || null,
   });
 
   if (error) throw error;
   return data as string | null;
 };
 
+
 export const createNotifications = async (payloads: NotificationPayload[]) => {
   const unique = new Map<string, NotificationPayload>();
   payloads.forEach((payload) => {
     if (!payload.recipientUserId) return;
-    const key = `${payload.recipientUserId}:${payload.type}:${payload.leadId || ""}:${payload.taskId || ""}:${payload.commentId || ""}`;
+    const key = `${payload.recipientUserId}:${payload.type}:${payload.leadId || ""}:${payload.taskId || ""}:${payload.commentId || ""}:${payload.representativeCardId || ""}`;
     unique.set(key, payload);
   });
 

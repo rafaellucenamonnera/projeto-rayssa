@@ -37,6 +37,10 @@ import { LeadContatos } from "@/components/admin/LeadContatos";
 import { LeadTasks } from "@/components/admin/LeadTasks";
 import { AmbassadorCardTasks } from "@/components/admin/AmbassadorCardTasks";
 import { RepresentativeCardTasks } from "@/components/admin/RepresentativeCardTasks";
+import { RepresentativeCardHistory } from "@/components/admin/RepresentativeCardHistory";
+import { RepresentativeCardNotes } from "@/components/admin/RepresentativeCardNotes";
+import { RepresentativeCardBlock } from "@/components/admin/RepresentativeCardBlock";
+import { logCardEvent } from "@/lib/crossCardEvents";
 import { AmbassadorLinksSection } from "@/components/admin/AmbassadorLinksSection";
 import { DaysInStage } from "@/components/admin/DaysInStage";
 import { PipelineKanban } from "@/components/admin/PipelineKanban";
@@ -319,7 +323,7 @@ const AdminLeads = () => {
   // Lead detail dialog
   const [detailLead, setDetailLead] = useState<any>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  type DetailSection = "detalhes" | "conversa" | "tarefas" | "reunioes" | "contatos" | "propostas" | "teste_monnera";
+  type DetailSection = "detalhes" | "conversa" | "tarefas" | "reunioes" | "contatos" | "propostas" | "teste_monnera" | "historico";
   const [activeSection, setActiveSection] = useState<DetailSection>("detalhes");
 
   // Lead perdido dialog
@@ -1789,6 +1793,9 @@ const AdminLeads = () => {
     const { data, error } = await (supabase as any).from(isAmbassadorPanel ? "ambassador_cards" : "representative_cards").insert(payload).select("*").single();
     setSavingNewCard(false);
     if (error) return toast.error("Erro ao salvar cadastro: " + error.message);
+    if (data && isCrossClientPanel) {
+      await logCardEvent(data.id, "card_created", { nome: fullName, cnpj: cnpj || null }, null, firstStage);
+    }
     toast.success("Cadastro salvo com sucesso.");
     setNewCardOpen(false);
     setNewCardData({ full_name: "", phone: "", email: "", cnpj: "", city: "", state: "", region: "", notes: "" });
@@ -1821,6 +1828,9 @@ const AdminLeads = () => {
   });
 
   const handleClienteSaved = (data: any) => {
+    if (data?.id) {
+      logCardEvent(data.id, "card_updated", { nome: data.full_name, cnpj: data.cnpj || null });
+    }
     if (!data) {
       loadData();
       return;
@@ -2638,6 +2648,7 @@ const AdminLeads = () => {
                   <TabsTrigger value="reunioes">Reuniões</TabsTrigger>
                   <TabsTrigger value="contatos">Contatos</TabsTrigger>
                   <TabsTrigger value="propostas">Propostas</TabsTrigger>
+                  {isCrossClientPanel && <TabsTrigger value="historico">Histórico</TabsTrigger>}
                   {["comercial", "comerc"].includes(currentPanelId) && !!detailLead?.teste_monnera_last_diagnostic_id && (
                     <TabsTrigger value="teste_monnera">Teste Monnera</TabsTrigger>
                   )}
@@ -2686,8 +2697,26 @@ const AdminLeads = () => {
                       <p className="whitespace-pre-wrap">{detailLead.notes || detailLead.descricao_necessidade || "—"}</p>
                     </div>
                   </div>
-                  <CardAttachments cardId={detailLead.id} canEdit={canEditLead} />
+                  <RepresentativeCardBlock
+                    card={detailLead}
+                    panelId={currentPanelId}
+                    stageLabel={pipelineStages.find((s) => s.value === (detailLead.stage_id || detailLead.status_lead))?.label}
+                    canEdit={canEditLead}
+                    onChanged={(patch) => {
+                      setDetailLead((prev: any) => (prev ? { ...prev, ...patch } : prev));
+                      setLeads((prev: any[]) => prev.map((l) => (l.id === detailLead.id ? { ...l, ...patch } : l)));
+                    }}
+                  />
+                  <RepresentativeCardNotes cardId={detailLead.id} canEdit={canEditLead} />
+                  <CardAttachments cardId={detailLead.id} canEdit={canEditLead} trackHistory />
                 </div>
+              )}
+
+              {activeSection === "historico" && isCrossClientPanel && (
+                <RepresentativeCardHistory
+                  cardId={detailLead.id}
+                  stageLabels={Object.fromEntries(pipelineStages.map((s) => [s.value, s.label]))}
+                />
               )}
 
               {activeSection === "detalhes" && !isCrossClientPanel && (
@@ -3217,6 +3246,9 @@ const AdminLeads = () => {
                       cardName={detailLead.nome_fantasia}
                       panelId={currentPanelId}
                       actionUrl={cardActionUrl(detailLead.id)}
+                      canDelete={canDeleteLead}
+                      cardCnpj={detailLead.cnpj || null}
+                      stageLabel={pipelineStages.find((s) => s.value === (detailLead.stage_id || detailLead.status_lead))?.label || null}
                     />
                   ) : (
                     <LeadTasks

@@ -1740,6 +1740,7 @@ export type Database = {
           metadata: Json
           read_at: string | null
           recipient_user_id: string
+          representative_card_id: string | null
           task_id: string | null
           title: string
           type: string
@@ -1755,6 +1756,7 @@ export type Database = {
           metadata?: Json
           read_at?: string | null
           recipient_user_id: string
+          representative_card_id?: string | null
           task_id?: string | null
           title: string
           type: string
@@ -1770,6 +1772,7 @@ export type Database = {
           metadata?: Json
           read_at?: string | null
           recipient_user_id?: string
+          representative_card_id?: string | null
           task_id?: string | null
           title?: string
           type?: string
@@ -1802,6 +1805,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "notifications_representative_card_id_fkey"
+            columns: ["representative_card_id"]
+            isOneToOne: false
+            referencedRelation: "representative_cards"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "notifications_task_id_fkey"
@@ -2264,6 +2274,50 @@ export type Database = {
           },
         ]
       }
+      representative_card_history: {
+        Row: {
+          action: string
+          actor_label: string
+          actor_user_id: string | null
+          created_at: string
+          destination_stage_id: string | null
+          id: string
+          payload: Json
+          representative_card_id: string
+          source_stage_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_label?: string
+          actor_user_id?: string | null
+          created_at?: string
+          destination_stage_id?: string | null
+          id?: string
+          payload?: Json
+          representative_card_id: string
+          source_stage_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_label?: string
+          actor_user_id?: string | null
+          created_at?: string
+          destination_stage_id?: string | null
+          id?: string
+          payload?: Json
+          representative_card_id?: string
+          source_stage_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "representative_card_history_representative_card_id_fkey"
+            columns: ["representative_card_id"]
+            isOneToOne: false
+            referencedRelation: "representative_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       representative_card_meetings: {
         Row: {
           created_at: string
@@ -2312,6 +2366,44 @@ export type Database = {
           },
         ]
       }
+      representative_card_notes: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          representative_card_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          representative_card_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          representative_card_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "representative_card_notes_representative_card_id_fkey"
+            columns: ["representative_card_id"]
+            isOneToOne: false
+            referencedRelation: "representative_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       representative_card_tasks: {
         Row: {
           assigned_to: string
@@ -2319,6 +2411,8 @@ export type Database = {
           completed_note: string | null
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          descricao: string | null
           due_at: string
           due_date: string | null
           id: string
@@ -2326,6 +2420,7 @@ export type Database = {
           status: string
           titulo: string
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
           assigned_to: string
@@ -2333,6 +2428,8 @@ export type Database = {
           completed_note?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          descricao?: string | null
           due_at: string
           due_date?: string | null
           id?: string
@@ -2340,6 +2437,7 @@ export type Database = {
           status?: string
           titulo: string
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           assigned_to?: string
@@ -2347,6 +2445,8 @@ export type Database = {
           completed_note?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          descricao?: string | null
           due_at?: string
           due_date?: string | null
           id?: string
@@ -2354,6 +2454,7 @@ export type Database = {
           status?: string
           titulo?: string
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -2367,6 +2468,10 @@ export type Database = {
       }
       representative_cards: {
         Row: {
+          blocked_at: string | null
+          blocked_by: string | null
+          blocked_reason: string | null
+          blocked_source: string | null
           city: string | null
           cnpj: string | null
           contratante_monnera: string | null
@@ -2379,6 +2484,7 @@ export type Database = {
           focal_phone: string | null
           full_name: string
           id: string
+          is_blocked: boolean
           notes: string | null
           panel_id: string
           parceiro_id: string | null
@@ -2390,12 +2496,17 @@ export type Database = {
           stage_id: string
           state: string | null
           status: string | null
+          unblocked_at: string | null
           updated_at: string
           vendor_email: string | null
           vendor_name: string | null
           vendor_phone: string | null
         }
         Insert: {
+          blocked_at?: string | null
+          blocked_by?: string | null
+          blocked_reason?: string | null
+          blocked_source?: string | null
           city?: string | null
           cnpj?: string | null
           contratante_monnera?: string | null
@@ -2408,6 +2519,7 @@ export type Database = {
           focal_phone?: string | null
           full_name: string
           id?: string
+          is_blocked?: boolean
           notes?: string | null
           panel_id: string
           parceiro_id?: string | null
@@ -2419,12 +2531,17 @@ export type Database = {
           stage_id: string
           state?: string | null
           status?: string | null
+          unblocked_at?: string | null
           updated_at?: string
           vendor_email?: string | null
           vendor_name?: string | null
           vendor_phone?: string | null
         }
         Update: {
+          blocked_at?: string | null
+          blocked_by?: string | null
+          blocked_reason?: string | null
+          blocked_source?: string | null
           city?: string | null
           cnpj?: string | null
           contratante_monnera?: string | null
@@ -2437,6 +2554,7 @@ export type Database = {
           focal_phone?: string | null
           full_name?: string
           id?: string
+          is_blocked?: boolean
           notes?: string | null
           panel_id?: string
           parceiro_id?: string | null
@@ -2448,6 +2566,7 @@ export type Database = {
           stage_id?: string
           state?: string | null
           status?: string | null
+          unblocked_at?: string | null
           updated_at?: string
           vendor_email?: string | null
           vendor_name?: string | null
@@ -2963,22 +3082,40 @@ export type Database = {
         Args: { p_data: Json; p_lojas?: Json; p_token: string }
         Returns: Json
       }
-      create_notification: {
-        Args: {
-          p_action_url?: string
-          p_actor_user_id?: string
-          p_comment_id?: string
-          p_delivery_key?: string
-          p_lead_id?: string
-          p_message: string
-          p_metadata?: Json
-          p_recipient_user_id: string
-          p_task_id?: string
-          p_title: string
-          p_type: string
-        }
-        Returns: string
-      }
+      create_notification:
+        | {
+            Args: {
+              p_action_url?: string
+              p_actor_user_id?: string
+              p_comment_id?: string
+              p_delivery_key?: string
+              p_lead_id?: string
+              p_message: string
+              p_metadata?: Json
+              p_recipient_user_id: string
+              p_task_id?: string
+              p_title: string
+              p_type: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_action_url?: string
+              p_actor_user_id?: string
+              p_comment_id?: string
+              p_delivery_key?: string
+              p_lead_id?: string
+              p_message: string
+              p_metadata?: Json
+              p_recipient_user_id: string
+              p_representative_card_id?: string
+              p_task_id?: string
+              p_title: string
+              p_type: string
+            }
+            Returns: string
+          }
       duplicate_card: {
         Args: { card_id: string; target_stage_id: string }
         Returns: string
@@ -3052,6 +3189,16 @@ export type Database = {
       }
       is_commercial_panel: { Args: { p_panel_id: string }; Returns: boolean }
       is_valid_parceiro: { Args: { p_id: string }; Returns: boolean }
+      log_representative_card_event: {
+        Args: {
+          p_action: string
+          p_card_id: string
+          p_destination_stage_id?: string
+          p_payload?: Json
+          p_source_stage_id?: string
+        }
+        Returns: string
+      }
       lookup_parceiro_by_code: {
         Args: { code: string }
         Returns: {

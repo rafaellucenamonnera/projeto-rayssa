@@ -10,13 +10,17 @@ import {
   removeCardAttachment,
   uploadCardAttachment,
 } from "@/lib/cardAttachments";
+import { logCardEvent } from "@/lib/crossCardEvents";
 
 interface CardAttachmentsProps {
   cardId: string;
   canEdit?: boolean;
+  /** Quando informado, cada anexo gera registro no histórico do card. */
+  trackHistory?: boolean;
 }
 
-export const CardAttachments = ({ cardId, canEdit = true }: CardAttachmentsProps) => {
+export const CardAttachments = ({ cardId, canEdit = true, trackHistory = false }: CardAttachmentsProps) => {
+
   const [items, setItems] = useState<CardAttachment[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -41,6 +45,13 @@ export const CardAttachments = ({ cardId, canEdit = true }: CardAttachmentsProps
     try {
       for (const file of Array.from(files)) {
         await uploadCardAttachment(cardId, file);
+        if (trackHistory) {
+          await logCardEvent(cardId, "attachment_added", {
+            arquivo: file.name,
+            tamanho_bytes: file.size,
+            tipo: file.type || null,
+          });
+        }
       }
       toast.success("Anexo(s) enviado(s)");
       await load();
@@ -66,6 +77,12 @@ export const CardAttachments = ({ cardId, canEdit = true }: CardAttachmentsProps
     try {
       await removeCardAttachment(att);
       setItems((prev) => prev.filter((i) => i.id !== att.id));
+      if (trackHistory) {
+        await logCardEvent(cardId, "attachment_removed", {
+          arquivo: att.file_name,
+          tamanho_bytes: att.size_bytes ?? null,
+        });
+      }
       toast.success("Anexo removido");
     } catch (e: any) {
       toast.error(e?.message || "Erro ao remover anexo");
