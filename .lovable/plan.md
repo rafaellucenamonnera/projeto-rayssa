@@ -1,79 +1,46 @@
-# Auditoria técnica — Painel Onb Clientes Cross (`painel_msj9fyji`)
+# Fase A — Base operacional do painel Onb Clientes Cross
 
-Somente auditoria + plano. Nenhum código alterado, nada publicado.
+Escopo restrito: tarefas, observações, histórico, notificações Cross e bloqueio. Sem Jira, Canva, Gmail, cron ou processamento automático.
 
-## 1. Rotas e componentes
+## Confirmação dos arquivos e do estado atual
 
-- Rota: `/admin/painel-comercial?panel=painel_msj9fyji` (deep link de card via `?card=<id>`), renderizada por `src/pages/admin/AdminLeads.tsx` (3.378 linhas) dentro de `src/layouts/AdminLayout.tsx`.
-- Constante do painel: `CROSS_CLIENT_PANEL_ID = "painel_msj9fyji"` (`AdminLeads.tsx:63`); flag `isCrossClientPanel` troca o botão "+ Card" por "+ Add Cliente".
-- Componentes do card:
-  - `src/components/admin/ClienteCrossDialog.tsx` — criação/edição do cliente (CNPJ único, focal, vendedor).
-  - `src/components/admin/CardAttachments.tsx` + `src/lib/cardAttachments.ts` — anexos (PDF, doc/docx, xls/xlsx/csv, jpg/png; 10 MB; bucket `representative-card-attachments`).
-  - `src/components/admin/RepresentativeCardComments.tsx` — histórico/comentários com anexos.
-  - `src/components/admin/RepresentativeCardTasks.tsx` — tarefas do card.
-  - `src/components/admin/NotificationCenter.tsx` — sino de notificações.
+- `src/pages/admin/AdminLeads.tsx` — board do painel (`CROSS_CLIENT_PANEL_ID`), criação/edição de card, drag-and-drop de etapa.
+- `src/components/admin/RepresentativeCardTasks.tsx` — hoje só cria, conclui (nota via `window.prompt`) e filtra; sem edição, sem exclusão, sem descrição.
+- `src/components/admin/RepresentativeCardComments.tsx` — comentários com anexos (permanece como está).
+- `src/components/admin/CardAttachments.tsx` + `src/lib/cardAttachments.ts` — anexos do card (preservados).
+- `src/components/admin/ClienteCrossDialog.tsx` — dialog de criação/edição do cliente.
+- `src/lib/notifications.ts` + `src/components/admin/NotificationCenter.tsx` — RPC `create_notification`.
+- Banco: `representative_card_tasks` (sem `descricao`), `representative_card_attachments`, `notifications` com CHECK fechado em 9 tipos e sem vínculo com cards do painel; policies atuais são "admins e gestores" via `ALL`.
 
-## 2. Tabelas e migrations
+## Migrations (reversíveis, sem apagar dados)
 
-- `representative_cards` (cards do painel; `panel_id`, `stage_id`, `cnpj`, focal/vendedor; `phone`, `email`, `responsible_user_id` já são opcionais).
-- `representative_card_comments`, `representative_card_comment_attachments`.
-- `representative_card_attachments` (com `content_sha256` para dedup).
-- `representative_card_tasks` (título, `due_at`, `assigned_to`, status, `completed_note`).
-- `representative_card_meetings`, `representative_card_dossiers` (existem, pouco usados no fluxo Cross).
-- `pipeline_panels`, `pipeline_stages_config` (8 etapas do painel), `pipeline_panel_edit_history`.
-- `gmail_sync_runs`, `gmail_processed_messages` (idempotência do worker).
-- `notifications` + `notification_deliveries`; RPC `create_notification`.
-- Índices únicos parciais: CNPJ único apenas no painel Cross; telefone/e-mail únicos apenas fora dele (migration `20260810134154_...sql`).
+1. `representative_card_tasks`: adicionar `descricao text`, `updated_by uuid`, `deleted_at timestamptz` (exclusão lógica) — nada existente é alterado.
+2. Nova tabela `representative_card_history` com `id`, `representative_card_id` (FK), `actor_user_id`, `action text`, `source_stage_id`, `destination_stage_id`, `payload jsonb default '{}'`, `created_at`; GRANTs para `authenticated`/`service_role`, RLS ativa, SELECT/INSERT para admins e gestores com acesso ao painel, sem UPDATE/DELETE (trilha imutável).
+3. Trigger `AFTER UPDATE OF stage_id` em `representative_cards` registrando `stage_changed` no histórico com etapa origem/destino e `auth.uid()`.
+4. Bloqueio em `representative_cards`: `is_blocked boolean not null default false`, `blocked_reason text`, `blocked_at timestamptz`, `blocked_by uuid`, `blocked_source text`, `unblocked_at timestamptz`. Trigger de etapa recusa a mudança quando `is_blocked = true` (mensagem clara ao usuário).
+5. Observações: nova tabela `representative_card_notes` (`representative_card_id`, `content text`, `created_by`, `created_at`, `updated_at`) com histórico de versões via `representative_card_history` — permite salvar, editar e ver o histórico sem virar regra de negócio.
+6. Notificações: adicionar `representative_card_id uuid` nullable (FK para `representative_cards`) e ampliar o CHECK de `type` com os tipos Cross (`cross_card_created`, `cross_card_updated`, `cross_stage_changed`, `cross_task_created`, `cross_task_updated`, `cross_task_completed`, `cross_task_deleted`, `cross_attachment_added`, `cross_attachment_removed`, `cross_block_created`, `cross_block_resolved`) preservando os 9 tipos atuais do painel comercial. `create_notification` ganha parâmetro opcional `p_representative_card_id` com default, mantendo todas as chamadas existentes válidas. Policy de SELECT continua "cada usuário lê as suas".
 
-## 3. Tarefas, comentários, anexos e notificações (estado atual)
+## Alterações de front-end
 
-- Tarefas: criar, concluir (com nota) e filtrar (abertas/minhas/vencidas/concluídas). **Não há edição** de título, prazo ou responsável depois de criada; não há exclusão.
-- Comentários: criação com anexos; servem como histórico manual. Não há trilha automática de execução (mudança de etapa, upload, ação do worker).
-- Anexos: upload/remoção com validação de extensão e tamanho; `content_sha256` gravado pela via MCP.
-- Notificações: `notifications.type` tem CHECK fechado com 9 valores (`task_assigned`, `task_updated`, `task_deadline_48h`, `task_deadline_24h`, `comment_mention`, etc.). Qualquer tipo novo do fluxo Cross falha hoje (foi essa a causa do erro no Teste Monnera). Além disso `notifications.lead_id`/`task_id` apontam para `leads`/`lead_tasks`, ou seja, não referenciam cards do painel Cross — hoje as notificações do painel só funcionam com `metadata` + `action_url`.
-- Usuários alvo confirmados: Rafael Lucena `d8e99940-…`, maycon.santos `87842ad6-…`, Livia `95871e5b-…`.
+- `RepresentativeCardTasks.tsx`: formulário de edição inline (título, descrição, prazo, responsável, status), diálogo de conclusão com nota obrigatória (substitui `window.prompt`), exclusão visível apenas para admin, e gravação no histórico + notificação Cross a cada ação.
+- Novo `src/components/admin/RepresentativeCardNotes.tsx`: campo de observações operacionais com salvar/editar e lista de versões anteriores.
+- Novo `src/components/admin/RepresentativeCardHistory.tsx`: timeline read-only do histórico do card.
+- Novo `src/components/admin/RepresentativeCardBlock.tsx`: marcar bloqueio (motivo obrigatório) e resolver bloqueio, com selo visível no card e no board.
+- `AdminLeads.tsx`: incluir as novas seções no detalhe do card do painel Cross, exibir selo de bloqueio e impedir arrastar card bloqueado com mensagem explicativa.
+- `src/lib/notifications.ts`: suporte a `representativeCardId` e helper `crossCardActionUrl`; payload padronizado com cliente, CNPJ, etapa, motivo, evidência, ação realizada, decisão necessária e próximo passo (renderizado no `NotificationCenter`).
+- `src/lib/cardAttachments.ts`: registrar `attachment_added` / `attachment_removed` no histórico (sem mudar formatos aceitos).
 
-## 4. Integrações existentes
+## Destinatários
 
-- **Supabase (Lovable Cloud)**: RLS, RPCs, storage, edge functions (`mcp`, `gmail-baston-sync`, `send-notification-email`, `send-task-deadline-reminders`, `sync-drive-clients`, etc.).
-- **Gmail**: edge function `gmail-baston-sync` via connector gateway `google_mail`, extração com IA (Lovable AI Gateway), dedup por `message_id` e SHA-256 de anexos, cron `gmail-baston-sync-2h` (`0 */2 * * *`, ativo). Hoje só filtra remetentes `@baston.com.br`.
-- **Jira**: **não existe** integração no código. Só há um conector Atlassian disponível para o agente, não para o app.
-- **Canva**: **não existe** integração no código. Conector Canva também só está disponível no lado do agente.
-- Cron ativos: `gmail-baston-sync-2h`, `commercial-proposal-followups-hourly`, `move-inactive-commercial-leads`.
+Notificações Cross vão para os usuários com acesso ao painel, garantindo sempre Rafael Lucena e Maycon Santos (resolvidos por perfil no momento do envio, sem IDs fixos em código).
 
-## 5. Fluxo atual de criação e movimentação
+## Testes
 
-1. "+ Add Cliente" abre `ClienteCrossDialog` → valida nome obrigatório e CNPJ único no painel → insere em `representative_cards` na primeira etapa (`Cadastro`).
-2. Worker Gmail (a cada 2h) lê e-mails Baston, extrai parceiro/CNPJ/focal/vendedor, cria card se o CNPJ não existir, anexa arquivos e registra em `gmail_processed_messages`.
-3. Movimentação: drag-and-drop no board ou via MCP (`mover_cliente_cross_etapa`), atualizando `stage_id`. **Não há registro histórico** dessa movimentação para cards do painel (só `lead_stage_history` para o painel comercial).
-4. Etapas: Cadastro → Criação Painel → Material Onboarding Cliente → Recebimento Dados → Cadastro Campanha Manual → Cadastro Campanha integração → Ordem Pagamento → Aguardando Informações.
-5. MCP: 23 ferramentas (`src/lib/mcp/tools/*`, deploy em `supabase/functions/mcp`), incluindo o conjunto Cross completo.
+- Typecheck e build.
+- Verificação via Playwright no painel: criar tarefa, editar, concluir com nota, excluir como admin, salvar/editar observação, bloquear card e tentar mover (deve recusar), conferir timeline e notificações.
+- Consultas de leitura para confirmar linhas em `representative_card_history` e `notifications`.
 
-## 6. Plano de implementação (próxima etapa)
+## Entregável do relatório final
 
-**Fase A — Base operacional no card**
-- Edição/exclusão de tarefas (título, prazo, responsável, status) em `RepresentativeCardTasks.tsx` + policies de UPDATE/DELETE.
-- Campo de texto livre/observações estruturadas no card (`ClienteCrossDialog.tsx`).
-- Nova tabela `representative_card_history` (ator, ação, etapa origem/destino, payload) + trigger de mudança de `stage_id`, com timeline no detalhe do card.
-- Ampliar o CHECK de `notifications.type` com os tipos do fluxo Cross e criar `representative_card_id` na tabela `notifications` (nullable, FK), para notificar Rafael Lucena e Maycon Santos em criação, movimentação, tarefa e bloqueio.
-
-**Fase B — Automação a cada 2h**
-- Reaproveitar o cron existente: estender `gmail-baston-sync` (ou nova função `cross-onboarding-worker` chamada pelo mesmo agendamento) para também ler `rafael.lucena@monnera.com.br` e extrair o código alfanumérico do e-mail.
-- Prevenção de duplicidade: manter dedup por `message_id`, CNPJ (índice único) e SHA-256 do anexo; registrar tudo em `gmail_processed_messages` e no novo histórico.
-- Regra de bloqueio: quando a extração não atingir certeza total (campo obrigatório ausente, CNPJ ambíguo, código não encontrado), o card não avança de etapa, recebe status `bloqueado` + motivo e dispara notificação.
-
-**Fase C — Jira e Canva**
-- Jira: conectar o conector Atlassian ao app e criar issue de "Criação do painel Monnera" atribuída a Lívia Fernandes ao entrar na etapa *Criação Painel*; guardar a chave da issue no card e sincronizar o status de volta.
-- Canva: conectar o conector Canva ao app e, ao receber o código alfanumérico, gerar cópia do template substituindo `3SAXJF92` na página 12, exportar e anexar o material ao card (etapa *Material Onboarding Cliente*).
-- Ambos exigem passo de conexão do conector (cartão de conexão no chat) antes da implementação.
-
-**Arquivos que serão alterados**
-- `src/pages/admin/AdminLeads.tsx`, `src/components/admin/RepresentativeCardTasks.tsx`, `RepresentativeCardComments.tsx`, `CardAttachments.tsx`, `ClienteCrossDialog.tsx`, `NotificationCenter.tsx`
-- `src/lib/notifications.ts`, `src/lib/cardAttachments.ts`, novos helpers de histórico
-- `supabase/functions/gmail-baston-sync/index.ts` (+ novas functions `jira-create-panel-issue`, `canva-generate-material`)
-- `src/lib/mcp/tools/*` e `supabase/functions/mcp/index.ts` (novas ferramentas de tarefa/histórico)
-- Migrations: histórico, tipos de notificação, campos de bloqueio/código, policies de tarefas
-
-**Perguntas em aberto para a Fase C**
-- Chave/projeto Jira e conta da Lívia Fernandes.
-- ID do template Canva e qual elemento da página 12 contém `3SAXJF92`.
+Migrations criadas, componentes alterados, policies adicionadas, testes executados e pendências.
