@@ -557,6 +557,11 @@ export type Database = {
           pending_reason: string | null
           received_at: string | null
           representative_card_id: string | null
+          review_decision: string | null
+          review_notes: string | null
+          reviewed: boolean
+          reviewed_at: string | null
+          reviewed_by: string | null
           run_id: string | null
           status: string
           subject: string | null
@@ -580,6 +585,11 @@ export type Database = {
           pending_reason?: string | null
           received_at?: string | null
           representative_card_id?: string | null
+          review_decision?: string | null
+          review_notes?: string | null
+          reviewed?: boolean
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           run_id?: string | null
           status?: string
           subject?: string | null
@@ -603,6 +613,11 @@ export type Database = {
           pending_reason?: string | null
           received_at?: string | null
           representative_card_id?: string | null
+          review_decision?: string | null
+          review_notes?: string | null
+          reviewed?: boolean
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           run_id?: string | null
           status?: string
           subject?: string | null

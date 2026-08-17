@@ -2104,6 +2104,11 @@ const AdminLeads = () => {
               )}
             </>
           )}
+          {isCrossClientPanel && isAdmin && (
+            <Button variant="outline" onClick={() => navigate("/admin/triagem-gmail")}>
+              Triagem Gmail
+            </Button>
+          )}
           {isCustomCrmPanel && canCreateLead && (
             <Button
               onClick={() => {
