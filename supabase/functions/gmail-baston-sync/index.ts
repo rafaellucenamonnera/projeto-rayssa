@@ -403,6 +403,8 @@ Deno.serve(async (req) => {
   // parâmetros opcionais de varredura (validados e limitados)
   let days = DEFAULT_DAYS;
   let maxMessages = DEFAULT_MAX_MESSAGES;
+  // reprocess: reanalisa somente mensagens já registradas, sem criar novos registros
+  let reprocess = false;
   try {
     const body = await req.json().catch(() => ({}));
     const rawDays = Number(body?.days);
@@ -411,9 +413,11 @@ Deno.serve(async (req) => {
     if (Number.isFinite(rawMax) && rawMax >= 1) {
       maxMessages = Math.min(Math.floor(rawMax), MAX_MESSAGES_LIMIT);
     }
+    reprocess = body?.reprocess === true;
   } catch {
     // corpo ausente ou inválido — mantém os padrões
   }
+
 
   const { data: run } = await admin
     .from("gmail_sync_runs")
