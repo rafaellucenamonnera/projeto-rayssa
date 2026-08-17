@@ -14,9 +14,12 @@ import {
 interface CardAttachmentsProps {
   cardId: string;
   canEdit?: boolean;
+  /** Quando informado, cada anexo gera registro no histórico do card. */
+  trackHistory?: boolean;
 }
 
-export const CardAttachments = ({ cardId, canEdit = true }: CardAttachmentsProps) => {
+export const CardAttachments = ({ cardId, canEdit = true, trackHistory = false }: CardAttachmentsProps) => {
+
   const [items, setItems] = useState<CardAttachment[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
