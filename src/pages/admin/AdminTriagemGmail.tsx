@@ -419,7 +419,11 @@ export default function AdminTriagemGmail() {
                 <Field label="Data" value={fmtDate(selected.received_at ?? selected.created_at)} />
                 <Field label="Thread ID" value={selected.thread_id} />
                 <Field label="Message ID" value={selected.message_id} />
-                <Field label="CNPJ extraído" value={extractedField(selected.extracted, "cnpj")} />
+                <Field label="CNPJ normalizado" value={extractedField(selected.extracted, "cnpj")} />
+                <Field
+                  label="Fonte do CNPJ"
+                  value={selected.cnpj_source ? (CNPJ_SOURCE_LABEL[selected.cnpj_source] ?? selected.cnpj_source) : null}
+                />
                 <Field label="Nome extraído" value={extractedField(selected.extracted, "nome_parceiro")} />
                 <Field label="Código Monnera" value={selected.codigo_encontrado} />
                 <Field
@@ -429,11 +433,35 @@ export default function AdminTriagemGmail() {
                 <Field label="Status de revisão" value={selected.reviewed ? `Revisada em ${fmtDate(selected.reviewed_at)}` : "Não revisada"} />
               </div>
 
+              {selected.cnpj_snippet && (
+                <div>
+                  <p className="text-xs font-medium mb-1">Trecho que gerou a extração do CNPJ</p>
+                  <p className="text-xs text-muted-foreground whitespace-pre-wrap rounded-md border border-border bg-muted/30 p-2">
+                    {selected.cnpj_snippet}
+                  </p>
+                </div>
+              )}
+
+              {Array.isArray(selected.cnpj_candidates) && selected.cnpj_candidates.length > 1 && (
+                <div>
+                  <p className="text-xs font-medium mb-1">CNPJs alternativos encontrados</p>
+                  <ul className="text-xs text-muted-foreground space-y-1">
+                    {selected.cnpj_candidates.slice(1).map((c, i) => (
+                      <li key={i}>
+                        {c.cnpj} · {CNPJ_SOURCE_LABEL[c.source] ?? c.source}
+                        {c.snippet ? ` — ${c.snippet}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {selected.pending_reason && (
                 <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-300">
                   {selected.pending_reason}
                 </div>
               )}
+
 
               <div>
                 <p className="text-xs font-medium mb-1">Anexos identificados</p>
