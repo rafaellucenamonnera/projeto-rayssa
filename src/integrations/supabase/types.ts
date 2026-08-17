@@ -542,54 +542,82 @@ export type Database = {
       }
       gmail_processed_messages: {
         Row: {
+          analysis_result: string | null
+          attachments: Json
           attachments_count: number
+          codigo_encontrado: string | null
           created_at: string
           error: string | null
           extracted: Json
           from_address: string | null
           id: string
+          matched_card_id: string | null
           message_id: string
+          mode: string
+          pending_reason: string | null
           received_at: string | null
           representative_card_id: string | null
           run_id: string | null
           status: string
           subject: string | null
           thread_id: string | null
+          to_address: string | null
           updated_at: string
         }
         Insert: {
+          analysis_result?: string | null
+          attachments?: Json
           attachments_count?: number
+          codigo_encontrado?: string | null
           created_at?: string
           error?: string | null
           extracted?: Json
           from_address?: string | null
           id?: string
+          matched_card_id?: string | null
           message_id: string
+          mode?: string
+          pending_reason?: string | null
           received_at?: string | null
           representative_card_id?: string | null
           run_id?: string | null
           status?: string
           subject?: string | null
           thread_id?: string | null
+          to_address?: string | null
           updated_at?: string
         }
         Update: {
+          analysis_result?: string | null
+          attachments?: Json
           attachments_count?: number
+          codigo_encontrado?: string | null
           created_at?: string
           error?: string | null
           extracted?: Json
           from_address?: string | null
           id?: string
+          matched_card_id?: string | null
           message_id?: string
+          mode?: string
+          pending_reason?: string | null
           received_at?: string | null
           representative_card_id?: string | null
           run_id?: string | null
           status?: string
           subject?: string | null
           thread_id?: string | null
+          to_address?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "gmail_processed_messages_matched_card_id_fkey"
+            columns: ["matched_card_id"]
+            isOneToOne: false
+            referencedRelation: "representative_cards"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "gmail_processed_messages_representative_card_id_fkey"
             columns: ["representative_card_id"]
@@ -615,6 +643,7 @@ export type Database = {
           fetched_count: number
           finished_at: string | null
           id: string
+          mode: string
           processed_count: number
           skipped_count: number
           started_at: string
@@ -627,6 +656,7 @@ export type Database = {
           fetched_count?: number
           finished_at?: string | null
           id?: string
+          mode?: string
           processed_count?: number
           skipped_count?: number
           started_at?: string
@@ -639,6 +669,7 @@ export type Database = {
           fetched_count?: number
           finished_at?: string | null
           id?: string
+          mode?: string
           processed_count?: number
           skipped_count?: number
           started_at?: string
