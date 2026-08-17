@@ -798,6 +798,8 @@ Deno.serve(async (req) => {
               cnpj_candidates: resolution.candidates,
               mode: "triage",
               run_id: runId,
+              reprocessed_at: new Date().toISOString(),
+
             })
             .eq("id", rowId);
 
