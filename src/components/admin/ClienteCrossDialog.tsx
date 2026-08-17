@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { FileText, Loader2, Paperclip, Trash2 } from "lucide-react";
 import CardAttachments from "@/components/admin/CardAttachments";
 import { formatBytes, uploadCardAttachment, validateAttachment } from "@/lib/cardAttachments";
+import { logCardEvent } from "@/lib/crossCardEvents";
 
 const emptyForm = {
   full_name: "",
