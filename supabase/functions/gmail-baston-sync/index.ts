@@ -1,8 +1,18 @@
 // ============================================================================
 // gmail-baston-sync
-// Worker recorrente (cron a cada 2h) que lê e-mails recentes de remetentes
-// @baston.com.br via connector gateway (Gmail) e cria cards no painel
-// Onb Clientes Cross (painel_msj9fyji).
+// Worker recorrente (cron a cada 2h) que lê e-mails via connector gateway.
+//
+// Conta autorizada: rafael.lucena@monnera.com.br
+// Filtros ativos: (from:baston.com.br OR to:rafael.lucena@monnera.com.br)
+//                 + janela em dias (padrão 7, teto 90)
+//
+// MODO DE OPERAÇÃO (GMAIL_SYNC_MODE):
+//   - "triage" (PADRÃO): lê e analisa as mensagens e grava apenas registros de
+//     triagem em gmail_processed_messages. NÃO cria cards, não move cards, não
+//     cria tarefas, não grava comentários e não baixa/armazena anexos.
+//   - "active": comportamento operacional (criação de card, anexos, comentário).
+//
+// Este worker NUNCA envia e-mails — não há nenhum caminho de envio no código.
 //
 // Segurança: o conteúdo do e-mail é SEMPRE tratado como dado, nunca como
 // instrução. Nenhum texto vindo da mensagem altera o comportamento do worker.
@@ -14,9 +24,17 @@ const CROSS_PANEL_ID = "painel_msj9fyji";
 const BUCKET = "representative-card-attachments";
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_mail/gmail/v1";
 const SENDER_DOMAIN = "baston.com.br";
-const MAX_MESSAGES = 50;
+const MONITORED_RECIPIENT = "rafael.lucena@monnera.com.br";
+const DEFAULT_DAYS = 7;
+const MAX_DAYS = 90;
+const DEFAULT_MAX_MESSAGES = 50;
+const MAX_MESSAGES_LIMIT = 100;
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
-const ALLOWED_EXT = ["pdf", "xls", "xlsx", "csv", "jpg", "jpeg", "png"];
+const ALLOWED_EXT = ["pdf", "doc", "docx", "xls", "xlsx", "csv", "jpg", "jpeg", "png"];
+const SYNC_MODE = (Deno.env.get("GMAIL_SYNC_MODE") ?? "triage").toLowerCase() === "active"
+  ? "active"
+  : "triage";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
