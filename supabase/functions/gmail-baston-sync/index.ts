@@ -783,6 +783,8 @@ Deno.serve(async (req) => {
             "sem_cnpj",
             "duplicado",
             "sem_codigo",
+            "codigo_formato_nao_confirmado",
+
           ];
           const primary = PRIORITY.find((code) => reasons.some((r) => r.code === code));
           const status = primary ? `triage_${primary}` : "triage_ok";
