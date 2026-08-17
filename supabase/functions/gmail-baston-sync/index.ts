@@ -362,16 +362,23 @@ async function addComment(cardId: string, systemUserId: string | null, texto: st
 }
 
 // ------------------------------------------------------------------- triagem
-// Código alfanumérico do card (ex.: MNR-4F2A9, CROSS-123ABC).
-function extractCodigo(text: string): string | null {
+// Código Monnera oficial: exatamente 8 caracteres, apenas [A-Z0-9], sem símbolos
+// (ex.: 8K2M9P4L). Formatos com prefixo (ex.: MNR-A1B2C3) NÃO são aceitos como
+// válidos nem normalizados: são marcados como "formato não confirmado".
+const MONNERA_CODE_RE = /^[A-Z0-9]{8}$/;
+
+function extractCodigo(text: string): { codigo: string | null; unconfirmed: string | null } {
   const labeled = labelValue(text, ["c[oó]digo", "c[oó]digo do card", "c[oó]digo do cliente", "protocolo"]);
-  if (labeled) {
-    const clean = labeled.match(/[A-Z0-9][A-Z0-9-]{3,29}/i)?.[0];
-    if (clean) return clean.toUpperCase();
+  const labeledCode = labeled?.match(/[A-Z0-9]{8}/i)?.[0];
+  if (labeledCode && MONNERA_CODE_RE.test(labeledCode.toUpperCase())) {
+    return { codigo: labeledCode.toUpperCase(), unconfirmed: null };
   }
-  const inline = text.match(/\b(?:MNR|CROSS|MON)[-\s]?[A-Z0-9]{3,12}\b/i)?.[0];
-  return inline ? inline.replace(/\s+/g, "-").toUpperCase() : null;
+  const inline = text.match(/\b(?=[A-Z0-9]{8}\b)(?=[A-Z0-9]*\d)(?=[A-Z0-9]*[A-Z])[A-Z0-9]{8}\b/)?.[0];
+  if (inline) return { codigo: inline.toUpperCase(), unconfirmed: null };
+  const legacy = text.match(/\b(?:MNR|CROSS|MON)[-_\s]?[A-Z0-9]{3,12}\b/i)?.[0];
+  return { codigo: null, unconfirmed: legacy ? legacy.replace(/\s+/g, "-").toUpperCase() : null };
 }
+
 
 function describeAttachments(
   atts: Array<{ filename: string; attachmentId: string; size: number }>,
