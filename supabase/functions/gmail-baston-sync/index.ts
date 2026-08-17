@@ -367,17 +367,33 @@ async function addComment(cardId: string, systemUserId: string | null, texto: st
 // válidos nem normalizados: são marcados como "formato não confirmado".
 const MONNERA_CODE_RE = /^[A-Z0-9]{8}$/;
 
-function extractCodigo(text: string): { codigo: string | null; unconfirmed: string | null } {
+// Códigos demonstrativos: mesmo no formato válido, NUNCA são código real.
+const DEMO_CODES = new Set(["3SAXJF92", "UB5PXGDB", "XXXXXXX", "XXXXXXXX"]);
+const isDemoCode = (v: string) => DEMO_CODES.has(v.trim().toUpperCase());
+
+function extractCodigo(
+  text: string,
+): { codigo: string | null; unconfirmed: string | null; demo: string | null } {
+  const demoHit = text.match(/\b(3SAXJF92|UB5PXGDB|X{7,8})\b/i)?.[0];
   const labeled = labelValue(text, ["c[oó]digo", "c[oó]digo do card", "c[oó]digo do cliente", "protocolo"]);
-  const labeledCode = labeled?.match(/[A-Z0-9]{8}/i)?.[0];
-  if (labeledCode && MONNERA_CODE_RE.test(labeledCode.toUpperCase())) {
-    return { codigo: labeledCode.toUpperCase(), unconfirmed: null };
+  const labeledCode = labeled?.match(/[A-Z0-9]{8}/i)?.[0]?.toUpperCase();
+  if (labeledCode && MONNERA_CODE_RE.test(labeledCode) && !isDemoCode(labeledCode)) {
+    return { codigo: labeledCode, unconfirmed: null, demo: demoHit?.toUpperCase() ?? null };
   }
-  const inline = text.match(/\b(?=[A-Z0-9]{8}\b)(?=[A-Z0-9]*\d)(?=[A-Z0-9]*[A-Z])[A-Z0-9]{8}\b/)?.[0];
-  if (inline) return { codigo: inline.toUpperCase(), unconfirmed: null };
+  const inline = text
+    .match(/\b(?=[A-Z0-9]{8}\b)(?=[A-Z0-9]*\d)(?=[A-Z0-9]*[A-Z])[A-Z0-9]{8}\b/)?.[0]
+    ?.toUpperCase();
+  if (inline && !isDemoCode(inline)) {
+    return { codigo: inline, unconfirmed: null, demo: demoHit?.toUpperCase() ?? null };
+  }
   const legacy = text.match(/\b(?:MNR|CROSS|MON)[-_\s]?[A-Z0-9]{3,12}\b/i)?.[0];
-  return { codigo: null, unconfirmed: legacy ? legacy.replace(/\s+/g, "-").toUpperCase() : null };
+  return {
+    codigo: null,
+    unconfirmed: legacy ? legacy.replace(/\s+/g, "-").toUpperCase() : null,
+    demo: demoHit?.toUpperCase() ?? (inline && isDemoCode(inline) ? inline : labeledCode && isDemoCode(labeledCode) ? labeledCode : null),
+  };
 }
+
 
 
 function describeAttachments(
@@ -683,7 +699,7 @@ Deno.serve(async (req) => {
         // Apenas registra a análise. Não cria card, não move card, não cria
         // tarefa, não grava comentário, não baixa anexos, não envia e-mail.
         if (SYNC_MODE === "triage") {
-          const { codigo, unconfirmed: codigoNaoConfirmado } = extractCodigo(fullText);
+          const { codigo, unconfirmed: codigoNaoConfirmado, demo: codigoDemo } = extractCodigo(fullText);
           let matchedCardId: string | null = null;
 
           // CNPJ: assunto > corpo > metadados > thread > nome de anexo
@@ -726,6 +742,12 @@ Deno.serve(async (req) => {
             addReason(
               "sem_codigo",
               "Nenhum código Monnera válido (8 caracteres A-Z/0-9) encontrado na mensagem.",
+            );
+          }
+          if (codigoDemo) {
+            addReason(
+              "codigo_exemplo_invalido",
+              `Código demonstrativo inválido encontrado ("${codigoDemo}") — não é um código Monnera real.`,
             );
           }
           if (codigoNaoConfirmado) {
@@ -783,6 +805,7 @@ Deno.serve(async (req) => {
             "sem_cnpj",
             "duplicado",
             "sem_codigo",
+            "codigo_exemplo_invalido",
             "codigo_formato_nao_confirmado",
 
           ];
