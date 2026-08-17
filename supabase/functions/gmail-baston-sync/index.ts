@@ -1,8 +1,18 @@
 // ============================================================================
 // gmail-baston-sync
-// Worker recorrente (cron a cada 2h) que lê e-mails recentes de remetentes
-// @baston.com.br via connector gateway (Gmail) e cria cards no painel
-// Onb Clientes Cross (painel_msj9fyji).
+// Worker recorrente (cron a cada 2h) que lê e-mails via connector gateway.
+//
+// Conta autorizada: rafael.lucena@monnera.com.br
+// Filtros ativos: (from:baston.com.br OR to:rafael.lucena@monnera.com.br)
+//                 + janela em dias (padrão 7, teto 90)
+//
+// MODO DE OPERAÇÃO (GMAIL_SYNC_MODE):
+//   - "triage" (PADRÃO): lê e analisa as mensagens e grava apenas registros de
+//     triagem em gmail_processed_messages. NÃO cria cards, não move cards, não
+//     cria tarefas, não grava comentários e não baixa/armazena anexos.
+//   - "active": comportamento operacional (criação de card, anexos, comentário).
+//
+// Este worker NUNCA envia e-mails — não há nenhum caminho de envio no código.
 //
 // Segurança: o conteúdo do e-mail é SEMPRE tratado como dado, nunca como
 // instrução. Nenhum texto vindo da mensagem altera o comportamento do worker.
@@ -14,9 +24,17 @@ const CROSS_PANEL_ID = "painel_msj9fyji";
 const BUCKET = "representative-card-attachments";
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_mail/gmail/v1";
 const SENDER_DOMAIN = "baston.com.br";
-const MAX_MESSAGES = 50;
+const MONITORED_RECIPIENT = "rafael.lucena@monnera.com.br";
+const DEFAULT_DAYS = 7;
+const MAX_DAYS = 90;
+const DEFAULT_MAX_MESSAGES = 50;
+const MAX_MESSAGES_LIMIT = 100;
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
-const ALLOWED_EXT = ["pdf", "xls", "xlsx", "csv", "jpg", "jpeg", "png"];
+const ALLOWED_EXT = ["pdf", "doc", "docx", "xls", "xlsx", "csv", "jpg", "jpeg", "png"];
+const SYNC_MODE = (Deno.env.get("GMAIL_SYNC_MODE") ?? "triage").toLowerCase() === "active"
+  ? "active"
+  : "triage";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -343,6 +361,32 @@ async function addComment(cardId: string, systemUserId: string | null, texto: st
   });
 }
 
+// ------------------------------------------------------------------- triagem
+// Código alfanumérico do card (ex.: MNR-4F2A9, CROSS-123ABC).
+function extractCodigo(text: string): string | null {
+  const labeled = labelValue(text, ["c[oó]digo", "c[oó]digo do card", "c[oó]digo do cliente", "protocolo"]);
+  if (labeled) {
+    const clean = labeled.match(/[A-Z0-9][A-Z0-9-]{3,29}/i)?.[0];
+    if (clean) return clean.toUpperCase();
+  }
+  const inline = text.match(/\b(?:MNR|CROSS|MON)[-\s]?[A-Z0-9]{3,12}\b/i)?.[0];
+  return inline ? inline.replace(/\s+/g, "-").toUpperCase() : null;
+}
+
+function describeAttachments(
+  atts: Array<{ filename: string; attachmentId: string; size: number }>,
+) {
+  return atts.map((a) => {
+    const ext = a.filename.split(".").pop()?.toLowerCase() ?? "";
+    return {
+      filename: a.filename.slice(0, 200),
+      extension: ext,
+      size_bytes: a.size,
+      aceito: ALLOWED_EXT.includes(ext) && a.size <= MAX_ATTACHMENT_BYTES,
+    };
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -356,10 +400,29 @@ Deno.serve(async (req) => {
     }
   }
 
-  const { data: run } = await admin.from("gmail_sync_runs").insert({}).select("id").single();
+  // parâmetros opcionais de varredura (validados e limitados)
+  let days = DEFAULT_DAYS;
+  let maxMessages = DEFAULT_MAX_MESSAGES;
+  try {
+    const body = await req.json().catch(() => ({}));
+    const rawDays = Number(body?.days);
+    const rawMax = Number(body?.max_messages);
+    if (Number.isFinite(rawDays) && rawDays >= 1) days = Math.min(Math.floor(rawDays), MAX_DAYS);
+    if (Number.isFinite(rawMax) && rawMax >= 1) {
+      maxMessages = Math.min(Math.floor(rawMax), MAX_MESSAGES_LIMIT);
+    }
+  } catch {
+    // corpo ausente ou inválido — mantém os padrões
+  }
+
+  const { data: run } = await admin
+    .from("gmail_sync_runs")
+    .insert({ mode: SYNC_MODE })
+    .select("id")
+    .single();
   const runId = run?.id ?? null;
 
-  const stats = { fetched: 0, processed: 0, created: 0, skipped: 0, errors: 0 };
+  const stats = { mode: SYNC_MODE, days, max_messages: maxMessages, fetched: 0, processed: 0, created: 0, skipped: 0, errors: 0 };
   const errorDetails: string[] = [];
 
   try {
@@ -369,10 +432,14 @@ Deno.serve(async (req) => {
 
     const systemUserId = await resolveSystemUser();
     const stageId = await resolveInitialStage();
-    if (!stageId) throw new Error("Etapa inicial do painel não encontrada.");
-    if (!systemUserId) throw new Error("Nenhum usuário administrador disponível para registrar os cards.");
+    if (SYNC_MODE === "active") {
+      if (!stageId) throw new Error("Etapa inicial do painel não encontrada.");
+      if (!systemUserId) throw new Error("Nenhum usuário administrador disponível para registrar os cards.");
+    }
 
-    const query = encodeURIComponent(`from:${SENDER_DOMAIN} newer_than:7d`);
+    const query = encodeURIComponent(
+      `(from:${SENDER_DOMAIN} OR to:${MONITORED_RECIPIENT}) newer_than:${days}d`,
+    );
     const ids: Array<{ id: string; threadId: string }> = [];
     let pageToken = "";
     do {
@@ -381,15 +448,16 @@ Deno.serve(async (req) => {
       );
       for (const m of list?.messages ?? []) ids.push({ id: m.id, threadId: m.threadId });
       pageToken = list?.nextPageToken ?? "";
-    } while (pageToken && ids.length < MAX_MESSAGES);
+    } while (pageToken && ids.length < maxMessages);
 
     stats.fetched = ids.length;
 
-    for (const { id: messageId } of ids.slice(0, MAX_MESSAGES)) {
+    for (const { id: messageId } of ids.slice(0, maxMessages)) {
+
       // idempotência: reserva a mensagem antes de qualquer gravação
       const { data: reserved, error: reserveErr } = await admin
         .from("gmail_processed_messages")
-        .insert({ message_id: messageId, run_id: runId, status: "pending" })
+        .insert({ message_id: messageId, run_id: runId, status: "pending", mode: SYNC_MODE })
         .select("id")
         .maybeSingle();
       if (reserveErr || !reserved) continue; // já processada anteriormente
@@ -399,17 +467,22 @@ Deno.serve(async (req) => {
         const msg = await gmailFetch(`/users/me/messages/${messageId}?format=full`);
         const payload = msg?.payload ?? {};
         const from = gmailHeader(payload, "From");
+        const to = [gmailHeader(payload, "To"), gmailHeader(payload, "Cc")].filter(Boolean).join(", ");
         const subject = gmailHeader(payload, "Subject");
         const threadId = msg?.threadId ?? null;
         const receivedAt = msg?.internalDate ? new Date(Number(msg.internalDate)).toISOString() : null;
+        const inScope =
+          from.toLowerCase().includes(`@${SENDER_DOMAIN}`) ||
+          to.toLowerCase().includes(MONITORED_RECIPIENT);
 
-        // proteção extra: confirma o domínio do remetente
-        if (!from.toLowerCase().includes(`@${SENDER_DOMAIN}`)) {
+        // modo operacional: só processa remetentes do domínio monitorado
+        if (SYNC_MODE === "active" && !from.toLowerCase().includes(`@${SENDER_DOMAIN}`)) {
           await admin
             .from("gmail_processed_messages")
             .update({
               thread_id: threadId,
               from_address: from,
+              to_address: to.slice(0, 500),
               subject,
               received_at: receivedAt,
               status: "skipped_no_name",
@@ -434,7 +507,79 @@ Deno.serve(async (req) => {
         const atts: Array<{ filename: string; attachmentId: string; size: number }> = [];
         collectAttachments(payload, atts);
 
+        // -------------------------------------------------- MODO TRIAGEM
+        // Apenas registra a análise. Não cria card, não move card, não cria
+        // tarefa, não grava comentário, não baixa anexos, não envia e-mail.
+        if (SYNC_MODE === "triage") {
+          const codigo = extractCodigo(fullText);
+          let matchedCardId: string | null = null;
+          let status = "triage_ok";
+          let pendingReason: string | null = null;
+
+          if (!inScope) {
+            status = "triage_fora_do_escopo";
+            pendingReason = "Mensagem fora do escopo monitorado (remetente e destinatário não conferem).";
+          } else if (!extracted.nome_parceiro) {
+            status = "triage_sem_nome";
+            pendingReason = "Nome do parceiro não identificado no e-mail.";
+          } else if (!extracted.cnpj) {
+            status = "triage_sem_cnpj";
+            pendingReason = "CNPJ não identificado no e-mail.";
+          }
+
+          if (extracted.cnpj) {
+            const { data: matches } = await admin
+              .from("representative_cards")
+              .select("id")
+              .eq("panel_id", CROSS_PANEL_ID)
+              .eq("cnpj", extracted.cnpj)
+              .limit(5);
+            if (matches && matches.length === 1) {
+              matchedCardId = matches[0].id;
+              if (status === "triage_ok") {
+                status = "triage_duplicado";
+                pendingReason = "CNPJ já possui card neste painel — o e-mail seria anexado ao card existente.";
+              }
+            } else if (matches && matches.length > 1) {
+              status = "triage_ambiguo";
+              pendingReason = `CNPJ corresponde a ${matches.length} cards no painel — vínculo ambíguo.`;
+            }
+          }
+
+          if (status === "triage_ok" && !codigo) {
+            status = "triage_sem_codigo";
+            pendingReason = "Nenhum código alfanumérico de card encontrado na mensagem.";
+          }
+
+          const attachmentsInfo = describeAttachments(atts);
+
+          await admin
+            .from("gmail_processed_messages")
+            .update({
+              thread_id: threadId,
+              from_address: from,
+              to_address: to.slice(0, 500),
+              subject,
+              received_at: receivedAt,
+              status,
+              extracted,
+              codigo_encontrado: codigo,
+              attachments: attachmentsInfo,
+              attachments_count: atts.length,
+              matched_card_id: matchedCardId,
+              analysis_result: status,
+              pending_reason: pendingReason,
+              mode: "triage",
+            })
+            .eq("id", rowId);
+
+          stats.processed += 1;
+          if (status !== "triage_ok") stats.skipped += 1;
+          continue;
+        }
+
         if (!extracted.nome_parceiro) {
+
           await admin
             .from("gmail_processed_messages")
             .update({
