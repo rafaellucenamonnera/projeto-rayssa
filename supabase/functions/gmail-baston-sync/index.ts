@@ -522,7 +522,9 @@ Deno.serve(async (req) => {
     .single();
   const runId = run?.id ?? null;
 
-  const stats = { mode: SYNC_MODE, days, max_messages: maxMessages, fetched: 0, processed: 0, created: 0, skipped: 0, errors: 0, discarded_out_of_domain: 0 };
+  const stats = { mode: SYNC_MODE, days, max_messages: maxMessages, fetched: 0, processed: 0, created: 0, skipped: 0, errors: 0, discarded_out_of_domain: 0, cnpj_por_fonte: {} as Record<string, number> };
+  const cnpjSourceStats = stats.cnpj_por_fonte;
+
   const errorDetails: string[] = [];
 
   try {
