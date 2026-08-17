@@ -361,6 +361,32 @@ async function addComment(cardId: string, systemUserId: string | null, texto: st
   });
 }
 
+// ------------------------------------------------------------------- triagem
+// Código alfanumérico do card (ex.: MNR-4F2A9, CROSS-123ABC).
+function extractCodigo(text: string): string | null {
+  const labeled = labelValue(text, ["c[oó]digo", "c[oó]digo do card", "c[oó]digo do cliente", "protocolo"]);
+  if (labeled) {
+    const clean = labeled.match(/[A-Z0-9][A-Z0-9-]{3,29}/i)?.[0];
+    if (clean) return clean.toUpperCase();
+  }
+  const inline = text.match(/\b(?:MNR|CROSS|MON)[-\s]?[A-Z0-9]{3,12}\b/i)?.[0];
+  return inline ? inline.replace(/\s+/g, "-").toUpperCase() : null;
+}
+
+function describeAttachments(
+  atts: Array<{ filename: string; attachmentId: string; size: number }>,
+) {
+  return atts.map((a) => {
+    const ext = a.filename.split(".").pop()?.toLowerCase() ?? "";
+    return {
+      filename: a.filename.slice(0, 200),
+      extension: ext,
+      size_bytes: a.size,
+      aceito: ALLOWED_EXT.includes(ext) && a.size <= MAX_ATTACHMENT_BYTES,
+    };
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -374,10 +400,29 @@ Deno.serve(async (req) => {
     }
   }
 
-  const { data: run } = await admin.from("gmail_sync_runs").insert({}).select("id").single();
+  // parâmetros opcionais de varredura (validados e limitados)
+  let days = DEFAULT_DAYS;
+  let maxMessages = DEFAULT_MAX_MESSAGES;
+  try {
+    const body = await req.json().catch(() => ({}));
+    const rawDays = Number(body?.days);
+    const rawMax = Number(body?.max_messages);
+    if (Number.isFinite(rawDays) && rawDays >= 1) days = Math.min(Math.floor(rawDays), MAX_DAYS);
+    if (Number.isFinite(rawMax) && rawMax >= 1) {
+      maxMessages = Math.min(Math.floor(rawMax), MAX_MESSAGES_LIMIT);
+    }
+  } catch {
+    // corpo ausente ou inválido — mantém os padrões
+  }
+
+  const { data: run } = await admin
+    .from("gmail_sync_runs")
+    .insert({ mode: SYNC_MODE })
+    .select("id")
+    .single();
   const runId = run?.id ?? null;
 
-  const stats = { fetched: 0, processed: 0, created: 0, skipped: 0, errors: 0 };
+  const stats = { mode: SYNC_MODE, days, max_messages: maxMessages, fetched: 0, processed: 0, created: 0, skipped: 0, errors: 0 };
   const errorDetails: string[] = [];
 
   try {
@@ -387,10 +432,14 @@ Deno.serve(async (req) => {
 
     const systemUserId = await resolveSystemUser();
     const stageId = await resolveInitialStage();
-    if (!stageId) throw new Error("Etapa inicial do painel não encontrada.");
-    if (!systemUserId) throw new Error("Nenhum usuário administrador disponível para registrar os cards.");
+    if (SYNC_MODE === "active") {
+      if (!stageId) throw new Error("Etapa inicial do painel não encontrada.");
+      if (!systemUserId) throw new Error("Nenhum usuário administrador disponível para registrar os cards.");
+    }
 
-    const query = encodeURIComponent(`from:${SENDER_DOMAIN} newer_than:7d`);
+    const query = encodeURIComponent(
+      `(from:${SENDER_DOMAIN} OR to:${MONITORED_RECIPIENT}) newer_than:${days}d`,
+    );
     const ids: Array<{ id: string; threadId: string }> = [];
     let pageToken = "";
     do {
@@ -399,11 +448,12 @@ Deno.serve(async (req) => {
       );
       for (const m of list?.messages ?? []) ids.push({ id: m.id, threadId: m.threadId });
       pageToken = list?.nextPageToken ?? "";
-    } while (pageToken && ids.length < MAX_MESSAGES);
+    } while (pageToken && ids.length < maxMessages);
 
     stats.fetched = ids.length;
 
-    for (const { id: messageId } of ids.slice(0, MAX_MESSAGES)) {
+    for (const { id: messageId } of ids.slice(0, maxMessages)) {
+
       // idempotência: reserva a mensagem antes de qualquer gravação
       const { data: reserved, error: reserveErr } = await admin
         .from("gmail_processed_messages")
