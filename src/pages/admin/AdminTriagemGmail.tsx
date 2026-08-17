@@ -35,6 +35,8 @@ type TriageAttachment = {
   aceito?: boolean;
 };
 
+type PendingReason = { code: string; label: string };
+
 type TriageMessage = {
   id: string;
   message_id: string;
@@ -47,6 +49,8 @@ type TriageMessage = {
   status: string;
   analysis_result: string | null;
   pending_reason: string | null;
+  pending_reasons: PendingReason[] | null;
+  body_snippet: string | null;
   codigo_encontrado: string | null;
   attachments: TriageAttachment[] | null;
   attachments_count: number;
@@ -60,6 +64,7 @@ type TriageMessage = {
   review_decision: string | null;
   review_notes: string | null;
 };
+
 
 type CrossCard = { id: string; full_name: string; cnpj: string | null };
 
@@ -100,6 +105,17 @@ const STATUS_TONE: Record<string, string> = {
   error: "bg-destructive/15 text-destructive border-destructive/30",
 };
 
+const PENDING_LABEL: Record<string, string> = {
+  sem_cnpj: "Sem CNPJ",
+  sem_nome: "Sem nome",
+  sem_codigo: "Sem código Monnera",
+  duplicado: "CNPJ já tem card",
+  ambiguo: "Vínculo ambíguo",
+  fora_do_escopo: "Fora do escopo",
+};
+
+const PENDING_CODES = Object.keys(PENDING_LABEL);
+
 const onlyDigits = (v: string) => v.replace(/\D/g, "");
 
 const fmtDate = (v: string | null) =>
@@ -109,6 +125,10 @@ const extractedField = (extracted: Record<string, unknown> | null, key: string) 
   const value = extracted?.[key];
   return typeof value === "string" && value.trim() ? value.trim() : null;
 };
+
+const pendingList = (m: TriageMessage): PendingReason[] =>
+  Array.isArray(m.pending_reasons) ? m.pending_reasons : [];
+
 
 export default function AdminTriagemGmail() {
   const { user } = useAuth();

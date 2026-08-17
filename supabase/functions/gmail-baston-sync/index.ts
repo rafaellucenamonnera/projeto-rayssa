@@ -403,6 +403,8 @@ Deno.serve(async (req) => {
   // parâmetros opcionais de varredura (validados e limitados)
   let days = DEFAULT_DAYS;
   let maxMessages = DEFAULT_MAX_MESSAGES;
+  // reprocess: reanalisa somente mensagens já registradas, sem criar novos registros
+  let reprocess = false;
   try {
     const body = await req.json().catch(() => ({}));
     const rawDays = Number(body?.days);
@@ -411,9 +413,11 @@ Deno.serve(async (req) => {
     if (Number.isFinite(rawMax) && rawMax >= 1) {
       maxMessages = Math.min(Math.floor(rawMax), MAX_MESSAGES_LIMIT);
     }
+    reprocess = body?.reprocess === true;
   } catch {
     // corpo ausente ou inválido — mantém os padrões
   }
+
 
   const { data: run } = await admin
     .from("gmail_sync_runs")
@@ -454,15 +458,28 @@ Deno.serve(async (req) => {
 
     for (const { id: messageId } of ids.slice(0, maxMessages)) {
 
-      // idempotência: reserva a mensagem antes de qualquer gravação
-      const { data: reserved, error: reserveErr } = await admin
-        .from("gmail_processed_messages")
-        .insert({ message_id: messageId, run_id: runId, status: "pending", mode: SYNC_MODE })
-        .select("id")
-        .maybeSingle();
-      if (reserveErr || !reserved) continue; // já processada anteriormente
+      let rowId: string | null = null;
+      if (reprocess) {
+        // reprocessa apenas registros já existentes — nunca insere novas linhas
+        const { data: existingRow } = await admin
+          .from("gmail_processed_messages")
+          .select("id")
+          .eq("message_id", messageId)
+          .maybeSingle();
+        if (!existingRow) continue;
+        rowId = existingRow.id;
+      } else {
+        // idempotência: reserva a mensagem antes de qualquer gravação
+        const { data: reserved, error: reserveErr } = await admin
+          .from("gmail_processed_messages")
+          .insert({ message_id: messageId, run_id: runId, status: "pending", mode: SYNC_MODE })
+          .select("id")
+          .maybeSingle();
+        if (reserveErr || !reserved) continue; // já processada anteriormente
+        rowId = reserved.id;
+      }
 
-      const rowId = reserved.id;
+
       try {
         const msg = await gmailFetch(`/users/me/messages/${messageId}?format=full`);
         const payload = msg?.payload ?? {};
@@ -513,18 +530,28 @@ Deno.serve(async (req) => {
         if (SYNC_MODE === "triage") {
           const codigo = extractCodigo(fullText);
           let matchedCardId: string | null = null;
-          let status = "triage_ok";
-          let pendingReason: string | null = null;
+
+          // TODAS as pendências são acumuladas — uma mensagem pode ter várias.
+          const reasons: Array<{ code: string; label: string }> = [];
+          const addReason = (code: string, label: string) => {
+            if (!reasons.some((r) => r.code === code)) reasons.push({ code, label });
+          };
 
           if (!inScope) {
-            status = "triage_fora_do_escopo";
-            pendingReason = "Mensagem fora do escopo monitorado (remetente e destinatário não conferem).";
-          } else if (!extracted.nome_parceiro) {
-            status = "triage_sem_nome";
-            pendingReason = "Nome do parceiro não identificado no e-mail.";
-          } else if (!extracted.cnpj) {
-            status = "triage_sem_cnpj";
-            pendingReason = "CNPJ não identificado no e-mail.";
+            addReason(
+              "fora_do_escopo",
+              "Mensagem fora do escopo monitorado (remetente e destinatário não conferem).",
+            );
+          }
+          if (!extracted.nome_parceiro) {
+            addReason("sem_nome", "Nome do parceiro não identificado no e-mail.");
+          }
+          if (!extracted.cnpj) {
+            addReason("sem_cnpj", "CNPJ não identificado no e-mail.");
+          }
+          // ausência de código é sempre registrada, mesmo com outras pendências
+          if (!codigo) {
+            addReason("sem_codigo", "Nenhum código alfanumérico de card encontrado na mensagem.");
           }
 
           if (extracted.cnpj) {
@@ -536,20 +563,32 @@ Deno.serve(async (req) => {
               .limit(5);
             if (matches && matches.length === 1) {
               matchedCardId = matches[0].id;
-              if (status === "triage_ok") {
-                status = "triage_duplicado";
-                pendingReason = "CNPJ já possui card neste painel — o e-mail seria anexado ao card existente.";
-              }
+              addReason(
+                "duplicado",
+                "CNPJ já possui card neste painel — o e-mail seria anexado ao card existente.",
+              );
             } else if (matches && matches.length > 1) {
-              status = "triage_ambiguo";
-              pendingReason = `CNPJ corresponde a ${matches.length} cards no painel — vínculo ambíguo.`;
+              addReason(
+                "ambiguo",
+                `CNPJ corresponde a ${matches.length} cards no painel — vínculo ambíguo.`,
+              );
             }
           }
 
-          if (status === "triage_ok" && !codigo) {
-            status = "triage_sem_codigo";
-            pendingReason = "Nenhum código alfanumérico de card encontrado na mensagem.";
-          }
+          // status principal: primeira pendência pela ordem de severidade
+          const PRIORITY = [
+            "fora_do_escopo",
+            "ambiguo",
+            "sem_nome",
+            "sem_cnpj",
+            "duplicado",
+            "sem_codigo",
+          ];
+          const primary = PRIORITY.find((code) => reasons.some((r) => r.code === code));
+          const status = primary ? `triage_${primary}` : "triage_ok";
+          const pendingReason = reasons.length
+            ? reasons.map((r) => r.label).join(" ")
+            : null;
 
           const attachmentsInfo = describeAttachments(atts);
 
@@ -569,7 +608,10 @@ Deno.serve(async (req) => {
               matched_card_id: matchedCardId,
               analysis_result: status,
               pending_reason: pendingReason,
+              pending_reasons: reasons,
+              body_snippet: plain.slice(0, 1200),
               mode: "triage",
+              run_id: runId,
             })
             .eq("id", rowId);
 
@@ -577,6 +619,7 @@ Deno.serve(async (req) => {
           if (status !== "triage_ok") stats.skipped += 1;
           continue;
         }
+
 
         if (!extracted.nome_parceiro) {
 
