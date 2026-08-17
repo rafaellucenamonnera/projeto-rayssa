@@ -70,6 +70,7 @@ export const PENDING_LABEL: Record<string, string> = {
   sem_cnpj: "Sem CNPJ",
   sem_nome: "Sem nome do cliente",
   sem_codigo: "Sem código Monnera",
+  codigo_exemplo_invalido: "Código demonstrativo inválido",
   codigo_formato_nao_confirmado: "Código em formato não confirmado",
   multiplos_cnpj: "Múltiplos CNPJs na conversa",
   divergencia_cnpj: "CNPJ divergente do card sugerido",
@@ -85,7 +86,16 @@ export const PENDING_LABEL: Record<string, string> = {
  */
 export const MONNERA_CODE_RE = /^[A-Z0-9]{8}$/;
 
-export const isValidMonneraCode = (value: string) => MONNERA_CODE_RE.test(value.trim());
+/** Códigos demonstrativos: mesmo no formato válido, nunca são código real. */
+export const DEMO_MONNERA_CODES = new Set(["3SAXJF92", "UB5PXGDB", "XXXXXXX", "XXXXXXXX"]);
+
+export const isDemoMonneraCode = (value: string) =>
+  DEMO_MONNERA_CODES.has(value.trim().toUpperCase());
+
+export const isValidMonneraCode = (value: string) => {
+  const v = value.trim().toUpperCase();
+  return MONNERA_CODE_RE.test(v) && !isDemoMonneraCode(v);
+};
 
 /**
  * Formatos históricos com prefixo (ex.: MNR-A1B2C3) não são reprovados nem
@@ -281,8 +291,15 @@ export const extractFromConversation = (messages: WhatsappMessage[]): WhatsappEx
     ? null
     : firstMatch(usable, UNCONFIRMED_CODE_RE, 0);
 
+  const demoHit = firstMatch(usable, /\b(3SAXJF92|UB5PXGDB|X{7,8})\b/i, 0);
+
   let codigo: { value: string; snippet: string; msg: WhatsappMessage } | null = null;
-  if (codigoOficial && isValidMonneraCode(codigoOficial.value)) {
+  if (demoHit || (codigoOficial && isDemoMonneraCode(codigoOficial.value))) {
+    const hit = demoHit ?? codigoOficial!;
+    addPending("codigo_exemplo_invalido");
+    addPending("sem_codigo");
+    addEvidence("codigo_exemplo_invalido", hit.value.toUpperCase(), hit.snippet, hit.msg);
+  } else if (codigoOficial && isValidMonneraCode(codigoOficial.value)) {
     codigo = { ...codigoOficial, value: codigoOficial.value.toUpperCase() };
     addEvidence("codigo_monnera", codigo.value, codigo.snippet, codigo.msg);
   } else if (codigoNaoConfirmado) {

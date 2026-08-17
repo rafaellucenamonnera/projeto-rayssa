@@ -96,6 +96,7 @@ const STATUS_LABEL: Record<string, string> = {
   triage_fora_do_escopo: "Fora do escopo",
   triage_divergencia_cnpj: "CNPJ divergente do card",
   triage_codigo_formato_nao_confirmado: "Código em formato não confirmado",
+  triage_codigo_exemplo_invalido: "Código demonstrativo inválido",
 
   created: "Card criado (modo ativo)",
   duplicate_cnpj: "CNPJ duplicado",
@@ -120,6 +121,7 @@ const PENDING_LABEL: Record<string, string> = {
   sem_nome: "Sem nome",
   sem_codigo: "Sem código Monnera",
   codigo_formato_nao_confirmado: "Código em formato não confirmado",
+  codigo_exemplo_invalido: "Código demonstrativo inválido",
   duplicado: "CNPJ já tem card",
   ambiguo: "Vínculo ambíguo",
   divergencia_cnpj: "CNPJ divergente do card",
