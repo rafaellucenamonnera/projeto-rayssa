@@ -562,6 +562,7 @@ export type Database = {
           pending_reasons: Json
           received_at: string | null
           representative_card_id: string | null
+          reprocessed_at: string | null
           review_decision: string | null
           review_notes: string | null
           reviewed: boolean
@@ -595,6 +596,7 @@ export type Database = {
           pending_reasons?: Json
           received_at?: string | null
           representative_card_id?: string | null
+          reprocessed_at?: string | null
           review_decision?: string | null
           review_notes?: string | null
           reviewed?: boolean
@@ -628,6 +630,7 @@ export type Database = {
           pending_reasons?: Json
           received_at?: string | null
           representative_card_id?: string | null
+          reprocessed_at?: string | null
           review_decision?: string | null
           review_notes?: string | null
           reviewed?: boolean

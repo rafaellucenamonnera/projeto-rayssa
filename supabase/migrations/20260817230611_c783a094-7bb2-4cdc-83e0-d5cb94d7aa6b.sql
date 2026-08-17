@@ -1,0 +1,2 @@
+ALTER TABLE public.gmail_processed_messages ADD COLUMN IF NOT EXISTS reprocessed_at timestamptz;
+CREATE INDEX IF NOT EXISTS idx_gmail_processed_pending_reprocess ON public.gmail_processed_messages (received_at) WHERE reprocessed_at IS NULL;
