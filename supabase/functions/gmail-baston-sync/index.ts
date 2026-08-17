@@ -457,7 +457,7 @@ Deno.serve(async (req) => {
       // idempotência: reserva a mensagem antes de qualquer gravação
       const { data: reserved, error: reserveErr } = await admin
         .from("gmail_processed_messages")
-        .insert({ message_id: messageId, run_id: runId, status: "pending" })
+        .insert({ message_id: messageId, run_id: runId, status: "pending", mode: SYNC_MODE })
         .select("id")
         .maybeSingle();
       if (reserveErr || !reserved) continue; // já processada anteriormente
@@ -467,17 +467,22 @@ Deno.serve(async (req) => {
         const msg = await gmailFetch(`/users/me/messages/${messageId}?format=full`);
         const payload = msg?.payload ?? {};
         const from = gmailHeader(payload, "From");
+        const to = [gmailHeader(payload, "To"), gmailHeader(payload, "Cc")].filter(Boolean).join(", ");
         const subject = gmailHeader(payload, "Subject");
         const threadId = msg?.threadId ?? null;
         const receivedAt = msg?.internalDate ? new Date(Number(msg.internalDate)).toISOString() : null;
+        const inScope =
+          from.toLowerCase().includes(`@${SENDER_DOMAIN}`) ||
+          to.toLowerCase().includes(MONITORED_RECIPIENT);
 
-        // proteção extra: confirma o domínio do remetente
-        if (!from.toLowerCase().includes(`@${SENDER_DOMAIN}`)) {
+        // modo operacional: só processa remetentes do domínio monitorado
+        if (SYNC_MODE === "active" && !from.toLowerCase().includes(`@${SENDER_DOMAIN}`)) {
           await admin
             .from("gmail_processed_messages")
             .update({
               thread_id: threadId,
               from_address: from,
+              to_address: to.slice(0, 500),
               subject,
               received_at: receivedAt,
               status: "skipped_no_name",
@@ -502,7 +507,79 @@ Deno.serve(async (req) => {
         const atts: Array<{ filename: string; attachmentId: string; size: number }> = [];
         collectAttachments(payload, atts);
 
+        // -------------------------------------------------- MODO TRIAGEM
+        // Apenas registra a análise. Não cria card, não move card, não cria
+        // tarefa, não grava comentário, não baixa anexos, não envia e-mail.
+        if (SYNC_MODE === "triage") {
+          const codigo = extractCodigo(fullText);
+          let matchedCardId: string | null = null;
+          let status = "triage_ok";
+          let pendingReason: string | null = null;
+
+          if (!inScope) {
+            status = "triage_fora_do_escopo";
+            pendingReason = "Mensagem fora do escopo monitorado (remetente e destinatário não conferem).";
+          } else if (!extracted.nome_parceiro) {
+            status = "triage_sem_nome";
+            pendingReason = "Nome do parceiro não identificado no e-mail.";
+          } else if (!extracted.cnpj) {
+            status = "triage_sem_cnpj";
+            pendingReason = "CNPJ não identificado no e-mail.";
+          }
+
+          if (extracted.cnpj) {
+            const { data: matches } = await admin
+              .from("representative_cards")
+              .select("id")
+              .eq("panel_id", CROSS_PANEL_ID)
+              .eq("cnpj", extracted.cnpj)
+              .limit(5);
+            if (matches && matches.length === 1) {
+              matchedCardId = matches[0].id;
+              if (status === "triage_ok") {
+                status = "triage_duplicado";
+                pendingReason = "CNPJ já possui card neste painel — o e-mail seria anexado ao card existente.";
+              }
+            } else if (matches && matches.length > 1) {
+              status = "triage_ambiguo";
+              pendingReason = `CNPJ corresponde a ${matches.length} cards no painel — vínculo ambíguo.`;
+            }
+          }
+
+          if (status === "triage_ok" && !codigo) {
+            status = "triage_sem_codigo";
+            pendingReason = "Nenhum código alfanumérico de card encontrado na mensagem.";
+          }
+
+          const attachmentsInfo = describeAttachments(atts);
+
+          await admin
+            .from("gmail_processed_messages")
+            .update({
+              thread_id: threadId,
+              from_address: from,
+              to_address: to.slice(0, 500),
+              subject,
+              received_at: receivedAt,
+              status,
+              extracted,
+              codigo_encontrado: codigo,
+              attachments: attachmentsInfo,
+              attachments_count: atts.length,
+              matched_card_id: matchedCardId,
+              analysis_result: status,
+              pending_reason: pendingReason,
+              mode: "triage",
+            })
+            .eq("id", rowId);
+
+          stats.processed += 1;
+          if (status !== "triage_ok") stats.skipped += 1;
+          continue;
+        }
+
         if (!extracted.nome_parceiro) {
+
           await admin
             .from("gmail_processed_messages")
             .update({
