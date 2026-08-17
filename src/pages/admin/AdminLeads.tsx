@@ -1793,6 +1793,9 @@ const AdminLeads = () => {
     const { data, error } = await (supabase as any).from(isAmbassadorPanel ? "ambassador_cards" : "representative_cards").insert(payload).select("*").single();
     setSavingNewCard(false);
     if (error) return toast.error("Erro ao salvar cadastro: " + error.message);
+    if (data && isCrossClientPanel) {
+      await logCardEvent(data.id, "card_created", { nome: fullName, cnpj: cnpj || null }, null, firstStage);
+    }
     toast.success("Cadastro salvo com sucesso.");
     setNewCardOpen(false);
     setNewCardData({ full_name: "", phone: "", email: "", cnpj: "", city: "", state: "", region: "", notes: "" });
@@ -1825,6 +1828,9 @@ const AdminLeads = () => {
   });
 
   const handleClienteSaved = (data: any) => {
+    if (data?.id) {
+      logCardEvent(data.id, "card_updated", { nome: data.full_name, cnpj: data.cnpj || null });
+    }
     if (!data) {
       loadData();
       return;
