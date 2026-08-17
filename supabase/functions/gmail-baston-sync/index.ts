@@ -683,7 +683,7 @@ Deno.serve(async (req) => {
         // Apenas registra a análise. Não cria card, não move card, não cria
         // tarefa, não grava comentário, não baixa anexos, não envia e-mail.
         if (SYNC_MODE === "triage") {
-          const codigo = extractCodigo(fullText);
+          const { codigo, unconfirmed: codigoNaoConfirmado } = extractCodigo(fullText);
           let matchedCardId: string | null = null;
 
           // CNPJ: assunto > corpo > metadados > thread > nome de anexo
