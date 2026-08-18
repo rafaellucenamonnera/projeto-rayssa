@@ -434,7 +434,20 @@ Deno.serve(async (req) => {
     }
 
     // ---------------------------------------------------------- mensagem
-    const ctx: Ctx = { cliente, cnpj, codigo, assuntoOriginal, complemento };
+    let faltantes = camposFaltantes;
+    if (faltantes.length === 0 && cardId) {
+      const { data: cardPending } = await admin
+        .from("representative_cards")
+        .select("pending_fields")
+        .eq("id", cardId)
+        .maybeSingle();
+      faltantes = ((cardPending?.pending_fields ?? []) as Array<{ rotulo?: string }>)
+        .map((f) => String(f?.rotulo ?? ""))
+        .filter(Boolean);
+    }
+
+    const ctx: Ctx = { cliente, cnpj, codigo, assuntoOriginal, complemento, faltantes };
+
     const baseSubject = template.subject(ctx);
     const subject =
       assuntoOriginal && threadId
