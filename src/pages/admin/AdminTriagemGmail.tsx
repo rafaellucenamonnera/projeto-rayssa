@@ -983,7 +983,7 @@ export default function AdminTriagemGmail() {
 
               <div className="space-y-2">
                 <Label className="text-xs">Card correspondente</Label>
-                <Select value={linkCardId} onValueChange={setLinkCardId}>
+                <Select value={linkCardId} onValueChange={setLinkCardId} disabled={!!linkingCardId || !!selected.matched_card_id}>
                   <SelectTrigger><SelectValue placeholder="Selecionar card" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Sem vínculo</SelectItem>
@@ -994,14 +994,69 @@ export default function AdminTriagemGmail() {
                     ))}
                   </SelectContent>
                 </Select>
-                {linkCardId !== "none" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate(crossCardActionUrl(CROSS_PANEL_ID, linkCardId))}
-                  >
-                    <ExternalLink className="h-3.5 w-3.5 mr-1" /> Abrir card
-                  </Button>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {linkCardId !== "none" && selected.matched_card_id !== linkCardId && (
+                    <Button size="sm" onClick={() => linkCard(linkCardId)} disabled={!!linkingCardId}>
+                      {linkingCardId === linkCardId ? (
+                        <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Vinculando...</>
+                      ) : (
+                        "Vincular card"
+                      )}
+                    </Button>
+                  )}
+                  {selected.matched_card_id && (
+                    <>
+                      <Badge variant="outline" className="border-emerald-500/30 text-emerald-400">
+                        Vinculado{selected.linked_at ? ` em ${fmtDate(selected.linked_at)}` : ""}
+                        {selected.linked_by && userNames[selected.linked_by] ? ` por ${userNames[selected.linked_by]}` : ""}
+                      </Badge>
+                      <Button variant="outline" size="sm" onClick={() => openCard(selected.matched_card_id as string)}>
+                        <ExternalLink className="h-3.5 w-3.5 mr-1" /> Abrir card
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setUnlinkOpen((v) => !v)} disabled={unlinking}>
+                        Desfazer vínculo
+                      </Button>
+                    </>
+                  )}
+                  {!selected.matched_card_id && linkCardId !== "none" && (
+                    <Button variant="outline" size="sm" onClick={() => openCard(linkCardId)}>
+                      <ExternalLink className="h-3.5 w-3.5 mr-1" /> Abrir card
+                    </Button>
+                  )}
+                </div>
+
+                {selected.linked_card_snapshot && (
+                  <div className="rounded-md border border-border bg-muted/30 p-2 text-xs text-muted-foreground space-y-0.5">
+                    <p className="text-foreground font-medium">Dados herdados do card vinculado</p>
+                    <p>Nome: {String((selected.linked_card_snapshot as any).card_nome ?? "—")}</p>
+                    <p>CNPJ: {String((selected.linked_card_snapshot as any).card_cnpj ?? "—")} · fonte: card vinculado</p>
+                    <p>Etapa atual do card: {String((selected.linked_card_snapshot as any).card_etapa ?? "—")}</p>
+                    <p>Card ID: {String((selected.linked_card_snapshot as any).card_id ?? "—")}</p>
+                  </div>
+                )}
+
+                {unlinkOpen && selected.matched_card_id && (
+                  <div className="space-y-2 rounded-md border border-destructive/30 bg-destructive/5 p-2">
+                    <p className="text-xs text-muted-foreground">
+                      Confirme o desfazimento. O card não será apagado nem alterado — apenas o vínculo da triagem é removido.
+                    </p>
+                    <Textarea
+                      rows={2}
+                      value={unlinkJustification}
+                      onChange={(e) => setUnlinkJustification(e.target.value.slice(0, 500))}
+                      placeholder="Justificativa obrigatória (ex.: cliente confirmado como outro CNPJ)."
+                    />
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="destructive" onClick={unlinkCard} disabled={unlinking}>
+                        {unlinking ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : null}
+                        Confirmar desfazimento
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setUnlinkOpen(false)} disabled={unlinking}>
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
                 )}
               </div>
 
