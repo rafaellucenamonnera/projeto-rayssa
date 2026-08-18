@@ -28,7 +28,9 @@ import {
   computeOperationalInfo,
   OPERATIONAL_FILTER_OPTIONS,
 } from "@/lib/triageOperationalStatus";
-import { ArrowLeft, ExternalLink, Loader2, RefreshCw, CheckCircle2, Mail, ShieldCheck } from "lucide-react";
+import { findCandidateCards, handleBlockedTriage, BLOCK_EXAMPLES } from "@/lib/triageBlockHandling";
+import { ArrowLeft, ExternalLink, Loader2, RefreshCw, CheckCircle2, Mail, ShieldCheck, AlertTriangle } from "lucide-react";
+
 
 const CROSS_PANEL_ID = "painel_msj9fyji";
 
