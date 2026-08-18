@@ -144,6 +144,8 @@ export default function AdminImportWhatsapp() {
   const [fConfidence, setFConfidence] = useState("0");
   const [fReviewed, setFReviewed] = useState("all");
   const [fOperational, setFOperational] = useState("all");
+  const [activation, setActivation] = useState<any | null>(null);
+  const [activationJustification, setActivationJustification] = useState("");
   const [executions, setExecutions] = useState<Array<{ id: string; source: string; source_row_id: string | null; created_at: string; executed_by: string | null }>>([]);
   const [userNames, setUserNames] = useState<Record<string, string>>({});
 
@@ -267,6 +269,42 @@ export default function AdminImportWhatsapp() {
       ),
     [executionByRow],
   );
+
+  const openActivation = async (row: ExtractionRow) => {
+    const { data, error } = await (supabase as any).rpc("preview_triage_activation", {
+      p_source: "whatsapp",
+      p_row_id: row.id,
+    });
+    if (error) {
+      toast.error(`Não foi possível montar a confirmação: ${error.message}`);
+      return;
+    }
+    setActivationJustification("");
+    setActivation(data);
+  };
+
+  const runActivation = async () => {
+    if (!activation) return;
+    if (!activationJustification.trim()) {
+      toast.error("Informe a justificativa da execução.");
+      return;
+    }
+    setSaving(true);
+    const { error } = await (supabase as any).rpc("execute_triage_activation", {
+      p_source: "whatsapp",
+      p_row_id: activation.row_id,
+      p_justification: activationJustification.trim(),
+    });
+    setSaving(false);
+    if (error) {
+      toast.error(`Execução bloqueada: ${error.message}`);
+      return;
+    }
+    toast.success("Card criado na etapa Cadastro (1 registro, nenhum e-mail enviado).");
+    setActivation(null);
+    setSelected(null);
+    load();
+  };
 
   const filtered = useMemo(() => {
     const minConf = Number(fConfidence) || 0;
@@ -790,6 +828,11 @@ export default function AdminImportWhatsapp() {
                     </Link>
                   </Button>
                 )}
+                {operationalInfo(selected).state === "liberado" && (
+                  <Button variant="secondary" size="sm" disabled={saving} onClick={() => openActivation(selected)}>
+                    Ativação controlada
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" disabled={saving} onClick={() => saveReview("revisado")}>
                   Marcar como revisada
                 </Button>
@@ -798,6 +841,67 @@ export default function AdminImportWhatsapp() {
                 </Button>
                 <Button size="sm" disabled={saving} onClick={() => saveReview("aprovado")}>
                   {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Aprovar
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!activation} onOpenChange={(open) => !open && setActivation(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Confirmação administrativa da ativação</DialogTitle>
+            <DialogDescription>
+              Revise os dados antes de autorizar a criação do card. Apenas 1 registro é processado por execução.
+            </DialogDescription>
+          </DialogHeader>
+          {activation && (
+            <div className="space-y-3 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div><span className="text-muted-foreground">Cliente:</span> {activation.cliente || "—"}</div>
+                <div><span className="text-muted-foreground">CNPJ:</span> {fmtCnpj(activation.cnpj)}</div>
+                <div><span className="text-muted-foreground">Código Monnera:</span> {activation.codigo_monnera || "—"}</div>
+                <div><span className="text-muted-foreground">Origem:</span> {activation.origem}</div>
+              </div>
+              <div className="rounded-md bg-muted/40 p-2">
+                <p className="font-medium mb-1">Evidência</p>
+                <pre className="whitespace-pre-wrap break-words text-[11px] text-muted-foreground">
+                  {JSON.stringify(activation.evidencia, null, 2)}
+                </pre>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="rounded-md border border-border p-2">
+                  <p className="font-medium mb-1">Ações que serão executadas</p>
+                  <ul className="list-disc pl-4 text-muted-foreground">
+                    {(activation.acoes ?? []).map((a: string, i: number) => <li key={i}>{a}</li>)}
+                  </ul>
+                </div>
+                <div className="rounded-md border border-border p-2">
+                  <p className="font-medium mb-1">Não será executado</p>
+                  <ul className="list-disc pl-4 text-muted-foreground">
+                    {(activation.nao_executa ?? []).map((a: string, i: number) => <li key={i}>{a}</li>)}
+                  </ul>
+                </div>
+              </div>
+              {(activation.bloqueios ?? []).length > 0 && (
+                <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-destructive">
+                  <p className="font-medium">Bloqueios impedem a execução</p>
+                  <ul className="list-disc pl-4">
+                    {(activation.bloqueios ?? []).map((b: string, i: number) => <li key={i}>{b}</li>)}
+                  </ul>
+                </div>
+              )}
+              <Textarea
+                rows={2}
+                value={activationJustification}
+                onChange={(e) => setActivationJustification(e.target.value.slice(0, 500))}
+                placeholder="Justificativa da execução (obrigatória)."
+              />
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => setActivation(null)} disabled={saving}>Cancelar</Button>
+                <Button size="sm" onClick={runActivation} disabled={saving || !activation.pode_executar}>
+                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Executar 1 registro
                 </Button>
               </div>
             </div>
