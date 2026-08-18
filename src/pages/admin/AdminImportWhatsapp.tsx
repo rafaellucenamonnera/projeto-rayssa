@@ -815,6 +815,61 @@ export default function AdminImportWhatsapp() {
                 </div>
               )}
 
+              {(() => {
+                const info = operationalInfo(selected);
+                if (info.state === "liberado" || info.state === "executado") return null;
+                return (
+                  <div className="space-y-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs">
+                    <div className="flex items-center gap-2 text-amber-300">
+                      <AlertTriangle className="h-4 w-4" />
+                      <p className="font-medium">Não é possível liberar — registro mantido como {info.label}</p>
+                    </div>
+                    <p className="text-amber-200">
+                      Motivo específico: {info.blockReason ?? "Pendência de triagem em aberto"}
+                    </p>
+
+                    <div>
+                      <p className="font-medium text-foreground">Cards candidatos</p>
+                      {candidateCards.length === 0 ? (
+                        <p className="text-muted-foreground">
+                          Nenhum card candidato encontrado (possível card inexistente).
+                        </p>
+                      ) : (
+                        <ul className="space-y-1">
+                          {candidateCards.map((c) => (
+                            <li key={c.card.id} className="flex flex-wrap items-center gap-2">
+                              <span className="text-foreground">{c.card.full_name}</span>
+                              <span className="text-muted-foreground">
+                                {c.card.cnpj ? `· ${fmtCnpj(c.card.cnpj)} ` : ""}· {c.motivo}
+                              </span>
+                              <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => setLinkCardId(c.card.id)}>
+                                Selecionar
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-6 px-2" asChild>
+                                <Link to={crossCardActionUrl(CROSS_PANEL_ID, c.card.id)} target="_blank">
+                                  <ExternalLink className="h-3 w-3 mr-1" /> Abrir
+                                </Link>
+                              </Button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    <p className="text-muted-foreground">Exemplos de bloqueio: {BLOCK_EXAMPLES.join(" · ")}.</p>
+                    <p className="text-muted-foreground">
+                      Correção possível: edição manual acima, nova resposta por Gmail ou nova importação pelo WhatsApp.
+                    </p>
+
+                    <Button size="sm" variant="outline" onClick={registerBlock} disabled={saving}>
+                      {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <AlertTriangle className="h-3.5 w-3.5 mr-1" />}
+                      Abrir tarefa de análise e notificar responsáveis
+                    </Button>
+                  </div>
+                );
+              })()}
+
+
               <div>
                 <Label className="text-xs">Observações da revisão</Label>
                 <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} maxLength={1000} />
