@@ -90,6 +90,21 @@ type TriageMessage = {
   linked_at: string | null;
   linked_by: string | null;
   linked_card_snapshot: Record<string, unknown> | null;
+
+  // metadados aditivos de origem da thread (podem não existir em registros antigos)
+  thread_participants?: {
+    from?: string[];
+    to?: string[];
+    cc?: string[];
+    first_sender?: string | null;
+    most_frequent_sender?: string | null;
+    message_count?: number;
+  } | null;
+  thread_domains?: string[] | null;
+  origin_sender?: string | null;
+  origin_domain?: string | null;
+  origin_match_type?: string | null;
+  origin_match_evidence?: string | null;
 };
 
 type Correction = {
@@ -203,6 +218,46 @@ const extractedField = (extracted: Record<string, unknown> | null, key: string) 
 const pendingList = (m: TriageMessage): PendingReason[] =>
   Array.isArray(m.pending_reasons) ? m.pending_reasons : [];
 
+/** Participantes da thread com fallback para os cabeçalhos já gravados (mensagens antigas). */
+const threadParticipantList = (m: TriageMessage): string[] => {
+  const p = m.thread_participants;
+  const fromMeta = p ? [...(p.from ?? []), ...(p.to ?? []), ...(p.cc ?? [])] : [];
+  if (fromMeta.length) return Array.from(new Set(fromMeta.map((a) => a.toLowerCase())));
+  const raw = `${m.from_address ?? ""} ${m.to_address ?? ""}`.toLowerCase();
+  return Array.from(new Set(raw.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/g) ?? []));
+};
+
+/** Domínios da thread com fallback para os endereços já gravados. */
+const threadDomains = (m: TriageMessage): string[] => {
+  const stored = Array.isArray(m.thread_domains) ? m.thread_domains.filter(Boolean) : [];
+  if (stored.length) return Array.from(new Set(stored.map((d) => String(d).toLowerCase())));
+  return Array.from(
+    new Set(threadParticipantList(m).map((a) => a.split("@")[1]).filter(Boolean) as string[]),
+  );
+};
+
+const originSenderOf = (m: TriageMessage): string | null =>
+  m.origin_sender ?? threadParticipantList(m)[0] ?? null;
+
+const originDomainOf = (m: TriageMessage): string | null =>
+  m.origin_domain ?? (originSenderOf(m)?.split("@")[1] ?? null);
+
+/** Texto pesquisável de origem: metadados + fallback dos cabeçalhos. */
+const originHaystack = (m: TriageMessage): string =>
+  [
+    m.origin_sender,
+    m.origin_domain,
+    m.origin_match_evidence,
+    m.from_address,
+    m.to_address,
+    ...threadParticipantList(m),
+    ...threadDomains(m),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+
 
 export default function AdminTriagemGmail() {
   const { user } = useAuth();
@@ -217,6 +272,7 @@ export default function AdminTriagemGmail() {
   const [filterOperational, setFilterOperational] = useState("all");
   const [filterCnpj, setFilterCnpj] = useState("");
   const [filterFrom, setFilterFrom] = useState("");
+  const [filterOrigem, setFilterOrigem] = useState("");
   const [filterCodigo, setFilterCodigo] = useState("");
   const [filterInicio, setFilterInicio] = useState("");
   const [filterFim, setFilterFim] = useState("");
@@ -350,6 +406,7 @@ export default function AdminTriagemGmail() {
     const cnpjTerm = onlyDigits(filterCnpj);
     const fromTerm = filterFrom.trim().toLowerCase();
     const codigoTerm = filterCodigo.trim().toLowerCase();
+    const origemTerm = filterOrigem.trim().toLowerCase().replace(/^@/, "");
     const inicio = filterInicio ? new Date(`${filterInicio}T00:00:00`) : null;
     const fim = filterFim ? new Date(`${filterFim}T23:59:59`) : null;
 
@@ -363,13 +420,26 @@ export default function AdminTriagemGmail() {
         if (!cnpj.includes(cnpjTerm)) return false;
       }
       if (fromTerm && !(m.from_address ?? "").toLowerCase().includes(fromTerm)) return false;
+      if (origemTerm && !originHaystack(m).includes(origemTerm)) return false;
       if (codigoTerm && !(m.codigo_encontrado ?? "").toLowerCase().includes(codigoTerm)) return false;
       const ref = new Date(m.received_at ?? m.created_at);
       if (inicio && ref < inicio) return false;
       if (fim && ref > fim) return false;
       return true;
     });
-  }, [messages, filterResult, filterReviewed, filterOperational, operationalInfo, filterCnpj, filterFrom, filterCodigo, filterInicio, filterFim]);
+  }, [messages, filterResult, filterReviewed, filterOperational, operationalInfo, filterCnpj, filterFrom, filterOrigem, filterCodigo, filterInicio, filterFim]);
+
+  /** Domínios distintos presentes nas mensagens carregadas (chips de seleção rápida). */
+  const availableDomains = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const m of messages) {
+      for (const d of threadDomains(m)) counts.set(d, (counts.get(d) ?? 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, 12);
+  }, [messages]);
+
 
   const resultOptions = useMemo(
     () => Array.from(new Set(messages.map((m) => m.analysis_result ?? m.status))).sort(),
@@ -868,7 +938,44 @@ export default function AdminTriagemGmail() {
         <Input placeholder="Código Monnera" value={filterCodigo} onChange={(e) => setFilterCodigo(e.target.value)} />
         <Input type="date" value={filterInicio} onChange={(e) => setFilterInicio(e.target.value)} />
         <Input type="date" value={filterFim} onChange={(e) => setFilterFim(e.target.value)} />
+        <Input
+          placeholder="Origem/domínio da thread (ex.: @baston.com.br)"
+          value={filterOrigem}
+          onChange={(e) => setFilterOrigem(e.target.value)}
+          className="sm:col-span-2"
+        />
       </div>
+
+      {(availableDomains.length > 0 || filterOrigem) && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs text-muted-foreground">Domínios encontrados:</span>
+          {availableDomains.map(([domain, count]) => (
+            <Button
+              key={domain}
+              type="button"
+              size="sm"
+              variant={filterOrigem.replace(/^@/, "").toLowerCase() === domain ? "default" : "outline"}
+              className="h-6 px-2 text-[11px]"
+              onClick={() => setFilterOrigem(`@${domain}`)}
+            >
+              @{domain} ({count})
+            </Button>
+          ))}
+          {filterOrigem && (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2 text-[11px]"
+              onClick={() => setFilterOrigem("")}
+            >
+              Limpar filtro de origem
+            </Button>
+          )}
+        </div>
+      )}
+
+
 
       <Card className="border-border">
         <CardHeader className="pb-2">
@@ -934,6 +1041,9 @@ export default function AdminTriagemGmail() {
                       <span>Liberado por: {m.released_by ? (userNames[m.released_by] ?? m.released_by) : "—"}</span>
                       <span>Execução: {exec ? fmtDate(exec.created_at) : "—"}</span>
                       <span>Status da execução: {exec ? "Card criado" : "Sem execução"}</span>
+                      <span>Origem sugerida: {originSenderOf(m) ?? "—"}</span>
+                      <span>Domínio de origem: {originDomainOf(m) ? `@${originDomainOf(m)}` : "—"}</span>
+                      <span>Mensagens na thread: {m.thread_participants?.message_count ?? "—"}</span>
                     </div>
                     {op.blockReason && op.state !== "liberado" && op.state !== "executado" && (
                       <p className="mt-1 text-xs text-amber-400">Motivo do bloqueio: {op.blockReason}</p>
@@ -964,6 +1074,30 @@ export default function AdminTriagemGmail() {
                 <Field label="Data" value={fmtDate(selected.received_at ?? selected.created_at)} />
                 <Field label="Thread ID" value={selected.thread_id} />
                 <Field label="Message ID" value={selected.message_id} />
+                <Field
+                  label="Remetente inicial da thread"
+                  value={selected.thread_participants?.first_sender ?? originSenderOf(selected)}
+                />
+                <Field
+                  label="Domínio de origem"
+                  value={originDomainOf(selected) ? `@${originDomainOf(selected)}` : null}
+                />
+                <Field
+                  label="Domínios da thread"
+                  value={threadDomains(selected).map((d) => `@${d}`).join(", ") || null}
+                />
+                <Field
+                  label="Participantes da thread"
+                  value={threadParticipantList(selected).join(", ") || null}
+                />
+                <Field
+                  label="Evidência da origem"
+                  value={
+                    selected.origin_match_evidence
+                      ? `${selected.origin_match_evidence}${selected.origin_match_type ? ` (${selected.origin_match_type})` : ""}`
+                      : null
+                  }
+                />
                 <Field label="CNPJ normalizado" value={extractedField(selected.extracted, "cnpj")} />
                 <Field
                   label="Fonte do CNPJ"

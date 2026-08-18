@@ -437,6 +437,104 @@ function findCnpjsIn(text: string, source: string): CnpjHit[] {
   return hits;
 }
 
+// ----------------------------------------------------------------------
+// Metadados de origem da thread. Somente leitura/gravação de metadados:
+// nada aqui influencia classificação, pendências, liberação ou cards.
+// ----------------------------------------------------------------------
+type ThreadOrigin = {
+  thread_participants: {
+    from: string[];
+    to: string[];
+    cc: string[];
+    first_sender: string | null;
+    most_frequent_sender: string | null;
+    message_count: number;
+  };
+  thread_domains: string[];
+  origin_sender: string | null;
+  origin_domain: string | null;
+  origin_match_type: string | null;
+  origin_match_evidence: string | null;
+};
+
+function parseAddresses(raw: string): string[] {
+  if (!raw) return [];
+  return (raw.toLowerCase().match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/g) ?? []);
+}
+
+function buildThreadOrigin(
+  messages: Array<{ from: string; to: string; cc: string }>,
+): ThreadOrigin {
+  const from: string[] = [];
+  const to: string[] = [];
+  const cc: string[] = [];
+  const senderCount = new Map<string, number>();
+  for (const m of messages) {
+    const f = parseAddresses(m.from);
+    if (f[0]) senderCount.set(f[0], (senderCount.get(f[0]) ?? 0) + 1);
+    for (const a of f) if (!from.includes(a)) from.push(a);
+    for (const a of parseAddresses(m.to)) if (!to.includes(a)) to.push(a);
+    for (const a of parseAddresses(m.cc)) if (!cc.includes(a)) cc.push(a);
+  }
+  const firstSender = parseAddresses(messages[0]?.from ?? "")[0] ?? null;
+  let mostFrequent: string | null = null;
+  let best = 0;
+  for (const [addr, count] of senderCount) {
+    if (count > best) {
+      best = count;
+      mostFrequent = addr;
+    }
+  }
+  const domains: string[] = [];
+  for (const addr of [...from, ...to, ...cc]) {
+    const d = addr.split("@")[1];
+    if (d && !domains.includes(d)) domains.push(d);
+  }
+  const originSender = firstSender ?? from[0] ?? null;
+  return {
+    thread_participants: {
+      from,
+      to,
+      cc,
+      first_sender: firstSender,
+      most_frequent_sender: mostFrequent,
+      message_count: messages.length,
+    },
+    thread_domains: domains,
+    origin_sender: originSender,
+    origin_domain: originSender ? (originSender.split("@")[1] ?? null) : null,
+    origin_match_type: originSender ? (firstSender ? "thread" : "sender") : null,
+    origin_match_evidence: originSender ?? null,
+  };
+}
+
+/** Lê participantes da thread; em falha, usa apenas os cabeçalhos da mensagem atual. */
+async function collectThreadOrigin(
+  threadId: string | null,
+  fallback: { from: string; to: string; cc: string },
+): Promise<ThreadOrigin> {
+  if (threadId) {
+    try {
+      const thread = await gmailFetch(
+        `/users/me/threads/${threadId}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Cc`,
+      );
+      const msgs = (thread?.messages ?? []).map((m: any) => ({
+        from: gmailHeader(m?.payload ?? {}, "From"),
+        to: gmailHeader(m?.payload ?? {}, "To"),
+        cc: gmailHeader(m?.payload ?? {}, "Cc"),
+      }));
+      if (msgs.length) return buildThreadOrigin(msgs);
+    } catch (err) {
+      console.error("thread metadata falhou", err);
+    }
+  }
+  const origin = buildThreadOrigin([fallback]);
+  if (origin.origin_sender) origin.origin_match_type = "sender";
+  return origin;
+}
+
+
+
 async function collectThreadText(threadId: string | null): Promise<string> {
   if (!threadId) return "";
   try {
@@ -649,6 +747,12 @@ Deno.serve(async (req) => {
         const subject = gmailHeader(payload, "Subject");
         const threadId = msg?.threadId ?? null;
         const receivedAt = msg?.internalDate ? new Date(Number(msg.internalDate)).toISOString() : null;
+        // metadados de origem (somente filtro/auditoria — não afetam classificação)
+        const threadOrigin = await collectThreadOrigin(threadId, {
+          from,
+          to: gmailHeader(payload, "To"),
+          cc: gmailHeader(payload, "Cc"),
+        });
         const fromLower = from.toLowerCase();
         const toLower = to.toLowerCase();
         // Jira só entra no escopo quando destinado à caixa autorizada.
@@ -872,6 +976,7 @@ Deno.serve(async (req) => {
             .from("gmail_processed_messages")
             .update({
               thread_id: threadId,
+              ...threadOrigin,
               from_address: from,
               to_address: to.slice(0, 500),
               subject,
