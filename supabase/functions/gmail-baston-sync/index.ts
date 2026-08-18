@@ -1152,6 +1152,8 @@ async function notifyDivergence(
         p_action_url: "/admin/triagem-gmail",
         p_metadata: metadata,
         p_delivery_key: `triagem_divergencia:${metadata.message_id ?? ""}`,
+        p_actor_user_id: null,
+        p_representative_card_id: null,
       });
     } catch (err) {
       console.error("Falha ao notificar divergência", err);
