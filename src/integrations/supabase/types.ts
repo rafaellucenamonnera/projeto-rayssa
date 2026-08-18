@@ -662,6 +662,10 @@ export type Database = {
           mode: string
           observacoes: string | null
           operational_status: string
+          origin_domain: string | null
+          origin_match_evidence: string | null
+          origin_match_type: string | null
+          origin_sender: string | null
           pending_reason: string | null
           pending_reason_manual: string | null
           pending_reasons: Json
@@ -682,7 +686,9 @@ export type Database = {
           status: string
           subject: string | null
           test_mode: boolean
+          thread_domains: Json | null
           thread_id: string | null
+          thread_participants: Json | null
           to_address: string | null
           updated_at: string
         }
@@ -712,6 +718,10 @@ export type Database = {
           mode?: string
           observacoes?: string | null
           operational_status?: string
+          origin_domain?: string | null
+          origin_match_evidence?: string | null
+          origin_match_type?: string | null
+          origin_sender?: string | null
           pending_reason?: string | null
           pending_reason_manual?: string | null
           pending_reasons?: Json
@@ -732,7 +742,9 @@ export type Database = {
           status?: string
           subject?: string | null
           test_mode?: boolean
+          thread_domains?: Json | null
           thread_id?: string | null
+          thread_participants?: Json | null
           to_address?: string | null
           updated_at?: string
         }
@@ -762,6 +774,10 @@ export type Database = {
           mode?: string
           observacoes?: string | null
           operational_status?: string
+          origin_domain?: string | null
+          origin_match_evidence?: string | null
+          origin_match_type?: string | null
+          origin_sender?: string | null
           pending_reason?: string | null
           pending_reason_manual?: string | null
           pending_reasons?: Json
@@ -782,7 +798,9 @@ export type Database = {
           status?: string
           subject?: string | null
           test_mode?: boolean
+          thread_domains?: Json | null
           thread_id?: string | null
+          thread_participants?: Json | null
           to_address?: string | null
           updated_at?: string
         }
