@@ -938,7 +938,44 @@ export default function AdminTriagemGmail() {
         <Input placeholder="Código Monnera" value={filterCodigo} onChange={(e) => setFilterCodigo(e.target.value)} />
         <Input type="date" value={filterInicio} onChange={(e) => setFilterInicio(e.target.value)} />
         <Input type="date" value={filterFim} onChange={(e) => setFilterFim(e.target.value)} />
+        <Input
+          placeholder="Origem/domínio da thread (ex.: @baston.com.br)"
+          value={filterOrigem}
+          onChange={(e) => setFilterOrigem(e.target.value)}
+          className="sm:col-span-2"
+        />
       </div>
+
+      {(availableDomains.length > 0 || filterOrigem) && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs text-muted-foreground">Domínios encontrados:</span>
+          {availableDomains.map(([domain, count]) => (
+            <Button
+              key={domain}
+              type="button"
+              size="sm"
+              variant={filterOrigem.replace(/^@/, "").toLowerCase() === domain ? "default" : "outline"}
+              className="h-6 px-2 text-[11px]"
+              onClick={() => setFilterOrigem(`@${domain}`)}
+            >
+              @{domain} ({count})
+            </Button>
+          ))}
+          {filterOrigem && (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2 text-[11px]"
+              onClick={() => setFilterOrigem("")}
+            >
+              Limpar filtro de origem
+            </Button>
+          )}
+        </div>
+      )}
+
+
 
       <Card className="border-border">
         <CardHeader className="pb-2">
