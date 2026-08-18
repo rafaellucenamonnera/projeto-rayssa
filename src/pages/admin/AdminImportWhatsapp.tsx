@@ -726,8 +726,10 @@ export default function AdminImportWhatsapp() {
                   {row.pending_reasons.map((p) => (
                     <Badge key={p.code} variant="outline" className="text-[10px]">
                       {PENDING_LABEL[p.code] ?? p.label}
+                      <span className="ml-1 opacity-60">· {STAGE_LABEL[pendingStage(p)]}</span>
                     </Badge>
                   ))}
+
                 </div>
               )}
             </button>
