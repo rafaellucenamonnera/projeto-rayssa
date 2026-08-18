@@ -15,13 +15,24 @@ Falta (dependências reais):
 - Não existem tabelas de proveniência, de vínculo de origem nem `automation_runs`.
 - Status da tarefa Jira e data de sincronização ainda não têm campos no card.
 
-Atenção: nas duas mensagens o accountId da Lívia veio como `@secret:TELEGRAM_BOT_TOKEN`, que é o token do bot do Telegram — não é um accountId e não será usado. O accountId correto será resolvido pela API da Atlassian pelo nome/e-mail dela e gravado como configuração.
+Atenção — accountId da Lívia: o valor recebido foi literalmente `@secret:TELEGRAM_BOT_TOKEN`, que é o token do bot do Telegram. Ele é **expressamente rejeitado e nunca será utilizado**, conforme sua orientação. Como nenhum outro identificador chegou, o accountId será resolvido pela API da Atlassian a partir do nome/e-mail da Lívia, apresentado a você para confirmação e só então gravado como configuração da integração.
 
 Cards em `Criação Painel` hoje, sem tarefa Jira: UNIDASUL, DIST. MERCHANT, J R ATACADISTA, ZARB DISTRIBUIDORA, ATACADO MACHADO. ORCA LOGÍSTICA está em `Material Onboarding Cliente` e não é lida nem alterada em nenhuma etapa.
 
+## Fase 0 — Criação do card e avanço de etapa
+
+O card é criado em `Cadastro` com **nome confirmado ou CNPJ confirmado** (basta um). Os dados faltantes são solicitados por ação manual autorizada — sem régua nem cobrança automática. O card só é movido para `Criação Painel` quando nome **e** CNPJ estiverem confirmados, e a tarefa Jira só é criada depois disso.
+
 ## Fase 1 — Jira e tarefas
 
-Edge Function `jira-create-panel-task`: projeto MB (`10038`), tipo Tarefa (`10042`), responsável Lívia Fernandes. Cria a tarefa quando o card está em `Criação Painel`, com nome e CNPJ confirmados, sem conflito ativo, vinculado a uma origem válida e sem tarefa equivalente (dedupe por card_id, CNPJ e thread_id). Descrição com nome, CNPJ, card_id, link do card, origem da informação, thread_id, instrução de criação do painel Monnera e pedido de resposta com o código válido.
+Edge Function `jira-create-panel-task`: projeto MB (`10038`), tipo Tarefa (`10042`), responsável Lívia Fernandes. Cria a tarefa quando o card está em `Criação Painel`, com nome e CNPJ confirmados, sem conflito ativo, vinculado a uma origem válida e sem tarefa equivalente (dedupe obrigatório por card_id, CNPJ e thread_id). Descrição com nome, CNPJ, card_id, link do card, origem da informação, thread_id, instrução de criação do painel Monnera e pedido de resposta com o código válido.
+
+Ativação em degraus, sem automação geral desde o início:
+1. Modo geral **desligado**.
+2. Teste apenas no card `TESTE FASE A QA`.
+3. Após validação, ativação progressiva por lote, com sua autorização a cada lote.
+4. Botão manual sempre disponível para falhas ou casos individuais.
+5. Deduplicação obrigatória em todos os modos.
 
 No card: `jira_issue_key` (já existe) mais `jira_issue_status`, `jira_created_at`, `jira_synced_at`, além dos campos de código já presentes.
 
@@ -29,19 +40,19 @@ Botão `Criar ou reenviar tarefa Jira` no detalhe do card: prévia completa ante
 
 ## Fase 2 — Código Monnera
 
-Edge Function `jira-code-webhook` (pública, autenticada por segredo compartilhado no header). Localiza o card por `jira_issue_key` → card_id → thread_id → CNPJ → nome; aplica somente com correspondência inequívoca; ambiguidade gera pendência e notificação, sem tocar no card.
+Edge Function `jira-code-webhook`, nunca pública sem autenticação. Preferência: segredo compartilhado em header. Se o webhook nativo do Jira não permitir header customizado no projeto MB, o segredo vai em um token de caminho/consulta na própria URL, comparado em tempo constante — a função rejeita qualquer chamada sem o segredo válido. Localiza o card por `jira_issue_key` → card_id → thread_id → CNPJ → nome; aplica somente com correspondência inequívoca; ambiguidade gera pendência e notificação, sem tocar no card.
 
 Validação: exatamente 8 caracteres `A-Z0-9`; rejeita `3SAXJF92`, `UB5PXGDB`, `XXXXXXX`, `XXXXXXXX`, qualquer `MNR-...` e código já usado por outro CNPJ.
 
 Ao aceitar: grava o código, origem `jira_webhook`, evidência e data, registra histórico, notifica Rafael e Maycon e libera a etapa seguinte de forma idempotente.
 
-Fallback Gmail: `gmail-baston-sync` passa a reconhecer mensagens de `jira@monnera.atlassian.net` e extrair chave Jira, thread_id, CNPJ, nome e código — por conteúdo, sem depender do layout do e-mail.
+Fallback Gmail: `gmail-baston-sync` passa a reconhecer mensagens de `jira@monnera.atlassian.net`, limitado à conta `rafael.lucena@monnera.com.br`. Identifica chave Jira, card, CNPJ, nome e código; só aplica com associação inequívoca; ignora e-mails não relacionados; não dispara follow-up nem cobrança. A extração é por conteúdo, sem depender do layout do e-mail.
 
 ## Fase 3 — Consolidação Gmail e WhatsApp
 
 Abas seguem separadas visualmente e alimentam o mesmo card principal. Nova tabela de proveniência por campo: valor, origem (`email`, `whatsapp`, `jira_webhook`, `card_vinculado`, `manual`), trecho de evidência, data, confiança, usuário/processo, registro de origem e status.
 
-Ao vincular: consolida no card principal, não cria card duplicado, preserva origem, thread de e-mail e conversa exportada do WhatsApp, exibe cada informação com sua origem e mantém histórico completo. Em conflito: não sobrescreve, mostra valor anterior e novo com as duas evidências, bloqueia liberação automática e exige decisão manual.
+Ao vincular: consolida no card principal, sem criar card duplicado, preservando origem, thread de e-mail e conversa exportada do WhatsApp, com cada informação exibida com sua origem e histórico completo. O card principal nunca é sobrescrito em silêncio: valores iguais são consolidados; valores diferentes viram divergência com as duas evidências lado a lado; cada valor mantém sua origem; o histórico Gmail/WhatsApp continua acessível; a liberação automática fica bloqueada até decisão manual; e desfazer vínculo não exclui dados nem tarefas.
 
 ## Fase 4 — Vínculo automático e manual
 
@@ -53,7 +64,7 @@ Automático apenas com card candidato único, CNPJ idêntico, nome compatível, 
 
 ## Fase 5 — Canva
 
-Após código válido: copia o modelo oficial `https://canva.link/qp4jojog4s01mjl`, substitui o código na página 12, publica como apresentação pública e exige link final `https://canva.link/...` — link `https://www.canva.com/d/...` nunca é salvo como final. Confirma que abre sem autenticação e sem edição. Grava design_id, link público, link interno, código, CNPJ, card_id, versão e data. Só depois disso move para `Material Onboarding Cliente`, registra histórico e notifica Rafael e Maycon.
+O Canva só é gerado **depois** de um código Monnera válido. Copia o modelo oficial `https://canva.link/qp4jojog4s01mjl`, substitui o código na página 12 e publica como apresentação pública. O link final é obrigatoriamente `https://canva.link/...`; `https://www.canva.com/d/...` nunca é salvo como final nem enviado ao parceiro. O link público é validado antes de gravar (abre sem autenticação, sem permissão de edição); se a validação falhar, nada é gravado. Grava design_id, link público, link interno, código, CNPJ, card_id, versão e data. Só após a confirmação do material o card vai para `Material Onboarding Cliente`, com histórico e notificação a Rafael e Maycon — e só então o onboarding fica liberado.
 
 Falha: card fica na etapa atual, sem onboarding, erro registrado, notificação para Rafael e Maycon, reprocessamento manual disponível.
 
@@ -76,7 +87,7 @@ Edge Functions: `jira-create-panel-task` (nova), `jira-code-webhook` (nova, `ver
 
 Frontend: `src/pages/admin/AdminLeads.tsx`, `AdminTriagemGmail.tsx`, `AdminImportWhatsapp.tsx`; novos componentes em `src/components/admin/`: `JiraTaskDialog`, `CodigoMonneraField`, `CardOriginTimeline`, `ManualLinkDialog`, `AutomationHealthPanel`.
 
-Secrets necessários (solicito no início da execução): `ATLASSIAN_SITE_URL`, `ATLASSIAN_EMAIL`, `ATLASSIAN_API_TOKEN`, `JIRA_WEBHOOK_SECRET`, `CANVA_ACCESS_TOKEN`.
+Secrets necessários: `ATLASSIAN_SITE_URL`, `ATLASSIAN_EMAIL`, `ATLASSIAN_API_TOKEN`, `JIRA_WEBHOOK_SECRET`, `CANVA_ACCESS_TOKEN`. Nenhum token é pedido, colado ou exibido no chat: abro o formulário seguro do gerenciador de secrets do projeto e os valores ficam apenas lá, acessíveis às Edge Functions em tempo de execução.
 
 Webhook Jira: entrego a URL `https://<projeto>.functions.supabase.co/jira-code-webhook`; no Jira, criar webhook no projeto MB para o evento "issue updated", filtrando o tipo Tarefa, com o header do segredo compartilhado.
 
