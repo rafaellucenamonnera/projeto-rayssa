@@ -289,6 +289,68 @@ export type Database = {
           },
         ]
       }
+      canva_material_generations: {
+        Row: {
+          card_id: string
+          cnpj: string | null
+          codigo_monnera: string
+          created_at: string
+          created_by: string | null
+          design_id: string
+          edit_url: string | null
+          edited_page: number | null
+          id: string
+          metadata: Json
+          source: string
+          template_design_id: string
+          test_mode: boolean
+          version: number
+          view_url: string | null
+        }
+        Insert: {
+          card_id: string
+          cnpj?: string | null
+          codigo_monnera: string
+          created_at?: string
+          created_by?: string | null
+          design_id: string
+          edit_url?: string | null
+          edited_page?: number | null
+          id?: string
+          metadata?: Json
+          source?: string
+          template_design_id: string
+          test_mode?: boolean
+          version?: number
+          view_url?: string | null
+        }
+        Update: {
+          card_id?: string
+          cnpj?: string | null
+          codigo_monnera?: string
+          created_at?: string
+          created_by?: string | null
+          design_id?: string
+          edit_url?: string | null
+          edited_page?: number | null
+          id?: string
+          metadata?: Json
+          source?: string
+          template_design_id?: string
+          test_mode?: boolean
+          version?: number
+          view_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canva_material_generations_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "representative_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commercial_proposals: {
         Row: {
           acceptance_canceled_at: string | null
@@ -2658,6 +2720,12 @@ export type Database = {
           blocked_by: string | null
           blocked_reason: string | null
           blocked_source: string | null
+          canva_design_id: string | null
+          canva_material_codigo: string | null
+          canva_material_generated_at: string | null
+          canva_material_source: string | null
+          canva_material_url: string | null
+          canva_material_version: number | null
           city: string | null
           cnpj: string | null
           codigo_evidencia: Json | null
@@ -2705,6 +2773,12 @@ export type Database = {
           blocked_by?: string | null
           blocked_reason?: string | null
           blocked_source?: string | null
+          canva_design_id?: string | null
+          canva_material_codigo?: string | null
+          canva_material_generated_at?: string | null
+          canva_material_source?: string | null
+          canva_material_url?: string | null
+          canva_material_version?: number | null
           city?: string | null
           cnpj?: string | null
           codigo_evidencia?: Json | null
@@ -2752,6 +2826,12 @@ export type Database = {
           blocked_by?: string | null
           blocked_reason?: string | null
           blocked_source?: string | null
+          canva_design_id?: string | null
+          canva_material_codigo?: string | null
+          canva_material_generated_at?: string | null
+          canva_material_source?: string | null
+          canva_material_url?: string | null
+          canva_material_version?: number | null
           city?: string | null
           cnpj?: string | null
           codigo_evidencia?: Json | null
@@ -3818,6 +3898,20 @@ export type Database = {
       }
       preview_triage_activation: {
         Args: { p_row_id: string; p_source: string }
+        Returns: Json
+      }
+      register_canva_material: {
+        Args: {
+          p_card_id: string
+          p_codigo: string
+          p_design_id: string
+          p_edit_url: string
+          p_edited_page?: number
+          p_metadata?: Json
+          p_source?: string
+          p_template_design_id: string
+          p_view_url: string
+        }
         Returns: Json
       }
       register_jira_panel_task: {
