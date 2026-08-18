@@ -92,12 +92,14 @@ export const TriageInfoRequest = ({ source, rowId, cardId, reason, suggested, mi
     setHistory((data as InfoRequest[]) ?? []);
   }, [rowId]);
 
+  const missingKey = (missingFields ?? []).join("|");
+
   useEffect(() => {
     setPreview(null);
     setComplemento("");
-    setPendency(suggested || "cnpj_ausente");
+    setPendency(suggested || (missingKey ? "dados_faltantes" : "cnpj_ausente"));
     loadHistory();
-  }, [rowId, suggested, loadHistory]);
+  }, [rowId, suggested, missingKey, loadHistory]);
 
   const call = async (dryRun: boolean) => {
     setBusy(true);
@@ -110,9 +112,11 @@ export const TriageInfoRequest = ({ source, rowId, cardId, reason, suggested, mi
           pendency_code: pendency,
           reason: reason ?? null,
           complemento: complemento.trim() || null,
+          campos_faltantes: missingFields ?? [],
           dry_run: dryRun,
         },
       });
+
 
       const payload = (data ?? {}) as any;
 
