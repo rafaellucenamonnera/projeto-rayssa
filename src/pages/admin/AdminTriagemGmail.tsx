@@ -277,10 +277,113 @@ export default function AdminTriagemGmail() {
     [messages],
   );
 
+  const effectiveValue = (m: TriageMessage, key: string): string => {
+    const ov = m.manual_overrides ?? {};
+    if (key === "responsavel") return m.responsavel ?? "";
+    if (key === "observacoes") return m.observacoes ?? "";
+    if (key === "pending_reason_manual") return m.pending_reason_manual ?? "";
+    if (key === "codigo_monnera") return ov.codigo_monnera ?? m.codigo_encontrado ?? "";
+    return ov[key] ?? extractedField(m.extracted, key) ?? "";
+  };
+
+  const loadCorrections = async (rowId: string) => {
+    const { data } = await (supabase as any)
+      .from("gmail_triage_corrections")
+      .select("*")
+      .eq("gmail_message_row_id", rowId)
+      .order("created_at", { ascending: false });
+    setCorrections((data ?? []) as Correction[]);
+  };
+
   const openRecord = (m: TriageMessage) => {
     setSelected(m);
     setDecision(m.review_decision ?? "");
     setLinkCardId(m.matched_card_id ?? "none");
+    setJustification("");
+    setConfirmRelease(false);
+    setForm(Object.fromEntries(CORRECTION_FIELDS.map((f) => [f.key, effectiveValue(m, f.key)])));
+    loadCorrections(m.id);
+  };
+
+  const applyCorrection = async () => {
+    if (!selected) return;
+    if (!justification.trim()) {
+      toast.error("Informe a justificativa da correção.");
+      return;
+    }
+    const changed: Record<string, string> = {};
+    CORRECTION_FIELDS.forEach((f) => {
+      const next = (form[f.key] ?? "").trim();
+      if (next !== effectiveValue(selected, f.key).trim()) changed[f.key] = next;
+    });
+    if (!Object.keys(changed).length) {
+      toast.error("Nenhum campo foi alterado.");
+      return;
+    }
+
+    setSaving(true);
+    const { data, error } = await (supabase as any).rpc("apply_gmail_triage_correction", {
+      p_row_id: selected.id,
+      p_values: changed,
+      p_justification: justification.trim(),
+      p_origin: "manual",
+      p_evidence: { message_id: selected.message_id, thread_id: selected.thread_id },
+    });
+    setSaving(false);
+    if (error) {
+      toast.error(`Não foi possível corrigir: ${error.message}`);
+      return;
+    }
+
+    if (selected.matched_card_id) {
+      await logCardEvent(selected.matched_card_id, "card_updated", {
+        origem: "triagem_gmail",
+        acao: "correcao_manual",
+        message_id: selected.message_id,
+        campos: Object.keys(changed),
+        justificativa: justification.trim(),
+        resultado: (data as any)?.analysis_result ?? null,
+      });
+    }
+
+    toast.success("Correção registrada com justificativa e histórico.");
+    setJustification("");
+    await loadCorrections(selected.id);
+    await load();
+    setSelected(null);
+  };
+
+  const releaseRecord = async () => {
+    if (!selected) return;
+    if (!confirmRelease) {
+      toast.error("Confirme a liberação marcando a caixa de confirmação.");
+      return;
+    }
+    if (!justification.trim()) {
+      toast.error("Informe a justificativa da liberação.");
+      return;
+    }
+    setSaving(true);
+    const { error } = await (supabase as any).rpc("release_gmail_triage_message", {
+      p_row_id: selected.id,
+      p_justification: justification.trim(),
+    });
+    setSaving(false);
+    if (error) {
+      toast.error(`Liberação bloqueada: ${error.message}`);
+      return;
+    }
+    if (selected.matched_card_id) {
+      await logCardEvent(selected.matched_card_id, "card_updated", {
+        origem: "triagem_gmail",
+        acao: "liberacao_operacional",
+        message_id: selected.message_id,
+        justificativa: justification.trim(),
+      });
+    }
+    toast.success("Registro liberado para o fluxo operacional.");
+    setSelected(null);
+    load();
   };
 
   const saveReview = async (markReviewed: boolean) => {
