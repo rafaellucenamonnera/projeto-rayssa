@@ -155,12 +155,39 @@ Deno.serve(async (req) => {
     // ------------------------------------------------------- card autorizado
     const { data: card } = await admin
       .from("representative_cards")
-      .select("id, full_name, test_mode, canva_public_url")
+      .select("id, full_name, test_mode, canva_public_url, codigo_monnera, stage_id")
       .eq("id", cardId)
       .maybeSingle();
     if (!card) return json({ error: "Card nao encontrado." }, 404);
     if (card.test_mode !== true) {
       return json({ error: "Card nao esta em modo de teste; envio bloqueado." }, 403);
+    }
+
+    // ------------------------------------- pre-condicoes de etapa/codigo/link
+    const cardCode = String(card.codigo_monnera ?? "").trim().toUpperCase();
+    if (!cardCode || cardCode !== codigo) {
+      await admin.rpc("record_automation_run", {
+        p_stage: "onboarding_email",
+        p_status: "erro",
+        p_card_id: cardId,
+        p_error: "Código Monnera ausente no card ou diferente do informado",
+        p_origin: "send-onboarding-email",
+        p_payload: { codigo_informado: codigo, codigo_card: cardCode },
+      });
+      return json({ error: "Código Monnera ausente no card ou diferente do informado. Envio bloqueado." }, 422);
+    }
+
+    const stageId = String(card.stage_id ?? "");
+    if (!/material/i.test(stageId)) {
+      await admin.rpc("record_automation_run", {
+        p_stage: "onboarding_email",
+        p_status: "erro",
+        p_card_id: cardId,
+        p_error: `Card fora da etapa Material Onboarding Cliente (${stageId || "sem etapa"})`,
+        p_origin: "send-onboarding-email",
+        p_payload: { stage_id: stageId },
+      });
+      return json({ error: "Card não está na etapa Material Onboarding Cliente. Envio bloqueado." }, 422);
     }
 
     // --------------------------------------------- link publico obrigatorio
@@ -173,6 +200,8 @@ Deno.serve(async (req) => {
       await notifyCanvaBlock(cardId, "Link enviado diverge do link público registrado no card", link);
       return json({ error: "Link do material diverge do link público registrado no card." }, 422);
     }
+
+
 
 
     if (!LOVABLE_API_KEY || !GMAIL_CONNECTION_KEY) {
