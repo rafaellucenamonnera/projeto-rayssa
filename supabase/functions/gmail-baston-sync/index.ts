@@ -882,7 +882,45 @@ Deno.serve(async (req) => {
           continue;
         }
 
+        // ---------------------------------------------- LIBERAÇÃO OPERACIONAL
+        // No modo ativo só seguem registros liberados na revisão manual.
+        // Registros já concluídos nunca são reprocessados e bloqueados nunca
+        // avançam para criação de card, anexo ou comentário.
+        const { data: gateRow } = await admin
+          .from("gmail_processed_messages")
+          .select("id, status, operational_status, analysis_result, pending_reasons, representative_card_id")
+          .eq("id", rowId)
+          .maybeSingle();
 
+        if (gateRow && ["created", "duplicate_cnpj"].includes(gateRow.status ?? "")) {
+          stats.skipped += 1;
+          stats.processed += 1;
+          continue;
+        }
+
+        const pendingCount = Array.isArray(gateRow?.pending_reasons) ? gateRow!.pending_reasons.length : 0;
+        const released =
+          gateRow?.operational_status === "liberado" &&
+          (gateRow?.analysis_result ?? "triage_ok") === "triage_ok" &&
+          pendingCount === 0;
+
+        if (!released) {
+          await admin
+            .from("gmail_processed_messages")
+            .update({
+              thread_id: threadId,
+              from_address: from,
+              to_address: to.slice(0, 500),
+              subject,
+              received_at: receivedAt,
+              status: gateRow?.analysis_result ?? "triage_sem_cnpj",
+              error: "Bloqueado: registro não liberado na revisão manual da triagem.",
+            })
+            .eq("id", rowId);
+          stats.skipped += 1;
+          stats.processed += 1;
+          continue;
+        }
 
         if (!extracted.nome_parceiro) {
 
