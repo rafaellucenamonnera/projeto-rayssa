@@ -3157,48 +3157,66 @@ export type Database = {
       triage_activation_executions: {
         Row: {
           actions: Json
+          card_action: string | null
           cliente_nome: string
           cnpj: string
           codigo_monnera: string
           created_at: string
           evidence: Json
           executed_by: string | null
+          final_stage_id: string | null
           id: string
+          jira_issue_key: string | null
+          jira_payload: Json | null
+          jira_status: string
           justification: string
           message_id: string | null
           representative_card_id: string | null
           source: string
           source_row_id: string
+          thread_id: string | null
         }
         Insert: {
           actions?: Json
+          card_action?: string | null
           cliente_nome: string
           cnpj: string
           codigo_monnera: string
           created_at?: string
           evidence?: Json
           executed_by?: string | null
+          final_stage_id?: string | null
           id?: string
+          jira_issue_key?: string | null
+          jira_payload?: Json | null
+          jira_status?: string
           justification: string
           message_id?: string | null
           representative_card_id?: string | null
           source: string
           source_row_id: string
+          thread_id?: string | null
         }
         Update: {
           actions?: Json
+          card_action?: string | null
           cliente_nome?: string
           cnpj?: string
           codigo_monnera?: string
           created_at?: string
           evidence?: Json
           executed_by?: string | null
+          final_stage_id?: string | null
           id?: string
+          jira_issue_key?: string | null
+          jira_payload?: Json | null
+          jira_status?: string
           justification?: string
           message_id?: string | null
           representative_card_id?: string | null
           source?: string
           source_row_id?: string
+          thread_id?: string | null
         }
         Relationships: [
           {
@@ -3765,6 +3783,10 @@ export type Database = {
       }
       preview_triage_activation: {
         Args: { p_row_id: string; p_source: string }
+        Returns: Json
+      }
+      register_jira_panel_task: {
+        Args: { p_execution_id: string; p_issue_key: string; p_payload?: Json }
         Returns: Json
       }
       register_lead_public: {
