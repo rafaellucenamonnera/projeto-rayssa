@@ -340,17 +340,35 @@ export default function AdminEmailOnboarding() {
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar envio</AlertDialogTitle>
-            <AlertDialogDescription>
-              O envio de e-mail ainda não está habilitado neste projeto.
+            <AlertDialogTitle>Confirmação final de envio</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-1 text-sm">
+                <p><strong>Destinatário:</strong> {recipients.join(", ")}</p>
+                <p><strong>Assunto:</strong> {assunto.trim()}</p>
+                <p><strong>Nome:</strong> {nome.trim()}</p>
+                <p><strong>Código:</strong> {codigo.trim().toUpperCase()}</p>
+                <p className="break-all"><strong>Link Canva:</strong> {link.trim()}</p>
+                <p><strong>Template:</strong> {QA_SEND.template}</p>
+                <p><strong>Versão:</strong> {QA_SEND.versao}</p>
+                <p><strong>Conta remetente:</strong> {QA_SEND.conta}</p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Fechar</AlertDialogCancel>
-            <AlertDialogAction disabled>Enviar</AlertDialogAction>
+            <AlertDialogCancel disabled={sending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!isQaSend || sending}
+              onClick={(e) => {
+                e.preventDefault();
+                handleSend();
+              }}
+            >
+              {sending ? "Enviando..." : "Confirmar e enviar"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
     </div>
   );
 }
