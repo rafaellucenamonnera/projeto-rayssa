@@ -112,6 +112,7 @@ const App = () => (
                 <Route path="documentacao" element={<AdminDocumentacao />} />
                 <Route path="triagem-gmail" element={<AdminTriagemGmail />} />
                 <Route path="importar-whatsapp" element={<AdminImportWhatsapp />} />
+                <Route path="email-onboarding" element={<AdminEmailOnboarding />} />
               </Route>
               <Route path="/primeiro-acesso" element={<PrimeiroAcesso />} />
               <Route path="/resetar-senha" element={<ResetarSenha />} />
