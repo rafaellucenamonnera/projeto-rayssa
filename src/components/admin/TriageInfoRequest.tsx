@@ -160,6 +160,19 @@ export const TriageInfoRequest = ({ source, rowId, cardId, reason, suggested, mi
         comprovados e, só em último caso, Denise/Deise.
       </p>
 
+      {(missingFields ?? []).length > 0 && (
+        <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-amber-300">
+          <p className="font-medium">Dados que serão solicitados literalmente</p>
+          <ul className="list-disc pl-4">
+            {(missingFields ?? []).map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+
+
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <div className="space-y-1">
           <Label className="text-xs">Pendência / template</Label>
