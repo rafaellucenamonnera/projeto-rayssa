@@ -408,19 +408,28 @@ export default function AdminTriagemGmail() {
       });
       if (error) throw error;
 
-      await logCardEvent(cardId, "triage_linked", {
-        origem: "triagem_gmail",
-        message_id: selected.message_id,
-        thread_id: selected.thread_id,
-        remetente: selected.from_address,
-        assunto: selected.subject,
-        cnpj: (data as any)?.cnpj ?? null,
-        fonte_cnpj: (data as any)?.cnpj_source ?? null,
-        liberado: !!(data as any)?.released,
-      });
+      const jaVinculado = !!(data as any)?.ja_vinculado;
+
+      // Histórico do card só é gravado em um vínculo novo, evitando duplicidade em revínculos.
+      if (!jaVinculado) {
+        await logCardEvent(cardId, "triage_linked", {
+          origem: "triagem_gmail",
+          message_id: selected.message_id,
+          thread_id: selected.thread_id,
+          remetente: selected.from_address,
+          assunto: selected.subject,
+          cnpj: (data as any)?.cnpj ?? null,
+          fonte_cnpj: (data as any)?.cnpj_source ?? null,
+          liberado: !!(data as any)?.released,
+        });
+      }
 
       setLinkCardId(cardId);
-      toast.success("Card vinculado com sucesso. Os dados confirmados foram preenchidos na triagem.");
+      toast.success(
+        jaVinculado
+          ? "Este card já estava vinculado. Os dados herdados foram reconfirmados, sem duplicar o histórico."
+          : "Card vinculado com sucesso. Nome e CNPJ foram herdados do card confirmado.",
+      );
       if ((data as any)?.released) {
         toast.success("Registro liberado para a etapa Criação Painel. O código Monnera segue pendente dessa etapa.");
       }
