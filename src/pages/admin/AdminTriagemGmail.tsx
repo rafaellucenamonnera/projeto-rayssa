@@ -203,6 +203,46 @@ const extractedField = (extracted: Record<string, unknown> | null, key: string) 
 const pendingList = (m: TriageMessage): PendingReason[] =>
   Array.isArray(m.pending_reasons) ? m.pending_reasons : [];
 
+/** Participantes da thread com fallback para os cabeçalhos já gravados (mensagens antigas). */
+const threadParticipantList = (m: TriageMessage): string[] => {
+  const p = m.thread_participants;
+  const fromMeta = p ? [...(p.from ?? []), ...(p.to ?? []), ...(p.cc ?? [])] : [];
+  if (fromMeta.length) return Array.from(new Set(fromMeta.map((a) => a.toLowerCase())));
+  const raw = `${m.from_address ?? ""} ${m.to_address ?? ""}`.toLowerCase();
+  return Array.from(new Set(raw.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/g) ?? []));
+};
+
+/** Domínios da thread com fallback para os endereços já gravados. */
+const threadDomains = (m: TriageMessage): string[] => {
+  const stored = Array.isArray(m.thread_domains) ? m.thread_domains.filter(Boolean) : [];
+  if (stored.length) return Array.from(new Set(stored.map((d) => String(d).toLowerCase())));
+  return Array.from(
+    new Set(threadParticipantList(m).map((a) => a.split("@")[1]).filter(Boolean) as string[]),
+  );
+};
+
+const originSenderOf = (m: TriageMessage): string | null =>
+  m.origin_sender ?? threadParticipantList(m)[0] ?? null;
+
+const originDomainOf = (m: TriageMessage): string | null =>
+  m.origin_domain ?? (originSenderOf(m)?.split("@")[1] ?? null);
+
+/** Texto pesquisável de origem: metadados + fallback dos cabeçalhos. */
+const originHaystack = (m: TriageMessage): string =>
+  [
+    m.origin_sender,
+    m.origin_domain,
+    m.origin_match_evidence,
+    m.from_address,
+    m.to_address,
+    ...threadParticipantList(m),
+    ...threadDomains(m),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+
 
 export default function AdminTriagemGmail() {
   const { user } = useAuth();
