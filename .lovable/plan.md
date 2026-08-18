@@ -15,7 +15,7 @@ Falta (dependências reais):
 - Não existem tabelas de proveniência, de vínculo de origem nem `automation_runs`.
 - Status da tarefa Jira e data de sincronização ainda não têm campos no card.
 
-AccountId fixo da Lívia Fernandes: usar diretamente o valor já confirmado na criação das tarefas Jira, gravado como configuração fixa da integração. Não resolver por nome ou e-mail. Nunca usar `@secret:TELEGRAM_BOT_TOKEN` ou qualquer outro secret como accountId. Não solicitar novo fornecimento do accountId no chat.
+AccountId fixo da Lívia Fernandes: usar diretamente esse accountId na criação das tarefas Jira, lido de uma configuração fixa da integração (`JIRA_ASSIGNEE_ACCOUNT_ID`, gravada no gerenciador seguro do projeto). Não resolver por nome ou e-mail. Nunca usar `@secret:TELEGRAM_BOT_TOKEN` ou qualquer outro secret não relacionado como accountId. Não solicitar novo fornecimento do accountId no chat — o valor é lido da configuração, não do chat. Se a configuração estiver vazia, a Edge Function falha explicitamente e não cria tarefa sem responsável.
 
 Cards em `Criação Painel` hoje, sem tarefa Jira: UNIDASUL, DIST. MERCHANT, J R ATACADISTA, ZARB DISTRIBUIDORA, ATACADO MACHADO. ORCA LOGÍSTICA está em `Material Onboarding Cliente` e não é lida nem alterada em nenhuma etapa.
 
