@@ -295,7 +295,7 @@ export default function AdminImportWhatsapp() {
       return;
     }
     setSaving(true);
-    const { error } = await (supabase as any).rpc("execute_triage_activation", {
+    const { data, error } = await (supabase as any).rpc("execute_triage_activation", {
       p_source: "whatsapp",
       p_row_id: activation.row_id,
       p_justification: activationJustification.trim(),
@@ -305,7 +305,15 @@ export default function AdminImportWhatsapp() {
       toast.error(`Execução bloqueada: ${error.message}`);
       return;
     }
-    toast.success("Card criado na etapa Cadastro (1 registro, nenhum e-mail enviado).");
+    const res = (data ?? {}) as any;
+    const base = res?.card_acao === "reutilizar" ? "Card existente associado" : "Card criado na etapa Cadastro";
+    if (res?.avancou) {
+      toast.success(`${base} e movido para Criação Painel. Nenhum e-mail enviado.`);
+    } else {
+      const faltam = (res?.dados_faltantes ?? []).map((f: any) => f.rotulo).join("; ") || "—";
+      toast.success(`${base}. Pendente de complementação — faltam: ${faltam}.`);
+    }
+
     setActivation(null);
     setSelected(null);
     load();
