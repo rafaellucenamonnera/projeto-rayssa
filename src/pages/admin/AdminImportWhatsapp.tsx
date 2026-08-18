@@ -79,6 +79,7 @@ type ExtractionRow = {
   review_decision: string | null;
   review_notes: string | null;
   reviewed_at: string | null;
+  reviewed_by: string | null;
   created_at: string;
 };
 
