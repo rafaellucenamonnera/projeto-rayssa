@@ -2739,9 +2739,11 @@ const AdminLeads = () => {
                       setDetailLead((prev: any) => (prev ? { ...prev, canva_public_url: url, canva_material_url: url } : prev));
                     }}
                   />
+                  <CardOriginTimeline cardId={detailLead.id} canEdit={canEditLead} />
                   <RepresentativeCardNotes cardId={detailLead.id} canEdit={canEditLead} />
                   <CardAttachments cardId={detailLead.id} canEdit={canEditLead} trackHistory />
                   <OnboardingEmailQaSection cardId={detailLead.id} />
+
 
                 </div>
               )}
