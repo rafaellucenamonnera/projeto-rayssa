@@ -28,7 +28,9 @@ import {
   computeOperationalInfo,
   OPERATIONAL_FILTER_OPTIONS,
 } from "@/lib/triageOperationalStatus";
-import { ArrowLeft, ExternalLink, Loader2, RefreshCw, CheckCircle2, Mail, ShieldCheck } from "lucide-react";
+import { findCandidateCards, handleBlockedTriage, BLOCK_EXAMPLES } from "@/lib/triageBlockHandling";
+import { ArrowLeft, ExternalLink, Loader2, RefreshCw, CheckCircle2, Mail, ShieldCheck, AlertTriangle } from "lucide-react";
+
 
 const CROSS_PANEL_ID = "painel_msj9fyji";
 
@@ -362,6 +364,62 @@ export default function AdminTriagemGmail() {
     setForm(Object.fromEntries(CORRECTION_FIELDS.map((f) => [f.key, effectiveValue(m, f.key)])));
     loadCorrections(m.id);
   };
+
+  /** Cards candidatos exibidos quando o registro não pode ser liberado. */
+  const candidateCards = useMemo(() => {
+    if (!selected) return [];
+    return findCandidateCards(cards, {
+      cnpj: effectiveValue(selected, "cnpj"),
+      nome: effectiveValue(selected, "nome_parceiro"),
+      extraCnpjs: (selected.cnpj_candidates ?? []).map((c) => c.cnpj),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, cards]);
+
+  /**
+   * Mantém o registro bloqueado, abre tarefa de análise no card candidato
+   * e notifica os responsáveis. Nenhum card é criado ou movido.
+   */
+  const registerBlock = async () => {
+    if (!selected) return;
+    const info = operationalInfo(selected);
+    const cardId = linkCardId !== "none" ? linkCardId : selected.matched_card_id;
+
+    setSaving(true);
+    try {
+      const result = await handleBlockedTriage({
+        source: "gmail",
+        rowId: selected.id,
+        cardId,
+        cliente: effectiveValue(selected, "nome_parceiro") || null,
+        cnpj: effectiveValue(selected, "cnpj") || null,
+        codigo: effectiveValue(selected, "codigo_monnera") || null,
+        motivos: [info.blockReason ?? "Pendência de triagem em aberto"],
+        trecho: selected.cnpj_snippet || selected.body_snippet || selected.subject,
+        referencia: {
+          message_id: selected.message_id,
+          thread_id: selected.thread_id,
+          remetente: selected.from_address,
+          assunto: selected.subject,
+        },
+        candidatos: candidateCards,
+        currentUserId: user?.id ?? null,
+      });
+
+      toast.success(
+        result.taskId
+          ? `Bloqueio registrado: tarefa de análise criada e ${result.notified} responsável(is) notificado(s).`
+          : `Bloqueio registrado e ${result.notified} responsável(is) notificado(s). Vincule um card para abrir a tarefa de análise.`,
+      );
+      await load();
+    } catch (error: any) {
+      toast.error(error?.message || "Não foi possível registrar o tratamento do bloqueio.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+
 
   const applyCorrection = async () => {
     if (!selected) return;
@@ -834,6 +892,78 @@ export default function AdminTriagemGmail() {
                   </Button>
                 )}
               </div>
+
+              {(() => {
+                const info = operationalInfo(selected);
+                if (info.state === "liberado" || info.state === "executado") return null;
+                return (
+                  <div className="space-y-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs">
+                    <div className="flex items-center gap-2 text-amber-300">
+                      <AlertTriangle className="h-4 w-4" />
+                      <p className="font-medium">
+                        Não é possível liberar — registro mantido como {info.label}
+                      </p>
+                    </div>
+
+                    <p className="text-amber-200">
+                      Motivo específico: {info.blockReason ?? "Pendência de triagem em aberto"}
+                    </p>
+
+                    <div>
+                      <p className="font-medium text-foreground">Cards candidatos</p>
+                      {candidateCards.length === 0 ? (
+                        <p className="text-muted-foreground">
+                          Nenhum card candidato encontrado (possível card inexistente).
+                        </p>
+                      ) : (
+                        <ul className="space-y-1">
+                          {candidateCards.map((c) => (
+                            <li key={c.card.id} className="flex flex-wrap items-center gap-2">
+                              <span className="text-foreground">{c.card.full_name}</span>
+                              <span className="text-muted-foreground">
+                                {c.card.cnpj ? `· ${c.card.cnpj} ` : ""}· {c.motivo}
+                              </span>
+                              <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => setLinkCardId(c.card.id)}>
+                                Selecionar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 px-2"
+                                onClick={() => navigate(crossCardActionUrl(CROSS_PANEL_ID, c.card.id))}
+                              >
+                                <ExternalLink className="h-3 w-3 mr-1" /> Abrir
+                              </Button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    {(selected.body_snippet || selected.cnpj_snippet) && (
+                      <div>
+                        <p className="font-medium text-foreground">Mensagem e trecho de origem preservados</p>
+                        <p className="whitespace-pre-wrap text-muted-foreground">
+                          {(selected.cnpj_snippet || selected.body_snippet || "").slice(0, 600)}
+                        </p>
+                      </div>
+                    )}
+
+                    <p className="text-muted-foreground">
+                      Exemplos de bloqueio: {BLOCK_EXAMPLES.join(" · ")}.
+                    </p>
+                    <p className="text-muted-foreground">
+                      Correção possível: correção manual abaixo, nova resposta por Gmail ou nova importação pelo WhatsApp.
+                    </p>
+
+                    <Button size="sm" variant="outline" onClick={registerBlock} disabled={saving}>
+                      {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <AlertTriangle className="h-3.5 w-3.5 mr-1" />}
+                      Abrir tarefa de análise e notificar responsáveis
+                    </Button>
+                  </div>
+                );
+              })()}
+
 
               {Array.isArray(selected.conflict_notes) && selected.conflict_notes.length > 0 && (
                 <div className="rounded-md border border-orange-500/30 bg-orange-500/10 p-3 text-xs text-orange-300 space-y-1">
