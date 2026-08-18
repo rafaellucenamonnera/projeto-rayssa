@@ -3335,6 +3335,7 @@ export type Database = {
           evidences: Json
           id: string
           import_id: string
+          jira_issue_key: string | null
           linked_card_id: string | null
           matched_card_id: string | null
           message_count: number
@@ -3368,6 +3369,7 @@ export type Database = {
           evidences?: Json
           id?: string
           import_id: string
+          jira_issue_key?: string | null
           linked_card_id?: string | null
           matched_card_id?: string | null
           message_count?: number
@@ -3401,6 +3403,7 @@ export type Database = {
           evidences?: Json
           id?: string
           import_id?: string
+          jira_issue_key?: string | null
           linked_card_id?: string | null
           matched_card_id?: string | null
           message_count?: number
