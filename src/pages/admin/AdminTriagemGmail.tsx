@@ -350,6 +350,7 @@ export default function AdminTriagemGmail() {
     const cnpjTerm = onlyDigits(filterCnpj);
     const fromTerm = filterFrom.trim().toLowerCase();
     const codigoTerm = filterCodigo.trim().toLowerCase();
+    const origemTerm = filterOrigem.trim().toLowerCase().replace(/^@/, "");
     const inicio = filterInicio ? new Date(`${filterInicio}T00:00:00`) : null;
     const fim = filterFim ? new Date(`${filterFim}T23:59:59`) : null;
 
@@ -363,13 +364,26 @@ export default function AdminTriagemGmail() {
         if (!cnpj.includes(cnpjTerm)) return false;
       }
       if (fromTerm && !(m.from_address ?? "").toLowerCase().includes(fromTerm)) return false;
+      if (origemTerm && !originHaystack(m).includes(origemTerm)) return false;
       if (codigoTerm && !(m.codigo_encontrado ?? "").toLowerCase().includes(codigoTerm)) return false;
       const ref = new Date(m.received_at ?? m.created_at);
       if (inicio && ref < inicio) return false;
       if (fim && ref > fim) return false;
       return true;
     });
-  }, [messages, filterResult, filterReviewed, filterOperational, operationalInfo, filterCnpj, filterFrom, filterCodigo, filterInicio, filterFim]);
+  }, [messages, filterResult, filterReviewed, filterOperational, operationalInfo, filterCnpj, filterFrom, filterOrigem, filterCodigo, filterInicio, filterFim]);
+
+  /** Domínios distintos presentes nas mensagens carregadas (chips de seleção rápida). */
+  const availableDomains = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const m of messages) {
+      for (const d of threadDomains(m)) counts.set(d, (counts.get(d) ?? 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, 12);
+  }, [messages]);
+
 
   const resultOptions = useMemo(
     () => Array.from(new Set(messages.map((m) => m.analysis_result ?? m.status))).sort(),
