@@ -671,8 +671,8 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // modo operacional: só processa remetentes do domínio monitorado
-        if (SYNC_MODE === "active" && !from.toLowerCase().includes(`@${SENDER_DOMAIN}`)) {
+        // modo operacional: só processa remetentes do domínio monitorado (Jira entra apenas como leitura de triagem)
+        if (SYNC_MODE === "active" && !fromLower.includes(`@${SENDER_DOMAIN}`) && !isJira) {
           await admin
             .from("gmail_processed_messages")
             .update({
