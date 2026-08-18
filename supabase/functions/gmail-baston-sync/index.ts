@@ -817,6 +817,26 @@ Deno.serve(async (req) => {
 
           const attachmentsInfo = describeAttachments(atts);
 
+          // Correções manuais já aplicadas nunca são sobrescritas pelo worker.
+          const { data: currentRow } = await admin
+            .from("gmail_processed_messages")
+            .select("manual_overrides, operational_status")
+            .eq("id", rowId)
+            .maybeSingle();
+          const overrides = (currentRow?.manual_overrides ?? {}) as Record<string, string>;
+
+          if (currentRow?.operational_status === "liberado") {
+            // registro já concluído: não reprocessa e não altera nada
+            stats.processed += 1;
+            continue;
+          }
+
+          const finalExtracted = { ...extracted, ...stripEmpty(overrides) };
+          const finalCodigo = overrides.codigo_monnera?.trim() || codigo;
+          const finalReasons = applyOverridesToReasons(reasons, overrides, finalCodigo);
+          const finalPrimary = PRIORITY.find((code) => finalReasons.some((r) => r.code === code));
+          const finalStatus = finalPrimary ? `triage_${finalPrimary}` : "triage_ok";
+
           await admin
             .from("gmail_processed_messages")
             .update({
@@ -825,15 +845,15 @@ Deno.serve(async (req) => {
               to_address: to.slice(0, 500),
               subject,
               received_at: receivedAt,
-              status,
-              extracted,
-              codigo_encontrado: codigo,
+              status: finalStatus,
+              extracted: finalExtracted,
+              codigo_encontrado: finalCodigo,
               attachments: attachmentsInfo,
               attachments_count: atts.length,
               matched_card_id: matchedCardId,
-              analysis_result: status,
-              pending_reason: pendingReason,
-              pending_reasons: reasons,
+              analysis_result: finalStatus,
+              pending_reason: finalReasons.length ? finalReasons.map((r) => r.label).join(" ") : null,
+              pending_reasons: finalReasons,
               body_snippet: plain.slice(0, 1200),
               cnpj_source: resolution.source,
               cnpj_snippet: resolution.snippet,
@@ -845,12 +865,62 @@ Deno.serve(async (req) => {
             })
             .eq("id", rowId);
 
+          // Correção por nova mensagem: mesma thread ou mesmo CNPJ.
+          await correctPendingFromNewMessage(admin, {
+            rowId: rowId!,
+            messageId,
+            threadId,
+            subject,
+            cnpj: resolution.cnpj,
+            nome: finalExtracted.nome_parceiro ?? null,
+            codigo: finalCodigo,
+            snippet: plain.slice(0, 400),
+          });
+
           stats.processed += 1;
-          if (status !== "triage_ok") stats.skipped += 1;
+          if (finalStatus !== "triage_ok") stats.skipped += 1;
           continue;
         }
 
+        // ---------------------------------------------- LIBERAÇÃO OPERACIONAL
+        // No modo ativo só seguem registros liberados na revisão manual.
+        // Registros já concluídos nunca são reprocessados e bloqueados nunca
+        // avançam para criação de card, anexo ou comentário.
+        const { data: gateRow } = await admin
+          .from("gmail_processed_messages")
+          .select("id, status, operational_status, analysis_result, pending_reasons, representative_card_id")
+          .eq("id", rowId)
+          .maybeSingle();
 
+        if (gateRow && ["created", "duplicate_cnpj"].includes(gateRow.status ?? "")) {
+          stats.skipped += 1;
+          stats.processed += 1;
+          continue;
+        }
+
+        const pendingCount = Array.isArray(gateRow?.pending_reasons) ? gateRow!.pending_reasons.length : 0;
+        const released =
+          gateRow?.operational_status === "liberado" &&
+          (gateRow?.analysis_result ?? "triage_ok") === "triage_ok" &&
+          pendingCount === 0;
+
+        if (!released) {
+          await admin
+            .from("gmail_processed_messages")
+            .update({
+              thread_id: threadId,
+              from_address: from,
+              to_address: to.slice(0, 500),
+              subject,
+              received_at: receivedAt,
+              status: gateRow?.analysis_result ?? "triage_sem_cnpj",
+              error: "Bloqueado: registro não liberado na revisão manual da triagem.",
+            })
+            .eq("id", rowId);
+          stats.skipped += 1;
+          stats.processed += 1;
+          continue;
+        }
 
         if (!extracted.nome_parceiro) {
 
@@ -1014,3 +1084,190 @@ Deno.serve(async (req) => {
     });
   }
 });
+
+// ---------------------------------------------------------------------------
+// Correção de registros pendentes por nova mensagem (mesma thread ou CNPJ).
+// Nunca cria cards, tarefas, anexos ou e-mails: apenas completa dados faltantes
+// quando a correspondência é inequívoca e bloqueia quando há conflito.
+// ---------------------------------------------------------------------------
+
+// Destinatários fixos das notificações de divergência (Rafael e Maycon).
+const DIVERGENCE_RECIPIENTS = [
+  "d8e99940-2d3a-45e6-8170-0bf2f5fc98a9", // rafael.lucena@monnera.com.br
+  "87842ad6-9a02-4e66-82ac-65f2743a2596", // maycon.santos@monnera.com.br
+];
+
+function stripEmpty(values: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(values ?? {})) {
+    if (typeof v === "string" && v.trim()) out[k] = v.trim();
+  }
+  return out;
+}
+
+const VALID_CODE_RE = /^[A-Z0-9]{8}$/;
+const DEMO_CODES = new Set(["3SAXJF92", "UB5PXGDB", "XXXXXXX", "XXXXXXXX"]);
+
+function isRealCode(code: string | null | undefined): boolean {
+  const v = (code ?? "").trim().toUpperCase();
+  return VALID_CODE_RE.test(v) && !DEMO_CODES.has(v);
+}
+
+function applyOverridesToReasons(
+  reasons: Array<{ code: string; label: string }>,
+  overrides: Record<string, string>,
+  codigo: string | null,
+): Array<{ code: string; label: string }> {
+  const resolved = new Set<string>();
+  if ((overrides.cnpj ?? "").replace(/\D/g, "").length === 14) {
+    resolved.add("sem_cnpj");
+    resolved.add("ambiguo");
+    resolved.add("divergencia_cnpj");
+  }
+  if ((overrides.nome_parceiro ?? "").trim()) resolved.add("sem_nome");
+  if (isRealCode(codigo)) {
+    resolved.add("sem_codigo");
+    resolved.add("codigo_exemplo_invalido");
+    resolved.add("codigo_formato_nao_confirmado");
+  }
+  return reasons.filter((r) => !resolved.has(r.code));
+}
+
+async function notifyDivergence(
+  admin: any,
+  title: string,
+  message: string,
+  metadata: Record<string, unknown>,
+) {
+  for (const recipient of DIVERGENCE_RECIPIENTS) {
+    try {
+      await admin.rpc("create_notification", {
+        p_recipient_user_id: recipient,
+        p_type: "cross_triagem_divergencia",
+        p_title: title,
+        p_message: message.slice(0, 500),
+        p_lead_id: null,
+        p_task_id: null,
+        p_comment_id: null,
+        p_action_url: "/admin/triagem-gmail",
+        p_metadata: metadata,
+        p_delivery_key: `triagem_divergencia:${metadata.message_id ?? ""}`,
+        p_actor_user_id: null,
+        p_representative_card_id: null,
+      });
+    } catch (err) {
+      console.error("Falha ao notificar divergência", err);
+    }
+  }
+}
+
+async function correctPendingFromNewMessage(
+  admin: any,
+  input: {
+    rowId: string;
+    messageId: string;
+    threadId: string | null;
+    subject: string;
+    cnpj: string | null;
+    nome: string | null;
+    codigo: string | null;
+    snippet: string;
+  },
+) {
+  const filters: string[] = [];
+  if (input.threadId) filters.push(`thread_id.eq.${input.threadId}`);
+  if (input.cnpj) filters.push(`extracted->>cnpj.eq.${input.cnpj}`);
+  if (!filters.length) return;
+
+  const { data: candidates } = await admin
+    .from("gmail_processed_messages")
+    .select("id, message_id, extracted, codigo_encontrado, manual_overrides, analysis_result, pending_reasons, conflict_notes, operational_status")
+    .neq("id", input.rowId)
+    .eq("operational_status", "bloqueado")
+    .or(filters.join(","))
+    .limit(20);
+
+  for (const row of candidates ?? []) {
+    if ((row.analysis_result ?? "") === "triage_ok") continue;
+
+    const overrides = { ...(row.manual_overrides ?? {}) } as Record<string, string>;
+    const currentCnpj = (overrides.cnpj ?? row.extracted?.cnpj ?? "").replace(/\D/g, "");
+    const currentNome = (overrides.nome_parceiro ?? row.extracted?.nome_parceiro ?? "").trim();
+    const currentCodigo = (overrides.codigo_monnera ?? row.codigo_encontrado ?? "").trim().toUpperCase();
+
+    const conflicts: string[] = [];
+    const updates: Array<{ field: string; old: string | null; value: string }> = [];
+
+    if (input.cnpj) {
+      if (!currentCnpj) updates.push({ field: "cnpj", old: null, value: input.cnpj });
+      else if (currentCnpj !== input.cnpj) conflicts.push(`CNPJ divergente: registro ${currentCnpj} × nova mensagem ${input.cnpj}`);
+    }
+    if (input.nome && !currentNome) updates.push({ field: "nome_parceiro", old: null, value: input.nome });
+    if (isRealCode(input.codigo)) {
+      const novo = input.codigo!.toUpperCase();
+      if (!isRealCode(currentCodigo)) updates.push({ field: "codigo_monnera", old: currentCodigo || null, value: novo });
+      else if (currentCodigo !== novo) conflicts.push(`Código divergente: registro ${currentCodigo} × nova mensagem ${novo}`);
+    }
+
+    if (conflicts.length) {
+      const notes = Array.isArray(row.conflict_notes) ? row.conflict_notes : [];
+      notes.push({
+        at: new Date().toISOString(),
+        message_id: input.messageId,
+        thread_id: input.threadId,
+        subject: input.subject,
+        conflitos: conflicts,
+        trecho: input.snippet,
+      });
+      const reasons = Array.isArray(row.pending_reasons) ? row.pending_reasons : [];
+      if (!reasons.some((r: any) => r.code === "conflito_nova_mensagem")) {
+        reasons.push({ code: "conflito_nova_mensagem", label: `Conflito com nova mensagem: ${conflicts.join(" / ")}` });
+      }
+      await admin
+        .from("gmail_processed_messages")
+        .update({ conflict_notes: notes, pending_reasons: reasons })
+        .eq("id", row.id);
+
+      await notifyDivergence(
+        admin,
+        "Divergência na triagem do Gmail",
+        `${conflicts.join(" / ")} (assunto: ${input.subject})`,
+        { message_id: input.messageId, thread_id: input.threadId, row_id: row.id },
+      );
+      continue;
+    }
+
+    if (!updates.length) continue;
+
+    for (const u of updates) {
+      overrides[u.field] = u.value;
+      await admin.from("gmail_triage_corrections").insert({
+        gmail_message_row_id: row.id,
+        field: u.field,
+        old_value: u.old,
+        new_value: u.value,
+        justification: `Correção automática a partir de nova mensagem da mesma ${input.cnpj && input.threadId ? "thread/CNPJ" : input.threadId ? "thread" : "empresa (CNPJ)"}.`,
+        origin: "novo_email",
+        evidence: {
+          message_id: input.messageId,
+          thread_id: input.threadId,
+          subject: input.subject,
+          trecho: input.snippet,
+        },
+      });
+    }
+
+    const reasons = (Array.isArray(row.pending_reasons) ? row.pending_reasons : []) as Array<{ code: string; label: string }>;
+    const remaining = applyOverridesToReasons(reasons, overrides, overrides.codigo_monnera ?? row.codigo_encontrado);
+    await admin
+      .from("gmail_processed_messages")
+      .update({
+        manual_overrides: overrides,
+        pending_reasons: remaining,
+        pending_reason: remaining.length ? remaining.map((r) => r.label).join(" ") : null,
+        analysis_result: remaining.length ? row.analysis_result : "triage_ok",
+        last_correction_at: new Date().toISOString(),
+      })
+      .eq("id", row.id);
+  }
+}

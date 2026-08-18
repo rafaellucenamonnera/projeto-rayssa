@@ -78,6 +78,20 @@ type ExtractionRow = {
   created_at: string;
 };
 
+type PendingGmail = {
+  id: string;
+  message_id: string;
+  thread_id: string | null;
+  subject: string | null;
+  from_address: string | null;
+  extracted: Record<string, unknown> | null;
+  codigo_encontrado: string | null;
+  analysis_result: string | null;
+  manual_overrides: Record<string, string> | null;
+  operational_status: string;
+  received_at: string | null;
+};
+
 const STATUS_TONE: Record<string, string> = {
   triage_ok: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
   triage_duplicado: "bg-sky-500/15 text-sky-400 border-sky-500/30",
@@ -111,6 +125,8 @@ export default function AdminImportWhatsapp() {
   const [imports, setImports] = useState<ImportRow[]>([]);
   const [rows, setRows] = useState<ExtractionRow[]>([]);
   const [cards, setCards] = useState<CrossCardRef[]>([]);
+  const [pendingGmail, setPendingGmail] = useState<PendingGmail[]>([]);
+  const [suggestionJustification, setSuggestionJustification] = useState("");
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
 
@@ -132,7 +148,7 @@ export default function AdminImportWhatsapp() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [importsRes, rowsRes, cardsRes] = await Promise.all([
+      const [importsRes, rowsRes, cardsRes, pendingRes] = await Promise.all([
         (supabase as any)
           .from("whatsapp_imports")
           .select("id,file_name,size_bytes,content_sha256,status,message_count,first_message_at,last_message_at,created_at")
@@ -146,12 +162,19 @@ export default function AdminImportWhatsapp() {
           .select("id,full_name,cnpj")
           .eq("panel_id", CROSS_PANEL_ID)
           .order("full_name"),
+        (supabase as any)
+          .from("gmail_processed_messages")
+          .select("id,message_id,thread_id,subject,from_address,extracted,codigo_encontrado,analysis_result,manual_overrides,operational_status,received_at")
+          .eq("operational_status", "bloqueado")
+          .order("received_at", { ascending: false })
+          .limit(300),
       ]);
       if (importsRes.error) throw importsRes.error;
       if (rowsRes.error) throw rowsRes.error;
       setImports((importsRes.data || []) as ImportRow[]);
       setRows((rowsRes.data || []) as ExtractionRow[]);
       setCards((cardsRes.data || []) as CrossCardRef[]);
+      setPendingGmail((pendingRes?.data || []) as PendingGmail[]);
     } catch (error: any) {
       toast.error(error.message || "Não foi possível carregar as importações.");
     } finally {
@@ -216,6 +239,88 @@ export default function AdminImportWhatsapp() {
     });
   }, [rows, fImport, fStatus, fReviewed, fCliente, fCnpj, fConfidence, fFrom, fTo]);
 
+  const gmailField = (row: PendingGmail, key: string) => {
+    const ov = row.manual_overrides ?? {};
+    if (key === "codigo_monnera") return ov.codigo_monnera ?? row.codigo_encontrado ?? "";
+    const raw = (row.extracted as any)?.[key];
+    return ov[key] ?? (typeof raw === "string" ? raw : "");
+  };
+
+  /** Sugere registros do Gmail pendentes que casam por CNPJ, telefone ou nome. */
+  const suggestions = useMemo(() => {
+    if (!selected) return [] as Array<{ row: PendingGmail; reason: string }>;
+    const digits = (v?: string | null) => (v || "").replace(/\D/g, "");
+    const cnpj = digits(selected.cnpj);
+    const tel = digits(selected.telefone).slice(-8);
+    const nome = (selected.cliente_nome || "").toLowerCase().trim();
+
+    const out: Array<{ row: PendingGmail; reason: string }> = [];
+    pendingGmail.forEach((row) => {
+      const rowCnpj = digits(gmailField(row, "cnpj"));
+      const rowNome = gmailField(row, "nome_parceiro").toLowerCase().trim();
+      const rowTel = digits(gmailField(row, "telefone")).slice(-8);
+      if (cnpj && rowCnpj && rowCnpj === cnpj) out.push({ row, reason: "CNPJ igual" });
+      else if (tel && rowTel && rowTel === tel) out.push({ row, reason: "Telefone igual" });
+      else if (nome.length > 3 && rowNome && (rowNome.includes(nome) || nome.includes(rowNome)))
+        out.push({ row, reason: "Nome semelhante" });
+    });
+    return out.slice(0, 10);
+  }, [selected, pendingGmail]);
+
+  /** Aplica a extração como correção auditada no registro pendente do Gmail. */
+  const applySuggestion = async (row: PendingGmail) => {
+    if (!selected) return;
+    if (!suggestionJustification.trim()) {
+      toast.error("Informe a justificativa para aplicar a correção.");
+      return;
+    }
+    if (selected.status === "triage_ambiguo" || (selected.cnpj_candidates?.length ?? 0) > 1) {
+      toast.error("Extração ambígua: resolva a ambiguidade antes de aplicar a correção.");
+      return;
+    }
+
+    const values: Record<string, string> = {};
+    const put = (key: string, value?: string | null) => {
+      const v = (value || "").trim();
+      if (v && v !== gmailField(row, key).trim()) values[key] = v;
+    };
+    put("cnpj", (edit.cnpj as string) ?? selected.cnpj);
+    put("nome_parceiro", (edit.cliente_nome as string) ?? selected.cliente_nome);
+    put("email", (edit.email as string) ?? selected.email);
+    put("telefone", (edit.telefone as string) ?? selected.telefone);
+    put("codigo_monnera", (edit.codigo_monnera as string) ?? selected.codigo_monnera);
+
+    if (!Object.keys(values).length) {
+      toast.error("Nenhum dado novo para aplicar neste registro.");
+      return;
+    }
+
+    setSaving(true);
+    const { error } = await (supabase as any).rpc("apply_gmail_triage_correction", {
+      p_row_id: row.id,
+      p_values: values,
+      p_justification: suggestionJustification.trim(),
+      p_origin: "whatsapp",
+      p_evidence: {
+        extraction_id: selected.id,
+        arquivo: importById.get(selected.import_id)?.file_name ?? null,
+        trechos: (selected.evidences || []).slice(0, 5),
+      },
+    });
+    setSaving(false);
+    if (error) {
+      toast.error(`Não foi possível aplicar: ${error.message}`);
+      return;
+    }
+    await (supabase as any)
+      .from("whatsapp_extractions")
+      .update({ suggested_gmail_message_id: row.message_id })
+      .eq("id", selected.id);
+    toast.success("Correção aplicada na triagem do Gmail com evidência da conversa.");
+    setSuggestionJustification("");
+    load();
+  };
+
   const openRow = (row: ExtractionRow) => {
     setSelected(row);
     setEdit({
@@ -227,6 +332,7 @@ export default function AdminImportWhatsapp() {
     });
     setLinkCardId(row.linked_card_id ?? row.matched_card_id ?? "none");
     setNotes(row.review_notes ?? "");
+    setSuggestionJustification("");
   };
 
   const saveReview = async (decision: "aprovado" | "rejeitado" | "revisado") => {
@@ -542,6 +648,40 @@ export default function AdminImportWhatsapp() {
                   </div>
                 ) : null,
               )}
+
+              <div className="space-y-2 rounded-md border border-border p-3">
+                <p className="text-xs font-medium">Registros do Gmail pendentes que podem ser corrigidos por esta conversa</p>
+                {suggestions.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Nenhuma correspondência encontrada por CNPJ, telefone ou nome.</p>
+                ) : (
+                  <>
+                    <Textarea
+                      rows={2}
+                      value={suggestionJustification}
+                      onChange={(e) => setSuggestionJustification(e.target.value.slice(0, 500))}
+                      placeholder="Justificativa da correção (obrigatória)."
+                    />
+                    <div className="space-y-2">
+                      {suggestions.map(({ row, reason }) => (
+                        <div key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-muted/40 p-2 text-xs">
+                          <div className="min-w-0">
+                            <p className="truncate text-foreground">{row.subject || "(sem assunto)"}</p>
+                            <p className="text-muted-foreground">
+                              {row.from_address} · {reason} · {fmtDate(row.received_at)}
+                            </p>
+                          </div>
+                          <Button size="sm" variant="secondary" disabled={saving} onClick={() => applySuggestion(row)}>
+                            Aplicar correção
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Dados ambíguos não são aplicados automaticamente; a correção fica registrada no histórico com o trecho da conversa.
+                    </p>
+                  </>
+                )}
+              </div>
 
               {!!selected.evidences?.length && (
                 <div>

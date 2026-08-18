@@ -24,7 +24,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, ExternalLink, Loader2, RefreshCw, CheckCircle2, Mail } from "lucide-react";
+import { ArrowLeft, ExternalLink, Loader2, RefreshCw, CheckCircle2, Mail, ShieldCheck } from "lucide-react";
 
 const CROSS_PANEL_ID = "painel_msj9fyji";
 
@@ -69,6 +69,44 @@ type TriageMessage = {
   reviewed_by: string | null;
   review_decision: string | null;
   review_notes: string | null;
+
+  manual_overrides: Record<string, string> | null;
+  observacoes: string | null;
+  responsavel: string | null;
+  pending_reason_manual: string | null;
+  operational_status: string;
+  released_at: string | null;
+  conflict_notes: Array<Record<string, unknown>> | null;
+  last_correction_at: string | null;
+};
+
+type Correction = {
+  id: string;
+  field: string;
+  old_value: string | null;
+  new_value: string | null;
+  justification: string;
+  origin: string;
+  created_at: string;
+  created_by: string | null;
+};
+
+const CORRECTION_FIELDS: Array<{ key: string; label: string }> = [
+  { key: "nome_parceiro", label: "Nome" },
+  { key: "cnpj", label: "CNPJ" },
+  { key: "email", label: "E-mail" },
+  { key: "telefone", label: "Telefone" },
+  { key: "codigo_monnera", label: "Código Monnera" },
+  { key: "responsavel", label: "Responsável" },
+  { key: "observacoes", label: "Observações" },
+  { key: "pending_reason_manual", label: "Motivo da pendência" },
+];
+
+const ORIGIN_LABEL: Record<string, string> = {
+  manual: "Correção manual",
+  novo_email: "Nova mensagem do Gmail",
+  whatsapp: "Importação de WhatsApp",
+  liberacao: "Liberação operacional",
 };
 
 
@@ -176,6 +214,11 @@ export default function AdminTriagemGmail() {
   const [linkCardId, setLinkCardId] = useState<string>("none");
   const [saving, setSaving] = useState(false);
 
+  const [form, setForm] = useState<Record<string, string>>({});
+  const [justification, setJustification] = useState("");
+  const [corrections, setCorrections] = useState<Correction[]>([]);
+  const [confirmRelease, setConfirmRelease] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
     const [msgRes, runRes, cardRes] = await Promise.all([
@@ -234,10 +277,113 @@ export default function AdminTriagemGmail() {
     [messages],
   );
 
+  const effectiveValue = (m: TriageMessage, key: string): string => {
+    const ov = m.manual_overrides ?? {};
+    if (key === "responsavel") return m.responsavel ?? "";
+    if (key === "observacoes") return m.observacoes ?? "";
+    if (key === "pending_reason_manual") return m.pending_reason_manual ?? "";
+    if (key === "codigo_monnera") return ov.codigo_monnera ?? m.codigo_encontrado ?? "";
+    return ov[key] ?? extractedField(m.extracted, key) ?? "";
+  };
+
+  const loadCorrections = async (rowId: string) => {
+    const { data } = await (supabase as any)
+      .from("gmail_triage_corrections")
+      .select("*")
+      .eq("gmail_message_row_id", rowId)
+      .order("created_at", { ascending: false });
+    setCorrections((data ?? []) as Correction[]);
+  };
+
   const openRecord = (m: TriageMessage) => {
     setSelected(m);
     setDecision(m.review_decision ?? "");
     setLinkCardId(m.matched_card_id ?? "none");
+    setJustification("");
+    setConfirmRelease(false);
+    setForm(Object.fromEntries(CORRECTION_FIELDS.map((f) => [f.key, effectiveValue(m, f.key)])));
+    loadCorrections(m.id);
+  };
+
+  const applyCorrection = async () => {
+    if (!selected) return;
+    if (!justification.trim()) {
+      toast.error("Informe a justificativa da correção.");
+      return;
+    }
+    const changed: Record<string, string> = {};
+    CORRECTION_FIELDS.forEach((f) => {
+      const next = (form[f.key] ?? "").trim();
+      if (next !== effectiveValue(selected, f.key).trim()) changed[f.key] = next;
+    });
+    if (!Object.keys(changed).length) {
+      toast.error("Nenhum campo foi alterado.");
+      return;
+    }
+
+    setSaving(true);
+    const { data, error } = await (supabase as any).rpc("apply_gmail_triage_correction", {
+      p_row_id: selected.id,
+      p_values: changed,
+      p_justification: justification.trim(),
+      p_origin: "manual",
+      p_evidence: { message_id: selected.message_id, thread_id: selected.thread_id },
+    });
+    setSaving(false);
+    if (error) {
+      toast.error(`Não foi possível corrigir: ${error.message}`);
+      return;
+    }
+
+    if (selected.matched_card_id) {
+      await logCardEvent(selected.matched_card_id, "card_updated", {
+        origem: "triagem_gmail",
+        acao: "correcao_manual",
+        message_id: selected.message_id,
+        campos: Object.keys(changed),
+        justificativa: justification.trim(),
+        resultado: (data as any)?.analysis_result ?? null,
+      });
+    }
+
+    toast.success("Correção registrada com justificativa e histórico.");
+    setJustification("");
+    await loadCorrections(selected.id);
+    await load();
+    setSelected(null);
+  };
+
+  const releaseRecord = async () => {
+    if (!selected) return;
+    if (!confirmRelease) {
+      toast.error("Confirme a liberação marcando a caixa de confirmação.");
+      return;
+    }
+    if (!justification.trim()) {
+      toast.error("Informe a justificativa da liberação.");
+      return;
+    }
+    setSaving(true);
+    const { error } = await (supabase as any).rpc("release_gmail_triage_message", {
+      p_row_id: selected.id,
+      p_justification: justification.trim(),
+    });
+    setSaving(false);
+    if (error) {
+      toast.error(`Liberação bloqueada: ${error.message}`);
+      return;
+    }
+    if (selected.matched_card_id) {
+      await logCardEvent(selected.matched_card_id, "card_updated", {
+        origem: "triagem_gmail",
+        acao: "liberacao_operacional",
+        message_id: selected.message_id,
+        justificativa: justification.trim(),
+      });
+    }
+    toast.success("Registro liberado para o fluxo operacional.");
+    setSelected(null);
+    load();
   };
 
   const saveReview = async (markReviewed: boolean) => {
@@ -514,6 +660,129 @@ export default function AdminTriagemGmail() {
                   >
                     <ExternalLink className="h-3.5 w-3.5 mr-1" /> Abrir card
                   </Button>
+                )}
+              </div>
+
+              {Array.isArray(selected.conflict_notes) && selected.conflict_notes.length > 0 && (
+                <div className="rounded-md border border-orange-500/30 bg-orange-500/10 p-3 text-xs text-orange-300 space-y-1">
+                  <p className="font-medium">Conflitos com novas mensagens (registro mantido bloqueado)</p>
+                  {selected.conflict_notes.map((c, i) => (
+                    <p key={i} className="whitespace-pre-wrap">
+                      {fmtDate(String((c as any).at ?? ""))} · {((c as any).conflitos ?? []).join(" / ")}
+                      {(c as any).trecho ? ` — "${String((c as any).trecho).slice(0, 200)}"` : ""}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              <div className="space-y-3 rounded-md border border-border p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium">Correção manual</p>
+                  <Badge
+                    variant="outline"
+                    className={
+                      selected.operational_status === "liberado"
+                        ? "border-emerald-500/30 text-emerald-400"
+                        : "text-muted-foreground"
+                    }
+                  >
+                    {selected.operational_status === "liberado"
+                      ? `Liberado em ${fmtDate(selected.released_at)}`
+                      : "Bloqueado para operação"}
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {CORRECTION_FIELDS.filter((f) => f.key !== "observacoes" && f.key !== "pending_reason_manual").map((f) => (
+                    <div key={f.key} className="space-y-1">
+                      <Label className="text-xs">{f.label}</Label>
+                      <Input
+                        value={form[f.key] ?? ""}
+                        disabled={selected.operational_status === "liberado"}
+                        onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs">Observações</Label>
+                  <Textarea
+                    rows={2}
+                    value={form.observacoes ?? ""}
+                    disabled={selected.operational_status === "liberado"}
+                    onChange={(e) => setForm((p) => ({ ...p, observacoes: e.target.value.slice(0, 1000) }))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Motivo da pendência</Label>
+                  <Input
+                    value={form.pending_reason_manual ?? ""}
+                    disabled={selected.operational_status === "liberado"}
+                    onChange={(e) => setForm((p) => ({ ...p, pending_reason_manual: e.target.value.slice(0, 300) }))}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs">Justificativa (obrigatória)</Label>
+                  <Textarea
+                    rows={2}
+                    value={justification}
+                    disabled={selected.operational_status === "liberado"}
+                    onChange={(e) => setJustification(e.target.value.slice(0, 500))}
+                    placeholder="Ex.: CNPJ confirmado por telefone com o focal do cliente em 18/08."
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={confirmRelease}
+                      disabled={selected.operational_status === "liberado"}
+                      onChange={(e) => setConfirmRelease(e.target.checked)}
+                    />
+                    Confirmo a liberação deste registro para o fluxo operacional
+                  </label>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={applyCorrection}
+                      disabled={saving || selected.operational_status === "liberado"}
+                    >
+                      Salvar correção
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={releaseRecord}
+                      disabled={saving || selected.operational_status === "liberado"}
+                    >
+                      <ShieldCheck className="h-3.5 w-3.5 mr-1" /> Liberar para operação
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-medium">Histórico de correções</p>
+                {corrections.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Nenhuma correção registrada.</p>
+                ) : (
+                  <ul className="space-y-1 text-xs text-muted-foreground">
+                    {corrections.map((c) => (
+                      <li key={c.id} className="rounded-md border border-border p-2">
+                        <span className="text-foreground">
+                          {CORRECTION_FIELDS.find((f) => f.key === c.field)?.label ?? c.field}
+                        </span>{" "}
+                        · {ORIGIN_LABEL[c.origin] ?? c.origin} · {fmtDate(c.created_at)}
+                        <br />
+                        de "{c.old_value || "—"}" para "{c.new_value || "—"}"
+                        <br />
+                        Justificativa: {c.justification}
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
 
