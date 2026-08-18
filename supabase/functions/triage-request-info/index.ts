@@ -292,9 +292,13 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (operationalStatus === "liberado" || operationalStatus === "executado") {
+    if (
+      pendency !== "dados_faltantes" &&
+      (operationalStatus === "liberado" || operationalStatus === "executado")
+    ) {
       return json({ error: "Registro já liberado — solicitação de informação não se aplica." }, 400);
     }
+
 
     if (body?.card_id && typeof body.card_id === "string") cardId = body.card_id;
 
