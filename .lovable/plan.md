@@ -15,7 +15,7 @@ Falta (dependências reais):
 - Não existem tabelas de proveniência, de vínculo de origem nem `automation_runs`.
 - Status da tarefa Jira e data de sincronização ainda não têm campos no card.
 
-Atenção — accountId da Lívia: o valor chega sempre como a referência de secret `@secret:TELEGRAM_BOT_TOKEN`, nunca como um accountId real. Regras fixas: nunca usar esse (ou qualquer) secret como accountId; nunca resolver por nome; nunca usar e-mail como substituto. O accountId da Atlassian não é secret (formato `5b10a2844c20165700ede21g` ou `712020:...`) e precisa ser colado em texto puro no chat. Até que ele chegue assim, a criação de tarefa Jira fica configurada mas **sem responsável válido**, e nenhuma tarefa real é criada.
+AccountId da Lívia Fernandes: usar diretamente o accountId confirmado, fixado como configuração da integração Jira. Nunca resolver por nome, nunca usar e-mail como substituto e nunca utilizar `@secret:TELEGRAM_BOT_TOKEN` ou qualquer outro secret como accountId. Observação operacional: no chat o valor chega mascarado como a referência de secret, então o accountId precisa ser colado uma vez em texto puro (formato `5b10a2844c20165700ede21g` ou `712020:...`) para ser fixado; até lá nenhuma tarefa Jira real é criada.
 
 Cards em `Criação Painel` hoje, sem tarefa Jira: UNIDASUL, DIST. MERCHANT, J R ATACADISTA, ZARB DISTRIBUIDORA, ATACADO MACHADO. ORCA LOGÍSTICA está em `Material Onboarding Cliente` e não é lida nem alterada em nenhuma etapa.
 
