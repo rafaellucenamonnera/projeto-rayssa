@@ -365,6 +365,62 @@ export default function AdminTriagemGmail() {
     loadCorrections(m.id);
   };
 
+  /** Cards candidatos exibidos quando o registro não pode ser liberado. */
+  const candidateCards = useMemo(() => {
+    if (!selected) return [];
+    return findCandidateCards(cards, {
+      cnpj: effectiveValue(selected, "cnpj"),
+      nome: effectiveValue(selected, "nome_parceiro"),
+      extraCnpjs: (selected.cnpj_candidates ?? []).map((c) => c.cnpj),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, cards]);
+
+  /**
+   * Mantém o registro bloqueado, abre tarefa de análise no card candidato
+   * e notifica os responsáveis. Nenhum card é criado ou movido.
+   */
+  const registerBlock = async () => {
+    if (!selected) return;
+    const info = operationalInfo(selected);
+    const cardId = linkCardId !== "none" ? linkCardId : selected.matched_card_id;
+
+    setSaving(true);
+    try {
+      const result = await handleBlockedTriage({
+        source: "gmail",
+        rowId: selected.id,
+        cardId,
+        cliente: effectiveValue(selected, "nome_parceiro") || null,
+        cnpj: effectiveValue(selected, "cnpj") || null,
+        codigo: effectiveValue(selected, "codigo_monnera") || null,
+        motivos: [info.blockReason ?? "Pendência de triagem em aberto"],
+        trecho: selected.cnpj_snippet || selected.body_snippet || selected.subject,
+        referencia: {
+          message_id: selected.message_id,
+          thread_id: selected.thread_id,
+          remetente: selected.from_address,
+          assunto: selected.subject,
+        },
+        candidatos: candidateCards,
+        currentUserId: user?.id ?? null,
+      });
+
+      toast.success(
+        result.taskId
+          ? `Bloqueio registrado: tarefa de análise criada e ${result.notified} responsável(is) notificado(s).`
+          : `Bloqueio registrado e ${result.notified} responsável(is) notificado(s). Vincule um card para abrir a tarefa de análise.`,
+      );
+      await load();
+    } catch (error: any) {
+      toast.error(error?.message || "Não foi possível registrar o tratamento do bloqueio.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+
+
   const applyCorrection = async () => {
     if (!selected) return;
     if (!justification.trim()) {
