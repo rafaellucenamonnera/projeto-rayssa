@@ -223,6 +223,12 @@ export default function AdminTriagemGmail() {
   const [linkCardId, setLinkCardId] = useState<string>("none");
   const [saving, setSaving] = useState(false);
 
+  /** Card cujo vínculo está sendo gravado (estado "Vinculando..." e proteção contra clique duplo). */
+  const [linkingCardId, setLinkingCardId] = useState<string | null>(null);
+  const [unlinkOpen, setUnlinkOpen] = useState(false);
+  const [unlinkJustification, setUnlinkJustification] = useState("");
+  const [unlinking, setUnlinking] = useState(false);
+
   const [form, setForm] = useState<Record<string, string>>({});
   const [justification, setJustification] = useState("");
   const [corrections, setCorrections] = useState<Correction[]>([]);
