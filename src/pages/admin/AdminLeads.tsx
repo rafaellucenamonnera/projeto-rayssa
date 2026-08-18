@@ -58,6 +58,8 @@ import {
 } from "@/lib/campaignFlow";
 import { CampaignMoveDialog, CampanhaConcluidaDialog } from "@/components/admin/CampaignFlowDialogs";
 import CardAttachments from "@/components/admin/CardAttachments";
+import OnboardingEmailQaSection from "@/components/admin/OnboardingEmailQaSection";
+
 import ClienteCrossDialog from "@/components/admin/ClienteCrossDialog";
 
 
@@ -2717,6 +2719,8 @@ const AdminLeads = () => {
                   />
                   <RepresentativeCardNotes cardId={detailLead.id} canEdit={canEditLead} />
                   <CardAttachments cardId={detailLead.id} canEdit={canEditLead} trackHistory />
+                  <OnboardingEmailQaSection cardId={detailLead.id} />
+
                 </div>
               )}
 
