@@ -717,7 +717,9 @@ export default function AdminTriagemGmail() {
       toast.error(`Execução bloqueada: ${error.message}`);
       return;
     }
-    toast.success(`Card criado na etapa Cadastro (1 registro processado, nenhum e-mail enviado).`);
+    toast.success(
+      `${(data as any)?.card_acao === "reutilizar" ? "Card existente associado" : "Card criado na etapa Cadastro"} e movido para Criação Painel. Tarefa Jira pendente de criação; nenhum e-mail enviado.`,
+    );
     setActivation(null);
     setSelected(null);
     load();
@@ -1330,15 +1332,52 @@ export default function AdminTriagemGmail() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div><span className="text-muted-foreground">Cliente:</span> {activation.cliente || "—"}</div>
                 <div><span className="text-muted-foreground">CNPJ:</span> {activation.cnpj || "—"}</div>
-                <div><span className="text-muted-foreground">Código Monnera:</span> {activation.codigo_monnera || "—"}</div>
+                <div><span className="text-muted-foreground">E-mail:</span> {activation.dados_card?.email || "—"}</div>
+                <div><span className="text-muted-foreground">Telefone:</span> {activation.dados_card?.telefone || "—"}</div>
                 <div><span className="text-muted-foreground">Origem:</span> {activation.origem}</div>
+                <div>
+                  <span className="text-muted-foreground">Código Monnera:</span> {activation.codigo_monnera || "—"}{" "}
+                  <span className="text-muted-foreground">(não exigido nesta etapa)</span>
+                </div>
+                <div><span className="text-muted-foreground">Etapa inicial:</span> {activation.etapa_inicial ?? "Cadastro"}</div>
+                <div><span className="text-muted-foreground">Etapa destino:</span> {activation.etapa_destino}</div>
                 <div className="sm:col-span-2">
-                  <span className="text-muted-foreground">Card sugerido:</span>{" "}
-                  {activation.card_sugerido
-                    ? cards.find((c) => c.id === activation.card_sugerido)?.full_name ?? activation.card_sugerido
-                    : "Nenhum"}
+                  <span className="text-muted-foreground">Card:</span>{" "}
+                  {activation.card_acao === "reutilizar"
+                    ? `Reutilizar card existente — ${activation.card_existente_nome ?? activation.card_existente_mesmo_cnpj}`
+                    : "Criar novo card na etapa Cadastro (nenhum card com este CNPJ)"}
                 </div>
               </div>
+
+              <div className="rounded-md border border-border p-2">
+                <p className="font-medium mb-1">Fluxo do teste</p>
+                <ol className="list-decimal pl-4 text-muted-foreground">
+                  {(activation.fluxo ?? []).map((f: string, i: number) => <li key={i}>{f}</li>)}
+                </ol>
+              </div>
+
+              <div className="rounded-md border border-border p-2">
+                <p className="font-medium mb-1">Pré-requisitos</p>
+                <ul className="space-y-0.5">
+                  {(activation.pre_requisitos ?? []).map((p: any, i: number) => (
+                    <li key={i} className={p.ok ? "text-emerald-400" : "text-destructive"}>
+                      {p.ok ? "✓" : "✕"} {p.item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {activation.jira && (
+                <div className="rounded-md border border-border p-2 space-y-0.5">
+                  <p className="font-medium mb-1">Tarefa Jira (etapa Criação Painel)</p>
+                  <p className="text-muted-foreground">Projeto: {activation.jira.projeto} · Tipo: {activation.jira.tipo}</p>
+                  <p className="text-muted-foreground">Responsável: {activation.jira.responsavel}</p>
+                  <p className="text-foreground">Título: {activation.jira.titulo}</p>
+                  {activation.jira.issue_ja_existente && (
+                    <p className="text-destructive">Já existe issue para esta thread/CNPJ: {activation.jira.issue_ja_existente}</p>
+                  )}
+                </div>
+              )}
 
               <div className="rounded-md bg-muted/40 p-2">
                 <p className="font-medium mb-1">Evidência</p>
@@ -1346,6 +1385,7 @@ export default function AdminTriagemGmail() {
                   {JSON.stringify(activation.evidencia, null, 2)}
                 </pre>
               </div>
+
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div className="rounded-md border border-border p-2">
@@ -1384,7 +1424,7 @@ export default function AdminTriagemGmail() {
                   checked={activationConfirm}
                   onChange={(e) => setActivationConfirm(e.target.checked)}
                 />
-                Confirmo a criação do card na etapa Cadastro com os dados acima
+                Confirmo o fluxo acima: card na etapa Cadastro, validação e movimentação para Criação Painel
               </label>
 
               <div className="flex justify-end gap-2">
