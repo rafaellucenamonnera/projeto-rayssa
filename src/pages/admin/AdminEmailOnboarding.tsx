@@ -49,12 +49,27 @@ const QA_SEND = {
   cardId: "32d1e94e-ab53-42b3-9118-ab3ad2d07c77",
   nome: "TESTE FASE A QA",
   codigo: "QATEST01",
-  link: "https://www.canva.com/d/c4zxi4vpjmbpv7V",
   destinatario: "rafael.lucena@monnera.com.br",
   conta: "rafael.lucena@monnera.com.br",
   template: "onboarding-parceiro-baston",
   versao: "v2",
 };
+
+// Link publico do Canva: canva.link/... ou canva.com/d/<token> sem token de edicao.
+export const isCanvaPublicLink = (value: string) =>
+  /^https:\/\/(canva\.link\/[A-Za-z0-9]+|www\.canva\.com\/d\/[A-Za-z0-9_-]+)(\?[^\s]*)?$/.test(value) &&
+  !value.includes("/edit") &&
+  !value.includes("canva.com/d/s_");
+
+export async function fetchCardPublicLink(cardId: string): Promise<string | null> {
+  const { data } = await (supabase as any)
+    .from("representative_cards")
+    .select("canva_public_url")
+    .eq("id", cardId)
+    .maybeSingle();
+  const url = (data?.canva_public_url ?? "").trim();
+  return url && isCanvaPublicLink(url) ? url : null;
+}
 
 export default function AdminEmailOnboarding() {
   const { user, isAdmin } = useAuth();
@@ -78,19 +93,25 @@ export default function AdminEmailOnboarding() {
   const isQaSend =
     nome.trim() === QA_SEND.nome &&
     codigo.trim().toUpperCase() === QA_SEND.codigo &&
-    link.trim() === QA_SEND.link &&
+    isCanvaPublicLink(link.trim()) &&
     recipients.length === 1 &&
     recipients[0].toLowerCase() === QA_SEND.destinatario;
 
-  const loadQaCard = () => {
+  const loadQaCard = async () => {
+    const publicLink = await fetchCardPublicLink(QA_SEND.cardId);
+    if (!publicLink) {
+      toast.error("Link público do Canva ausente ou inválido no card. Envio bloqueado.");
+      return;
+    }
     setNome(QA_SEND.nome);
     setCodigo(QA_SEND.codigo);
-    setLink(QA_SEND.link);
+    setLink(publicLink);
     setDestinatarios(QA_SEND.destinatario);
     setAssunto(ONBOARDING_EMAIL_SUBJECT);
     setPreview(null);
     toast.success("Dados do card TESTE FASE A QA carregados.");
   };
+
 
   const handleSend = async () => {
     const html = preview ?? build();
@@ -148,13 +169,9 @@ export default function AdminEmailOnboarding() {
   useEffect(() => {
     if (!isAdmin) return;
     if (new URLSearchParams(window.location.search).get("qa") !== "1") return;
-    setNome(QA_SEND.nome);
-    setCodigo(QA_SEND.codigo);
-    setLink(QA_SEND.link);
-    setDestinatarios(QA_SEND.destinatario);
-    setAssunto(ONBOARDING_EMAIL_SUBJECT);
-    setPreview(null);
+    void loadQaCard();
   }, [isAdmin]);
+
 
 
   const build = () => {

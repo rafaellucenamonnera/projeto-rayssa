@@ -5,13 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Eye, Download, Send } from "lucide-react";
 import { toast } from "sonner";
 import { ONBOARDING_EMAIL_SUBJECT, renderOnboardingEmail } from "@/lib/onboardingEmailTemplate";
+import { fetchCardPublicLink } from "@/pages/admin/AdminEmailOnboarding";
 
 // Card de QA autorizado (allowlist de frontend; backend mantem a propria allowlist).
 export const QA_CARD = {
   cardId: "32d1e94e-ab53-42b3-9118-ab3ad2d07c77",
   nome: "TESTE FASE A QA",
   codigo: "QATEST01",
-  link: "https://www.canva.com/d/c4zxi4vpjmbpv7V",
   destinatario: "rafael.lucena@monnera.com.br",
 };
 
@@ -22,21 +22,36 @@ interface Props {
 export default function OnboardingEmailQaSection({ cardId }: Props) {
   const navigate = useNavigate();
   const [loaded, setLoaded] = useState(false);
+  const [link, setLink] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
   if (cardId !== QA_CARD.cardId) return null;
 
-  const handleLoad = () => {
+  const resolveLink = async () => {
+    const publicLink = await fetchCardPublicLink(QA_CARD.cardId);
+    if (!publicLink) {
+      toast.error("Link público do Canva ausente ou inválido no card. Envio bloqueado.");
+      return null;
+    }
+    setLink(publicLink);
+    return publicLink;
+  };
+
+  const handleLoad = async () => {
+    const publicLink = await resolveLink();
+    if (!publicLink) return;
     setLoaded(true);
     setPreview(null);
     toast.success("Dados do card carregados.");
   };
 
-  const handlePreview = () => {
+  const handlePreview = async () => {
+    const publicLink = link ?? (await resolveLink());
+    if (!publicLink) return;
     const { html, errors } = renderOnboardingEmail({
       nomeParceiro: QA_CARD.nome,
       codigoParceiro: QA_CARD.codigo,
-      linkMaterial: QA_CARD.link,
+      linkMaterial: publicLink,
     });
     if (errors.length) {
       errors.forEach((e) => toast.error(e));
@@ -45,6 +60,7 @@ export default function OnboardingEmailQaSection({ cardId }: Props) {
     setLoaded(true);
     setPreview(html);
   };
+
 
   const handleSend = () => {
     if (!preview) {
@@ -83,7 +99,7 @@ export default function OnboardingEmailQaSection({ cardId }: Props) {
           <div className="rounded-md border border-border p-3 text-xs text-muted-foreground space-y-1">
             <p><strong>Nome:</strong> {QA_CARD.nome}</p>
             <p><strong>Código:</strong> {QA_CARD.codigo}</p>
-            <p className="break-all"><strong>Link Canva:</strong> {QA_CARD.link}</p>
+            <p className="break-all"><strong>Link público Canva:</strong> {link ?? "—"}</p>
             <p><strong>Destinatário:</strong> {QA_CARD.destinatario}</p>
             <p><strong>Assunto:</strong> {ONBOARDING_EMAIL_SUBJECT}</p>
           </div>

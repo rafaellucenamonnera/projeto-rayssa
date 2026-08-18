@@ -27,7 +27,41 @@ const TEMPLATE_VERSION = "v2";
 const ALLOWED_CARD_IDS = new Set(["32d1e94e-ab53-42b3-9118-ab3ad2d07c77"]);
 const ALLOWED_RECIPIENTS = new Set(["rafael.lucena@monnera.com.br"]);
 const ALLOWED_CODES = new Set(["QATEST01"]);
-const ALLOWED_LINKS = new Set(["https://www.canva.com/d/c4zxi4vpjmbpv7V"]);
+
+// Notificados quando o link publico do Canva estiver ausente/invalido.
+const BLOCK_NOTIFY_USER_IDS = [
+  "4ac5e678-b3a1-46d8-ab1a-a9f52c2f2479", // Rafael Lucena
+  "a0d7b70d-aeda-490a-bcde-e5dc6d6c74fb", // Maycon Santos
+];
+
+// Link publico: canva.link/... ou canva.com/d/<token>, sem token de edicao.
+function isCanvaPublicLink(value: string): boolean {
+  return (
+    /^https:\/\/(canva\.link\/[A-Za-z0-9]+|www\.canva\.com\/d\/[A-Za-z0-9_-]+)(\?[^\s]*)?$/.test(value) &&
+    !value.includes("/edit") &&
+    !value.includes("canva.com/d/s_")
+  );
+}
+
+async function notifyCanvaBlock(cardId: string, motivo: string, link: string) {
+  for (const userId of BLOCK_NOTIFY_USER_IDS) {
+    await admin.rpc("create_notification", {
+      p_recipient_user_id: userId,
+      p_type: "cross_block_created",
+      p_title: "Envio de onboarding bloqueado: link público Canva",
+      p_message: `${motivo} (link recebido: ${link || "vazio"}).`,
+      p_lead_id: null,
+      p_task_id: null,
+      p_comment_id: null,
+      p_action_url: "/admin/email-onboarding",
+      p_metadata: { card_id: cardId, motivo, link },
+      p_actor_user_id: null,
+      p_delivery_key: `canva_public_link_block:${cardId}:${new Date().toISOString().slice(0, 10)}`,
+      p_representative_card_id: cardId,
+    });
+  }
+}
+
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -108,9 +142,6 @@ Deno.serve(async (req) => {
     if (!ALLOWED_CODES.has(codigo)) {
       return json({ error: "Codigo nao autorizado para envio nesta etapa." }, 403);
     }
-    if (!ALLOWED_LINKS.has(link)) {
-      return json({ error: "Link do material nao autorizado para envio nesta etapa." }, 403);
-    }
     if (!nome || !assunto || html.length < 500) {
       return json({ error: "Dados incompletos para envio." }, 400);
     }
@@ -124,13 +155,25 @@ Deno.serve(async (req) => {
     // ------------------------------------------------------- card autorizado
     const { data: card } = await admin
       .from("representative_cards")
-      .select("id, full_name, test_mode")
+      .select("id, full_name, test_mode, canva_public_url")
       .eq("id", cardId)
       .maybeSingle();
     if (!card) return json({ error: "Card nao encontrado." }, 404);
     if (card.test_mode !== true) {
       return json({ error: "Card nao esta em modo de teste; envio bloqueado." }, 403);
     }
+
+    // --------------------------------------------- link publico obrigatorio
+    const cardPublicUrl = String(card.canva_public_url ?? "").trim();
+    if (!cardPublicUrl || !isCanvaPublicLink(cardPublicUrl)) {
+      await notifyCanvaBlock(cardId, "Link público do material Canva ausente ou inválido no card", cardPublicUrl);
+      return json({ error: "Link público do Canva ausente ou inválido no card. Envio bloqueado." }, 422);
+    }
+    if (link !== cardPublicUrl) {
+      await notifyCanvaBlock(cardId, "Link enviado diverge do link público registrado no card", link);
+      return json({ error: "Link do material diverge do link público registrado no card." }, 422);
+    }
+
 
     if (!LOVABLE_API_KEY || !GMAIL_CONNECTION_KEY) {
       return json({ error: "Conexao Gmail nao vinculada ao projeto." }, 500);
