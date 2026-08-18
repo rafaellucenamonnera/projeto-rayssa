@@ -3,7 +3,7 @@
 // Worker recorrente (cron a cada 2h) que lê e-mails via connector gateway.
 //
 // Conta autorizada: rafael.lucena@monnera.com.br
-// Filtros ativos: (from:baston.com.br OR to:rafael.lucena@monnera.com.br)
+// Filtros ativos: (from:@baston.com.br OR to:@baston.com.br) OR (from:jira@monnera.atlassian.net to:rafael.lucena@monnera.com.br)
 //                 + janela em dias (padrão 7, teto 90)
 //
 // MODO DE OPERAÇÃO (GMAIL_SYNC_MODE):
