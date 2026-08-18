@@ -221,6 +221,10 @@ Deno.serve(async (req) => {
     const pendency = typeof body?.pendency_code === "string" ? body.pendency_code : null;
     const reason = (typeof body?.reason === "string" ? body.reason : "").slice(0, 500);
     const complemento = (typeof body?.complemento === "string" ? body.complemento : "").slice(0, 600) || null;
+    const camposFaltantes: string[] = Array.isArray(body?.campos_faltantes)
+      ? body.campos_faltantes.filter((f: unknown) => typeof f === "string").slice(0, 10).map((f: string) => f.slice(0, 160))
+      : [];
+
     const dryRun = body?.dry_run === true;
 
     if (!source || !rowId || !pendency) return json({ error: "Parâmetros inválidos." }, 400);
