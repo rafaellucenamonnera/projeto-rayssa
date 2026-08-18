@@ -663,6 +663,129 @@ export default function AdminTriagemGmail() {
                 )}
               </div>
 
+              {Array.isArray(selected.conflict_notes) && selected.conflict_notes.length > 0 && (
+                <div className="rounded-md border border-orange-500/30 bg-orange-500/10 p-3 text-xs text-orange-300 space-y-1">
+                  <p className="font-medium">Conflitos com novas mensagens (registro mantido bloqueado)</p>
+                  {selected.conflict_notes.map((c, i) => (
+                    <p key={i} className="whitespace-pre-wrap">
+                      {fmtDate(String((c as any).at ?? ""))} · {((c as any).conflitos ?? []).join(" / ")}
+                      {(c as any).trecho ? ` — "${String((c as any).trecho).slice(0, 200)}"` : ""}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              <div className="space-y-3 rounded-md border border-border p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium">Correção manual</p>
+                  <Badge
+                    variant="outline"
+                    className={
+                      selected.operational_status === "liberado"
+                        ? "border-emerald-500/30 text-emerald-400"
+                        : "text-muted-foreground"
+                    }
+                  >
+                    {selected.operational_status === "liberado"
+                      ? `Liberado em ${fmtDate(selected.released_at)}`
+                      : "Bloqueado para operação"}
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {CORRECTION_FIELDS.filter((f) => f.key !== "observacoes" && f.key !== "pending_reason_manual").map((f) => (
+                    <div key={f.key} className="space-y-1">
+                      <Label className="text-xs">{f.label}</Label>
+                      <Input
+                        value={form[f.key] ?? ""}
+                        disabled={selected.operational_status === "liberado"}
+                        onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs">Observações</Label>
+                  <Textarea
+                    rows={2}
+                    value={form.observacoes ?? ""}
+                    disabled={selected.operational_status === "liberado"}
+                    onChange={(e) => setForm((p) => ({ ...p, observacoes: e.target.value.slice(0, 1000) }))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Motivo da pendência</Label>
+                  <Input
+                    value={form.pending_reason_manual ?? ""}
+                    disabled={selected.operational_status === "liberado"}
+                    onChange={(e) => setForm((p) => ({ ...p, pending_reason_manual: e.target.value.slice(0, 300) }))}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs">Justificativa (obrigatória)</Label>
+                  <Textarea
+                    rows={2}
+                    value={justification}
+                    disabled={selected.operational_status === "liberado"}
+                    onChange={(e) => setJustification(e.target.value.slice(0, 500))}
+                    placeholder="Ex.: CNPJ confirmado por telefone com o focal do cliente em 18/08."
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={confirmRelease}
+                      disabled={selected.operational_status === "liberado"}
+                      onChange={(e) => setConfirmRelease(e.target.checked)}
+                    />
+                    Confirmo a liberação deste registro para o fluxo operacional
+                  </label>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={applyCorrection}
+                      disabled={saving || selected.operational_status === "liberado"}
+                    >
+                      Salvar correção
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={releaseRecord}
+                      disabled={saving || selected.operational_status === "liberado"}
+                    >
+                      <ShieldCheck className="h-3.5 w-3.5 mr-1" /> Liberar para operação
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-medium">Histórico de correções</p>
+                {corrections.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Nenhuma correção registrada.</p>
+                ) : (
+                  <ul className="space-y-1 text-xs text-muted-foreground">
+                    {corrections.map((c) => (
+                      <li key={c.id} className="rounded-md border border-border p-2">
+                        <span className="text-foreground">
+                          {CORRECTION_FIELDS.find((f) => f.key === c.field)?.label ?? c.field}
+                        </span>{" "}
+                        · {ORIGIN_LABEL[c.origin] ?? c.origin} · {fmtDate(c.created_at)}
+                        <br />
+                        de "{c.old_value || "—"}" para "{c.new_value || "—"}"
+                        <br />
+                        Justificativa: {c.justification}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
               <div className="space-y-2">
                 <Label className="text-xs">Decisão registrada</Label>
                 <Textarea
