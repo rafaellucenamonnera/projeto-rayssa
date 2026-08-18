@@ -422,6 +422,60 @@ export default function AdminImportWhatsapp() {
     setSuggestionJustification("");
   };
 
+  /** Cards candidatos exibidos quando a extração não pode ser liberada. */
+  const candidateCards = useMemo(() => {
+    if (!selected) return [];
+    return findCandidateCards(cards, {
+      cnpj: (edit.cnpj as string) ?? selected.cnpj,
+      nome: (edit.cliente_nome as string) ?? selected.cliente_nome,
+      extraCnpjs: (selected.cnpj_candidates ?? []).map((c) => c.cnpj),
+    });
+  }, [selected, cards, edit]);
+
+  /** Mantém o registro bloqueado, abre tarefa de análise e notifica os responsáveis. */
+  const registerBlock = async () => {
+    if (!selected) return;
+    const info = operationalInfo(selected);
+    const cardId = linkCardId !== "none" ? linkCardId : selected.linked_card_id ?? selected.matched_card_id;
+
+    setSaving(true);
+    try {
+      const result = await handleBlockedTriage({
+        source: "whatsapp",
+        rowId: selected.id,
+        cardId,
+        cliente: ((edit.cliente_nome as string) ?? selected.cliente_nome) || null,
+        cnpj: ((edit.cnpj as string) ?? selected.cnpj) || null,
+        codigo: ((edit.codigo_monnera as string) ?? selected.codigo_monnera) || null,
+        motivos: [info.blockReason ?? "Pendência de triagem em aberto"],
+        trecho: (selected.evidences || [])
+          .slice(0, 3)
+          .map((ev) => `${ev.field}: ${ev.snippet}`)
+          .join("\n"),
+        referencia: {
+          extraction_id: selected.id,
+          arquivo: importById.get(selected.import_id)?.file_name ?? null,
+          hash: importById.get(selected.import_id)?.content_sha256 ?? null,
+        },
+        candidatos: candidateCards,
+        currentUserId: user?.id ?? null,
+      });
+
+      toast.success(
+        result.taskId
+          ? `Bloqueio registrado: tarefa de análise criada e ${result.notified} responsável(is) notificado(s).`
+          : `Bloqueio registrado e ${result.notified} responsável(is) notificado(s). Vincule um card para abrir a tarefa de análise.`,
+      );
+      await load();
+    } catch (error: any) {
+      toast.error(error?.message || "Não foi possível registrar o tratamento do bloqueio.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+
+
   const saveReview = async (decision: "aprovado" | "rejeitado" | "revisado") => {
     if (!selected) return;
     setSaving(true);
