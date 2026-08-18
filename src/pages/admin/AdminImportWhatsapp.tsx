@@ -146,12 +146,19 @@ export default function AdminImportWhatsapp() {
           .select("id,full_name,cnpj")
           .eq("panel_id", CROSS_PANEL_ID)
           .order("full_name"),
+        (supabase as any)
+          .from("gmail_processed_messages")
+          .select("id,message_id,thread_id,subject,from_address,extracted,codigo_encontrado,analysis_result,manual_overrides,operational_status,received_at")
+          .eq("operational_status", "bloqueado")
+          .order("received_at", { ascending: false })
+          .limit(300),
       ]);
       if (importsRes.error) throw importsRes.error;
       if (rowsRes.error) throw rowsRes.error;
       setImports((importsRes.data || []) as ImportRow[]);
       setRows((rowsRes.data || []) as ExtractionRow[]);
       setCards((cardsRes.data || []) as CrossCardRef[]);
+      setPendingGmail((pendingRes?.data || []) as PendingGmail[]);
     } catch (error: any) {
       toast.error(error.message || "Não foi possível carregar as importações.");
     } finally {
