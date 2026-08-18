@@ -37,7 +37,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { findCandidateCards, handleBlockedTriage, BLOCK_EXAMPLES } from "@/lib/triageBlockHandling";
+import { findCandidateCards, handleBlockedTriage, BLOCK_EXAMPLES, suggestPendencyTemplate } from "@/lib/triageBlockHandling";
+import { TriageInfoRequest } from "@/components/admin/TriageInfoRequest";
 import { ArrowLeft, Loader2, MessageSquare, RefreshCw, Upload, ExternalLink, AlertTriangle } from "lucide-react";
 
 const CROSS_PANEL_ID = "painel_msj9fyji";
