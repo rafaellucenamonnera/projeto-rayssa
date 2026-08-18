@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { logCardEvent, crossCardActionUrl } from "@/lib/crossCardEvents";
@@ -206,7 +206,6 @@ const pendingList = (m: TriageMessage): PendingReason[] =>
 
 export default function AdminTriagemGmail() {
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState<TriageMessage[]>([]);
