@@ -2079,12 +2079,18 @@ export type Database = {
           created_by: string | null
           destinatarios: string[]
           erro_mensagem: string | null
+          gmail_account: string | null
           html_snapshot: string | null
           id: string
           link_material: string
+          message_id: string | null
           nome_parceiro: string
           sent_at: string | null
           status: string
+          template_name: string
+          template_version: string
+          test_mode: boolean
+          thread_id: string | null
           updated_at: string
         }
         Insert: {
@@ -2095,12 +2101,18 @@ export type Database = {
           created_by?: string | null
           destinatarios?: string[]
           erro_mensagem?: string | null
+          gmail_account?: string | null
           html_snapshot?: string | null
           id?: string
           link_material: string
+          message_id?: string | null
           nome_parceiro: string
           sent_at?: string | null
           status?: string
+          template_name?: string
+          template_version?: string
+          test_mode?: boolean
+          thread_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -2111,12 +2123,18 @@ export type Database = {
           created_by?: string | null
           destinatarios?: string[]
           erro_mensagem?: string | null
+          gmail_account?: string | null
           html_snapshot?: string | null
           id?: string
           link_material?: string
+          message_id?: string | null
           nome_parceiro?: string
           sent_at?: string | null
           status?: string
+          template_name?: string
+          template_version?: string
+          test_mode?: boolean
+          thread_id?: string | null
           updated_at?: string
         }
         Relationships: [

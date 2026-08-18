@@ -35,10 +35,26 @@ interface HistoryRow {
   destinatarios: string[];
   status: string;
   created_at: string;
+  message_id: string | null;
+  thread_id: string | null;
+  template_name: string | null;
+  template_version: string | null;
 }
 
 const statusVariant = (status: string) =>
   status === "enviado" ? "default" : status === "erro" ? "destructive" : "secondary";
+
+// Envio controlado: liberado exclusivamente para o card de QA abaixo.
+const QA_SEND = {
+  cardId: "32d1e94e-ab53-42b3-9118-ab3ad2d07c77",
+  nome: "TESTE FASE A QA",
+  codigo: "QATEST01",
+  link: "https://www.canva.com/d/c4zxi4vpjmbpv7V",
+  destinatario: "rafael.lucena@monnera.com.br",
+  conta: "rafael.lucena@monnera.com.br",
+  template: "onboarding-parceiro-baston",
+  versao: "v2",
+};
 
 export default function AdminEmailOnboarding() {
   const { user, isAdmin } = useAuth();
@@ -49,6 +65,7 @@ export default function AdminEmailOnboarding() {
   const [assunto, setAssunto] = useState(ONBOARDING_EMAIL_SUBJECT);
   const [preview, setPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [sending, setSending] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [history, setHistory] = useState<HistoryRow[]>([]);
 
@@ -58,10 +75,56 @@ export default function AdminEmailOnboarding() {
     [recipients],
   );
 
+  const isQaSend =
+    nome.trim() === QA_SEND.nome &&
+    codigo.trim().toUpperCase() === QA_SEND.codigo &&
+    link.trim() === QA_SEND.link &&
+    recipients.length === 1 &&
+    recipients[0].toLowerCase() === QA_SEND.destinatario;
+
+  const loadQaCard = () => {
+    setNome(QA_SEND.nome);
+    setCodigo(QA_SEND.codigo);
+    setLink(QA_SEND.link);
+    setDestinatarios(QA_SEND.destinatario);
+    setAssunto(ONBOARDING_EMAIL_SUBJECT);
+    setPreview(null);
+    toast.success("Dados do card TESTE FASE A QA carregados.");
+  };
+
+  const handleSend = async () => {
+    const html = preview ?? build();
+    if (!html || !isQaSend) return;
+    setSending(true);
+    const { data, error } = await supabase.functions.invoke("send-onboarding-email", {
+      body: {
+        card_id: QA_SEND.cardId,
+        nome_parceiro: nome.trim(),
+        codigo_parceiro: codigo.trim().toUpperCase(),
+        link_material: link.trim(),
+        assunto: assunto.trim(),
+        destinatarios: recipients,
+        html,
+      },
+    });
+    setSending(false);
+    setConfirmOpen(false);
+    if (error || (data as any)?.error) {
+      toast.error(`Falha no envio: ${(data as any)?.error ?? error?.message}`);
+      loadHistory();
+      return;
+    }
+    const result = data as any;
+    toast.success(`E-mail enviado. message_id ${result.message_id ?? "-"}`);
+    loadHistory();
+  };
+
+
+
   const loadHistory = async () => {
     const { data } = await (supabase as any)
       .from("onboarding_email_sends")
-      .select("id,nome_parceiro,codigo_parceiro,link_material,assunto,destinatarios,status,created_at")
+      .select("id,nome_parceiro,codigo_parceiro,link_material,assunto,destinatarios,status,created_at,message_id,thread_id,template_name,template_version")
       .order("created_at", { ascending: false })
       .limit(30);
     setHistory((data as HistoryRow[]) || []);
@@ -200,13 +263,30 @@ export default function AdminEmailOnboarding() {
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 Salvar rascunho
               </Button>
-              <Button variant="secondary" disabled title="Envio será liberado após a configuração do domínio de e-mail">
-                <Send className="mr-2 h-4 w-4" /> Enviar e-mail
+              <Button variant="ghost" onClick={loadQaCard}>
+                Carregar card de QA
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={!isQaSend || !preview || sending}
+                title={
+                  isQaSend
+                    ? preview
+                      ? "Envio controlado do card TESTE FASE A QA"
+                      : "Gere o preview antes de enviar"
+                    : "Envio liberado apenas para o card TESTE FASE A QA"
+                }
+                onClick={() => setConfirmOpen(true)}
+              >
+                {sending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                Enviar e-mail
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              O envio só ocorre após revisão e confirmação explícita e ainda está desativado nesta etapa.
+              Envio habilitado exclusivamente para o card TESTE FASE A QA, pela conta {QA_SEND.conta}, com preview e
+              confirmação explícita. Nenhum outro card, destinatário, cobrança ou régua é processado.
             </p>
+
           </CardContent>
         </Card>
 
@@ -249,6 +329,11 @@ export default function AdminEmailOnboarding() {
                 <p className="text-xs text-muted-foreground truncate">
                   {row.codigo_parceiro} · {row.destinatarios?.join(", ") || "sem destinatários"}
                 </p>
+                {row.message_id && (
+                  <p className="text-xs text-muted-foreground truncate">
+                    msg {row.message_id} · thread {row.thread_id ?? "-"} · {row.template_name}/{row.template_version}
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-xs text-muted-foreground">
@@ -264,17 +349,35 @@ export default function AdminEmailOnboarding() {
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar envio</AlertDialogTitle>
-            <AlertDialogDescription>
-              O envio de e-mail ainda não está habilitado neste projeto.
+            <AlertDialogTitle>Confirmação final de envio</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-1 text-sm">
+                <p><strong>Destinatário:</strong> {recipients.join(", ")}</p>
+                <p><strong>Assunto:</strong> {assunto.trim()}</p>
+                <p><strong>Nome:</strong> {nome.trim()}</p>
+                <p><strong>Código:</strong> {codigo.trim().toUpperCase()}</p>
+                <p className="break-all"><strong>Link Canva:</strong> {link.trim()}</p>
+                <p><strong>Template:</strong> {QA_SEND.template}</p>
+                <p><strong>Versão:</strong> {QA_SEND.versao}</p>
+                <p><strong>Conta remetente:</strong> {QA_SEND.conta}</p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Fechar</AlertDialogCancel>
-            <AlertDialogAction disabled>Enviar</AlertDialogAction>
+            <AlertDialogCancel disabled={sending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!isQaSend || sending}
+              onClick={(e) => {
+                e.preventDefault();
+                handleSend();
+              }}
+            >
+              {sending ? "Enviando..." : "Confirmar e enviar"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
     </div>
   );
 }
