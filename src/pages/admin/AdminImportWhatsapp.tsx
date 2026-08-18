@@ -239,6 +239,88 @@ export default function AdminImportWhatsapp() {
     });
   }, [rows, fImport, fStatus, fReviewed, fCliente, fCnpj, fConfidence, fFrom, fTo]);
 
+  const gmailField = (row: PendingGmail, key: string) => {
+    const ov = row.manual_overrides ?? {};
+    if (key === "codigo_monnera") return ov.codigo_monnera ?? row.codigo_encontrado ?? "";
+    const raw = (row.extracted as any)?.[key];
+    return ov[key] ?? (typeof raw === "string" ? raw : "");
+  };
+
+  /** Sugere registros do Gmail pendentes que casam por CNPJ, telefone ou nome. */
+  const suggestions = useMemo(() => {
+    if (!selected) return [] as Array<{ row: PendingGmail; reason: string }>;
+    const digits = (v?: string | null) => (v || "").replace(/\D/g, "");
+    const cnpj = digits(selected.cnpj);
+    const tel = digits(selected.telefone).slice(-8);
+    const nome = (selected.cliente_nome || "").toLowerCase().trim();
+
+    const out: Array<{ row: PendingGmail; reason: string }> = [];
+    pendingGmail.forEach((row) => {
+      const rowCnpj = digits(gmailField(row, "cnpj"));
+      const rowNome = gmailField(row, "nome_parceiro").toLowerCase().trim();
+      const rowTel = digits(gmailField(row, "telefone")).slice(-8);
+      if (cnpj && rowCnpj && rowCnpj === cnpj) out.push({ row, reason: "CNPJ igual" });
+      else if (tel && rowTel && rowTel === tel) out.push({ row, reason: "Telefone igual" });
+      else if (nome.length > 3 && rowNome && (rowNome.includes(nome) || nome.includes(rowNome)))
+        out.push({ row, reason: "Nome semelhante" });
+    });
+    return out.slice(0, 10);
+  }, [selected, pendingGmail]);
+
+  /** Aplica a extração como correção auditada no registro pendente do Gmail. */
+  const applySuggestion = async (row: PendingGmail) => {
+    if (!selected) return;
+    if (!suggestionJustification.trim()) {
+      toast.error("Informe a justificativa para aplicar a correção.");
+      return;
+    }
+    if (selected.status === "triage_ambiguo" || (selected.cnpj_candidates?.length ?? 0) > 1) {
+      toast.error("Extração ambígua: resolva a ambiguidade antes de aplicar a correção.");
+      return;
+    }
+
+    const values: Record<string, string> = {};
+    const put = (key: string, value?: string | null) => {
+      const v = (value || "").trim();
+      if (v && v !== gmailField(row, key).trim()) values[key] = v;
+    };
+    put("cnpj", (edit.cnpj as string) ?? selected.cnpj);
+    put("nome_parceiro", (edit.cliente_nome as string) ?? selected.cliente_nome);
+    put("email", (edit.email as string) ?? selected.email);
+    put("telefone", (edit.telefone as string) ?? selected.telefone);
+    put("codigo_monnera", (edit.codigo_monnera as string) ?? selected.codigo_monnera);
+
+    if (!Object.keys(values).length) {
+      toast.error("Nenhum dado novo para aplicar neste registro.");
+      return;
+    }
+
+    setSaving(true);
+    const { error } = await (supabase as any).rpc("apply_gmail_triage_correction", {
+      p_row_id: row.id,
+      p_values: values,
+      p_justification: suggestionJustification.trim(),
+      p_origin: "whatsapp",
+      p_evidence: {
+        extraction_id: selected.id,
+        arquivo: importById.get(selected.import_id)?.file_name ?? null,
+        trechos: (selected.evidences || []).slice(0, 5),
+      },
+    });
+    setSaving(false);
+    if (error) {
+      toast.error(`Não foi possível aplicar: ${error.message}`);
+      return;
+    }
+    await (supabase as any)
+      .from("whatsapp_extractions")
+      .update({ suggested_gmail_message_id: row.message_id })
+      .eq("id", selected.id);
+    toast.success("Correção aplicada na triagem do Gmail com evidência da conversa.");
+    setSuggestionJustification("");
+    load();
+  };
+
   const openRow = (row: ExtractionRow) => {
     setSelected(row);
     setEdit({
