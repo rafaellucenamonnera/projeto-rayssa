@@ -15,13 +15,24 @@ Falta (dependências reais):
 - Não existem tabelas de proveniência, de vínculo de origem nem `automation_runs`.
 - Status da tarefa Jira e data de sincronização ainda não têm campos no card.
 
-Atenção: nas duas mensagens o accountId da Lívia veio como `@secret:TELEGRAM_BOT_TOKEN`, que é o token do bot do Telegram — não é um accountId e não será usado. O accountId correto será resolvido pela API da Atlassian pelo nome/e-mail dela e gravado como configuração.
+Atenção — accountId da Lívia: o valor recebido foi literalmente `@secret:TELEGRAM_BOT_TOKEN`, que é o token do bot do Telegram. Ele é **expressamente rejeitado e nunca será utilizado**, conforme sua orientação. Como nenhum outro identificador chegou, o accountId será resolvido pela API da Atlassian a partir do nome/e-mail da Lívia, apresentado a você para confirmação e só então gravado como configuração da integração.
 
 Cards em `Criação Painel` hoje, sem tarefa Jira: UNIDASUL, DIST. MERCHANT, J R ATACADISTA, ZARB DISTRIBUIDORA, ATACADO MACHADO. ORCA LOGÍSTICA está em `Material Onboarding Cliente` e não é lida nem alterada em nenhuma etapa.
 
+## Fase 0 — Criação do card e avanço de etapa
+
+O card é criado em `Cadastro` com **nome confirmado ou CNPJ confirmado** (basta um). Os dados faltantes são solicitados por ação manual autorizada — sem régua nem cobrança automática. O card só é movido para `Criação Painel` quando nome **e** CNPJ estiverem confirmados, e a tarefa Jira só é criada depois disso.
+
 ## Fase 1 — Jira e tarefas
 
-Edge Function `jira-create-panel-task`: projeto MB (`10038`), tipo Tarefa (`10042`), responsável Lívia Fernandes. Cria a tarefa quando o card está em `Criação Painel`, com nome e CNPJ confirmados, sem conflito ativo, vinculado a uma origem válida e sem tarefa equivalente (dedupe por card_id, CNPJ e thread_id). Descrição com nome, CNPJ, card_id, link do card, origem da informação, thread_id, instrução de criação do painel Monnera e pedido de resposta com o código válido.
+Edge Function `jira-create-panel-task`: projeto MB (`10038`), tipo Tarefa (`10042`), responsável Lívia Fernandes. Cria a tarefa quando o card está em `Criação Painel`, com nome e CNPJ confirmados, sem conflito ativo, vinculado a uma origem válida e sem tarefa equivalente (dedupe obrigatório por card_id, CNPJ e thread_id). Descrição com nome, CNPJ, card_id, link do card, origem da informação, thread_id, instrução de criação do painel Monnera e pedido de resposta com o código válido.
+
+Ativação em degraus, sem automação geral desde o início:
+1. Modo geral **desligado**.
+2. Teste apenas no card `TESTE FASE A QA`.
+3. Após validação, ativação progressiva por lote, com sua autorização a cada lote.
+4. Botão manual sempre disponível para falhas ou casos individuais.
+5. Deduplicação obrigatória em todos os modos.
 
 No card: `jira_issue_key` (já existe) mais `jira_issue_status`, `jira_created_at`, `jira_synced_at`, além dos campos de código já presentes.
 
