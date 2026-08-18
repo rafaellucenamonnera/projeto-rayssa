@@ -332,6 +332,7 @@ export default function AdminImportWhatsapp() {
     });
     setLinkCardId(row.linked_card_id ?? row.matched_card_id ?? "none");
     setNotes(row.review_notes ?? "");
+    setSuggestionJustification("");
   };
 
   const saveReview = async (decision: "aprovado" | "rejeitado" | "revisado") => {
