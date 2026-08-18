@@ -272,6 +272,7 @@ export default function AdminTriagemGmail() {
   const [filterOperational, setFilterOperational] = useState("all");
   const [filterCnpj, setFilterCnpj] = useState("");
   const [filterFrom, setFilterFrom] = useState("");
+  const [filterOrigem, setFilterOrigem] = useState("");
   const [filterCodigo, setFilterCodigo] = useState("");
   const [filterInicio, setFilterInicio] = useState("");
   const [filterFim, setFilterFim] = useState("");
