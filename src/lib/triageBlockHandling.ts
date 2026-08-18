@@ -216,3 +216,23 @@ export async function handleBlockedTriage(input: BlockedTriageInput) {
 
   return { taskId, notified, reviewers, motivoTexto };
 }
+
+/**
+ * Sugere o template de solicitação de informação a partir do motivo do
+ * bloqueio / pendências detectadas na triagem.
+ */
+export function suggestPendencyTemplate(
+  blockReason?: string | null,
+  pendingReasons?: Array<{ code?: string; label?: string }> | null,
+): string {
+  const text = [blockReason ?? "", ...(pendingReasons ?? []).map((p) => `${p.code ?? ""} ${p.label ?? ""}`)]
+    .join(" ")
+    .toLowerCase();
+
+  if (text.includes("ambig") || text.includes("divergen") || text.includes("mais de um")) return "cnpj_divergente";
+  if (text.includes("cnpj")) return "cnpj_ausente";
+  if (text.includes("nome")) return "nome_incompativel";
+  if (text.includes("codigo") || text.includes("código")) return "codigo_nao_confirmado";
+  if (text.includes("conflit")) return "dados_conflitantes";
+  return "cnpj_ausente";
+}

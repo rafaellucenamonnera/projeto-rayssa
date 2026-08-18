@@ -28,7 +28,8 @@ import {
   computeOperationalInfo,
   OPERATIONAL_FILTER_OPTIONS,
 } from "@/lib/triageOperationalStatus";
-import { findCandidateCards, handleBlockedTriage, BLOCK_EXAMPLES } from "@/lib/triageBlockHandling";
+import { findCandidateCards, handleBlockedTriage, BLOCK_EXAMPLES, suggestPendencyTemplate } from "@/lib/triageBlockHandling";
+import { TriageInfoRequest } from "@/components/admin/TriageInfoRequest";
 import { ArrowLeft, ExternalLink, Loader2, RefreshCw, CheckCircle2, Mail, ShieldCheck, AlertTriangle } from "lucide-react";
 
 
