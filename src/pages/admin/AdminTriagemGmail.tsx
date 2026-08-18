@@ -1422,7 +1422,7 @@ export default function AdminTriagemGmail() {
                   checked={activationConfirm}
                   onChange={(e) => setActivationConfirm(e.target.checked)}
                 />
-                Confirmo a criação do card na etapa Cadastro com os dados acima
+                Confirmo o fluxo acima: card na etapa Cadastro, validação e movimentação para Criação Painel
               </label>
 
               <div className="flex justify-end gap-2">
