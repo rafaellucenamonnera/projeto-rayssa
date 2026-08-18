@@ -613,6 +613,7 @@ export type Database = {
           run_id: string | null
           status: string
           subject: string | null
+          test_mode: boolean
           thread_id: string | null
           to_address: string | null
           updated_at: string
@@ -662,6 +663,7 @@ export type Database = {
           run_id?: string | null
           status?: string
           subject?: string | null
+          test_mode?: boolean
           thread_id?: string | null
           to_address?: string | null
           updated_at?: string
@@ -711,6 +713,7 @@ export type Database = {
           run_id?: string | null
           status?: string
           subject?: string | null
+          test_mode?: boolean
           thread_id?: string | null
           to_address?: string | null
           updated_at?: string
@@ -2660,6 +2663,7 @@ export type Database = {
           codigo_evidencia: Json | null
           codigo_monnera: string | null
           codigo_source: string | null
+          codigo_teste: boolean
           contratante_monnera: string | null
           created_at: string
           created_by_user_id: string
@@ -2689,6 +2693,7 @@ export type Database = {
           stage_id: string
           state: string | null
           status: string | null
+          test_mode: boolean
           unblocked_at: string | null
           updated_at: string
           vendor_email: string | null
@@ -2705,6 +2710,7 @@ export type Database = {
           codigo_evidencia?: Json | null
           codigo_monnera?: string | null
           codigo_source?: string | null
+          codigo_teste?: boolean
           contratante_monnera?: string | null
           created_at?: string
           created_by_user_id: string
@@ -2734,6 +2740,7 @@ export type Database = {
           stage_id: string
           state?: string | null
           status?: string | null
+          test_mode?: boolean
           unblocked_at?: string | null
           updated_at?: string
           vendor_email?: string | null
@@ -2750,6 +2757,7 @@ export type Database = {
           codigo_evidencia?: Json | null
           codigo_monnera?: string | null
           codigo_source?: string | null
+          codigo_teste?: boolean
           contratante_monnera?: string | null
           created_at?: string
           created_by_user_id?: string
@@ -2779,6 +2787,7 @@ export type Database = {
           stage_id?: string
           state?: string | null
           status?: string | null
+          test_mode?: boolean
           unblocked_at?: string | null
           updated_at?: string
           vendor_email?: string | null
@@ -3192,6 +3201,7 @@ export type Database = {
           representative_card_id: string | null
           source: string
           source_row_id: string
+          test_mode: boolean
           thread_id: string | null
         }
         Insert: {
@@ -3213,6 +3223,7 @@ export type Database = {
           representative_card_id?: string | null
           source: string
           source_row_id: string
+          test_mode?: boolean
           thread_id?: string | null
         }
         Update: {
@@ -3234,6 +3245,7 @@ export type Database = {
           representative_card_id?: string | null
           source?: string
           source_row_id?: string
+          test_mode?: boolean
           thread_id?: string | null
         }
         Relationships: [
