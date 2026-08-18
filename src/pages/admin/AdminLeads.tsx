@@ -2717,6 +2717,8 @@ const AdminLeads = () => {
                   />
                   <RepresentativeCardNotes cardId={detailLead.id} canEdit={canEditLead} />
                   <CardAttachments cardId={detailLead.id} canEdit={canEditLead} trackHistory />
+                  <OnboardingEmailQaSection cardId={detailLead.id} />
+
                 </div>
               )}
 
