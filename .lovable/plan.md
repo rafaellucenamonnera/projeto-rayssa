@@ -15,7 +15,7 @@ Falta (dependências reais):
 - Não existem tabelas de proveniência, de vínculo de origem nem `automation_runs`.
 - Status da tarefa Jira e data de sincronização ainda não têm campos no card.
 
-Atenção — accountId da Lívia: o valor recebido foi literalmente `@secret:TELEGRAM_BOT_TOKEN`, que é o token do bot do Telegram. Ele é **expressamente rejeitado e nunca será utilizado**, conforme sua orientação. Como nenhum outro identificador chegou, o accountId será resolvido pela API da Atlassian a partir do nome/e-mail da Lívia, apresentado a você para confirmação e só então gravado como configuração da integração.
+Atenção — accountId da Lívia: o valor continua chegando como a referência de secret `@secret:TELEGRAM_BOT_TOKEN` (token do bot do Telegram), não como um accountId da Atlassian. Ele é **expressamente rejeitado e nunca será utilizado**. AccountId da Atlassian não é secret (formato tipo `5b10a2844c20165700ede21g` ou `712020:...`) e pode ser colado direto no chat. Enquanto o valor em texto puro não for informado, a integração resolve o accountId pela API da Atlassian a partir do nome/e-mail da Lívia e apresenta o resultado para sua confirmação antes de gravar. Nenhum token, secret ou identificador não confirmado é usado como responsável da tarefa.
 
 Cards em `Criação Painel` hoje, sem tarefa Jira: UNIDASUL, DIST. MERCHANT, J R ATACADISTA, ZARB DISTRIBUIDORA, ATACADO MACHADO. ORCA LOGÍSTICA está em `Material Onboarding Cliente` e não é lida nem alterada em nenhuma etapa.
 
@@ -40,7 +40,7 @@ Botão `Criar ou reenviar tarefa Jira` no detalhe do card: prévia completa ante
 
 ## Fase 2 — Código Monnera
 
-Edge Function `jira-code-webhook`, nunca pública sem autenticação. Preferência: segredo compartilhado em header. Se o webhook nativo do Jira não permitir header customizado no projeto MB, o segredo vai em um token de caminho/consulta na própria URL, comparado em tempo constante — a função rejeita qualquer chamada sem o segredo válido. Localiza o card por `jira_issue_key` → card_id → thread_id → CNPJ → nome; aplica somente com correspondência inequívoca; ambiguidade gera pendência e notificação, sem tocar no card.
+Edge Function `jira-code-webhook`, nunca pública sem autenticação e **nunca com segredo em URL ou query string** (aparece em logs). Ordem de preferência: (1) header secreto comparado em tempo constante; (2) se o Jira não permitir header customizado, assinatura HMAC-SHA256 do corpo enviada em header/campo do payload, validada contra o corpo bruto com proteção de replay por timestamp. Chamadas sem segredo válido são rejeitadas com 401 e registradas. Localiza o card por `jira_issue_key` → card_id → thread_id → CNPJ → nome; aplica somente com correspondência inequívoca; ambiguidade gera pendência e notificação, sem tocar no card.
 
 Validação: exatamente 8 caracteres `A-Z0-9`; rejeita `3SAXJF92`, `UB5PXGDB`, `XXXXXXX`, `XXXXXXXX`, qualquer `MNR-...` e código já usado por outro CNPJ.
 
@@ -64,7 +64,7 @@ Automático apenas com card candidato único, CNPJ idêntico, nome compatível, 
 
 ## Fase 5 — Canva
 
-O Canva só é gerado **depois** de um código Monnera válido. Copia o modelo oficial `https://canva.link/qp4jojog4s01mjl`, substitui o código na página 12 e publica como apresentação pública. O link final é obrigatoriamente `https://canva.link/...`; `https://www.canva.com/d/...` nunca é salvo como final nem enviado ao parceiro. O link público é validado antes de gravar (abre sem autenticação, sem permissão de edição); se a validação falhar, nada é gravado. Grava design_id, link público, link interno, código, CNPJ, card_id, versão e data. Só após a confirmação do material o card vai para `Material Onboarding Cliente`, com histórico e notificação a Rafael e Maycon — e só então o onboarding fica liberado.
+O código Monnera válido **apenas inicia a geração do Canva** — não move o card. Fluxo: copia o modelo oficial `https://canva.link/qp4jojog4s01mjl`, substitui o código na página 12 e publica como apresentação pública. O link final é obrigatoriamente `https://canva.link/...`; `https://www.canva.com/d/...` nunca é salvo como final nem enviado ao parceiro. O link público é validado antes de gravar (abre sem autenticação, sem permissão de edição); se a validação falhar, nada é gravado e o card não sai da etapa. Grava design_id, link público, link interno, código, CNPJ, card_id, versão e data. **Somente após a confirmação do link público** o card é movido para `Material Onboarding Cliente`, com histórico e notificação a Rafael e Maycon — e só então o onboarding fica liberado.
 
 Falha: card fica na etapa atual, sem onboarding, erro registrado, notificação para Rafael e Maycon, reprocessamento manual disponível.
 
