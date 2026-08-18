@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { LayoutDashboard, Users, FileText, UserCog, DollarSign, Briefcase, Settings, ShieldCheck, PlugZap, Contact, HeartPulse, BookOpen } from "lucide-react";
+import { LayoutDashboard, Users, FileText, UserCog, DollarSign, Briefcase, Settings, ShieldCheck, PlugZap, Contact, HeartPulse, BookOpen, Mail } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
@@ -76,6 +76,7 @@ export function AdminSidebar() {
 
   const adminConfigItems = isAdmin
     ? [
+        { title: "E-mail Onboarding Baston", url: "/admin/email-onboarding", icon: Mail },
         { title: "Usuários", url: "/admin/usuarios", icon: UserCog },
         { title: "Permissões", url: "/admin/permissoes", icon: ShieldCheck },
         { title: "Integrações", url: "/admin/integracoes", icon: PlugZap },

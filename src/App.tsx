@@ -54,6 +54,7 @@ const AdminGeradorProposta = lazy(() => import("./pages/admin/AdminGeradorPropos
 const AdminDocumentacao = lazy(() => import("./pages/admin/AdminDocumentacao"));
 const AdminTriagemGmail = lazy(() => import("./pages/admin/AdminTriagemGmail"));
 const AdminImportWhatsapp = lazy(() => import("./pages/admin/AdminImportWhatsapp"));
+const AdminEmailOnboarding = lazy(() => import("./pages/admin/AdminEmailOnboarding"));
 const PrimeiroAcesso = lazy(() => import("./pages/PrimeiroAcesso"));
 const ResetarSenha = lazy(() => import("./pages/ResetarSenha"));
 const EsqueciSenha = lazy(() => import("./pages/EsqueciSenha"));
@@ -111,6 +112,7 @@ const App = () => (
                 <Route path="documentacao" element={<AdminDocumentacao />} />
                 <Route path="triagem-gmail" element={<AdminTriagemGmail />} />
                 <Route path="importar-whatsapp" element={<AdminImportWhatsapp />} />
+                <Route path="email-onboarding" element={<AdminEmailOnboarding />} />
               </Route>
               <Route path="/primeiro-acesso" element={<PrimeiroAcesso />} />
               <Route path="/resetar-senha" element={<ResetarSenha />} />
