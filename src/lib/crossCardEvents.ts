@@ -22,11 +22,17 @@ export type CrossCardAction =
   | "note_updated"
   | "notification_created"
   | "notification_read"
-  | "whatsapp_triage_reviewed";
+  | "whatsapp_triage_reviewed"
+  | "triage_linked"
+  | "triage_unlinked";
 
 
+/**
+ * URL do card dentro do próprio painel (rota dinâmica /admin/painel/:panelId?card=...).
+ * Abre o detalhe do card específico, não apenas o painel geral.
+ */
 export const crossCardActionUrl = (panelId: string, cardId: string) =>
-  `/admin/painel-comercial?panel=${panelId}&card=${cardId}`;
+  `/admin/painel/${panelId}?card=${cardId}`;
 
 export const logCardEvent = async (
   cardId: string,
