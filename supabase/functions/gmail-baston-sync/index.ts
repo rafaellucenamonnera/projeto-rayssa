@@ -649,11 +649,18 @@ Deno.serve(async (req) => {
         const subject = gmailHeader(payload, "Subject");
         const threadId = msg?.threadId ?? null;
         const receivedAt = msg?.internalDate ? new Date(Number(msg.internalDate)).toISOString() : null;
+        const fromLower = from.toLowerCase();
+        const toLower = to.toLowerCase();
+        // Jira só entra no escopo quando destinado à caixa autorizada.
+        const isJira =
+          fromLower.includes(JIRA_SENDER) && toLower.includes(MONITORED_RECIPIENT);
         const inScope =
-          from.toLowerCase().includes(`@${SENDER_DOMAIN}`) ||
-          to.toLowerCase().includes(`@${SENDER_DOMAIN}`);
+          fromLower.includes(`@${SENDER_DOMAIN}`) ||
+          toLower.includes(`@${SENDER_DOMAIN}`) ||
+          isJira;
 
-        // revalidação: descarta qualquer mensagem fora do domínio Baston
+        // revalidação: descarta qualquer mensagem fora do escopo autorizado
+
         if (!inScope) {
           if (!reprocess) {
             await admin.from("gmail_processed_messages").delete().eq("id", rowId);
