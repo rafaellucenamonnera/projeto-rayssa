@@ -1,96 +1,89 @@
-# Onb Clientes Cross — Jira como fonte do código, Canva, onboarding e triagem unificada
+# Onb Clientes Cross — Jira, Código Monnera, consolidação, Canva e onboarding
 
-Escopo: painel `painel_msj9fyji`. Nada é executado sobre cards reais nesta entrega — o pipeline só roda sob ação manual autorizada ou webhook do Jira. **Nenhum follow-up automático, régua ou cobrança de informações será implementado.**
+Painel `painel_msj9fyji`. Auditoria feita apenas com leitura: nenhum card alterado, nenhuma tarefa Jira criada, nenhum e-mail enviado, nenhum Canva gerado.
 
-## Estado atual confirmado
+## Auditoria — o que já existe e o que falta
 
-- Não existe Edge Function que fale com a Atlassian; a rotina `register_jira_panel_task` apenas grava uma chave `MB-###` informada por administrador.
-- Não há credencial Atlassian no backend hoje.
-- Cards em `Criação Painel` sem tarefa Jira: UNIDASUL, DIST. MERCHANT, J R ATACADISTA, ZARB DISTRIBUIDORA, ATACADO MACHADO.
-- Único card com código e chave Jira: `TESTE FASE A QA` (`QATEST01`, MB-4838), em modo teste.
-- ORCA LOGÍSTICA está em `Material Onboarding Cliente` e fica intocada.
+Já existe:
+- `representative_cards` com `jira_issue_key`, `codigo_monnera`, `codigo_source`, `codigo_evidencia`, `codigo_teste`, `origin_thread_id`, `test_mode` e o bloco Canva completo (`canva_design_id`, `canva_public_url`, `canva_internal_url`, `canva_material_codigo`, `canva_material_url`, `canva_material_version`, `canva_material_generated_at`, `canva_material_source`).
+- `representative_card_history`, `canva_material_generations`, `onboarding_email_sends`, `gmail_processed_messages` (com `matched_card_id`, `linked_*`, `thread_id`, `thread_participants`), `whatsapp_extractions` (com `linked_card_id`, `matched_card_id`, `codigo_monnera`).
+- Edge Functions `gmail-baston-sync`, `send-onboarding-email`, `triage-request-info`; RPC `register_canva_material`, `apply_monnera_code_to_card`, `register_jira_panel_task`.
 
-## 1. Jira como fonte principal do código
+Falta (dependências reais):
+- Nenhuma Edge Function fala com a Atlassian. `register_jira_panel_task` apenas grava uma chave `MB-###` digitada por administrador — por isso a tarefa nunca é criada sozinha.
+- Não há credencial Atlassian nem token Canva no backend.
+- Não existem tabelas de proveniência, de vínculo de origem nem `automation_runs`.
+- Status da tarefa Jira e data de sincronização ainda não têm campos no card.
 
-Nova Edge Function `jira-code-webhook` (pública, protegida por segredo compartilhado no header e verificação do payload):
+Atenção: nas duas mensagens o accountId da Lívia veio como `@secret:TELEGRAM_BOT_TOKEN`, que é o token do bot do Telegram — não é um accountId e não será usado. O accountId correto será resolvido pela API da Atlassian pelo nome/e-mail dela e gravado como configuração.
 
-1. Recebe a atualização da tarefa MB.
-2. Localiza o card por `jira_issue_key` → card_id → thread_id → CNPJ → nome, nessa ordem.
-3. Só aplica quando o vínculo é inequívoco (um único candidato). Ambiguidade vira pendência com notificação no painel, sem aplicar nada.
-4. Valida o código: exatamente 8 caracteres `[A-Z0-9]`; rejeita `3SAXJF92`, `UB5PXGDB`, `XXXXXXX`, `XXXXXXXX` e qualquer `MNR-...`; rejeita código já usado por outro CNPJ.
-5. Registra código, chave Jira, id da tarefa, data, payload resumido, origem `jira_webhook`, evidência e processo responsável.
-6. Só depois da validação enfileira a etapa seguinte.
+Cards em `Criação Painel` hoje, sem tarefa Jira: UNIDASUL, DIST. MERCHANT, J R ATACADISTA, ZARB DISTRIBUIDORA, ATACADO MACHADO. ORCA LOGÍSTICA está em `Material Onboarding Cliente` e não é lida nem alterada em nenhuma etapa.
 
-Fallback por e-mail: o worker `gmail-baston-sync` passa a extrair o código de mensagens do Jira por remetente, chave `MB-###`, thread_id, CNPJ e nome — casando por conteúdo, não por layout visual do e-mail.
+## Fase 1 — Jira e tarefas
 
-## 2. Fluxo pós-código (Canva)
+Edge Function `jira-create-panel-task`: projeto MB (`10038`), tipo Tarefa (`10042`), responsável Lívia Fernandes. Cria a tarefa quando o card está em `Criação Painel`, com nome e CNPJ confirmados, sem conflito ativo, vinculado a uma origem válida e sem tarefa equivalente (dedupe por card_id, CNPJ e thread_id). Descrição com nome, CNPJ, card_id, link do card, origem da informação, thread_id, instrução de criação do painel Monnera e pedido de resposta com o código válido.
 
-Função `cross-generate-canva-material`, disparada só após código válido e sempre idempotente por card + código:
+No card: `jira_issue_key` (já existe) mais `jira_issue_status`, `jira_created_at`, `jira_synced_at`, além dos campos de código já presentes.
 
-1. Copia o modelo oficial `https://canva.link/qp4jojog4s01mjl`.
-2. Substitui o código na página 12.
-3. Publica como apresentação pública e obtém link `https://canva.link/...`.
-4. Rejeita link de edição `https://www.canva.com/d/...` como link final e confirma que o link abre sem autenticação e sem edição.
-5. Grava no card e em `canva_material_generations`: design_id, link público, link interno, código, CNPJ, card_id, versão e data.
-6. Move para `Material Onboarding Cliente` apenas após a confirmação do material.
+Botão `Criar ou reenviar tarefa Jira` no detalhe do card: prévia completa antes de criar, checagem de duplicidade, restrito a administradores, justificativa obrigatória, resultado com a chave ou o erro detalhado, bloqueio de clique duplo. Se já existir tarefa, mostra a chave e não cria outra.
 
-Falha do Canva: card fica na etapa atual, nenhum onboarding é enviado, o erro é registrado, Rafael e Maycon são notificados no painel e há botão de reprocessamento manual.
+## Fase 2 — Código Monnera
 
-## 3. Envio do onboarding
+Edge Function `jira-code-webhook` (pública, autenticada por segredo compartilhado no header). Localiza o card por `jira_issue_key` → card_id → thread_id → CNPJ → nome; aplica somente com correspondência inequívoca; ambiguidade gera pendência e notificação, sem tocar no card.
 
-O envio do HTML v2 (template versionado, com `{{NOME_PARCEIRO}}`, `{{CODIGO_CADASTRO_PARCEIRO}}`, `{{LINK_MATERIAL_CLIENTE}}`) exige, cumulativamente: código válido, material Canva criado, link público confirmado, card em `Material Onboarding Cliente`, destinatários validados como relacionados ao card e nenhum bloqueio aberto. Conta remetente: `rafael.lucena@monnera.com.br`.
+Validação: exatamente 8 caracteres `A-Z0-9`; rejeita `3SAXJF92`, `UB5PXGDB`, `XXXXXXX`, `XXXXXXXX`, qualquer `MNR-...` e código já usado por outro CNPJ.
 
-Cada envio registra destinatários, thread_id, message_id, template, versão, código, link Canva, status, data e usuário/processo. Nada de cobrança, régua, follow-up, WhatsApp ou destinatário não relacionado.
+Ao aceitar: grava o código, origem `jira_webhook`, evidência e data, registra histórico, notifica Rafael e Maycon e libera a etapa seguinte de forma idempotente.
 
-## 4. Triagem unificada Gmail + WhatsApp
+Fallback Gmail: `gmail-baston-sync` passa a reconhecer mensagens de `jira@monnera.atlassian.net` e extrair chave Jira, thread_id, CNPJ, nome e código — por conteúdo, sem depender do layout do e-mail.
 
-As abas continuam separadas visualmente, mas gravam na mesma estrutura de campos com proveniência: valor, origem (`email`, `whatsapp`, `jira_webhook`, `card_vinculado`, `manual`), trecho de evidência, data, confiança, usuário/processo, status e card relacionado.
+## Fase 3 — Consolidação Gmail e WhatsApp
 
-## 5. Consolidação no card principal
+Abas seguem separadas visualmente e alimentam o mesmo card principal. Nova tabela de proveniência por campo: valor, origem (`email`, `whatsapp`, `jira_webhook`, `card_vinculado`, `manual`), trecho de evidência, data, confiança, usuário/processo, registro de origem e status.
 
-O card do painel é sempre o principal. Ao vincular um registro Gmail ou WhatsApp, os dados são consolidados nele — sem criar card duplicado, sem apagar a origem, preservando a thread de e-mail e a conversa de WhatsApp, com cada evento identificado por origem.
+Ao vincular: consolida no card principal, não cria card duplicado, preserva origem, thread de e-mail e conversa exportada do WhatsApp, exibe cada informação com sua origem e mantém histórico completo. Em conflito: não sobrescreve, mostra valor anterior e novo com as duas evidências, bloqueia liberação automática e exige decisão manual.
 
-Conflito: mantém o valor anterior, grava o novo como divergente, mostra as duas evidências, bloqueia liberação automática e espera decisão manual.
+## Fase 4 — Vínculo automático e manual
 
-## 6. Vínculo automático e manual
+Automático apenas com card candidato único, CNPJ idêntico, nome compatível, sem conflito e origem preservada. Manual: só administradores, permitido mesmo com triagem bloqueada, exige confirmação e justificativa, registra usuário/data/evidência/motivo e consolida sem apagar origem.
 
-Automático somente com card candidato único, CNPJ exatamente igual, nome compatível, sem conflito e origem preservada. Manual exige confirmação e justificativa, funciona mesmo com a triagem bloqueada e registra usuário, data e evidência.
+`Desfazer vínculo` no mesmo ponto de seleção: confirmação e justificativa, remove só a associação, preserva mensagens, arquivos, evidências e tarefas Jira, recalcula pendências e registra o evento.
 
-`Desfazer vínculo`: confirmação e justificativa, remove só a associação, não exclui registros, evidências nem tarefas Jira, recalcula pendências e registra no histórico.
+`Abrir card principal` leva direto ao card correto (rota do painel com o card aberto), não apenas fecha o modal. Depois de selecionar um card: mensagem de sucesso, card vinculado exibido, interface atualizada na hora e lista dos campos consolidados.
 
-## 7. Observabilidade
+## Fase 5 — Canva
 
-Tabela de execuções + painel de saúde cobrindo falha de Edge Function, timeout, ausência de execução, falha do webhook Jira, falha na leitura Gmail, falha do Canva e falha no envio do onboarding. Alertas por notificação no painel e e-mail interno para Rafael e Maycon quando aplicável — nunca por WhatsApp.
+Após código válido: copia o modelo oficial `https://canva.link/qp4jojog4s01mjl`, substitui o código na página 12, publica como apresentação pública e exige link final `https://canva.link/...` — link `https://www.canva.com/d/...` nunca é salvo como final. Confirma que abre sem autenticação e sem edição. Grava design_id, link público, link interno, código, CNPJ, card_id, versão e data. Só depois disso move para `Material Onboarding Cliente`, registra histórico e notifica Rafael e Maycon.
 
-Cron mantido em 2 horas. Contra timeout: lotes menores, cursor de progresso persistido, retomada segura, sem duplicar mensagens, com triagem, Jira, Canva e onboarding separados em etapas idempotentes.
+Falha: card fica na etapa atual, sem onboarding, erro registrado, notificação para Rafael e Maycon, reprocessamento manual disponível.
 
-## Detalhes técnicos
+## Fase 6 — Onboarding
 
-Migrations (aditivas, com GRANTs e RLS):
-- `card_field_provenance` — valor, origem, evidência, confiança, status, autor, data, card e registro de origem.
-- `card_source_links` — vínculo card ↔ registro Gmail/WhatsApp com justificativa, autor, data e estado ativo/desfeito.
-- `automation_runs` — etapa, card, status, erro, início/fim, cursor, para observabilidade e retomada.
-- Colunas em `representative_cards`: origem, evidência, data e autor do código Monnera.
-- RPCs `security definer` restritas a admin: `apply_monnera_code_from_jira`, `link_source_to_card`, `unlink_source_from_card`, `consolidate_source_into_card`, `record_automation_run`.
+HTML v2 enviado apenas com código válido, material Canva criado, link público confirmado, card em `Material Onboarding Cliente`, destinatários relacionados ao card e nenhum bloqueio ativo. Placeholders `{{NOME_PARCEIRO}}`, `{{CODIGO_CADASTRO_PARCEIRO}}`, `{{LINK_MATERIAL_CLIENTE}}`; remetente `rafael.lucena@monnera.com.br`. Registra destinatários, thread_id, message_id, template, versão, código, link Canva, status, data e usuário/processo. Sem cobrança, follow-up, régua, destinatário não relacionado ou WhatsApp.
 
-Edge Functions:
-- `jira-code-webhook` (nova, `verify_jwt = false`, autenticada por segredo compartilhado).
-- `cross-generate-canva-material` (nova).
-- `gmail-baston-sync` (ajuste: extração de código do Jira por chave/thread/CNPJ/nome).
-- `send-onboarding-email` (ajuste: pré-condições completas + registro ampliado).
+## Fase 7 — Observabilidade
 
-Frontend: `src/pages/admin/AdminLeads.tsx` (código Monnera, timeline por origem, reprocessar Canva), `AdminTriagemGmail.tsx` e `AdminImportWhatsapp.tsx` (vincular manualmente, desfazer vínculo, abrir card principal), novos componentes em `src/components/admin/` (`CodigoMonneraField`, `CardOriginTimeline`, `ManualLinkDialog`, `AutomationHealthPanel`).
+Tabela `automation_runs` (etapa, card_id, status, erro, início, fim, cursor, tentativa, origem) registrando falhas de Jira, webhook, Gmail, Canva, onboarding, timeout e duplicidade. Cron mantido a cada 2 horas; lotes menores, cursor persistido, retomada, idempotência e separação entre triagem, Jira, Canva e onboarding. Alertas por notificação no painel e e-mail interno quando aplicável — nunca WhatsApp.
 
-Segredos necessários (solicito na execução): `ATLASSIAN_SITE_URL`, `ATLASSIAN_EMAIL`, `ATLASSIAN_API_TOKEN`, `JIRA_WEBHOOK_SECRET`, `CANVA_ACCESS_TOKEN`.
+## Entregáveis técnicos
 
-Configuração do webhook no Jira (feita por você, com a URL que eu entrego): projeto MB, evento "issue updated", filtro pelo tipo Tarefa (`10042`), header com o segredo compartilhado.
+Migrations aditivas (com GRANTs e RLS):
+- `card_field_provenance`, `card_source_links`, `automation_runs`.
+- Colunas `jira_issue_status`, `jira_created_at`, `jira_synced_at` em `representative_cards`.
+- RPCs `security definer` restritas a admin: `link_source_to_card`, `unlink_source_from_card`, `consolidate_source_into_card`, `apply_monnera_code_from_jira`, `record_automation_run`.
+
+Edge Functions: `jira-create-panel-task` (nova), `jira-code-webhook` (nova, `verify_jwt = false`), ajustes em `gmail-baston-sync`, `send-onboarding-email` e na geração de material Canva.
+
+Frontend: `src/pages/admin/AdminLeads.tsx`, `AdminTriagemGmail.tsx`, `AdminImportWhatsapp.tsx`; novos componentes em `src/components/admin/`: `JiraTaskDialog`, `CodigoMonneraField`, `CardOriginTimeline`, `ManualLinkDialog`, `AutomationHealthPanel`.
+
+Secrets necessários (solicito no início da execução): `ATLASSIAN_SITE_URL`, `ATLASSIAN_EMAIL`, `ATLASSIAN_API_TOKEN`, `JIRA_WEBHOOK_SECRET`, `CANVA_ACCESS_TOKEN`.
+
+Webhook Jira: entrego a URL `https://<projeto>.functions.supabase.co/jira-code-webhook`; no Jira, criar webhook no projeto MB para o evento "issue updated", filtrando o tipo Tarefa, com o header do segredo compartilhado.
 
 ## Testes
 
-Card de teste: `TESTE FASE A QA` (test_mode), mais um registro de triagem sintético. Cobertura: webhook com código válido e inválido, fallback por e-mail, associação por chave/thread_id/CNPJ, código duplicado e divergente, Canva com link público, falha do Canva, envio do HTML v2 apenas após o Canva, vínculo Gmail e WhatsApp, desfazer vínculo, timeout com retomada e prevenção de duplicidade.
+Unitários das validações (código, dedupe, proveniência) e testes funcionais: duplicidade de tarefa, vínculo Gmail, vínculo WhatsApp, desfazer vínculo, webhook com código válido e inválido, associação por chave/thread/CNPJ, link Canva público, falha e retomada. Execução real somente no card `TESTE FASE A QA`, e apenas com sua autorização explícita.
 
-## Rollback
+## Segurança e rollback
 
-Migrations aditivas: nenhuma coluna ou tabela existente é alterada de forma destrutiva. O webhook pode ser desligado no Jira a qualquer momento; Canva e onboarding permanecem manuais até validação. Nenhum card real avança sem confirmação explícita. ORCA LOGÍSTICA não é lida nem alterada em nenhuma etapa.
-
-**Confirmação: follow-up automático, régua e cobrança automática de informações não fazem parte desta entrega.**
+Migrations aditivas e reversíveis, dados existentes preservados, RLS respeitada, modo geral desligado até validação, nenhuma execução retroativa automática, nenhum dado fictício em card real, todos os eventos no histórico. ORCA LOGÍSTICA não é tocada. Follow-up automático, régua e cobrança de informações não fazem parte desta entrega.
