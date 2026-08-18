@@ -2665,6 +2665,7 @@ export type Database = {
           created_by_user_id: string
           csv_import_batch_id: string | null
           email: string | null
+          field_sources: Json
           focal_email: string | null
           focal_name: string | null
           focal_phone: string | null
@@ -2673,9 +2674,14 @@ export type Database = {
           is_blocked: boolean
           jira_issue_key: string | null
           notes: string | null
+          origin_message_id: string | null
+          origin_source: string | null
+          origin_thread_id: string | null
           panel_id: string
           parceiro_id: string | null
           partner_code: string | null
+          pending_complement: boolean
+          pending_fields: Json
           phone: string | null
           region: string | null
           responsible_user_id: string | null
@@ -2704,6 +2710,7 @@ export type Database = {
           created_by_user_id: string
           csv_import_batch_id?: string | null
           email?: string | null
+          field_sources?: Json
           focal_email?: string | null
           focal_name?: string | null
           focal_phone?: string | null
@@ -2712,9 +2719,14 @@ export type Database = {
           is_blocked?: boolean
           jira_issue_key?: string | null
           notes?: string | null
+          origin_message_id?: string | null
+          origin_source?: string | null
+          origin_thread_id?: string | null
           panel_id: string
           parceiro_id?: string | null
           partner_code?: string | null
+          pending_complement?: boolean
+          pending_fields?: Json
           phone?: string | null
           region?: string | null
           responsible_user_id?: string | null
@@ -2743,6 +2755,7 @@ export type Database = {
           created_by_user_id?: string
           csv_import_batch_id?: string | null
           email?: string | null
+          field_sources?: Json
           focal_email?: string | null
           focal_name?: string | null
           focal_phone?: string | null
@@ -2751,9 +2764,14 @@ export type Database = {
           is_blocked?: boolean
           jira_issue_key?: string | null
           notes?: string | null
+          origin_message_id?: string | null
+          origin_source?: string | null
+          origin_thread_id?: string | null
           panel_id?: string
           parceiro_id?: string | null
           partner_code?: string | null
+          pending_complement?: boolean
+          pending_fields?: Json
           phone?: string | null
           region?: string | null
           responsible_user_id?: string | null
@@ -3622,6 +3640,10 @@ export type Database = {
         Args: { p_proposal_id: string; p_reason: string }
         Returns: Json
       }
+      complement_cross_card_from_triage: {
+        Args: { p_card_id: string; p_row_id: string; p_source: string }
+        Returns: Json
+      }
       complete_lead_by_token: {
         Args: { p_data: Json; p_lojas?: Json; p_token: string }
         Returns: Json
@@ -3660,6 +3682,7 @@ export type Database = {
             }
             Returns: string
           }
+      cross_card_missing_fields: { Args: { p_card_id: string }; Returns: Json }
       duplicate_card: {
         Args: { card_id: string; target_stage_id: string }
         Returns: string
@@ -3824,12 +3847,20 @@ export type Database = {
         Args: { p_justification: string; p_row_id: string }
         Returns: Json
       }
+      reprocess_cross_card_completion: {
+        Args: { p_card_id: string; p_reason?: string }
+        Returns: Json
+      }
       reset_commercial_lead_stage_timer: {
         Args: { p_lead_id: string }
         Returns: undefined
       }
       submit_teste_monnera: { Args: { p_payload: Json }; Returns: Json }
       sync_commercial_proposal_followups: { Args: never; Returns: number }
+      triage_row_values: {
+        Args: { p_row_id: string; p_source: string }
+        Returns: Json
+      }
       unlink_gmail_triage_card: {
         Args: { p_justification: string; p_row_id: string }
         Returns: Json

@@ -16,6 +16,7 @@ import { Loader2, Mail, Eye } from "lucide-react";
  */
 
 export const PENDENCY_TEMPLATES: Array<{ value: string; label: string }> = [
+  { value: "dados_faltantes", label: "Dados faltantes do cadastro" },
   { value: "cnpj_ausente", label: "CNPJ ausente" },
   { value: "cnpj_divergente", label: "CNPJ divergente / mais de um CNPJ" },
   { value: "nome_incompativel", label: "Nome ou razão social incompatível" },
@@ -23,6 +24,7 @@ export const PENDENCY_TEMPLATES: Array<{ value: string; label: string }> = [
   { value: "dados_conflitantes", label: "Informações conflitantes" },
   { value: "dados_incompletos", label: "Complemento após resposta incompleta" },
 ];
+
 
 const RECIPIENT_SOURCE_LABEL: Record<string, string> = {
   thread_original: "Thread original",
@@ -64,13 +66,16 @@ type Props = {
   reason?: string | null;
   /** Sugestão inicial de template a partir da pendência detectada. */
   suggested?: string | null;
+  /** Rótulos exatos dos dados que ainda faltam no cadastro. */
+  missingFields?: string[];
 };
 
 const fmt = (value?: string | null) =>
   value ? new Date(value).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "—";
 
-export const TriageInfoRequest = ({ source, rowId, cardId, reason, suggested }: Props) => {
-  const [pendency, setPendency] = useState(suggested || "cnpj_ausente");
+export const TriageInfoRequest = ({ source, rowId, cardId, reason, suggested, missingFields }: Props) => {
+  const [pendency, setPendency] = useState(suggested || (missingFields?.length ? "dados_faltantes" : "cnpj_ausente"));
+
   const [complemento, setComplemento] = useState("");
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<{ recipients: string[]; recipients_source: string; subject: string; text: string } | null>(null);
@@ -87,12 +92,14 @@ export const TriageInfoRequest = ({ source, rowId, cardId, reason, suggested }: 
     setHistory((data as InfoRequest[]) ?? []);
   }, [rowId]);
 
+  const missingKey = (missingFields ?? []).join("|");
+
   useEffect(() => {
     setPreview(null);
     setComplemento("");
-    setPendency(suggested || "cnpj_ausente");
+    setPendency(suggested || (missingKey ? "dados_faltantes" : "cnpj_ausente"));
     loadHistory();
-  }, [rowId, suggested, loadHistory]);
+  }, [rowId, suggested, missingKey, loadHistory]);
 
   const call = async (dryRun: boolean) => {
     setBusy(true);
@@ -105,9 +112,11 @@ export const TriageInfoRequest = ({ source, rowId, cardId, reason, suggested }: 
           pendency_code: pendency,
           reason: reason ?? null,
           complemento: complemento.trim() || null,
+          campos_faltantes: missingFields ?? [],
           dry_run: dryRun,
         },
       });
+
 
       const payload = (data ?? {}) as any;
 
@@ -150,6 +159,19 @@ export const TriageInfoRequest = ({ source, rowId, cardId, reason, suggested }: 
         resposta ser conferida. Destinatários seguem a ordem: thread original, e-mails do cadastro, participantes
         comprovados e, só em último caso, Denise/Deise.
       </p>
+
+      {(missingFields ?? []).length > 0 && (
+        <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-amber-300">
+          <p className="font-medium">Dados que serão solicitados literalmente</p>
+          <ul className="list-disc pl-4">
+            {(missingFields ?? []).map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <div className="space-y-1">

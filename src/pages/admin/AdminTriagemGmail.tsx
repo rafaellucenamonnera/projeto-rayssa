@@ -225,6 +225,9 @@ export default function AdminTriagemGmail() {
   const [decision, setDecision] = useState("");
   const [linkCardId, setLinkCardId] = useState<string>("none");
   const [saving, setSaving] = useState(false);
+  /** Rótulos dos dados que ainda faltam no card vinculado (regra mínima do painel Cross). */
+  const [cardMissingFields, setCardMissingFields] = useState<string[]>([]);
+
 
   /** Card cujo vínculo está sendo gravado (estado "Vinculando..." e proteção contra clique duplo). */
   const [linkingCardId, setLinkingCardId] = useState<string | null>(null);
@@ -243,6 +246,32 @@ export default function AdminTriagemGmail() {
   const [activationConfirm, setActivationConfirm] = useState(false);
   const [executions, setExecutions] = useState<Array<{ id: string; source: string; source_row_id: string | null; cliente_nome: string; cnpj: string; codigo_monnera: string; created_at: string; executed_by: string | null }>>([]);
   const [userNames, setUserNames] = useState<Record<string, string>>({});
+
+  /** Mantém a lista de dados faltantes do card vinculado sincronizada com a seleção. */
+  const activeCardId = linkCardId !== "none" ? linkCardId : selected?.matched_card_id ?? null;
+  useEffect(() => {
+    let alive = true;
+    if (!activeCardId) {
+      setCardMissingFields([]);
+      return;
+    }
+    (async () => {
+      const { data } = await (supabase as any)
+        .from("representative_cards")
+        .select("pending_fields")
+        .eq("id", activeCardId)
+        .maybeSingle();
+      if (!alive) return;
+      setCardMissingFields(
+        ((data?.pending_fields ?? []) as Array<{ rotulo?: string }>).map((f) => String(f?.rotulo ?? "")).filter(Boolean),
+      );
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [activeCardId]);
+
+
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -726,9 +755,15 @@ export default function AdminTriagemGmail() {
       toast.error(`Execução bloqueada: ${error.message}`);
       return;
     }
-    toast.success(
-      `${(data as any)?.card_acao === "reutilizar" ? "Card existente associado" : "Card criado na etapa Cadastro"} e movido para Criação Painel. Tarefa Jira pendente de criação; nenhum e-mail enviado.`,
-    );
+    const res = (data ?? {}) as any;
+    const base = res?.card_acao === "reutilizar" ? "Card existente associado" : "Card criado na etapa Cadastro";
+    if (res?.avancou) {
+      toast.success(`${base} e movido para Criação Painel. Tarefa Jira pendente; nenhum e-mail enviado.`);
+    } else {
+      const faltam = (res?.dados_faltantes ?? []).map((f: any) => f.rotulo).join("; ") || "—";
+      toast.success(`${base}. Pendente de complementação — faltam: ${faltam}. Solicite os dados na aba do registro.`);
+    }
+
     setActivation(null);
     setSelected(null);
     load();
@@ -1159,7 +1194,13 @@ export default function AdminTriagemGmail() {
                       rowId={selected.id}
                       cardId={linkCardId !== "none" ? linkCardId : selected.matched_card_id}
                       reason={info.blockReason ?? "Pendência de triagem em aberto"}
-                      suggested={suggestPendencyTemplate(info.blockReason, selected.pending_reasons)}
+                      suggested={
+                        cardMissingFields.length > 0
+                          ? "dados_faltantes"
+                          : suggestPendencyTemplate(info.blockReason, selected.pending_reasons)
+                      }
+                      missingFields={cardMissingFields}
+
                     />
                   </div>
 
@@ -1366,7 +1407,32 @@ export default function AdminTriagemGmail() {
               </div>
 
               <div className="rounded-md border border-border p-2">
-                <p className="font-medium mb-1">Pré-requisitos</p>
+                <p className="font-medium mb-1">Requisitos mínimos para criar o cadastro</p>
+                <ul className="space-y-0.5">
+                  {(activation.requisitos_criacao ?? []).map((p: any, i: number) => (
+                    <li key={i} className={p.ok ? "text-emerald-400" : "text-destructive"}>
+                      {p.ok ? "✓" : "✕"} {p.item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {(activation.dados_faltantes ?? []).length > 0 && (
+                <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-amber-300">
+                  <p className="font-medium">Card ficará pendente — dados faltantes</p>
+                  <ul className="list-disc pl-4">
+                    {(activation.dados_faltantes ?? []).map((f: any, i: number) => <li key={i}>{f.rotulo}</li>)}
+                  </ul>
+                  <p className="mt-1">
+                    Solicite exatamente esses dados por e-mail na aba do registro. O avanço para Criação Painel acontece
+                    automaticamente quando a resposta completar o cadastro.
+                  </p>
+                </div>
+              )}
+
+              <div className="rounded-md border border-border p-2">
+                <p className="font-medium mb-1">Requisitos para avançar a Criação Painel</p>
+
                 <ul className="space-y-0.5">
                   {(activation.pre_requisitos ?? []).map((p: any, i: number) => (
                     <li key={i} className={p.ok ? "text-emerald-400" : "text-destructive"}>
@@ -1413,9 +1479,18 @@ export default function AdminTriagemGmail() {
 
               {(activation.bloqueios ?? []).length > 0 && (
                 <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-destructive">
-                  <p className="font-medium">Bloqueios impedem a execução</p>
+                  <p className="font-medium">Bloqueios impedem a criação do cadastro</p>
                   <ul className="list-disc pl-4">
                     {(activation.bloqueios ?? []).map((b: string, i: number) => <li key={i}>{b}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              {(activation.bloqueios ?? []).length === 0 && (activation.bloqueios_avanco ?? []).length > 0 && (
+                <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-amber-300">
+                  <p className="font-medium">O cadastro será criado, mas ainda não avança</p>
+                  <ul className="list-disc pl-4">
+                    {(activation.bloqueios_avanco ?? []).map((b: string, i: number) => <li key={i}>{b}</li>)}
                   </ul>
                 </div>
               )}
@@ -1433,17 +1508,20 @@ export default function AdminTriagemGmail() {
                   checked={activationConfirm}
                   onChange={(e) => setActivationConfirm(e.target.checked)}
                 />
-                Confirmo o fluxo acima: card na etapa Cadastro, validação e movimentação para Criação Painel
+                {activation.pode_avancar
+                  ? "Confirmo o fluxo: card na etapa Cadastro e movimentação automática para Criação Painel"
+                  : "Confirmo o fluxo: card na etapa Cadastro, pendente de complementação, sem avanço de etapa"}
               </label>
 
               <div className="flex justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={() => setActivation(null)} disabled={saving}>
                   Cancelar
                 </Button>
-                <Button size="sm" onClick={runActivation} disabled={saving || !activation.pode_executar}>
+                <Button size="sm" onClick={runActivation} disabled={saving || !activation.pode_criar_card}>
                   {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
-                  Executar 1 registro
+                  {activation.pode_avancar ? "Criar e avançar 1 registro" : "Criar cadastro pendente"}
                 </Button>
+
               </div>
             </div>
           )}

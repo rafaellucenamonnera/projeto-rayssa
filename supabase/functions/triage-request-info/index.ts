@@ -98,7 +98,9 @@ type Ctx = {
   codigo: string | null;
   assuntoOriginal: string | null;
   complemento: string | null;
+  faltantes: string[];
 };
+
 
 type Template = {
   key: string;
@@ -177,7 +179,22 @@ const TEMPLATES: Record<string, Template> = {
         c.complemento || "confirmação dos dados cadastrais da empresa (razão social, CNPJ e responsável)."
       }${PEDIDO_THREAD}${ASSINATURA}`,
   },
+  dados_faltantes: {
+    key: "dados_faltantes",
+    version: "v1",
+    label: "Dados faltantes do cadastro",
+    subject: (c) => `Complemento de cadastro${c.cliente ? ` — ${c.cliente}` : ""}`,
+    body: (c) => {
+      const lista = (c.faltantes ?? []).length
+        ? (c.faltantes ?? []).map((f) => `- ${f}`).join("\n")
+        : "- confirmação dos dados cadastrais da empresa (razão social, CNPJ e e-mail de contato)";
+      return `${abertura(c)}\n\nPara concluirmos, precisamos apenas destas informações:\n\n${lista}${
+        c.complemento ? `\n\n${c.complemento}` : ""
+      }${PEDIDO_THREAD}${ASSINATURA}`;
+    },
+  },
 };
+
 
 // ------------------------------------------------------------------ handler
 Deno.serve(async (req) => {
@@ -204,6 +221,10 @@ Deno.serve(async (req) => {
     const pendency = typeof body?.pendency_code === "string" ? body.pendency_code : null;
     const reason = (typeof body?.reason === "string" ? body.reason : "").slice(0, 500);
     const complemento = (typeof body?.complemento === "string" ? body.complemento : "").slice(0, 600) || null;
+    const camposFaltantes: string[] = Array.isArray(body?.campos_faltantes)
+      ? body.campos_faltantes.filter((f: unknown) => typeof f === "string").slice(0, 10).map((f: string) => f.slice(0, 160))
+      : [];
+
     const dryRun = body?.dry_run === true;
 
     if (!source || !rowId || !pendency) return json({ error: "Parâmetros inválidos." }, 400);
@@ -271,9 +292,13 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (operationalStatus === "liberado" || operationalStatus === "executado") {
+    if (
+      pendency !== "dados_faltantes" &&
+      (operationalStatus === "liberado" || operationalStatus === "executado")
+    ) {
       return json({ error: "Registro já liberado — solicitação de informação não se aplica." }, 400);
     }
+
 
     if (body?.card_id && typeof body.card_id === "string") cardId = body.card_id;
 
@@ -413,7 +438,20 @@ Deno.serve(async (req) => {
     }
 
     // ---------------------------------------------------------- mensagem
-    const ctx: Ctx = { cliente, cnpj, codigo, assuntoOriginal, complemento };
+    let faltantes = camposFaltantes;
+    if (faltantes.length === 0 && cardId) {
+      const { data: cardPending } = await admin
+        .from("representative_cards")
+        .select("pending_fields")
+        .eq("id", cardId)
+        .maybeSingle();
+      faltantes = ((cardPending?.pending_fields ?? []) as Array<{ rotulo?: string }>)
+        .map((f) => String(f?.rotulo ?? ""))
+        .filter(Boolean);
+    }
+
+    const ctx: Ctx = { cliente, cnpj, codigo, assuntoOriginal, complemento, faltantes };
+
     const baseSubject = template.subject(ctx);
     const subject =
       assuntoOriginal && threadId
