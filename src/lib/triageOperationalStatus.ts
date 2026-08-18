@@ -35,7 +35,26 @@ export const OPERATIONAL_FILTER_OPTIONS: Array<{ value: string; label: string }>
   { value: "rejeitado", label: "Rejeitado" },
 ];
 
-export type PendingReasonLike = { code?: string; label?: string };
+export type PendingReasonLike = { code?: string; label?: string; stage?: string | null };
+
+/**
+ * Etapa em que a pendência é exigida.
+ * O código Monnera NÃO é exigido na triagem/cadastro — só na etapa "Criação Painel".
+ */
+const CRIACAO_PAINEL_CODES = new Set([
+  "sem_codigo",
+  "codigo_exemplo_invalido",
+  "codigo_formato_nao_confirmado",
+]);
+
+export const pendingStage = (p: PendingReasonLike): "triagem" | "criacao_painel" =>
+  (p.stage as "triagem" | "criacao_painel") ??
+  (p.code && CRIACAO_PAINEL_CODES.has(p.code) ? "criacao_painel" : "triagem");
+
+export const STAGE_LABEL: Record<string, string> = {
+  triagem: "Triagem/Cadastro",
+  criacao_painel: "Criação Painel",
+};
 
 export type OperationalInput = {
   analysisResult?: string | null;
@@ -66,9 +85,21 @@ const isRejected = (decision?: string | null) =>
 const isApproved = (decision?: string | null) =>
   !!decision && /aprovad|liberad/i.test(decision);
 
+/** Status de triagem que dizem respeito apenas ao código Monnera (etapa Criação Painel). */
+const CODE_ONLY_STATUS = new Set([
+  "triage_sem_codigo",
+  "triage_codigo_exemplo_invalido",
+  "triage_codigo_formato_nao_confirmado",
+]);
+
 export function computeOperationalInfo(input: OperationalInput, pendingLabel?: Record<string, string>): OperationalInfo {
-  const triage = input.analysisResult ?? input.status ?? "";
-  const pending = input.pendingReasons ?? [];
+  const rawTriage = input.analysisResult ?? input.status ?? "";
+  // O código Monnera não é exigido na triagem/cadastro.
+  const triage = CODE_ONLY_STATUS.has(rawTriage) ? "triage_ok" : rawTriage;
+  const allPending = input.pendingReasons ?? [];
+  // Só as pendências da etapa Triagem/Cadastro bloqueiam a liberação.
+  const pending = allPending.filter((p) => pendingStage(p) === "triagem");
+
   const pendingText = pending
     .map((p) => (p.code && pendingLabel?.[p.code]) || p.label || p.code || "")
     .filter(Boolean)

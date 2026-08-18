@@ -583,6 +583,7 @@ export type Database = {
           extracted: Json
           from_address: string | null
           id: string
+          jira_issue_key: string | null
           last_correction_at: string | null
           manual_overrides: Json
           matched_card_id: string | null
@@ -594,6 +595,8 @@ export type Database = {
           pending_reason_manual: string | null
           pending_reasons: Json
           received_at: string | null
+          release_rule: string | null
+          release_stage: string | null
           released_at: string | null
           released_by: string | null
           representative_card_id: string | null
@@ -626,6 +629,7 @@ export type Database = {
           extracted?: Json
           from_address?: string | null
           id?: string
+          jira_issue_key?: string | null
           last_correction_at?: string | null
           manual_overrides?: Json
           matched_card_id?: string | null
@@ -637,6 +641,8 @@ export type Database = {
           pending_reason_manual?: string | null
           pending_reasons?: Json
           received_at?: string | null
+          release_rule?: string | null
+          release_stage?: string | null
           released_at?: string | null
           released_by?: string | null
           representative_card_id?: string | null
@@ -669,6 +675,7 @@ export type Database = {
           extracted?: Json
           from_address?: string | null
           id?: string
+          jira_issue_key?: string | null
           last_correction_at?: string | null
           manual_overrides?: Json
           matched_card_id?: string | null
@@ -680,6 +687,8 @@ export type Database = {
           pending_reason_manual?: string | null
           pending_reasons?: Json
           received_at?: string | null
+          release_rule?: string | null
+          release_stage?: string | null
           released_at?: string | null
           released_by?: string | null
           representative_card_id?: string | null
@@ -2639,6 +2648,9 @@ export type Database = {
           blocked_source: string | null
           city: string | null
           cnpj: string | null
+          codigo_evidencia: Json | null
+          codigo_monnera: string | null
+          codigo_source: string | null
           contratante_monnera: string | null
           created_at: string
           created_by_user_id: string
@@ -2650,6 +2662,7 @@ export type Database = {
           full_name: string
           id: string
           is_blocked: boolean
+          jira_issue_key: string | null
           notes: string | null
           panel_id: string
           parceiro_id: string | null
@@ -2674,6 +2687,9 @@ export type Database = {
           blocked_source?: string | null
           city?: string | null
           cnpj?: string | null
+          codigo_evidencia?: Json | null
+          codigo_monnera?: string | null
+          codigo_source?: string | null
           contratante_monnera?: string | null
           created_at?: string
           created_by_user_id: string
@@ -2685,6 +2701,7 @@ export type Database = {
           full_name: string
           id?: string
           is_blocked?: boolean
+          jira_issue_key?: string | null
           notes?: string | null
           panel_id: string
           parceiro_id?: string | null
@@ -2709,6 +2726,9 @@ export type Database = {
           blocked_source?: string | null
           city?: string | null
           cnpj?: string | null
+          codigo_evidencia?: Json | null
+          codigo_monnera?: string | null
+          codigo_source?: string | null
           contratante_monnera?: string | null
           created_at?: string
           created_by_user_id?: string
@@ -2720,6 +2740,7 @@ export type Database = {
           full_name?: string
           id?: string
           is_blocked?: boolean
+          jira_issue_key?: string | null
           notes?: string | null
           panel_id?: string
           parceiro_id?: string | null
@@ -3542,6 +3563,16 @@ export type Database = {
           p_origin?: string
           p_row_id: string
           p_values: Json
+        }
+        Returns: Json
+      }
+      apply_monnera_code_to_card: {
+        Args: {
+          p_card_id: string
+          p_codigo: string
+          p_evidence?: Json
+          p_jira_issue_key?: string
+          p_source?: string
         }
         Returns: Json
       }

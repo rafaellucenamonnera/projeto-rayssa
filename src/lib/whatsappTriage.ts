@@ -32,7 +32,26 @@ export type Evidence = {
   at?: string | null;
 };
 
-export type PendingReason = { code: string; label: string };
+export type PendingStage = "triagem" | "criacao_painel";
+
+export type PendingReason = { code: string; label: string; stage?: PendingStage };
+
+/**
+ * Etapa em que cada pendência é exigida.
+ * O código Monnera só é cobrado na etapa "Criação Painel" — nunca na triagem inicial.
+ */
+export const PENDING_STAGE: Record<string, PendingStage> = {
+  sem_codigo: "criacao_painel",
+  codigo_exemplo_invalido: "criacao_painel",
+  codigo_formato_nao_confirmado: "criacao_painel",
+};
+
+export const stageOfPending = (code?: string | null): PendingStage =>
+  (code && PENDING_STAGE[code]) || "triagem";
+
+/** Pendências que realmente bloqueiam a liberação da triagem para "Criação Painel". */
+export const triageBlockingReasons = (reasons?: PendingReason[] | null): PendingReason[] =>
+  (reasons ?? []).filter((r) => (r.stage ?? stageOfPending(r.code)) === "triagem");
 
 export type WhatsappExtraction = {
   cliente_nome: string | null;
@@ -69,7 +88,7 @@ export const STATUS_LABEL: Record<string, string> = {
 export const PENDING_LABEL: Record<string, string> = {
   sem_cnpj: "Sem CNPJ",
   sem_nome: "Sem nome do cliente",
-  sem_codigo: "Sem código Monnera",
+  sem_codigo: "Sem código Monnera (exigido só na etapa Criação Painel)",
   codigo_exemplo_invalido: "Código demonstrativo inválido",
   codigo_formato_nao_confirmado: "Código em formato não confirmado",
   multiplos_cnpj: "Múltiplos CNPJs na conversa",
@@ -257,7 +276,8 @@ export const extractFromConversation = (messages: WhatsappMessage[]): WhatsappEx
   const evidences: Evidence[] = [];
   const pending: PendingReason[] = [];
   const addPending = (code: string) => {
-    if (!pending.some((p) => p.code === code)) pending.push({ code, label: PENDING_LABEL[code] ?? code });
+    if (!pending.some((p) => p.code === code))
+      pending.push({ code, label: PENDING_LABEL[code] ?? code, stage: stageOfPending(code) });
   };
   const addEvidence = (field: string, value: string, snippet: string, msg?: WhatsappMessage) =>
     evidences.push({ field, value, snippet, author: msg?.author, at: msg?.at?.toISOString() ?? null });
@@ -467,15 +487,15 @@ export const importWhatsappFile = async (
   if (match.reason === "ambiguo") {
     status = "triage_ambiguo";
     if (!pendingReasons.some((p) => p.code === "info_ambigua"))
-      pendingReasons.push({ code: "info_ambigua", label: PENDING_LABEL.info_ambigua });
+      pendingReasons.push({ code: "info_ambigua", label: PENDING_LABEL.info_ambigua, stage: "triagem" });
   } else if (match.card) {
     const cardCnpj = (match.card.cnpj || "").replace(/\D/g, "");
     if (extraction.cnpj && cardCnpj && cardCnpj !== extraction.cnpj) {
       status = "triage_divergencia_cnpj";
-      pendingReasons.push({ code: "divergencia_cnpj", label: PENDING_LABEL.divergencia_cnpj });
+      pendingReasons.push({ code: "divergencia_cnpj", label: PENDING_LABEL.divergencia_cnpj, stage: "triagem" });
     } else if (extraction.cnpj && cardCnpj === extraction.cnpj) {
       status = status === "triage_ok" ? "triage_duplicado" : status;
-      pendingReasons.push({ code: "duplicado", label: PENDING_LABEL.duplicado });
+      pendingReasons.push({ code: "duplicado", label: PENDING_LABEL.duplicado, stage: "triagem" });
     }
   }
 
