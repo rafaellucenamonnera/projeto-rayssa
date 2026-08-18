@@ -101,7 +101,20 @@ Deno.serve(async (req) => {
     return json({ error: "Não autorizado." }, 401);
   }
 
+  // Modo de teste de entrega: autentica, registra e encerra sem tocar em card.
+  try {
+    const probe = JSON.parse(rawBody || "{}");
+    if (probe?.ping === true || probe?.test_delivery === true) {
+      await admin.rpc("record_automation_run", {
+        p_stage: "jira_code_webhook", p_status: "sucesso", p_card_id: null,
+        p_error: null, p_origin: "jira_webhook", p_payload: { mode: "ping" },
+      }).catch(() => null);
+      return json({ ok: true, mode: "ping" }, 200);
+    }
+  } catch (_) { /* corpo não-JSON segue o fluxo normal */ }
+
   let cardId: string | null = null;
+
   try {
     const payload = JSON.parse(rawBody || "{}");
     const issueKey: string | null = payload?.issue?.key ?? payload?.issue_key ?? null;
