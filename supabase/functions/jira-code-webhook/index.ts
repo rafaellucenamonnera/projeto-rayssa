@@ -163,11 +163,13 @@ Deno.serve(async (req) => {
 
     const card = candidates[0];
     cardId = card.id;
-    if (PROTECTED_CARD_NAMES.includes((card.full_name ?? "").toUpperCase())) {
+    const normalizedName = (card.full_name ?? "").toUpperCase().replace(/[^A-Z0-9ÁÉÍÓÚÂÊÔÃÕÇ ]/g, "").trim();
+    if (PROTECTED_CARD_NAMES.includes(normalizedName)) {
       return json({ ok: false, error: "Card protegido: nenhuma alteração aplicada." }, 202);
     }
 
-    const isQaCard = (card.full_name ?? "").toUpperCase() === "TESTE FASE A QA";
+    const isQaCard = normalizedName === "TESTE FASE A QA";
+
     const rawCode = typeof payload?.codigo_monnera === "string" ? payload.codigo_monnera : extractMonneraCode(collectText(payload));
     const validation = validateMonneraCode(rawCode, { allowTest: isQaCard });
     if (!validation.ok) {
