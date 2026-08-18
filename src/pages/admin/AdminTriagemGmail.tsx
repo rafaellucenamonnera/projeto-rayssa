@@ -90,6 +90,21 @@ type TriageMessage = {
   linked_at: string | null;
   linked_by: string | null;
   linked_card_snapshot: Record<string, unknown> | null;
+
+  // metadados aditivos de origem da thread (podem não existir em registros antigos)
+  thread_participants?: {
+    from?: string[];
+    to?: string[];
+    cc?: string[];
+    first_sender?: string | null;
+    most_frequent_sender?: string | null;
+    message_count?: number;
+  } | null;
+  thread_domains?: string[] | null;
+  origin_sender?: string | null;
+  origin_domain?: string | null;
+  origin_match_type?: string | null;
+  origin_match_evidence?: string | null;
 };
 
 type Correction = {
