@@ -57,7 +57,7 @@ export function findCandidateCards(
     if (target && cardCnpj && cardCnpj === target) push(card, "CNPJ igual ao extraído");
     else if (cardCnpj && alternatives.has(cardCnpj)) push(card, "CNPJ alternativo encontrado na mensagem");
     else if (nome.length > 3 && cardNome && (cardNome.includes(nome) || nome.includes(cardNome)))
-      push(card, "Nome semelhante");
+      push(card, !target && cardCnpj ? "CNPJ herdado do card" : "Nome semelhante");
   });
 
   return out.slice(0, 10);
