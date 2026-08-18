@@ -61,6 +61,8 @@ import CardAttachments from "@/components/admin/CardAttachments";
 import OnboardingEmailQaSection from "@/components/admin/OnboardingEmailQaSection";
 import JiraTaskDialog from "@/components/admin/JiraTaskDialog";
 import CanvaPublicLinkSection from "@/components/admin/CanvaPublicLinkSection";
+import CardOriginTimeline from "@/components/admin/CardOriginTimeline";
+
 
 import ClienteCrossDialog from "@/components/admin/ClienteCrossDialog";
 
