@@ -60,6 +60,7 @@ import { CampaignMoveDialog, CampanhaConcluidaDialog } from "@/components/admin/
 import CardAttachments from "@/components/admin/CardAttachments";
 import OnboardingEmailQaSection from "@/components/admin/OnboardingEmailQaSection";
 import JiraTaskDialog from "@/components/admin/JiraTaskDialog";
+import CanvaPublicLinkSection from "@/components/admin/CanvaPublicLinkSection";
 
 import ClienteCrossDialog from "@/components/admin/ClienteCrossDialog";
 
@@ -2726,6 +2727,16 @@ const AdminLeads = () => {
                     onCreated={(issueKey) => {
                       setDetailLead((prev: any) => (prev ? { ...prev, jira_issue_key: issueKey, jira_issue_status: "criada" } : prev));
                       setLeads((prev: any[]) => prev.map((l) => (l.id === detailLead.id ? { ...l, jira_issue_key: issueKey } : l)));
+                    }}
+                  />
+                  <CanvaPublicLinkSection
+                    cardId={detailLead.id}
+                    canEdit={canEditLead}
+                    cardName={detailLead.full_name}
+                    codigoMonnera={detailLead.codigo_monnera}
+                    canvaPublicUrl={detailLead.canva_public_url}
+                    onSaved={(url) => {
+                      setDetailLead((prev: any) => (prev ? { ...prev, canva_public_url: url, canva_material_url: url } : prev));
                     }}
                   />
                   <RepresentativeCardNotes cardId={detailLead.id} canEdit={canEditLead} />
