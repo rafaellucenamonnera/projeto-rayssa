@@ -920,7 +920,16 @@ export default function AdminImportWhatsapp() {
                       {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <AlertTriangle className="h-3.5 w-3.5 mr-1" />}
                       Abrir tarefa de análise e notificar responsáveis
                     </Button>
+
+                    <TriageInfoRequest
+                      source="whatsapp"
+                      rowId={selected.id}
+                      cardId={linkCardId !== "none" ? linkCardId : selected.linked_card_id ?? selected.matched_card_id}
+                      reason={info.blockReason ?? "Pendência de triagem em aberto"}
+                      suggested={suggestPendencyTemplate(info.blockReason, selected.pending_reasons)}
+                    />
                   </div>
+
                 );
               })()}
 
