@@ -66,13 +66,16 @@ type Props = {
   reason?: string | null;
   /** Sugestão inicial de template a partir da pendência detectada. */
   suggested?: string | null;
+  /** Rótulos exatos dos dados que ainda faltam no cadastro. */
+  missingFields?: string[];
 };
 
 const fmt = (value?: string | null) =>
   value ? new Date(value).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "—";
 
-export const TriageInfoRequest = ({ source, rowId, cardId, reason, suggested }: Props) => {
-  const [pendency, setPendency] = useState(suggested || "cnpj_ausente");
+export const TriageInfoRequest = ({ source, rowId, cardId, reason, suggested, missingFields }: Props) => {
+  const [pendency, setPendency] = useState(suggested || (missingFields?.length ? "dados_faltantes" : "cnpj_ausente"));
+
   const [complemento, setComplemento] = useState("");
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<{ recipients: string[]; recipients_source: string; subject: string; text: string } | null>(null);
