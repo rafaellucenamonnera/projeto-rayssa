@@ -99,7 +99,7 @@ export default function OnboardingEmailQaSection({ cardId }: Props) {
           <div className="rounded-md border border-border p-3 text-xs text-muted-foreground space-y-1">
             <p><strong>Nome:</strong> {QA_CARD.nome}</p>
             <p><strong>Código:</strong> {QA_CARD.codigo}</p>
-            <p className="break-all"><strong>Link Canva:</strong> {QA_CARD.link}</p>
+            <p className="break-all"><strong>Link público Canva:</strong> {link ?? "—"}</p>
             <p><strong>Destinatário:</strong> {QA_CARD.destinatario}</p>
             <p><strong>Assunto:</strong> {ONBOARDING_EMAIL_SUBJECT}</p>
           </div>
