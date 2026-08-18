@@ -1,63 +1,42 @@
-# Gerador de E-mail de Onboarding — Parceiro Baston
+# Varredura pré-publicação das automações
 
-## Bloqueio inicial (precisa de você)
+Recomendo uma varredura curta antes de publicar. Nada é alterado nesta etapa: é só leitura, diagnóstico e um relatório de pendências e gargalos.
 
-O anexo recebido (`email-onboarding-parceiro-baston-monnera-v2.txt`) contém apenas a **copy em texto puro**: assunto, seções 1/2/3, links fixos e os marcadores `{{LINK_MATERIAL_CLIENTE}}` e `{{CODIGO_CADASTRO_PARCEIRO}}`. Não há HTML, CSS inline, logo base64, cabeçalho `#003729`, cards clicáveis nem `{{NOME_PARCEIRO}}`.
+## O que será verificado
 
-Com esse conteúdo é impossível "preservar o layout exatamente igual" — o layout não veio junto. Para seguir, escolha um caminho:
+1. **Worker Gmail (`gmail-baston-sync`)**
+   - Confirmar que o filtro ampliado (Baston + Jira para a caixa autorizada) está de fato rodando e ingerindo mensagens.
+   - Checar as últimas execuções (sucesso, erro, duração, volume) e se o modo continua em triagem.
+   - Verificar se há agendamento recorrente ativo (a cada 2h) ou se o worker só roda sob demanda.
 
-- **A (preferido):** anexar o arquivo `.html` de verdade (com o CSS inline e a logo base64). Ele vira a fonte de verdade intacta e apenas os três marcadores são substituídos.
-- **B:** eu monto o HTML na identidade Monnera (cabeçalho verde `#003729`, logo, cards clicáveis, todas as seções e a copy exatamente como no `.txt`), você revisa no preview e ajusta. Nesse caso o resultado é equivalente, não idêntico ao arquivo local.
+2. **Fluxo Cross / Onboarding**
+   - Estado dos 7 cards elegíveis: bloqueios abertos, pendências por etapa, ausência de código Monnera.
+   - Se as regras de liberação por etapa estão coerentes (código não obrigatório antes de "Criação Painel").
+   - Se há cards presos sem responsável ou sem histórico.
 
-Em ambos os casos a instrução interna "Substitua este campo antes do envio para cada novo parceiro." é removida do corpo.
+3. **Envio de e-mail de onboarding**
+   - Confirmar que a allowlist de QA continua ativa (evita disparo real acidental em produção).
+   - Verificar registros de envio com status inconsistente (preso em "enviando", falhas).
 
-Todo o restante do plano assume o HTML final como base intacta.
+4. **Canva**
+   - Validar que apenas links públicos são aceitos e que não há registros com link de edição gravado.
 
+5. **Triagem WhatsApp e Gmail**
+   - Registros pendentes acumulados, correções aplicadas e erros de processamento recentes.
 
-## O que será construído
+6. **Saúde geral antes de publicar**
+   - Erros recentes nas funções de borda.
+   - Avisos do scanner de segurança (RLS/policies) em tabelas novas do fluxo Cross.
+   - Build/typecheck limpo.
 
-### 1. Template versionado no projeto
-O HTML aprovado é salvo como arquivo do projeto (fonte de verdade única), com apenas três marcadores substituíveis:
+## Entregável
 
-- `{{NOME_PARCEIRO}}`
-- `{{CODIGO_CADASTRO_PARCEIRO}}`
-- `{{LINK_MATERIAL_CLIENTE}}`
+Um relatório curto no chat com:
+- Bloqueios que impedem publicar (se houver).
+- Pendências que não impedem publicar, mas precisam de acompanhamento.
+- Gargalos das automações (falta de agendamento, dependência de ação manual, pontos sem retry).
+- Recomendação objetiva: publicar agora ou corrigir antes.
 
-Links fixos (Apresentação Monnera, vídeo tutorial, Arquivo Resumido, Modelo de cadastro de usuários) permanecem no template sem alteração.
+## Depois da varredura
 
-### 2. Tela administrativa "E-mail de Onboarding Baston"
-Nova aba no admin com:
-
-- Nome do parceiro
-- Código de cadastro Parceiro Baston (8 caracteres, A-Z e 0-9)
-- Link do material customizado (Canva)
-- Destinatário(s), com validação de e-mail
-- Assunto, pré-preenchido com: `Boas-vindas à Monnera | Onboarding, Plataforma e Diretrizes de Envio - Parceiro Baston`
-
-Ações: **Gerar preview**, **Copiar HTML final**, **Salvar rascunho**, **Enviar e-mail** (com modal de confirmação obrigatório).
-
-O preview é renderizado em iframe isolado, exatamente o HTML final que será enviado — sem imagem, sem reescrita de estilos.
-
-### 3. Validações e sanitização
-- Nome: texto simples, escapado para não quebrar o HTML.
-- Código: exatamente 8 caracteres `[A-Z0-9]`; códigos demonstrativos rejeitados; `QATEST01` aceito somente em card marcado como teste.
-- Links: precisam ser URLs `https://` válidas.
-- Destinatários: validados um a um; envio bloqueado se algum for inválido.
-
-### 4. Histórico de envios
-Nova tabela registrando: parceiro, card de origem (quando houver), destinatários, código usado, link do material, assunto, data/hora, usuário responsável e status (`rascunho`, `enviado`, `erro`). Visível na própria tela, com acesso restrito a administradores.
-
-### 5. Envio
-Na primeira entrega o envio fica desabilitado e o fluxo entrega geração + preview + cópia + rascunho, conforme você previu. O ponto de integração de envio já fica pronto: assim que o domínio de e-mail do projeto estiver configurado, o botão "Enviar" passa a usar a infraestrutura de e-mail do próprio projeto (sem provedor externo), preservando o HTML inline e a logo base64.
-
-## Uso no teste QA
-
-A tela será usada para o card `TESTE FASE A QA` com nome do card, código `QATEST01` e link `https://www.canva.com/d/c4zxi4vpjmbpv7V`, apenas gerando o preview e listando os destinatários do card. Nenhum envio, nenhuma régua, nenhum processamento de ORCA LOGÍSTICA ou de outros cards.
-
-## Detalhes técnicos
-
-- `src/lib/onboardingEmailTemplate.ts`: template bruto + `renderOnboardingEmail()` com substituição e escape de HTML.
-- `src/pages/admin/AdminEmailOnboarding.tsx` (+ rota e item de menu no admin): formulário, preview em iframe `srcDoc`, cópia, rascunho, modal de confirmação.
-- Migração: tabela `onboarding_email_sends` com RLS (somente admin), GRANTs para `authenticated`/`service_role`, e `created_by` a partir de `auth.uid()`.
-- Envio (fase 2): Edge Function dedicada que recebe o HTML já renderizado e o registro de histórico, marcando `enviado` ou `erro`.
-- Sem `dangerouslySetInnerHTML` em componentes React; o HTML vive apenas dentro do iframe do preview.
+Se aparecerem correções necessárias, apresento um segundo plano com as mudanças antes de executar qualquer alteração.
