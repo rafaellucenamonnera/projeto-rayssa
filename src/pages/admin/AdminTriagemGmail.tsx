@@ -1041,6 +1041,9 @@ export default function AdminTriagemGmail() {
                       <span>Liberado por: {m.released_by ? (userNames[m.released_by] ?? m.released_by) : "—"}</span>
                       <span>Execução: {exec ? fmtDate(exec.created_at) : "—"}</span>
                       <span>Status da execução: {exec ? "Card criado" : "Sem execução"}</span>
+                      <span>Origem sugerida: {originSenderOf(m) ?? "—"}</span>
+                      <span>Domínio de origem: {originDomainOf(m) ? `@${originDomainOf(m)}` : "—"}</span>
+                      <span>Mensagens na thread: {m.thread_participants?.message_count ?? "—"}</span>
                     </div>
                     {op.blockReason && op.state !== "liberado" && op.state !== "executado" && (
                       <p className="mt-1 text-xs text-amber-400">Motivo do bloqueio: {op.blockReason}</p>
