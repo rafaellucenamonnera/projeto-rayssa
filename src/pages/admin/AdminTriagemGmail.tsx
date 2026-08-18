@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { logCardEvent, crossCardActionUrl } from "@/lib/crossCardEvents";
@@ -86,6 +86,10 @@ type TriageMessage = {
   released_by: string | null;
   conflict_notes: Array<Record<string, unknown>> | null;
   last_correction_at: string | null;
+
+  linked_at: string | null;
+  linked_by: string | null;
+  linked_card_snapshot: Record<string, unknown> | null;
 };
 
 type Correction = {
@@ -202,7 +206,6 @@ const pendingList = (m: TriageMessage): PendingReason[] =>
 
 export default function AdminTriagemGmail() {
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState<TriageMessage[]>([]);
@@ -222,6 +225,12 @@ export default function AdminTriagemGmail() {
   const [decision, setDecision] = useState("");
   const [linkCardId, setLinkCardId] = useState<string>("none");
   const [saving, setSaving] = useState(false);
+
+  /** Card cujo vínculo está sendo gravado (estado "Vinculando..." e proteção contra clique duplo). */
+  const [linkingCardId, setLinkingCardId] = useState<string | null>(null);
+  const [unlinkOpen, setUnlinkOpen] = useState(false);
+  const [unlinkJustification, setUnlinkJustification] = useState("");
+  const [unlinking, setUnlinking] = useState(false);
 
   const [form, setForm] = useState<Record<string, string>>({});
   const [justification, setJustification] = useState("");
@@ -362,8 +371,113 @@ export default function AdminTriagemGmail() {
     setLinkCardId(m.matched_card_id ?? "none");
     setJustification("");
     setConfirmRelease(false);
+    setUnlinkOpen(false);
+    setUnlinkJustification("");
     setForm(Object.fromEntries(CORRECTION_FIELDS.map((f) => [f.key, effectiveValue(m, f.key)])));
     loadCorrections(m.id);
+  };
+
+  /** Recarrega o registro aberto após uma ação, mantendo o detalhe na tela. */
+  const refreshSelected = async (rowId: string) => {
+    const { data } = await (supabase as any)
+      .from("gmail_processed_messages")
+      .select("*")
+      .eq("id", rowId)
+      .maybeSingle();
+    if (data) {
+      const fresh = data as TriageMessage;
+      setSelected(fresh);
+      setLinkCardId(fresh.matched_card_id ?? "none");
+      setForm(Object.fromEntries(CORRECTION_FIELDS.map((f) => [f.key, effectiveValue(fresh, f.key)])));
+    }
+    await loadCorrections(rowId);
+  };
+
+  /**
+   * Vincula o card confirmado pelo operador: preenche nome/CNPJ faltantes a partir do card,
+   * registra a evidência no histórico imutável e reavalia a etapa. O card não é alterado.
+   */
+  const linkCard = async (cardId: string) => {
+    if (!selected || linkingCardId) return;
+    setLinkingCardId(cardId);
+    try {
+      const { data, error } = await (supabase as any).rpc("link_gmail_triage_card", {
+        p_row_id: selected.id,
+        p_card_id: cardId,
+        p_justification: "Vínculo confirmado manualmente na triagem: mensagem e card correspondem ao mesmo cliente.",
+      });
+      if (error) throw error;
+
+      await logCardEvent(cardId, "triage_linked", {
+        origem: "triagem_gmail",
+        message_id: selected.message_id,
+        thread_id: selected.thread_id,
+        remetente: selected.from_address,
+        assunto: selected.subject,
+        cnpj: (data as any)?.cnpj ?? null,
+        fonte_cnpj: (data as any)?.cnpj_source ?? null,
+        liberado: !!(data as any)?.released,
+      });
+
+      setLinkCardId(cardId);
+      toast.success("Card vinculado com sucesso. Os dados confirmados foram preenchidos na triagem.");
+      if ((data as any)?.released) {
+        toast.success("Registro liberado para a etapa Criação Painel. O código Monnera segue pendente dessa etapa.");
+      }
+      await refreshSelected(selected.id);
+      await load();
+    } catch (error: any) {
+      toast.error(error?.message || "Não foi possível vincular o card. Tente novamente.");
+    } finally {
+      setLinkingCardId(null);
+    }
+  };
+
+  /** Desfaz o vínculo apenas na triagem, sem apagar ou alterar o card. */
+  const unlinkCard = async () => {
+    if (!selected || unlinking) return;
+    if (!unlinkJustification.trim()) {
+      toast.error("Informe a justificativa para desfazer o vínculo.");
+      return;
+    }
+    const previousCardId = selected.matched_card_id;
+    setUnlinking(true);
+    try {
+      const { error } = await (supabase as any).rpc("unlink_gmail_triage_card", {
+        p_row_id: selected.id,
+        p_justification: unlinkJustification.trim(),
+      });
+      if (error) throw error;
+
+      if (previousCardId) {
+        await logCardEvent(previousCardId, "triage_unlinked", {
+          origem: "triagem_gmail",
+          message_id: selected.message_id,
+          thread_id: selected.thread_id,
+          justificativa: unlinkJustification.trim(),
+        });
+      }
+
+      toast.success("Vínculo desfeito. O card não foi alterado.");
+      setUnlinkOpen(false);
+      setUnlinkJustification("");
+      await refreshSelected(selected.id);
+      await load();
+    } catch (error: any) {
+      toast.error(error?.message || "Não foi possível desfazer o vínculo. Tente novamente.");
+    } finally {
+      setUnlinking(false);
+    }
+  };
+
+  /** Abre o card específico do painel em nova aba, preservando a triagem. */
+  const openCard = (cardId: string) => {
+    const exists = cards.some((c) => c.id === cardId);
+    if (!exists) {
+      toast.error("O card não foi encontrado. O vínculo permanece registrado para análise.");
+      return;
+    }
+    window.open(crossCardActionUrl(CROSS_PANEL_ID, cardId), "_blank", "noopener");
   };
 
   /** Cards candidatos exibidos quando o registro não pode ser liberado. */
@@ -872,7 +986,7 @@ export default function AdminTriagemGmail() {
 
               <div className="space-y-2">
                 <Label className="text-xs">Card correspondente</Label>
-                <Select value={linkCardId} onValueChange={setLinkCardId}>
+                <Select value={linkCardId} onValueChange={setLinkCardId} disabled={!!linkingCardId || !!selected.matched_card_id}>
                   <SelectTrigger><SelectValue placeholder="Selecionar card" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Sem vínculo</SelectItem>
@@ -883,14 +997,69 @@ export default function AdminTriagemGmail() {
                     ))}
                   </SelectContent>
                 </Select>
-                {linkCardId !== "none" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate(crossCardActionUrl(CROSS_PANEL_ID, linkCardId))}
-                  >
-                    <ExternalLink className="h-3.5 w-3.5 mr-1" /> Abrir card
-                  </Button>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {linkCardId !== "none" && selected.matched_card_id !== linkCardId && (
+                    <Button size="sm" onClick={() => linkCard(linkCardId)} disabled={!!linkingCardId}>
+                      {linkingCardId === linkCardId ? (
+                        <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Vinculando...</>
+                      ) : (
+                        "Vincular card"
+                      )}
+                    </Button>
+                  )}
+                  {selected.matched_card_id && (
+                    <>
+                      <Badge variant="outline" className="border-emerald-500/30 text-emerald-400">
+                        Vinculado{selected.linked_at ? ` em ${fmtDate(selected.linked_at)}` : ""}
+                        {selected.linked_by && userNames[selected.linked_by] ? ` por ${userNames[selected.linked_by]}` : ""}
+                      </Badge>
+                      <Button variant="outline" size="sm" onClick={() => openCard(selected.matched_card_id as string)}>
+                        <ExternalLink className="h-3.5 w-3.5 mr-1" /> Abrir card
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setUnlinkOpen((v) => !v)} disabled={unlinking}>
+                        Desfazer vínculo
+                      </Button>
+                    </>
+                  )}
+                  {!selected.matched_card_id && linkCardId !== "none" && (
+                    <Button variant="outline" size="sm" onClick={() => openCard(linkCardId)}>
+                      <ExternalLink className="h-3.5 w-3.5 mr-1" /> Abrir card
+                    </Button>
+                  )}
+                </div>
+
+                {selected.linked_card_snapshot && (
+                  <div className="rounded-md border border-border bg-muted/30 p-2 text-xs text-muted-foreground space-y-0.5">
+                    <p className="text-foreground font-medium">Dados herdados do card vinculado</p>
+                    <p>Nome: {String((selected.linked_card_snapshot as any).card_nome ?? "—")}</p>
+                    <p>CNPJ: {String((selected.linked_card_snapshot as any).card_cnpj ?? "—")} · fonte: card vinculado</p>
+                    <p>Etapa atual do card: {String((selected.linked_card_snapshot as any).card_etapa ?? "—")}</p>
+                    <p>Card ID: {String((selected.linked_card_snapshot as any).card_id ?? "—")}</p>
+                  </div>
+                )}
+
+                {unlinkOpen && selected.matched_card_id && (
+                  <div className="space-y-2 rounded-md border border-destructive/30 bg-destructive/5 p-2">
+                    <p className="text-xs text-muted-foreground">
+                      Confirme o desfazimento. O card não será apagado nem alterado — apenas o vínculo da triagem é removido.
+                    </p>
+                    <Textarea
+                      rows={2}
+                      value={unlinkJustification}
+                      onChange={(e) => setUnlinkJustification(e.target.value.slice(0, 500))}
+                      placeholder="Justificativa obrigatória (ex.: cliente confirmado como outro CNPJ)."
+                    />
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="destructive" onClick={unlinkCard} disabled={unlinking}>
+                        {unlinking ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : null}
+                        Confirmar desfazimento
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setUnlinkOpen(false)} disabled={unlinking}>
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -924,14 +1093,26 @@ export default function AdminTriagemGmail() {
                               <span className="text-muted-foreground">
                                 {c.card.cnpj ? `· ${c.card.cnpj} ` : ""}· {c.motivo}
                               </span>
-                              <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => setLinkCardId(c.card.id)}>
-                                Selecionar
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 px-2"
+                                onClick={() => linkCard(c.card.id)}
+                                disabled={!!linkingCardId}
+                              >
+                                {linkingCardId === c.card.id ? (
+                                  <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Vinculando...</>
+                                ) : selected.matched_card_id === c.card.id ? (
+                                  "Vinculado"
+                                ) : (
+                                  "Selecionar"
+                                )}
                               </Button>
                               <Button
                                 size="sm"
                                 variant="ghost"
                                 className="h-6 px-2"
-                                onClick={() => navigate(crossCardActionUrl(CROSS_PANEL_ID, c.card.id))}
+                                onClick={() => openCard(c.card.id)}
                               >
                                 <ExternalLink className="h-3 w-3 mr-1" /> Abrir
                               </Button>

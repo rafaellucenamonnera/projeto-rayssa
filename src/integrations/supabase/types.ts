@@ -585,6 +585,9 @@ export type Database = {
           id: string
           jira_issue_key: string | null
           last_correction_at: string | null
+          linked_at: string | null
+          linked_by: string | null
+          linked_card_snapshot: Json | null
           manual_overrides: Json
           matched_card_id: string | null
           message_id: string
@@ -631,6 +634,9 @@ export type Database = {
           id?: string
           jira_issue_key?: string | null
           last_correction_at?: string | null
+          linked_at?: string | null
+          linked_by?: string | null
+          linked_card_snapshot?: Json | null
           manual_overrides?: Json
           matched_card_id?: string | null
           message_id: string
@@ -677,6 +683,9 @@ export type Database = {
           id?: string
           jira_issue_key?: string | null
           last_correction_at?: string | null
+          linked_at?: string | null
+          linked_by?: string | null
+          linked_card_snapshot?: Json | null
           manual_overrides?: Json
           matched_card_id?: string | null
           message_id?: string
@@ -3716,6 +3725,10 @@ export type Database = {
       }
       is_commercial_panel: { Args: { p_panel_id: string }; Returns: boolean }
       is_valid_parceiro: { Args: { p_id: string }; Returns: boolean }
+      link_gmail_triage_card: {
+        Args: { p_card_id: string; p_justification?: string; p_row_id: string }
+        Returns: Json
+      }
       log_representative_card_event: {
         Args: {
           p_action: string
@@ -3795,6 +3808,10 @@ export type Database = {
       }
       submit_teste_monnera: { Args: { p_payload: Json }; Returns: Json }
       sync_commercial_proposal_followups: { Args: never; Returns: number }
+      unlink_gmail_triage_card: {
+        Args: { p_justification: string; p_row_id: string }
+        Returns: Json
+      }
       update_pipeline_stage_followup_message: {
         Args: {
           p_followup_message: string
