@@ -98,7 +98,9 @@ type Ctx = {
   codigo: string | null;
   assuntoOriginal: string | null;
   complemento: string | null;
+  faltantes: string[];
 };
+
 
 type Template = {
   key: string;
