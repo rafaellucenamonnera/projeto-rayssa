@@ -550,19 +550,28 @@ export type Database = {
           cnpj_snippet: string | null
           cnpj_source: string | null
           codigo_encontrado: string | null
+          conflict_notes: Json
           created_at: string
           error: string | null
           extracted: Json
           from_address: string | null
           id: string
+          last_correction_at: string | null
+          manual_overrides: Json
           matched_card_id: string | null
           message_id: string
           mode: string
+          observacoes: string | null
+          operational_status: string
           pending_reason: string | null
+          pending_reason_manual: string | null
           pending_reasons: Json
           received_at: string | null
+          released_at: string | null
+          released_by: string | null
           representative_card_id: string | null
           reprocessed_at: string | null
+          responsavel: string | null
           review_decision: string | null
           review_notes: string | null
           reviewed: boolean
@@ -584,19 +593,28 @@ export type Database = {
           cnpj_snippet?: string | null
           cnpj_source?: string | null
           codigo_encontrado?: string | null
+          conflict_notes?: Json
           created_at?: string
           error?: string | null
           extracted?: Json
           from_address?: string | null
           id?: string
+          last_correction_at?: string | null
+          manual_overrides?: Json
           matched_card_id?: string | null
           message_id: string
           mode?: string
+          observacoes?: string | null
+          operational_status?: string
           pending_reason?: string | null
+          pending_reason_manual?: string | null
           pending_reasons?: Json
           received_at?: string | null
+          released_at?: string | null
+          released_by?: string | null
           representative_card_id?: string | null
           reprocessed_at?: string | null
+          responsavel?: string | null
           review_decision?: string | null
           review_notes?: string | null
           reviewed?: boolean
@@ -618,19 +636,28 @@ export type Database = {
           cnpj_snippet?: string | null
           cnpj_source?: string | null
           codigo_encontrado?: string | null
+          conflict_notes?: Json
           created_at?: string
           error?: string | null
           extracted?: Json
           from_address?: string | null
           id?: string
+          last_correction_at?: string | null
+          manual_overrides?: Json
           matched_card_id?: string | null
           message_id?: string
           mode?: string
+          observacoes?: string | null
+          operational_status?: string
           pending_reason?: string | null
+          pending_reason_manual?: string | null
           pending_reasons?: Json
           received_at?: string | null
+          released_at?: string | null
+          released_by?: string | null
           representative_card_id?: string | null
           reprocessed_at?: string | null
+          responsavel?: string | null
           review_decision?: string | null
           review_notes?: string | null
           reviewed?: boolean
@@ -708,6 +735,53 @@ export type Database = {
           started_at?: string
         }
         Relationships: []
+      }
+      gmail_triage_corrections: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          evidence: Json
+          field: string
+          gmail_message_row_id: string
+          id: string
+          justification: string
+          new_value: string | null
+          old_value: string | null
+          origin: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          evidence?: Json
+          field: string
+          gmail_message_row_id: string
+          id?: string
+          justification: string
+          new_value?: string | null
+          old_value?: string | null
+          origin?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          evidence?: Json
+          field?: string
+          gmail_message_row_id?: string
+          id?: string
+          justification?: string
+          new_value?: string | null
+          old_value?: string | null
+          origin?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gmail_triage_corrections_gmail_message_row_id_fkey"
+            columns: ["gmail_message_row_id"]
+            isOneToOne: false
+            referencedRelation: "gmail_processed_messages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       kit_argumentos: {
         Row: {
@@ -3097,6 +3171,8 @@ export type Database = {
           reviewed_at: string | null
           reviewed_by: string | null
           status: string
+          suggested_gmail_message_id: string | null
+          suggestion_applied_at: string | null
           telefone: string | null
           updated_at: string
         }
@@ -3128,6 +3204,8 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
+          suggested_gmail_message_id?: string | null
+          suggestion_applied_at?: string | null
           telefone?: string | null
           updated_at?: string
         }
@@ -3159,6 +3237,8 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
+          suggested_gmail_message_id?: string | null
+          suggestion_applied_at?: string | null
           telefone?: string | null
           updated_at?: string
         }
@@ -3298,6 +3378,16 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_gmail_triage_correction: {
+        Args: {
+          p_evidence?: Json
+          p_justification: string
+          p_origin?: string
+          p_row_id: string
+          p_values: Json
+        }
+        Returns: Json
+      }
       business_days_between: {
         Args: { p_from: string; p_to: string }
         Returns: number
@@ -3411,6 +3501,12 @@ export type Database = {
         Args: { p_token: string }
         Returns: Json
       }
+      gmail_triage_recompute: {
+        Args: {
+          p_row: Database["public"]["Tables"]["gmail_processed_messages"]["Row"]
+        }
+        Returns: Json
+      }
       has_any_admin: { Args: never; Returns: boolean }
       has_module_permission: {
         Args: { _acao: string; _modulo: string; _user_id: string }
@@ -3488,6 +3584,10 @@ export type Database = {
           p_telefone_numero: string
           p_user_id: string
         }
+        Returns: Json
+      }
+      release_gmail_triage_message: {
+        Args: { p_justification: string; p_row_id: string }
         Returns: Json
       }
       reset_commercial_lead_stage_timer: {
