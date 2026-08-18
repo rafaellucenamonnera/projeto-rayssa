@@ -110,10 +110,21 @@ export default function AdminEmailOnboarding() {
     setSending(false);
     setConfirmOpen(false);
     if (error || (data as any)?.error) {
-      toast.error(`Falha no envio: ${(data as any)?.error ?? error?.message}`);
+      let detail = (data as any)?.error ?? error?.message ?? "erro desconhecido";
+      const ctx = (error as any)?.context;
+      if (ctx && typeof ctx.json === "function") {
+        try {
+          const body = await ctx.json();
+          if (body?.error) detail = `${body.error}${body.detail ? ` — ${body.detail}` : ""}`;
+        } catch {
+          /* mantem mensagem generica */
+        }
+      }
+      toast.error(`Falha no envio: ${detail}`);
       loadHistory();
       return;
     }
+
     const result = data as any;
     toast.success(`E-mail enviado. message_id ${result.message_id ?? "-"}`);
     loadHistory();

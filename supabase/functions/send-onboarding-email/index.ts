@@ -136,6 +136,27 @@ Deno.serve(async (req) => {
       return json({ error: "Conexao Gmail nao vinculada ao projeto." }, 500);
     }
 
+    // ------------------------------------------- protecao contra duplicidade
+    const { data: alreadySent } = await admin
+      .from("onboarding_email_sends")
+      .select("id, sent_at, message_id")
+      .eq("card_id", cardId)
+      .eq("codigo_parceiro", codigo)
+      .eq("status", "enviado")
+      .maybeSingle();
+    if (alreadySent) {
+      return json(
+        {
+          error: "E-mail de onboarding ja enviado para este card/codigo.",
+          duplicate: true,
+          log_id: alreadySent.id,
+          message_id: alreadySent.message_id,
+          sent_at: alreadySent.sent_at,
+        },
+        409,
+      );
+    }
+
     // -------------------------------------------------- registro (pendente)
     const { data: logRow, error: logError } = await admin
       .from("onboarding_email_sends")
@@ -156,7 +177,11 @@ Deno.serve(async (req) => {
       })
       .select("id")
       .single();
-    if (logError) return json({ error: `Falha ao registrar envio: ${logError.message}` }, 500);
+    if (logError) {
+      console.error("insert onboarding_email_sends failed", logError.message);
+      return json({ error: `Falha ao registrar envio: ${logError.message}` }, 500);
+    }
+
 
     // ------------------------------------------------------------- envio
     const raw = bytesToB64Url(new TextEncoder().encode(buildMime(recipients[0], assunto, html)));
