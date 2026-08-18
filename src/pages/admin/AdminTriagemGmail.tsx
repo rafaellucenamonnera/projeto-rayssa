@@ -24,6 +24,10 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import {
+  computeOperationalInfo,
+  OPERATIONAL_FILTER_OPTIONS,
+} from "@/lib/triageOperationalStatus";
 import { ArrowLeft, ExternalLink, Loader2, RefreshCw, CheckCircle2, Mail, ShieldCheck } from "lucide-react";
 
 const CROSS_PANEL_ID = "painel_msj9fyji";
@@ -76,6 +80,7 @@ type TriageMessage = {
   pending_reason_manual: string | null;
   operational_status: string;
   released_at: string | null;
+  released_by: string | null;
   conflict_notes: Array<Record<string, unknown>> | null;
   last_correction_at: string | null;
 };
@@ -203,6 +208,7 @@ export default function AdminTriagemGmail() {
 
   const [filterResult, setFilterResult] = useState("all");
   const [filterReviewed, setFilterReviewed] = useState("all");
+  const [filterOperational, setFilterOperational] = useState("all");
   const [filterCnpj, setFilterCnpj] = useState("");
   const [filterFrom, setFilterFrom] = useState("");
   const [filterCodigo, setFilterCodigo] = useState("");
@@ -223,7 +229,8 @@ export default function AdminTriagemGmail() {
   const [activation, setActivation] = useState<any | null>(null);
   const [activationJustification, setActivationJustification] = useState("");
   const [activationConfirm, setActivationConfirm] = useState(false);
-  const [executions, setExecutions] = useState<Array<{ id: string; cliente_nome: string; cnpj: string; codigo_monnera: string; source: string; created_at: string }>>([]);
+  const [executions, setExecutions] = useState<Array<{ id: string; source: string; source_row_id: string | null; cliente_nome: string; cnpj: string; codigo_monnera: string; created_at: string; executed_by: string | null }>>([]);
+  const [userNames, setUserNames] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -252,18 +259,51 @@ export default function AdminTriagemGmail() {
       (supabase as any).from("gmail_activation_control").select("enabled,max_per_execution,stop_reason").maybeSingle(),
       (supabase as any)
         .from("triage_activation_executions")
-        .select("id,cliente_nome,cnpj,codigo_monnera,source,created_at")
+        .select("id,source,source_row_id,cliente_nome,cnpj,codigo_monnera,created_at,executed_by")
         .order("created_at", { ascending: false })
-        .limit(20),
+        .limit(200),
     ]);
     setControl((ctrlRes?.data as any) ?? null);
     setExecutions((execRes?.data ?? []) as any[]);
+
+    const { data: profileRows } = await (supabase as any).from("profiles").select("user_id,nome");
+    setUserNames(
+      Object.fromEntries(((profileRows ?? []) as Array<{ user_id: string; nome: string }>).map((p) => [p.user_id, p.nome])),
+    );
     setLoading(false);
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  const executionByRow = useMemo(() => {
+    const map = new Map<string, { created_at: string; executed_by?: string | null }>();
+    executions
+      .filter((e) => e.source === "gmail" && e.source_row_id)
+      .forEach((e) => map.set(e.source_row_id as string, { created_at: e.created_at, executed_by: e.executed_by }));
+    return map;
+  }, [executions]);
+
+  const operationalInfo = useCallback(
+    (m: TriageMessage) =>
+      computeOperationalInfo(
+        {
+          analysisResult: m.analysis_result,
+          status: m.status,
+          reviewed: m.reviewed,
+          reviewDecision: m.review_decision,
+          reviewNotes: m.review_notes,
+          operationalStatus: m.operational_status,
+          pendingReasons: m.pending_reasons,
+          pendingReasonManual: m.pending_reason_manual,
+          pendingReasonText: m.pending_reason,
+          execution: executionByRow.get(m.id) ?? null,
+        },
+        PENDING_LABEL,
+      ),
+    [executionByRow],
+  );
 
   const filtered = useMemo(() => {
     const cnpjTerm = onlyDigits(filterCnpj);
@@ -276,6 +316,7 @@ export default function AdminTriagemGmail() {
       if (filterResult !== "all" && (m.analysis_result ?? m.status) !== filterResult) return false;
       if (filterReviewed === "reviewed" && !m.reviewed) return false;
       if (filterReviewed === "pending" && m.reviewed) return false;
+      if (filterOperational !== "all" && operationalInfo(m).state !== filterOperational) return false;
       if (cnpjTerm) {
         const cnpj = onlyDigits(extractedField(m.extracted, "cnpj") ?? "");
         if (!cnpj.includes(cnpjTerm)) return false;
@@ -287,7 +328,7 @@ export default function AdminTriagemGmail() {
       if (fim && ref > fim) return false;
       return true;
     });
-  }, [messages, filterResult, filterReviewed, filterCnpj, filterFrom, filterCodigo, filterInicio, filterFim]);
+  }, [messages, filterResult, filterReviewed, filterOperational, operationalInfo, filterCnpj, filterFrom, filterCodigo, filterInicio, filterFim]);
 
   const resultOptions = useMemo(
     () => Array.from(new Set(messages.map((m) => m.analysis_result ?? m.status))).sort(),
@@ -595,6 +636,14 @@ export default function AdminTriagemGmail() {
             <SelectItem value="reviewed">Revisadas</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={filterOperational} onValueChange={setFilterOperational}>
+          <SelectTrigger><SelectValue placeholder="Status operacional" /></SelectTrigger>
+          <SelectContent>
+            {OPERATIONAL_FILTER_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Input placeholder="CNPJ" value={filterCnpj} onChange={(e) => setFilterCnpj(e.target.value)} />
         <Input placeholder="Remetente" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} />
         <Input placeholder="Código Monnera" value={filterCodigo} onChange={(e) => setFilterCodigo(e.target.value)} />
@@ -621,6 +670,8 @@ export default function AdminTriagemGmail() {
                 const result = m.analysis_result ?? m.status;
                 const cnpj = extractedField(m.extracted, "cnpj");
                 const nome = extractedField(m.extracted, "nome_parceiro");
+                const op = operationalInfo(m);
+                const exec = executionByRow.get(m.id) ?? null;
                 return (
                   <button
                     key={m.id}
@@ -643,6 +694,7 @@ export default function AdminTriagemGmail() {
                       ) : (
                         <Badge variant="outline" className="text-muted-foreground">Não revisada</Badge>
                       )}
+                      <Badge variant="outline" className={op.tone}>{op.label}</Badge>
                       {m.attachments_count > 0 && (
                         <Badge variant="outline">{m.attachments_count} anexo(s)</Badge>
                       )}
@@ -655,8 +707,17 @@ export default function AdminTriagemGmail() {
                       {cnpj && <span>CNPJ: {cnpj}</span>}
                       {m.codigo_encontrado && <span>Código: {m.codigo_encontrado}</span>}
                     </div>
-                    {m.pending_reason && (
-                      <p className="mt-1 text-xs text-amber-400">{m.pending_reason}</p>
+                    <div className="mt-1 text-xs text-muted-foreground grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-1">
+                      <span>Triagem: {STATUS_LABEL[result] ?? result}</span>
+                      <span>Revisão: {m.reviewed ? `Revisada${m.review_decision ? ` (${m.review_decision})` : ""}` : "Não revisada"}</span>
+                      <span>Operacional: {op.label}</span>
+                      <span>Liberação: {m.released_at ? fmtDate(m.released_at) : "—"}</span>
+                      <span>Liberado por: {m.released_by ? (userNames[m.released_by] ?? m.released_by) : "—"}</span>
+                      <span>Execução: {exec ? fmtDate(exec.created_at) : "—"}</span>
+                      <span>Status da execução: {exec ? "Card criado" : "Sem execução"}</span>
+                    </div>
+                    {op.blockReason && op.state !== "liberado" && op.state !== "executado" && (
+                      <p className="mt-1 text-xs text-amber-400">Motivo do bloqueio: {op.blockReason}</p>
                     )}
                   </button>
                 );
@@ -864,14 +925,16 @@ export default function AdminTriagemGmail() {
                     >
                       Salvar correção
                     </Button>
+                    {operationalInfo(selected).state === "liberado" && (
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => openActivation(selected)}
-                      disabled={saving || selected.operational_status !== "liberado"}
+                      disabled={saving || operationalInfo(selected).state !== "liberado"}
                     >
                       Ativação controlada
                     </Button>
+                    )}
                     <Button
                       size="sm"
                       onClick={releaseRecord}
