@@ -368,8 +368,113 @@ export default function AdminTriagemGmail() {
     setLinkCardId(m.matched_card_id ?? "none");
     setJustification("");
     setConfirmRelease(false);
+    setUnlinkOpen(false);
+    setUnlinkJustification("");
     setForm(Object.fromEntries(CORRECTION_FIELDS.map((f) => [f.key, effectiveValue(m, f.key)])));
     loadCorrections(m.id);
+  };
+
+  /** Recarrega o registro aberto após uma ação, mantendo o detalhe na tela. */
+  const refreshSelected = async (rowId: string) => {
+    const { data } = await (supabase as any)
+      .from("gmail_processed_messages")
+      .select("*")
+      .eq("id", rowId)
+      .maybeSingle();
+    if (data) {
+      const fresh = data as TriageMessage;
+      setSelected(fresh);
+      setLinkCardId(fresh.matched_card_id ?? "none");
+      setForm(Object.fromEntries(CORRECTION_FIELDS.map((f) => [f.key, effectiveValue(fresh, f.key)])));
+    }
+    await loadCorrections(rowId);
+  };
+
+  /**
+   * Vincula o card confirmado pelo operador: preenche nome/CNPJ faltantes a partir do card,
+   * registra a evidência no histórico imutável e reavalia a etapa. O card não é alterado.
+   */
+  const linkCard = async (cardId: string) => {
+    if (!selected || linkingCardId) return;
+    setLinkingCardId(cardId);
+    try {
+      const { data, error } = await (supabase as any).rpc("link_gmail_triage_card", {
+        p_row_id: selected.id,
+        p_card_id: cardId,
+        p_justification: "Vínculo confirmado manualmente na triagem: mensagem e card correspondem ao mesmo cliente.",
+      });
+      if (error) throw error;
+
+      await logCardEvent(cardId, "triage_linked", {
+        origem: "triagem_gmail",
+        message_id: selected.message_id,
+        thread_id: selected.thread_id,
+        remetente: selected.from_address,
+        assunto: selected.subject,
+        cnpj: (data as any)?.cnpj ?? null,
+        fonte_cnpj: (data as any)?.cnpj_source ?? null,
+        liberado: !!(data as any)?.released,
+      });
+
+      setLinkCardId(cardId);
+      toast.success("Card vinculado com sucesso. Os dados confirmados foram preenchidos na triagem.");
+      if ((data as any)?.released) {
+        toast.success("Registro liberado para a etapa Criação Painel. O código Monnera segue pendente dessa etapa.");
+      }
+      await refreshSelected(selected.id);
+      await load();
+    } catch (error: any) {
+      toast.error(error?.message || "Não foi possível vincular o card. Tente novamente.");
+    } finally {
+      setLinkingCardId(null);
+    }
+  };
+
+  /** Desfaz o vínculo apenas na triagem, sem apagar ou alterar o card. */
+  const unlinkCard = async () => {
+    if (!selected || unlinking) return;
+    if (!unlinkJustification.trim()) {
+      toast.error("Informe a justificativa para desfazer o vínculo.");
+      return;
+    }
+    const previousCardId = selected.matched_card_id;
+    setUnlinking(true);
+    try {
+      const { error } = await (supabase as any).rpc("unlink_gmail_triage_card", {
+        p_row_id: selected.id,
+        p_justification: unlinkJustification.trim(),
+      });
+      if (error) throw error;
+
+      if (previousCardId) {
+        await logCardEvent(previousCardId, "triage_unlinked", {
+          origem: "triagem_gmail",
+          message_id: selected.message_id,
+          thread_id: selected.thread_id,
+          justificativa: unlinkJustification.trim(),
+        });
+      }
+
+      toast.success("Vínculo desfeito. O card não foi alterado.");
+      setUnlinkOpen(false);
+      setUnlinkJustification("");
+      await refreshSelected(selected.id);
+      await load();
+    } catch (error: any) {
+      toast.error(error?.message || "Não foi possível desfazer o vínculo. Tente novamente.");
+    } finally {
+      setUnlinking(false);
+    }
+  };
+
+  /** Abre o card específico do painel em nova aba, preservando a triagem. */
+  const openCard = (cardId: string) => {
+    const exists = cards.some((c) => c.id === cardId);
+    if (!exists) {
+      toast.error("O card não foi encontrado. O vínculo permanece registrado para análise.");
+      return;
+    }
+    window.open(crossCardActionUrl(CROSS_PANEL_ID, cardId), "_blank", "noopener");
   };
 
   /** Cards candidatos exibidos quando o registro não pode ser liberado. */
