@@ -78,6 +78,20 @@ type ExtractionRow = {
   created_at: string;
 };
 
+type PendingGmail = {
+  id: string;
+  message_id: string;
+  thread_id: string | null;
+  subject: string | null;
+  from_address: string | null;
+  extracted: Record<string, unknown> | null;
+  codigo_encontrado: string | null;
+  analysis_result: string | null;
+  manual_overrides: Record<string, string> | null;
+  operational_status: string;
+  received_at: string | null;
+};
+
 const STATUS_TONE: Record<string, string> = {
   triage_ok: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
   triage_duplicado: "bg-sky-500/15 text-sky-400 border-sky-500/30",
@@ -111,6 +125,8 @@ export default function AdminImportWhatsapp() {
   const [imports, setImports] = useState<ImportRow[]>([]);
   const [rows, setRows] = useState<ExtractionRow[]>([]);
   const [cards, setCards] = useState<CrossCardRef[]>([]);
+  const [pendingGmail, setPendingGmail] = useState<PendingGmail[]>([]);
+  const [suggestionJustification, setSuggestionJustification] = useState("");
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
 
@@ -132,7 +148,7 @@ export default function AdminImportWhatsapp() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [importsRes, rowsRes, cardsRes] = await Promise.all([
+      const [importsRes, rowsRes, cardsRes, pendingRes] = await Promise.all([
         (supabase as any)
           .from("whatsapp_imports")
           .select("id,file_name,size_bytes,content_sha256,status,message_count,first_message_at,last_message_at,created_at")
