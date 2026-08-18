@@ -301,6 +301,8 @@ export type Database = {
           edited_page: number | null
           id: string
           metadata: Json
+          public_url: string | null
+          public_url_kind: string | null
           source: string
           template_design_id: string
           test_mode: boolean
@@ -318,6 +320,8 @@ export type Database = {
           edited_page?: number | null
           id?: string
           metadata?: Json
+          public_url?: string | null
+          public_url_kind?: string | null
           source?: string
           template_design_id: string
           test_mode?: boolean
@@ -335,6 +339,8 @@ export type Database = {
           edited_page?: number | null
           id?: string
           metadata?: Json
+          public_url?: string | null
+          public_url_kind?: string | null
           source?: string
           template_design_id?: string
           test_mode?: boolean
@@ -2798,11 +2804,13 @@ export type Database = {
           blocked_reason: string | null
           blocked_source: string | null
           canva_design_id: string | null
+          canva_internal_url: string | null
           canva_material_codigo: string | null
           canva_material_generated_at: string | null
           canva_material_source: string | null
           canva_material_url: string | null
           canva_material_version: number | null
+          canva_public_url: string | null
           city: string | null
           cnpj: string | null
           codigo_evidencia: Json | null
@@ -2851,11 +2859,13 @@ export type Database = {
           blocked_reason?: string | null
           blocked_source?: string | null
           canva_design_id?: string | null
+          canva_internal_url?: string | null
           canva_material_codigo?: string | null
           canva_material_generated_at?: string | null
           canva_material_source?: string | null
           canva_material_url?: string | null
           canva_material_version?: number | null
+          canva_public_url?: string | null
           city?: string | null
           cnpj?: string | null
           codigo_evidencia?: Json | null
@@ -2904,11 +2914,13 @@ export type Database = {
           blocked_reason?: string | null
           blocked_source?: string | null
           canva_design_id?: string | null
+          canva_internal_url?: string | null
           canva_material_codigo?: string | null
           canva_material_generated_at?: string | null
           canva_material_source?: string | null
           canva_material_url?: string | null
           canva_material_version?: number | null
+          canva_public_url?: string | null
           city?: string | null
           cnpj?: string | null
           codigo_evidencia?: Json | null
@@ -3809,6 +3821,7 @@ export type Database = {
         Args: { p_proposal_id: string; p_reason: string }
         Returns: Json
       }
+      canva_public_link_kind: { Args: { p_url: string }; Returns: string }
       complement_cross_card_from_triage: {
         Args: { p_card_id: string; p_row_id: string; p_source: string }
         Returns: Json
@@ -3933,6 +3946,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_canva_public_link: { Args: { p_url: string }; Returns: boolean }
       is_commercial_panel: { Args: { p_panel_id: string }; Returns: boolean }
       is_valid_parceiro: { Args: { p_id: string }; Returns: boolean }
       link_gmail_triage_card: {
@@ -3985,6 +3999,7 @@ export type Database = {
           p_edit_url: string
           p_edited_page?: number
           p_metadata?: Json
+          p_public_url?: string
           p_source?: string
           p_template_design_id: string
           p_view_url: string
