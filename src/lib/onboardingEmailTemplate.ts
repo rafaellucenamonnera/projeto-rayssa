@@ -346,9 +346,9 @@ export function renderOnboardingEmail(fields: OnboardingEmailFields): RenderResu
   if (!isValidUrl(link)) errors.push("Link do material deve ser uma URL https valida.");
 
   const html = ONBOARDING_EMAIL_TEMPLATE_V2
-    .replaceAll("{{NOME_PARCEIRO}}", escapeHtml(nome))
-    .replaceAll("{{CODIGO_CADASTRO_PARCEIRO}}", escapeHtml(codigo))
-    .replaceAll("{{LINK_MATERIAL_CLIENTE}}", escapeAttr(link));
+    .split("{{NOME_PARCEIRO}}").join(escapeHtml(nome))
+    .split("{{CODIGO_CADASTRO_PARCEIRO}}").join(escapeHtml(codigo))
+    .split("{{LINK_MATERIAL_CLIENTE}}").join(escapeAttr(link));
 
   return { html, errors };
 }
