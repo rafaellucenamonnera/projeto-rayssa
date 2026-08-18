@@ -87,7 +87,7 @@ Edge Functions: `jira-create-panel-task` (nova), `jira-code-webhook` (nova, `ver
 
 Frontend: `src/pages/admin/AdminLeads.tsx`, `AdminTriagemGmail.tsx`, `AdminImportWhatsapp.tsx`; novos componentes em `src/components/admin/`: `JiraTaskDialog`, `CodigoMonneraField`, `CardOriginTimeline`, `ManualLinkDialog`, `AutomationHealthPanel`.
 
-Secrets necessários (solicito no início da execução): `ATLASSIAN_SITE_URL`, `ATLASSIAN_EMAIL`, `ATLASSIAN_API_TOKEN`, `JIRA_WEBHOOK_SECRET`, `CANVA_ACCESS_TOKEN`.
+Secrets necessários: `ATLASSIAN_SITE_URL`, `ATLASSIAN_EMAIL`, `ATLASSIAN_API_TOKEN`, `JIRA_WEBHOOK_SECRET`, `CANVA_ACCESS_TOKEN`. Nenhum token é pedido, colado ou exibido no chat: abro o formulário seguro do gerenciador de secrets do projeto e os valores ficam apenas lá, acessíveis às Edge Functions em tempo de execução.
 
 Webhook Jira: entrego a URL `https://<projeto>.functions.supabase.co/jira-code-webhook`; no Jira, criar webhook no projeto MB para o evento "issue updated", filtrando o tipo Tarefa, com o header do segredo compartilhado.
 
