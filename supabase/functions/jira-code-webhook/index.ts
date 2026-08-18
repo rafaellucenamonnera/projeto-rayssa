@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
     await admin.rpc("record_automation_run", {
       p_stage: "jira_code_webhook", p_status: "erro", p_card_id: null,
       p_error: auth.reason ?? "não autenticado", p_origin: "jira_webhook", p_payload: {},
-    }).catch(() => null);
+    });
     return json({ error: "Não autorizado." }, 401);
   }
 
@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
       await admin.rpc("record_automation_run", {
         p_stage: "jira_code_webhook", p_status: "sucesso", p_card_id: null,
         p_error: null, p_origin: "jira_webhook", p_payload: { mode: "ping" },
-      }).catch(() => null);
+      });
       return json({ ok: true, mode: "ping" }, 200);
     }
   } catch (_) { /* corpo não-JSON segue o fluxo normal */ }
@@ -147,7 +147,7 @@ Deno.serve(async (req) => {
           p_metadata: { issue_key: issueKey, card_id: cardId },
           p_actor_user_id: null,
           p_delivery_key: `jira_code_${issueKey ?? "sem_chave"}_${Date.now()}`,
-        }).catch(() => null);
+        });
       }
     };
 
@@ -243,7 +243,7 @@ Deno.serve(async (req) => {
     const message = error instanceof Error ? error.message : String(error);
     await admin.rpc("record_automation_run", {
       p_stage: "jira_code_webhook", p_status: "erro", p_card_id: cardId, p_error: message, p_origin: "jira_webhook", p_payload: {},
-    }).catch(() => null);
+    });
     return json({ ok: false, error: message }, 500);
   }
 });
