@@ -86,6 +86,10 @@ type TriageMessage = {
   released_by: string | null;
   conflict_notes: Array<Record<string, unknown>> | null;
   last_correction_at: string | null;
+
+  linked_at: string | null;
+  linked_by: string | null;
+  linked_card_snapshot: Record<string, unknown> | null;
 };
 
 type Correction = {
