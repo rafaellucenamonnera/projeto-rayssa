@@ -525,7 +525,18 @@ export default function AdminImportWhatsapp() {
           cliente: payload.cliente_nome,
           observacoes: notes || null,
         });
+
+        // Registra a origem WhatsApp na proveniência do card (sem sobrescrever o card).
+        await (supabase as any).rpc("link_source_to_card", {
+          p_card_id: linked,
+          p_source: "whatsapp",
+          p_source_record_id: selected.id,
+          p_thread_id: null,
+          p_link_mode: "manual",
+          p_justification: notes?.trim() || "Vínculo confirmado manualmente na importação de WhatsApp.",
+        });
       }
+
 
       toast.success(
         decision === "rejeitado" ? "Registro rejeitado." : "Revisão registrada (nenhum card foi alterado).",
