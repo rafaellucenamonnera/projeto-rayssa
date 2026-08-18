@@ -1074,6 +1074,30 @@ export default function AdminTriagemGmail() {
                 <Field label="Data" value={fmtDate(selected.received_at ?? selected.created_at)} />
                 <Field label="Thread ID" value={selected.thread_id} />
                 <Field label="Message ID" value={selected.message_id} />
+                <Field
+                  label="Remetente inicial da thread"
+                  value={selected.thread_participants?.first_sender ?? originSenderOf(selected)}
+                />
+                <Field
+                  label="Domínio de origem"
+                  value={originDomainOf(selected) ? `@${originDomainOf(selected)}` : null}
+                />
+                <Field
+                  label="Domínios da thread"
+                  value={threadDomains(selected).map((d) => `@${d}`).join(", ") || null}
+                />
+                <Field
+                  label="Participantes da thread"
+                  value={threadParticipantList(selected).join(", ") || null}
+                />
+                <Field
+                  label="Evidência da origem"
+                  value={
+                    selected.origin_match_evidence
+                      ? `${selected.origin_match_evidence}${selected.origin_match_type ? ` (${selected.origin_match_type})` : ""}`
+                      : null
+                  }
+                />
                 <Field label="CNPJ normalizado" value={extractedField(selected.extracted, "cnpj")} />
                 <Field
                   label="Fonte do CNPJ"
