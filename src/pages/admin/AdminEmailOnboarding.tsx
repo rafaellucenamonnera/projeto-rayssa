@@ -35,6 +35,10 @@ interface HistoryRow {
   destinatarios: string[];
   status: string;
   created_at: string;
+  message_id: string | null;
+  thread_id: string | null;
+  template_name: string | null;
+  template_version: string | null;
 }
 
 const statusVariant = (status: string) =>
@@ -120,7 +124,7 @@ export default function AdminEmailOnboarding() {
   const loadHistory = async () => {
     const { data } = await (supabase as any)
       .from("onboarding_email_sends")
-      .select("id,nome_parceiro,codigo_parceiro,link_material,assunto,destinatarios,status,created_at")
+      .select("id,nome_parceiro,codigo_parceiro,link_material,assunto,destinatarios,status,created_at,message_id,thread_id,template_name,template_version")
       .order("created_at", { ascending: false })
       .limit(30);
     setHistory((data as HistoryRow[]) || []);
@@ -325,6 +329,11 @@ export default function AdminEmailOnboarding() {
                 <p className="text-xs text-muted-foreground truncate">
                   {row.codigo_parceiro} · {row.destinatarios?.join(", ") || "sem destinatários"}
                 </p>
+                {row.message_id && (
+                  <p className="text-xs text-muted-foreground truncate">
+                    msg {row.message_id} · thread {row.thread_id ?? "-"} · {row.template_name}/{row.template_version}
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-xs text-muted-foreground">
