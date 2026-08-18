@@ -247,6 +247,32 @@ export default function AdminTriagemGmail() {
   const [executions, setExecutions] = useState<Array<{ id: string; source: string; source_row_id: string | null; cliente_nome: string; cnpj: string; codigo_monnera: string; created_at: string; executed_by: string | null }>>([]);
   const [userNames, setUserNames] = useState<Record<string, string>>({});
 
+  /** Mantém a lista de dados faltantes do card vinculado sincronizada com a seleção. */
+  const activeCardId = linkCardId !== "none" ? linkCardId : selected?.matched_card_id ?? null;
+  useEffect(() => {
+    let alive = true;
+    if (!activeCardId) {
+      setCardMissingFields([]);
+      return;
+    }
+    (async () => {
+      const { data } = await (supabase as any)
+        .from("representative_cards")
+        .select("pending_fields")
+        .eq("id", activeCardId)
+        .maybeSingle();
+      if (!alive) return;
+      setCardMissingFields(
+        ((data?.pending_fields ?? []) as Array<{ rotulo?: string }>).map((f) => String(f?.rotulo ?? "")).filter(Boolean),
+      );
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [activeCardId]);
+
+
+
   const load = useCallback(async () => {
     setLoading(true);
     const [msgRes, runRes, cardRes] = await Promise.all([
