@@ -747,6 +747,12 @@ Deno.serve(async (req) => {
         const subject = gmailHeader(payload, "Subject");
         const threadId = msg?.threadId ?? null;
         const receivedAt = msg?.internalDate ? new Date(Number(msg.internalDate)).toISOString() : null;
+        // metadados de origem (somente filtro/auditoria — não afetam classificação)
+        const threadOrigin = await collectThreadOrigin(threadId, {
+          from,
+          to: gmailHeader(payload, "To"),
+          cc: gmailHeader(payload, "Cc"),
+        });
         const fromLower = from.toLowerCase();
         const toLower = to.toLowerCase();
         // Jira só entra no escopo quando destinado à caixa autorizada.
