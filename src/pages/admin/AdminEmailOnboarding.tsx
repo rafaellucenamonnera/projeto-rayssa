@@ -40,6 +40,18 @@ interface HistoryRow {
 const statusVariant = (status: string) =>
   status === "enviado" ? "default" : status === "erro" ? "destructive" : "secondary";
 
+// Envio controlado: liberado exclusivamente para o card de QA abaixo.
+const QA_SEND = {
+  cardId: "32d1e94e-ab53-42b3-9118-ab3ad2d07c77",
+  nome: "TESTE FASE A QA",
+  codigo: "QATEST01",
+  link: "https://www.canva.com/d/c4zxi4vpjmbpv7V",
+  destinatario: "rafael.lucena@monnera.com.br",
+  conta: "rafael.lucena@monnera.com.br",
+  template: "onboarding-parceiro-baston",
+  versao: "v2",
+};
+
 export default function AdminEmailOnboarding() {
   const { user, isAdmin } = useAuth();
   const [nome, setNome] = useState("");
@@ -49,6 +61,7 @@ export default function AdminEmailOnboarding() {
   const [assunto, setAssunto] = useState(ONBOARDING_EMAIL_SUBJECT);
   const [preview, setPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [sending, setSending] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [history, setHistory] = useState<HistoryRow[]>([]);
 
@@ -57,6 +70,52 @@ export default function AdminEmailOnboarding() {
     () => recipients.filter((item) => !isValidEmail(item)),
     [recipients],
   );
+
+  const isQaSend =
+    nome.trim() === QA_SEND.nome &&
+    codigo.trim().toUpperCase() === QA_SEND.codigo &&
+    link.trim() === QA_SEND.link &&
+    recipients.length === 1 &&
+    recipients[0].toLowerCase() === QA_SEND.destinatario;
+
+  const loadQaCard = () => {
+    setNome(QA_SEND.nome);
+    setCodigo(QA_SEND.codigo);
+    setLink(QA_SEND.link);
+    setDestinatarios(QA_SEND.destinatario);
+    setAssunto(ONBOARDING_EMAIL_SUBJECT);
+    setPreview(null);
+    toast.success("Dados do card TESTE FASE A QA carregados.");
+  };
+
+  const handleSend = async () => {
+    const html = preview ?? build();
+    if (!html || !isQaSend) return;
+    setSending(true);
+    const { data, error } = await supabase.functions.invoke("send-onboarding-email", {
+      body: {
+        card_id: QA_SEND.cardId,
+        nome_parceiro: nome.trim(),
+        codigo_parceiro: codigo.trim().toUpperCase(),
+        link_material: link.trim(),
+        assunto: assunto.trim(),
+        destinatarios: recipients,
+        html,
+      },
+    });
+    setSending(false);
+    setConfirmOpen(false);
+    if (error || (data as any)?.error) {
+      toast.error(`Falha no envio: ${(data as any)?.error ?? error?.message}`);
+      loadHistory();
+      return;
+    }
+    const result = data as any;
+    toast.success(`E-mail enviado. message_id ${result.message_id ?? "-"}`);
+    loadHistory();
+  };
+
+
 
   const loadHistory = async () => {
     const { data } = await (supabase as any)
