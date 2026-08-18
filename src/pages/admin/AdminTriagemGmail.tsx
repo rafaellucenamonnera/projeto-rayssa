@@ -726,9 +726,15 @@ export default function AdminTriagemGmail() {
       toast.error(`Execução bloqueada: ${error.message}`);
       return;
     }
-    toast.success(
-      `${(data as any)?.card_acao === "reutilizar" ? "Card existente associado" : "Card criado na etapa Cadastro"} e movido para Criação Painel. Tarefa Jira pendente de criação; nenhum e-mail enviado.`,
-    );
+    const res = (data ?? {}) as any;
+    const base = res?.card_acao === "reutilizar" ? "Card existente associado" : "Card criado na etapa Cadastro";
+    if (res?.avancou) {
+      toast.success(`${base} e movido para Criação Painel. Tarefa Jira pendente; nenhum e-mail enviado.`);
+    } else {
+      const faltam = (res?.dados_faltantes ?? []).map((f: any) => f.rotulo).join("; ") || "—";
+      toast.success(`${base}. Pendente de complementação — faltam: ${faltam}. Solicite os dados na aba do registro.`);
+    }
+
     setActivation(null);
     setSelected(null);
     load();
