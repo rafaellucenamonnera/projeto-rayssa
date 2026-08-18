@@ -1017,11 +1017,27 @@ export default function AdminImportWhatsapp() {
                   </ul>
                 </div>
               </div>
+              {(activation.dados_faltantes ?? []).length > 0 && (
+                <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-amber-300">
+                  <p className="font-medium">Card ficará pendente — dados faltantes</p>
+                  <ul className="list-disc pl-4">
+                    {(activation.dados_faltantes ?? []).map((f: any, i: number) => <li key={i}>{f.rotulo}</li>)}
+                  </ul>
+                </div>
+              )}
               {(activation.bloqueios ?? []).length > 0 && (
                 <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-destructive">
-                  <p className="font-medium">Bloqueios impedem a execução</p>
+                  <p className="font-medium">Bloqueios impedem a criação do cadastro</p>
                   <ul className="list-disc pl-4">
                     {(activation.bloqueios ?? []).map((b: string, i: number) => <li key={i}>{b}</li>)}
+                  </ul>
+                </div>
+              )}
+              {(activation.bloqueios ?? []).length === 0 && (activation.bloqueios_avanco ?? []).length > 0 && (
+                <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-amber-300">
+                  <p className="font-medium">O cadastro será criado, mas ainda não avança</p>
+                  <ul className="list-disc pl-4">
+                    {(activation.bloqueios_avanco ?? []).map((b: string, i: number) => <li key={i}>{b}</li>)}
                   </ul>
                 </div>
               )}
@@ -1033,9 +1049,11 @@ export default function AdminImportWhatsapp() {
               />
               <div className="flex justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={() => setActivation(null)} disabled={saving}>Cancelar</Button>
-                <Button size="sm" onClick={runActivation} disabled={saving || !activation.pode_executar}>
-                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Executar 1 registro
+                <Button size="sm" onClick={runActivation} disabled={saving || !activation.pode_criar_card}>
+                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}{" "}
+                  {activation.pode_avancar ? "Criar e avançar 1 registro" : "Criar cadastro pendente"}
                 </Button>
+
               </div>
             </div>
           )}
