@@ -69,6 +69,44 @@ type TriageMessage = {
   reviewed_by: string | null;
   review_decision: string | null;
   review_notes: string | null;
+
+  manual_overrides: Record<string, string> | null;
+  observacoes: string | null;
+  responsavel: string | null;
+  pending_reason_manual: string | null;
+  operational_status: string;
+  released_at: string | null;
+  conflict_notes: Array<Record<string, unknown>> | null;
+  last_correction_at: string | null;
+};
+
+type Correction = {
+  id: string;
+  field: string;
+  old_value: string | null;
+  new_value: string | null;
+  justification: string;
+  origin: string;
+  created_at: string;
+  created_by: string | null;
+};
+
+const CORRECTION_FIELDS: Array<{ key: string; label: string }> = [
+  { key: "nome_parceiro", label: "Nome" },
+  { key: "cnpj", label: "CNPJ" },
+  { key: "email", label: "E-mail" },
+  { key: "telefone", label: "Telefone" },
+  { key: "codigo_monnera", label: "Código Monnera" },
+  { key: "responsavel", label: "Responsável" },
+  { key: "observacoes", label: "Observações" },
+  { key: "pending_reason_manual", label: "Motivo da pendência" },
+];
+
+const ORIGIN_LABEL: Record<string, string> = {
+  manual: "Correção manual",
+  novo_email: "Nova mensagem do Gmail",
+  whatsapp: "Importação de WhatsApp",
+  liberacao: "Liberação operacional",
 };
 
 
