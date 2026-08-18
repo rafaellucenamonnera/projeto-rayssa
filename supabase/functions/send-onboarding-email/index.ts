@@ -178,17 +178,24 @@ Deno.serve(async (req) => {
     }
 
     const stageId = String(card.stage_id ?? "");
-    if (!/material/i.test(stageId)) {
+    const { data: stageRow } = await admin
+      .from("pipeline_stages_config")
+      .select("label")
+      .eq("value", stageId)
+      .maybeSingle();
+    const stageLabel = String(stageRow?.label ?? "");
+    if (!/material\s+onboarding/i.test(stageLabel)) {
       await admin.rpc("record_automation_run", {
         p_stage: "onboarding_email",
         p_status: "erro",
         p_card_id: cardId,
-        p_error: `Card fora da etapa Material Onboarding Cliente (${stageId || "sem etapa"})`,
+        p_error: `Card fora da etapa Material Onboarding Cliente (${stageLabel || stageId || "sem etapa"})`,
         p_origin: "send-onboarding-email",
-        p_payload: { stage_id: stageId },
+        p_payload: { stage_id: stageId, stage_label: stageLabel },
       });
       return json({ error: "Card não está na etapa Material Onboarding Cliente. Envio bloqueado." }, 422);
     }
+
 
     // --------------------------------------------- link publico obrigatorio
     const cardPublicUrl = String(card.canva_public_url ?? "").trim();
