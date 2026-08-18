@@ -225,6 +225,9 @@ export default function AdminTriagemGmail() {
   const [decision, setDecision] = useState("");
   const [linkCardId, setLinkCardId] = useState<string>("none");
   const [saving, setSaving] = useState(false);
+  /** Rótulos dos dados que ainda faltam no card vinculado (regra mínima do painel Cross). */
+  const [cardMissingFields, setCardMissingFields] = useState<string[]>([]);
+
 
   /** Card cujo vínculo está sendo gravado (estado "Vinculando..." e proteção contra clique duplo). */
   const [linkingCardId, setLinkingCardId] = useState<string | null>(null);
