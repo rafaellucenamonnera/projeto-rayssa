@@ -134,6 +134,18 @@ export default function AdminEmailOnboarding() {
     if (isAdmin) loadHistory();
   }, [isAdmin]);
 
+  useEffect(() => {
+    if (!isAdmin) return;
+    if (new URLSearchParams(window.location.search).get("qa") !== "1") return;
+    setNome(QA_SEND.nome);
+    setCodigo(QA_SEND.codigo);
+    setLink(QA_SEND.link);
+    setDestinatarios(QA_SEND.destinatario);
+    setAssunto(ONBOARDING_EMAIL_SUBJECT);
+    setPreview(null);
+  }, [isAdmin]);
+
+
   const build = () => {
     const { html, errors } = renderOnboardingEmail({
       nomeParceiro: nome,
