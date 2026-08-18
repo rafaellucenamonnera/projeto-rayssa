@@ -976,6 +976,7 @@ Deno.serve(async (req) => {
             .from("gmail_processed_messages")
             .update({
               thread_id: threadId,
+              ...threadOrigin,
               from_address: from,
               to_address: to.slice(0, 500),
               subject,
