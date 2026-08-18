@@ -817,6 +817,26 @@ Deno.serve(async (req) => {
 
           const attachmentsInfo = describeAttachments(atts);
 
+          // Correções manuais já aplicadas nunca são sobrescritas pelo worker.
+          const { data: currentRow } = await admin
+            .from("gmail_processed_messages")
+            .select("manual_overrides, operational_status")
+            .eq("id", rowId)
+            .maybeSingle();
+          const overrides = (currentRow?.manual_overrides ?? {}) as Record<string, string>;
+
+          if (currentRow?.operational_status === "liberado") {
+            // registro já concluído: não reprocessa e não altera nada
+            stats.processed += 1;
+            continue;
+          }
+
+          const finalExtracted = { ...extracted, ...stripEmpty(overrides) };
+          const finalCodigo = overrides.codigo_monnera?.trim() || codigo;
+          const finalReasons = applyOverridesToReasons(reasons, overrides, finalCodigo);
+          const finalPrimary = PRIORITY.find((code) => finalReasons.some((r) => r.code === code));
+          const finalStatus = finalPrimary ? `triage_${finalPrimary}` : "triage_ok";
+
           await admin
             .from("gmail_processed_messages")
             .update({
@@ -825,15 +845,15 @@ Deno.serve(async (req) => {
               to_address: to.slice(0, 500),
               subject,
               received_at: receivedAt,
-              status,
-              extracted,
-              codigo_encontrado: codigo,
+              status: finalStatus,
+              extracted: finalExtracted,
+              codigo_encontrado: finalCodigo,
               attachments: attachmentsInfo,
               attachments_count: atts.length,
               matched_card_id: matchedCardId,
-              analysis_result: status,
-              pending_reason: pendingReason,
-              pending_reasons: reasons,
+              analysis_result: finalStatus,
+              pending_reason: finalReasons.length ? finalReasons.map((r) => r.label).join(" ") : null,
+              pending_reasons: finalReasons,
               body_snippet: plain.slice(0, 1200),
               cnpj_source: resolution.source,
               cnpj_snippet: resolution.snippet,
@@ -845,8 +865,20 @@ Deno.serve(async (req) => {
             })
             .eq("id", rowId);
 
+          // Correção por nova mensagem: mesma thread ou mesmo CNPJ.
+          await correctPendingFromNewMessage(admin, {
+            rowId: rowId!,
+            messageId,
+            threadId,
+            subject,
+            cnpj: resolution.cnpj,
+            nome: finalExtracted.nome_parceiro ?? null,
+            codigo: finalCodigo,
+            snippet: plain.slice(0, 400),
+          });
+
           stats.processed += 1;
-          if (status !== "triage_ok") stats.skipped += 1;
+          if (finalStatus !== "triage_ok") stats.skipped += 1;
           continue;
         }
 
