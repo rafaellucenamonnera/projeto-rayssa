@@ -28,7 +28,8 @@ import {
   computeOperationalInfo,
   OPERATIONAL_FILTER_OPTIONS,
 } from "@/lib/triageOperationalStatus";
-import { findCandidateCards, handleBlockedTriage, BLOCK_EXAMPLES } from "@/lib/triageBlockHandling";
+import { findCandidateCards, handleBlockedTriage, BLOCK_EXAMPLES, suggestPendencyTemplate } from "@/lib/triageBlockHandling";
+import { TriageInfoRequest } from "@/components/admin/TriageInfoRequest";
 import { ArrowLeft, ExternalLink, Loader2, RefreshCw, CheckCircle2, Mail, ShieldCheck, AlertTriangle } from "lucide-react";
 
 
@@ -960,7 +961,16 @@ export default function AdminTriagemGmail() {
                       {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <AlertTriangle className="h-3.5 w-3.5 mr-1" />}
                       Abrir tarefa de análise e notificar responsáveis
                     </Button>
+
+                    <TriageInfoRequest
+                      source="gmail"
+                      rowId={selected.id}
+                      cardId={linkCardId !== "none" ? linkCardId : selected.matched_card_id}
+                      reason={info.blockReason ?? "Pendência de triagem em aberto"}
+                      suggested={suggestPendencyTemplate(info.blockReason, selected.pending_reasons)}
+                    />
                   </div>
+
                 );
               })()}
 

@@ -37,7 +37,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { findCandidateCards, handleBlockedTriage, BLOCK_EXAMPLES } from "@/lib/triageBlockHandling";
+import { findCandidateCards, handleBlockedTriage, BLOCK_EXAMPLES, suggestPendencyTemplate } from "@/lib/triageBlockHandling";
+import { TriageInfoRequest } from "@/components/admin/TriageInfoRequest";
 import { ArrowLeft, Loader2, MessageSquare, RefreshCw, Upload, ExternalLink, AlertTriangle } from "lucide-react";
 
 const CROSS_PANEL_ID = "painel_msj9fyji";
@@ -920,7 +921,16 @@ export default function AdminImportWhatsapp() {
                       {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <AlertTriangle className="h-3.5 w-3.5 mr-1" />}
                       Abrir tarefa de análise e notificar responsáveis
                     </Button>
+
+                    <TriageInfoRequest
+                      source="whatsapp"
+                      rowId={selected.id}
+                      cardId={linkCardId !== "none" ? linkCardId : selected.linked_card_id ?? selected.matched_card_id}
+                      reason={info.blockReason ?? "Pendência de triagem em aberto"}
+                      suggested={suggestPendencyTemplate(info.blockReason, selected.pending_reasons)}
+                    />
                   </div>
+
                 );
               })()}
 

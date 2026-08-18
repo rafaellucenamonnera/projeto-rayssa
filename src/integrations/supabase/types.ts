@@ -3180,6 +3180,80 @@ export type Database = {
           },
         ]
       }
+      triage_info_requests: {
+        Row: {
+          attempt: number
+          card_id: string | null
+          created_at: string
+          created_by: string | null
+          error: string | null
+          gmail_message_id: string | null
+          id: string
+          pendency_code: string
+          reason: string
+          recipients: string[]
+          recipients_source: string
+          row_id: string
+          sent_at: string | null
+          source: string
+          status: string
+          subject: string
+          template_key: string
+          template_version: string
+          thread_id: string | null
+        }
+        Insert: {
+          attempt?: number
+          card_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          gmail_message_id?: string | null
+          id?: string
+          pendency_code: string
+          reason: string
+          recipients?: string[]
+          recipients_source: string
+          row_id: string
+          sent_at?: string | null
+          source: string
+          status?: string
+          subject: string
+          template_key: string
+          template_version: string
+          thread_id?: string | null
+        }
+        Update: {
+          attempt?: number
+          card_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          gmail_message_id?: string | null
+          id?: string
+          pendency_code?: string
+          reason?: string
+          recipients?: string[]
+          recipients_source?: string
+          row_id?: string
+          sent_at?: string | null
+          source?: string
+          status?: string
+          subject?: string
+          template_key?: string
+          template_version?: string
+          thread_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "triage_info_requests_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "representative_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_panel_permissions: {
         Row: {
           can_access: boolean
