@@ -76,6 +76,7 @@ export function AdminSidebar() {
 
   const adminConfigItems = isAdmin
     ? [
+        { title: "E-mail Onboarding Baston", url: "/admin/email-onboarding", icon: Mail },
         { title: "Usuários", url: "/admin/usuarios", icon: UserCog },
         { title: "Permissões", url: "/admin/permissoes", icon: ShieldCheck },
         { title: "Integrações", url: "/admin/integracoes", icon: PlugZap },
