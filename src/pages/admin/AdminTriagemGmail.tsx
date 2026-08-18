@@ -1194,7 +1194,13 @@ export default function AdminTriagemGmail() {
                       rowId={selected.id}
                       cardId={linkCardId !== "none" ? linkCardId : selected.matched_card_id}
                       reason={info.blockReason ?? "Pendência de triagem em aberto"}
-                      suggested={suggestPendencyTemplate(info.blockReason, selected.pending_reasons)}
+                      suggested={
+                        cardMissingFields.length > 0
+                          ? "dados_faltantes"
+                          : suggestPendencyTemplate(info.blockReason, selected.pending_reasons)
+                      }
+                      missingFields={cardMissingFields}
+
                     />
                   </div>
 
