@@ -64,9 +64,12 @@ Automático apenas com card candidato único, CNPJ idêntico, nome compatível, 
 
 ## Fase 5 — Canva
 
-O código Monnera válido **apenas inicia a geração do Canva** — não move o card. Fluxo: copia o modelo oficial `https://canva.link/qp4jojog4s01mjl`, substitui o código na página 12 e publica como apresentação pública. O link final é obrigatoriamente `https://canva.link/...`; `https://www.canva.com/d/...` nunca é salvo como final nem enviado ao parceiro. O link público é validado antes de gravar (abre sem autenticação, sem permissão de edição); se a validação falhar, nada é gravado e o card não sai da etapa. Grava design_id, link público, link interno, código, CNPJ, card_id, versão e data. **Somente após a confirmação do link público** o card é movido para `Material Onboarding Cliente`, com histórico e notificação a Rafael e Maycon — e só então o onboarding fica liberado.
+Não existe conexão oficial do Canva no workspace/projeto e o secret `CANVA_ACCESS_TOKEN` não é solicitado nem exigido. Enquanto não houver conexão gerenciada por conector, a geração automática de material fica **desativada**: nenhum material é criado automaticamente.
 
-Falha: card fica na etapa atual, sem onboarding, erro registrado, notificação para Rafael e Maycon, reprocessamento manual disponível.
+Fluxo manual no card: administrador informa o link público `https://canva.link/...`; o sistema valida que é link público de apresentação e não link de edição (`/edit`, `www.canva.com/design/...`, `www.canva.com/d/...` são recusados); com o link válido, grava no card (design_id, link público, código, versão, data) e libera a continuidade. Sem link público confirmado, o card não é movido para `Material Onboarding Cliente` e o onboarding não é enviado; a pendência é registrada e Rafael e Maycon são notificados no painel.
+
+Se e quando existir conexão Canva gerenciada pelo conector, a geração passa a usá-la, sem expor tokens no código ou no chat.
+
 
 ## Fase 6 — Onboarding
 
