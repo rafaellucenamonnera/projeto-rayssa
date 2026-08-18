@@ -25,6 +25,8 @@ const BUCKET = "representative-card-attachments";
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_mail/gmail/v1";
 const SENDER_DOMAIN = "baston.com.br";
 const MONITORED_RECIPIENT = "rafael.lucena@monnera.com.br";
+// Escopo adicional: notificações do Jira enviadas à caixa autorizada.
+const JIRA_SENDER = "jira@monnera.atlassian.net";
 const DEFAULT_DAYS = 7;
 const MAX_DAYS = 90;
 const DEFAULT_MAX_MESSAGES = 50;
