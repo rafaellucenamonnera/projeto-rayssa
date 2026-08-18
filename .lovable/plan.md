@@ -40,19 +40,19 @@ Botão `Criar ou reenviar tarefa Jira` no detalhe do card: prévia completa ante
 
 ## Fase 2 — Código Monnera
 
-Edge Function `jira-code-webhook` (pública, autenticada por segredo compartilhado no header). Localiza o card por `jira_issue_key` → card_id → thread_id → CNPJ → nome; aplica somente com correspondência inequívoca; ambiguidade gera pendência e notificação, sem tocar no card.
+Edge Function `jira-code-webhook`, nunca pública sem autenticação. Preferência: segredo compartilhado em header. Se o webhook nativo do Jira não permitir header customizado no projeto MB, o segredo vai em um token de caminho/consulta na própria URL, comparado em tempo constante — a função rejeita qualquer chamada sem o segredo válido. Localiza o card por `jira_issue_key` → card_id → thread_id → CNPJ → nome; aplica somente com correspondência inequívoca; ambiguidade gera pendência e notificação, sem tocar no card.
 
 Validação: exatamente 8 caracteres `A-Z0-9`; rejeita `3SAXJF92`, `UB5PXGDB`, `XXXXXXX`, `XXXXXXXX`, qualquer `MNR-...` e código já usado por outro CNPJ.
 
 Ao aceitar: grava o código, origem `jira_webhook`, evidência e data, registra histórico, notifica Rafael e Maycon e libera a etapa seguinte de forma idempotente.
 
-Fallback Gmail: `gmail-baston-sync` passa a reconhecer mensagens de `jira@monnera.atlassian.net` e extrair chave Jira, thread_id, CNPJ, nome e código — por conteúdo, sem depender do layout do e-mail.
+Fallback Gmail: `gmail-baston-sync` passa a reconhecer mensagens de `jira@monnera.atlassian.net`, limitado à conta `rafael.lucena@monnera.com.br`. Identifica chave Jira, card, CNPJ, nome e código; só aplica com associação inequívoca; ignora e-mails não relacionados; não dispara follow-up nem cobrança. A extração é por conteúdo, sem depender do layout do e-mail.
 
 ## Fase 3 — Consolidação Gmail e WhatsApp
 
 Abas seguem separadas visualmente e alimentam o mesmo card principal. Nova tabela de proveniência por campo: valor, origem (`email`, `whatsapp`, `jira_webhook`, `card_vinculado`, `manual`), trecho de evidência, data, confiança, usuário/processo, registro de origem e status.
 
-Ao vincular: consolida no card principal, não cria card duplicado, preserva origem, thread de e-mail e conversa exportada do WhatsApp, exibe cada informação com sua origem e mantém histórico completo. Em conflito: não sobrescreve, mostra valor anterior e novo com as duas evidências, bloqueia liberação automática e exige decisão manual.
+Ao vincular: consolida no card principal, sem criar card duplicado, preservando origem, thread de e-mail e conversa exportada do WhatsApp, com cada informação exibida com sua origem e histórico completo. O card principal nunca é sobrescrito em silêncio: valores iguais são consolidados; valores diferentes viram divergência com as duas evidências lado a lado; cada valor mantém sua origem; o histórico Gmail/WhatsApp continua acessível; a liberação automática fica bloqueada até decisão manual; e desfazer vínculo não exclui dados nem tarefas.
 
 ## Fase 4 — Vínculo automático e manual
 
@@ -64,7 +64,7 @@ Automático apenas com card candidato único, CNPJ idêntico, nome compatível, 
 
 ## Fase 5 — Canva
 
-Após código válido: copia o modelo oficial `https://canva.link/qp4jojog4s01mjl`, substitui o código na página 12, publica como apresentação pública e exige link final `https://canva.link/...` — link `https://www.canva.com/d/...` nunca é salvo como final. Confirma que abre sem autenticação e sem edição. Grava design_id, link público, link interno, código, CNPJ, card_id, versão e data. Só depois disso move para `Material Onboarding Cliente`, registra histórico e notifica Rafael e Maycon.
+O Canva só é gerado **depois** de um código Monnera válido. Copia o modelo oficial `https://canva.link/qp4jojog4s01mjl`, substitui o código na página 12 e publica como apresentação pública. O link final é obrigatoriamente `https://canva.link/...`; `https://www.canva.com/d/...` nunca é salvo como final nem enviado ao parceiro. O link público é validado antes de gravar (abre sem autenticação, sem permissão de edição); se a validação falhar, nada é gravado. Grava design_id, link público, link interno, código, CNPJ, card_id, versão e data. Só após a confirmação do material o card vai para `Material Onboarding Cliente`, com histórico e notificação a Rafael e Maycon — e só então o onboarding fica liberado.
 
 Falha: card fica na etapa atual, sem onboarding, erro registrado, notificação para Rafael e Maycon, reprocessamento manual disponível.
 
