@@ -2070,6 +2070,65 @@ export type Database = {
           },
         ]
       }
+      onboarding_email_sends: {
+        Row: {
+          assunto: string
+          card_id: string | null
+          codigo_parceiro: string
+          created_at: string
+          created_by: string | null
+          destinatarios: string[]
+          erro_mensagem: string | null
+          html_snapshot: string | null
+          id: string
+          link_material: string
+          nome_parceiro: string
+          sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assunto: string
+          card_id?: string | null
+          codigo_parceiro: string
+          created_at?: string
+          created_by?: string | null
+          destinatarios?: string[]
+          erro_mensagem?: string | null
+          html_snapshot?: string | null
+          id?: string
+          link_material: string
+          nome_parceiro: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assunto?: string
+          card_id?: string | null
+          codigo_parceiro?: string
+          created_at?: string
+          created_by?: string | null
+          destinatarios?: string[]
+          erro_mensagem?: string | null
+          html_snapshot?: string | null
+          id?: string
+          link_material?: string
+          nome_parceiro?: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_email_sends_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "representative_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pagamentos_consultores: {
         Row: {
           created_at: string
