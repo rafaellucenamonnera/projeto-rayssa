@@ -16,6 +16,7 @@ import { Loader2, Mail, Eye } from "lucide-react";
  */
 
 export const PENDENCY_TEMPLATES: Array<{ value: string; label: string }> = [
+  { value: "dados_faltantes", label: "Dados faltantes do cadastro" },
   { value: "cnpj_ausente", label: "CNPJ ausente" },
   { value: "cnpj_divergente", label: "CNPJ divergente / mais de um CNPJ" },
   { value: "nome_incompativel", label: "Nome ou razão social incompatível" },
@@ -23,6 +24,7 @@ export const PENDENCY_TEMPLATES: Array<{ value: string; label: string }> = [
   { value: "dados_conflitantes", label: "Informações conflitantes" },
   { value: "dados_incompletos", label: "Complemento após resposta incompleta" },
 ];
+
 
 const RECIPIENT_SOURCE_LABEL: Record<string, string> = {
   thread_original: "Thread original",
