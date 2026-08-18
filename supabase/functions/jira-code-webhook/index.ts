@@ -97,11 +97,24 @@ Deno.serve(async (req) => {
     await admin.rpc("record_automation_run", {
       p_stage: "jira_code_webhook", p_status: "erro", p_card_id: null,
       p_error: auth.reason ?? "não autenticado", p_origin: "jira_webhook", p_payload: {},
-    }).catch(() => null);
+    });
     return json({ error: "Não autorizado." }, 401);
   }
 
+  // Modo de teste de entrega: autentica, registra e encerra sem tocar em card.
+  try {
+    const probe = JSON.parse(rawBody || "{}");
+    if (probe?.ping === true || probe?.test_delivery === true) {
+      await admin.rpc("record_automation_run", {
+        p_stage: "jira_code_webhook", p_status: "sucesso", p_card_id: null,
+        p_error: null, p_origin: "jira_webhook", p_payload: { mode: "ping" },
+      });
+      return json({ ok: true, mode: "ping" }, 200);
+    }
+  } catch (_) { /* corpo não-JSON segue o fluxo normal */ }
+
   let cardId: string | null = null;
+
   try {
     const payload = JSON.parse(rawBody || "{}");
     const issueKey: string | null = payload?.issue?.key ?? payload?.issue_key ?? null;
@@ -134,7 +147,7 @@ Deno.serve(async (req) => {
           p_metadata: { issue_key: issueKey, card_id: cardId },
           p_actor_user_id: null,
           p_delivery_key: `jira_code_${issueKey ?? "sem_chave"}_${Date.now()}`,
-        }).catch(() => null);
+        });
       }
     };
 
@@ -150,11 +163,13 @@ Deno.serve(async (req) => {
 
     const card = candidates[0];
     cardId = card.id;
-    if (PROTECTED_CARD_NAMES.includes((card.full_name ?? "").toUpperCase())) {
+    const normalizedName = (card.full_name ?? "").toUpperCase().replace(/[^A-Z0-9ÁÉÍÓÚÂÊÔÃÕÇ ]/g, "").trim();
+    if (PROTECTED_CARD_NAMES.includes(normalizedName)) {
       return json({ ok: false, error: "Card protegido: nenhuma alteração aplicada." }, 202);
     }
 
-    const isQaCard = (card.full_name ?? "").toUpperCase() === "TESTE FASE A QA";
+    const isQaCard = normalizedName === "TESTE FASE A QA";
+
     const rawCode = typeof payload?.codigo_monnera === "string" ? payload.codigo_monnera : extractMonneraCode(collectText(payload));
     const validation = validateMonneraCode(rawCode, { allowTest: isQaCard });
     if (!validation.ok) {
@@ -230,7 +245,7 @@ Deno.serve(async (req) => {
     const message = error instanceof Error ? error.message : String(error);
     await admin.rpc("record_automation_run", {
       p_stage: "jira_code_webhook", p_status: "erro", p_card_id: cardId, p_error: message, p_origin: "jira_webhook", p_payload: {},
-    }).catch(() => null);
+    });
     return json({ ok: false, error: message }, 500);
   }
 });
