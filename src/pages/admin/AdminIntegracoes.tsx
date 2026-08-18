@@ -1,6 +1,7 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import AutomationHealthPanel from "@/components/admin/AutomationHealthPanel";
 
 const AdminIntegracoes = () => {
   const { isAdmin } = useAuth();
@@ -20,8 +21,10 @@ const AdminIntegracoes = () => {
           Configure integrações externas com governança centralizada.
         </CardContent>
       </Card>
+      <AutomationHealthPanel />
     </div>
   );
 };
+
 
 export default AdminIntegracoes;

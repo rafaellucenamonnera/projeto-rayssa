@@ -4016,6 +4016,16 @@ export type Database = {
         Args: { p_data: Json; p_lojas?: Json; p_token: string }
         Returns: Json
       }
+      consolidate_source_into_card: {
+        Args: {
+          p_card_id: string
+          p_evidence?: Json
+          p_fields: Json
+          p_source: string
+          p_source_record_id: string
+        }
+        Returns: Json
+      }
       create_notification:
         | {
             Args: {
@@ -4139,6 +4149,17 @@ export type Database = {
         Args: { p_card_id: string; p_justification?: string; p_row_id: string }
         Returns: Json
       }
+      link_source_to_card: {
+        Args: {
+          p_card_id: string
+          p_justification?: string
+          p_link_mode?: string
+          p_source: string
+          p_source_record_id?: string
+          p_thread_id?: string
+        }
+        Returns: string
+      }
       log_representative_card_event: {
         Args: {
           p_action: string
@@ -4259,6 +4280,10 @@ export type Database = {
       unlink_gmail_triage_card: {
         Args: { p_justification: string; p_row_id: string }
         Returns: Json
+      }
+      unlink_source_from_card: {
+        Args: { p_justification: string; p_link_id: string }
+        Returns: undefined
       }
       update_pipeline_stage_followup_message: {
         Args: {

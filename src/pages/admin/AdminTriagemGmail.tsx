@@ -523,7 +523,18 @@ export default function AdminTriagemGmail() {
         });
       }
 
+      // Registra a origem no card (proveniência/timeline), sem sobrescrever dados do card.
+      await (supabase as any).rpc("link_source_to_card", {
+        p_card_id: cardId,
+        p_source: "email",
+        p_source_record_id: selected.id,
+        p_thread_id: selected.thread_id,
+        p_link_mode: "manual",
+        p_justification: "Vínculo confirmado manualmente na triagem Gmail.",
+      });
+
       setLinkCardId(cardId);
+
       toast.success(
         jaVinculado
           ? "Este card já estava vinculado. Os dados herdados foram reconfirmados, sem duplicar o histórico."
