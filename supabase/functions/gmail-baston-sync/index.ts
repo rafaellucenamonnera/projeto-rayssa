@@ -3,7 +3,7 @@
 // Worker recorrente (cron a cada 2h) que lê e-mails via connector gateway.
 //
 // Conta autorizada: rafael.lucena@monnera.com.br
-// Filtros ativos: (from:baston.com.br OR to:rafael.lucena@monnera.com.br)
+// Filtros ativos: (from:@baston.com.br OR to:@baston.com.br) OR (from:jira@monnera.atlassian.net to:rafael.lucena@monnera.com.br)
 //                 + janela em dias (padrão 7, teto 90)
 //
 // MODO DE OPERAÇÃO (GMAIL_SYNC_MODE):
@@ -25,6 +25,8 @@ const BUCKET = "representative-card-attachments";
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_mail/gmail/v1";
 const SENDER_DOMAIN = "baston.com.br";
 const MONITORED_RECIPIENT = "rafael.lucena@monnera.com.br";
+// Escopo adicional: notificações do Jira enviadas à caixa autorizada.
+const JIRA_SENDER = "jira@monnera.atlassian.net";
 const DEFAULT_DAYS = 7;
 const MAX_DAYS = 90;
 const DEFAULT_MAX_MESSAGES = 50;
@@ -585,7 +587,7 @@ Deno.serve(async (req) => {
     }
 
     const query = encodeURIComponent(
-      `(from:(@${SENDER_DOMAIN}) OR to:(@${SENDER_DOMAIN})) newer_than:${days}d -in:spam -in:trash`,
+      `((from:(@${SENDER_DOMAIN}) OR to:(@${SENDER_DOMAIN})) OR (from:(${JIRA_SENDER}) to:(${MONITORED_RECIPIENT}))) newer_than:${days}d -in:spam -in:trash`,
     );
 
     const ids: Array<{ id: string; rowId?: string }> = [];
@@ -647,11 +649,18 @@ Deno.serve(async (req) => {
         const subject = gmailHeader(payload, "Subject");
         const threadId = msg?.threadId ?? null;
         const receivedAt = msg?.internalDate ? new Date(Number(msg.internalDate)).toISOString() : null;
+        const fromLower = from.toLowerCase();
+        const toLower = to.toLowerCase();
+        // Jira só entra no escopo quando destinado à caixa autorizada.
+        const isJira =
+          fromLower.includes(JIRA_SENDER) && toLower.includes(MONITORED_RECIPIENT);
         const inScope =
-          from.toLowerCase().includes(`@${SENDER_DOMAIN}`) ||
-          to.toLowerCase().includes(`@${SENDER_DOMAIN}`);
+          fromLower.includes(`@${SENDER_DOMAIN}`) ||
+          toLower.includes(`@${SENDER_DOMAIN}`) ||
+          isJira;
 
-        // revalidação: descarta qualquer mensagem fora do domínio Baston
+        // revalidação: descarta qualquer mensagem fora do escopo autorizado
+
         if (!inScope) {
           if (!reprocess) {
             await admin.from("gmail_processed_messages").delete().eq("id", rowId);
@@ -662,8 +671,8 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // modo operacional: só processa remetentes do domínio monitorado
-        if (SYNC_MODE === "active" && !from.toLowerCase().includes(`@${SENDER_DOMAIN}`)) {
+        // modo operacional: só processa remetentes do domínio monitorado (Jira entra apenas como leitura de triagem)
+        if (SYNC_MODE === "active" && !fromLower.includes(`@${SENDER_DOMAIN}`) && !isJira) {
           await admin
             .from("gmail_processed_messages")
             .update({
