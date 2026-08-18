@@ -85,11 +85,21 @@ const isRejected = (decision?: string | null) =>
 const isApproved = (decision?: string | null) =>
   !!decision && /aprovad|liberad/i.test(decision);
 
+/** Status de triagem que dizem respeito apenas ao código Monnera (etapa Criação Painel). */
+const CODE_ONLY_STATUS = new Set([
+  "triage_sem_codigo",
+  "triage_codigo_exemplo_invalido",
+  "triage_codigo_formato_nao_confirmado",
+]);
+
 export function computeOperationalInfo(input: OperationalInput, pendingLabel?: Record<string, string>): OperationalInfo {
-  const triage = input.analysisResult ?? input.status ?? "";
+  const rawTriage = input.analysisResult ?? input.status ?? "";
+  // O código Monnera não é exigido na triagem/cadastro.
+  const triage = CODE_ONLY_STATUS.has(rawTriage) ? "triage_ok" : rawTriage;
   const allPending = input.pendingReasons ?? [];
   // Só as pendências da etapa Triagem/Cadastro bloqueiam a liberação.
   const pending = allPending.filter((p) => pendingStage(p) === "triagem");
+
   const pendingText = pending
     .map((p) => (p.code && pendingLabel?.[p.code]) || p.label || p.code || "")
     .filter(Boolean)
