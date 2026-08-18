@@ -1142,7 +1142,6 @@ function stripEmpty(values: Record<string, string>): Record<string, string> {
 }
 
 const VALID_CODE_RE = /^[A-Z0-9]{8}$/;
-const DEMO_CODES = new Set(["3SAXJF92", "UB5PXGDB", "XXXXXXX", "XXXXXXXX"]);
 
 function isRealCode(code: string | null | undefined): boolean {
   const v = (code ?? "").trim().toUpperCase();
