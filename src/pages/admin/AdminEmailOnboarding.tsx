@@ -259,13 +259,30 @@ export default function AdminEmailOnboarding() {
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 Salvar rascunho
               </Button>
-              <Button variant="secondary" disabled title="Envio será liberado após a configuração do domínio de e-mail">
-                <Send className="mr-2 h-4 w-4" /> Enviar e-mail
+              <Button variant="ghost" onClick={loadQaCard}>
+                Carregar card de QA
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={!isQaSend || !preview || sending}
+                title={
+                  isQaSend
+                    ? preview
+                      ? "Envio controlado do card TESTE FASE A QA"
+                      : "Gere o preview antes de enviar"
+                    : "Envio liberado apenas para o card TESTE FASE A QA"
+                }
+                onClick={() => setConfirmOpen(true)}
+              >
+                {sending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                Enviar e-mail
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              O envio só ocorre após revisão e confirmação explícita e ainda está desativado nesta etapa.
+              Envio habilitado exclusivamente para o card TESTE FASE A QA, pela conta {QA_SEND.conta}, com preview e
+              confirmação explícita. Nenhum outro card, destinatário, cobrança ou régua é processado.
             </p>
+
           </CardContent>
         </Card>
 
