@@ -219,6 +219,12 @@ export default function AdminTriagemGmail() {
   const [corrections, setCorrections] = useState<Correction[]>([]);
   const [confirmRelease, setConfirmRelease] = useState(false);
 
+  const [control, setControl] = useState<{ enabled: boolean; max_per_execution: number; stop_reason: string | null } | null>(null);
+  const [activation, setActivation] = useState<any | null>(null);
+  const [activationJustification, setActivationJustification] = useState("");
+  const [activationConfirm, setActivationConfirm] = useState(false);
+  const [executions, setExecutions] = useState<Array<{ id: string; cliente_nome: string; cnpj: string; codigo_monnera: string; source: string; created_at: string }>>([]);
+
   const load = useCallback(async () => {
     setLoading(true);
     const [msgRes, runRes, cardRes] = await Promise.all([
@@ -241,6 +247,17 @@ export default function AdminTriagemGmail() {
     setMessages((msgRes.data ?? []) as TriageMessage[]);
     setRuns((runRes.data ?? []) as SyncRun[]);
     setCards((cardRes.data ?? []) as CrossCard[]);
+
+    const [ctrlRes, execRes] = await Promise.all([
+      (supabase as any).from("gmail_activation_control").select("enabled,max_per_execution,stop_reason").maybeSingle(),
+      (supabase as any)
+        .from("triage_activation_executions")
+        .select("id,cliente_nome,cnpj,codigo_monnera,source,created_at")
+        .order("created_at", { ascending: false })
+        .limit(20),
+    ]);
+    setControl((ctrlRes?.data as any) ?? null);
+    setExecutions((execRes?.data ?? []) as any[]);
     setLoading(false);
   }, []);
 
@@ -432,6 +449,67 @@ export default function AdminTriagemGmail() {
     load();
   };
 
+  const toggleActivation = async (enabled: boolean) => {
+    setSaving(true);
+    const { error } = await (supabase as any)
+      .from("gmail_activation_control")
+      .update({
+        enabled,
+        stop_reason: enabled ? null : "Interrompido manualmente pelo administrador",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", true);
+    setSaving(false);
+    if (error) {
+      toast.error(`Não foi possível alterar o controle: ${error.message}`);
+      return;
+    }
+    toast.success(enabled ? "Ativação controlada habilitada (1 registro por execução)." : "Ativação interrompida imediatamente.");
+    load();
+  };
+
+  const openActivation = async (m: TriageMessage) => {
+    const { data, error } = await (supabase as any).rpc("preview_triage_activation", {
+      p_source: "gmail",
+      p_row_id: m.id,
+    });
+    if (error) {
+      toast.error(`Não foi possível montar a confirmação: ${error.message}`);
+      return;
+    }
+    setActivationJustification("");
+    setActivationConfirm(false);
+    setActivation(data);
+  };
+
+  const runActivation = async () => {
+    if (!activation) return;
+    if (!activationConfirm) {
+      toast.error("Confirme a criação do card antes de executar.");
+      return;
+    }
+    if (!activationJustification.trim()) {
+      toast.error("Informe a justificativa da execução.");
+      return;
+    }
+    setSaving(true);
+    const { data, error } = await (supabase as any).rpc("execute_triage_activation", {
+      p_source: activation.source,
+      p_row_id: activation.row_id,
+      p_justification: activationJustification.trim(),
+    });
+    setSaving(false);
+    if (error) {
+      toast.error(`Execução bloqueada: ${error.message}`);
+      return;
+    }
+    toast.success(`Card criado na etapa Cadastro (1 registro processado, nenhum e-mail enviado).`);
+    setActivation(null);
+    setSelected(null);
+    load();
+    void data;
+  };
+
   const lastRun = runs[0];
 
   return (
@@ -462,6 +540,39 @@ export default function AdminTriagemGmail() {
               Última execução {fmtDate(lastRun.started_at)} · modo {lastRun.mode} · {lastRun.fetched_count} lidas ·{" "}
               {lastRun.processed_count} analisadas · {lastRun.skipped_count} pendentes · {lastRun.error_count} erros
             </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4" /> Ativação operacional controlada
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 pt-0 space-y-2 text-xs text-muted-foreground">
+          <p>
+            Executa no máximo <strong>1 registro por execução</strong>, somente sobre registros revisados,
+            liberados e sem pendências. Cria apenas o card na etapa <strong>Cadastro</strong>: não move etapas,
+            não cria tarefas e não envia e-mails. O worker do Gmail permanece em modo triagem.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className={control?.enabled ? "border-emerald-500/30 text-emerald-400" : "text-muted-foreground"}>
+              {control?.enabled ? "Ativação habilitada" : "Ativação desligada"}
+            </Badge>
+            <Button size="sm" variant={control?.enabled ? "destructive" : "secondary"} disabled={saving} onClick={() => toggleActivation(!control?.enabled)}>
+              {control?.enabled ? "Interromper imediatamente" : "Habilitar ativação controlada"}
+            </Button>
+            <span>{executions.length} execução(ões) autorizada(s) até agora</span>
+          </div>
+          {executions.length > 0 && (
+            <ul className="space-y-1">
+              {executions.slice(0, 5).map((e) => (
+                <li key={e.id}>
+                  {fmtDate(e.created_at)} · {e.cliente_nome} · CNPJ {e.cnpj} · código {e.codigo_monnera} · origem {e.source}
+                </li>
+              ))}
+            </ul>
           )}
         </CardContent>
       </Card>
@@ -755,6 +866,14 @@ export default function AdminTriagemGmail() {
                     </Button>
                     <Button
                       size="sm"
+                      variant="outline"
+                      onClick={() => openActivation(selected)}
+                      disabled={saving || selected.operational_status !== "liberado"}
+                    >
+                      Ativação controlada
+                    </Button>
+                    <Button
+                      size="sm"
                       onClick={releaseRecord}
                       disabled={saving || selected.operational_status === "liberado"}
                     >
@@ -806,6 +925,91 @@ export default function AdminTriagemGmail() {
                 <Button onClick={() => saveReview(true)} disabled={saving}>
                   {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
                   Marcar como revisado
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!activation} onOpenChange={(open) => !open && setActivation(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Confirmação administrativa da ativação</DialogTitle>
+            <DialogDescription>
+              Revise os dados antes de autorizar a criação do card. Apenas 1 registro é processado por execução.
+            </DialogDescription>
+          </DialogHeader>
+
+          {activation && (
+            <div className="space-y-3 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div><span className="text-muted-foreground">Cliente:</span> {activation.cliente || "—"}</div>
+                <div><span className="text-muted-foreground">CNPJ:</span> {activation.cnpj || "—"}</div>
+                <div><span className="text-muted-foreground">Código Monnera:</span> {activation.codigo_monnera || "—"}</div>
+                <div><span className="text-muted-foreground">Origem:</span> {activation.origem}</div>
+                <div className="sm:col-span-2">
+                  <span className="text-muted-foreground">Card sugerido:</span>{" "}
+                  {activation.card_sugerido
+                    ? cards.find((c) => c.id === activation.card_sugerido)?.full_name ?? activation.card_sugerido
+                    : "Nenhum"}
+                </div>
+              </div>
+
+              <div className="rounded-md bg-muted/40 p-2">
+                <p className="font-medium mb-1">Evidência</p>
+                <pre className="whitespace-pre-wrap break-words text-[11px] text-muted-foreground">
+                  {JSON.stringify(activation.evidencia, null, 2)}
+                </pre>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="rounded-md border border-border p-2">
+                  <p className="font-medium mb-1">Ações que serão executadas</p>
+                  <ul className="list-disc pl-4 text-muted-foreground">
+                    {(activation.acoes ?? []).map((a: string, i: number) => <li key={i}>{a}</li>)}
+                  </ul>
+                </div>
+                <div className="rounded-md border border-border p-2">
+                  <p className="font-medium mb-1">Não será executado</p>
+                  <ul className="list-disc pl-4 text-muted-foreground">
+                    {(activation.nao_executa ?? []).map((a: string, i: number) => <li key={i}>{a}</li>)}
+                  </ul>
+                </div>
+              </div>
+
+              {(activation.bloqueios ?? []).length > 0 && (
+                <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-destructive">
+                  <p className="font-medium">Bloqueios impedem a execução</p>
+                  <ul className="list-disc pl-4">
+                    {(activation.bloqueios ?? []).map((b: string, i: number) => <li key={i}>{b}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              <Textarea
+                rows={2}
+                value={activationJustification}
+                onChange={(e) => setActivationJustification(e.target.value.slice(0, 500))}
+                placeholder="Justificativa da execução (obrigatória)."
+              />
+
+              <label className="flex items-center gap-2 text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={activationConfirm}
+                  onChange={(e) => setActivationConfirm(e.target.checked)}
+                />
+                Confirmo a criação do card na etapa Cadastro com os dados acima
+              </label>
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => setActivation(null)} disabled={saving}>
+                  Cancelar
+                </Button>
+                <Button size="sm" onClick={runActivation} disabled={saving || !activation.pode_executar}>
+                  {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
+                  Executar 1 registro
                 </Button>
               </div>
             </div>

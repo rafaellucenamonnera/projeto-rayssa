@@ -540,6 +540,33 @@ export type Database = {
           },
         ]
       }
+      gmail_activation_control: {
+        Row: {
+          enabled: boolean
+          id: boolean
+          max_per_execution: number
+          stop_reason: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          enabled?: boolean
+          id?: boolean
+          max_per_execution?: number
+          stop_reason?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          enabled?: boolean
+          id?: boolean
+          max_per_execution?: number
+          stop_reason?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       gmail_processed_messages: {
         Row: {
           analysis_result: string | null
@@ -3097,6 +3124,62 @@ export type Database = {
           },
         ]
       }
+      triage_activation_executions: {
+        Row: {
+          actions: Json
+          cliente_nome: string
+          cnpj: string
+          codigo_monnera: string
+          created_at: string
+          evidence: Json
+          executed_by: string | null
+          id: string
+          justification: string
+          message_id: string | null
+          representative_card_id: string | null
+          source: string
+          source_row_id: string
+        }
+        Insert: {
+          actions?: Json
+          cliente_nome: string
+          cnpj: string
+          codigo_monnera: string
+          created_at?: string
+          evidence?: Json
+          executed_by?: string | null
+          id?: string
+          justification: string
+          message_id?: string | null
+          representative_card_id?: string | null
+          source: string
+          source_row_id: string
+        }
+        Update: {
+          actions?: Json
+          cliente_nome?: string
+          cnpj?: string
+          codigo_monnera?: string
+          created_at?: string
+          evidence?: Json
+          executed_by?: string | null
+          id?: string
+          justification?: string
+          message_id?: string | null
+          representative_card_id?: string | null
+          source?: string
+          source_row_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "triage_activation_executions_representative_card_id_fkey"
+            columns: ["representative_card_id"]
+            isOneToOne: false
+            referencedRelation: "representative_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_panel_permissions: {
         Row: {
           can_access: boolean
@@ -3454,6 +3537,10 @@ export type Database = {
         Args: { p_lead_id: string }
         Returns: string
       }
+      execute_triage_activation: {
+        Args: { p_justification: string; p_row_id: string; p_source: string }
+        Returns: Json
+      }
       generate_partner_code: { Args: never; Returns: string }
       generate_slug: { Args: { name_input: string }; Returns: string }
       get_available_responsible_users: {
@@ -3554,6 +3641,10 @@ export type Database = {
       normalize_pipeline_stage_label: {
         Args: { p_label: string }
         Returns: string
+      }
+      preview_triage_activation: {
+        Args: { p_row_id: string; p_source: string }
+        Returns: Json
       }
       register_lead_public: {
         Args: {
