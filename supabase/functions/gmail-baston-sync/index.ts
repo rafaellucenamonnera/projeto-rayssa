@@ -714,9 +714,10 @@ Deno.serve(async (req) => {
           if (resolution.source) cnpjSourceStats[resolution.source] = (cnpjSourceStats[resolution.source] ?? 0) + 1;
 
           // TODAS as pendências são acumuladas — uma mensagem pode ter várias.
-          const reasons: Array<{ code: string; label: string }> = [];
+          const reasons: Array<{ code: string; label: string; stage: string }> = [];
           const addReason = (code: string, label: string) => {
-            if (!reasons.some((r) => r.code === code)) reasons.push({ code, label });
+            if (!reasons.some((r) => r.code === code))
+              reasons.push({ code, label, stage: CRIACAO_PAINEL_CODES.has(code) ? "criacao_painel" : "triagem" });
           };
 
           if (!inScope) {
@@ -757,6 +758,23 @@ Deno.serve(async (req) => {
             );
           }
 
+
+          let cnpjSource: string | null = resolution.source;
+          if (!resolution.cnpj && extracted.nome_parceiro) {
+            const { data: byName } = await admin
+              .from("representative_cards")
+              .select("id, cnpj")
+              .eq("panel_id", CROSS_PANEL_ID)
+              .ilike("full_name", extracted.nome_parceiro)
+              .limit(2);
+            if (byName && byName.length === 1 && onlyDigits(byName[0].cnpj ?? "").length === 14) {
+              // vínculo inequívoco: o CNPJ do card completa a triagem
+              matchedCardId = byName[0].id;
+              resolution.cnpj = onlyDigits(byName[0].cnpj);
+              extracted = { ...extracted, cnpj: resolution.cnpj };
+              cnpjSource = "card_vinculado";
+            }
+          }
 
           if (resolution.cnpj) {
             const { data: matches } = await admin
@@ -809,7 +827,9 @@ Deno.serve(async (req) => {
             "codigo_formato_nao_confirmado",
 
           ];
-          const primary = PRIORITY.find((code) => reasons.some((r) => r.code === code));
+          const primary = PRIORITY.find((code) =>
+            reasons.some((r) => r.code === code && stageOf(code) === "triagem"),
+          );
           const status = primary ? `triage_${primary}` : "triage_ok";
           const pendingReason = reasons.length
             ? reasons.map((r) => r.label).join(" ")
@@ -834,7 +854,9 @@ Deno.serve(async (req) => {
           const finalExtracted = { ...extracted, ...stripEmpty(overrides) };
           const finalCodigo = overrides.codigo_monnera?.trim() || codigo;
           const finalReasons = applyOverridesToReasons(reasons, overrides, finalCodigo);
-          const finalPrimary = PRIORITY.find((code) => finalReasons.some((r) => r.code === code));
+          const finalPrimary = PRIORITY.find((code) =>
+            finalReasons.some((r) => r.code === code && stageOf(code) === "triagem"),
+          );
           const finalStatus = finalPrimary ? `triage_${finalPrimary}` : "triage_ok";
 
           await admin
@@ -855,7 +877,8 @@ Deno.serve(async (req) => {
               pending_reason: finalReasons.length ? finalReasons.map((r) => r.label).join(" ") : null,
               pending_reasons: finalReasons,
               body_snippet: plain.slice(0, 1200),
-              cnpj_source: resolution.source,
+              cnpj_source: cnpjSource,
+              jira_issue_key: extractJiraKey(`${subject}\n${plain}`),
               cnpj_snippet: resolution.snippet,
               cnpj_candidates: resolution.candidates,
               mode: "triage",
@@ -898,7 +921,11 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        const pendingCount = Array.isArray(gateRow?.pending_reasons) ? gateRow!.pending_reasons.length : 0;
+        const pendingCount = Array.isArray(gateRow?.pending_reasons)
+          ? (gateRow!.pending_reasons as Array<{ code?: string; stage?: string }>).filter(
+              (r) => (r.stage ?? stageOf(r.code ?? "")) === "triagem",
+            ).length
+          : 0;
         const released =
           gateRow?.operational_status === "liberado" &&
           (gateRow?.analysis_result ?? "triage_ok") === "triage_ok" &&
@@ -1132,6 +1159,19 @@ function applyOverridesToReasons(
   }
   return reasons.filter((r) => !resolved.has(r.code));
 }
+
+/** Pendências cobradas apenas na etapa "Criação Painel" (nunca na triagem inicial). */
+const CRIACAO_PAINEL_CODES = new Set([
+  "sem_codigo",
+  "codigo_exemplo_invalido",
+  "codigo_formato_nao_confirmado",
+]);
+
+const stageOf = (code: string) => (CRIACAO_PAINEL_CODES.has(code) ? "criacao_painel" : "triagem");
+
+/** Chave da tarefa Jira (ex.: ONB-1234) encontrada no assunto ou no corpo. */
+const extractJiraKey = (text: string): string | null =>
+  (text.match(/\b([A-Z][A-Z0-9]{1,9}-\d{1,6})\b/) ?? [])[1] ?? null;
 
 async function notifyDivergence(
   admin: any,
