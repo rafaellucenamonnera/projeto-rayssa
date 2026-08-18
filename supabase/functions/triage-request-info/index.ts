@@ -179,7 +179,22 @@ const TEMPLATES: Record<string, Template> = {
         c.complemento || "confirmação dos dados cadastrais da empresa (razão social, CNPJ e responsável)."
       }${PEDIDO_THREAD}${ASSINATURA}`,
   },
+  dados_faltantes: {
+    key: "dados_faltantes",
+    version: "v1",
+    label: "Dados faltantes do cadastro",
+    subject: (c) => `Complemento de cadastro${c.cliente ? ` — ${c.cliente}` : ""}`,
+    body: (c) => {
+      const lista = (c.faltantes ?? []).length
+        ? (c.faltantes ?? []).map((f) => `- ${f}`).join("\n")
+        : "- confirmação dos dados cadastrais da empresa (razão social, CNPJ e e-mail de contato)";
+      return `${abertura(c)}\n\nPara concluirmos, precisamos apenas destas informações:\n\n${lista}${
+        c.complemento ? `\n\n${c.complemento}` : ""
+      }${PEDIDO_THREAD}${ASSINATURA}`;
+    },
+  },
 };
+
 
 // ------------------------------------------------------------------ handler
 Deno.serve(async (req) => {
