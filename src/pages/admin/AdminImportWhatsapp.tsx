@@ -96,10 +96,6 @@ type PendingGmail = {
   received_at: string | null;
 };
 
-const OPERATIONAL_UI = {
-  compute: computeOperationalInfo,
-};
-
 const STATUS_TONE: Record<string, string> = {
   triage_ok: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
   triage_duplicado: "bg-sky-500/15 text-sky-400 border-sky-500/30",
@@ -186,6 +182,21 @@ export default function AdminImportWhatsapp() {
       setRows((rowsRes.data || []) as ExtractionRow[]);
       setCards((cardsRes.data || []) as CrossCardRef[]);
       setPendingGmail((pendingRes?.data || []) as PendingGmail[]);
+
+      const [execRes, profileRes] = await Promise.all([
+        (supabase as any)
+          .from("triage_activation_executions")
+          .select("id,source,source_row_id,created_at,executed_by")
+          .order("created_at", { ascending: false })
+          .limit(200),
+        (supabase as any).from("profiles").select("user_id,nome"),
+      ]);
+      setExecutions((execRes?.data || []) as any[]);
+      setUserNames(
+        Object.fromEntries(
+          ((profileRes?.data || []) as Array<{ user_id: string; nome: string }>).map((pr) => [pr.user_id, pr.nome]),
+        ),
+      );
     } catch (error: any) {
       toast.error(error.message || "Não foi possível carregar as importações.");
     } finally {
@@ -232,6 +243,30 @@ export default function AdminImportWhatsapp() {
   const importById = useMemo(() => new Map(imports.map((i) => [i.id, i])), [imports]);
   const cardById = useMemo(() => new Map(cards.map((c) => [c.id, c])), [cards]);
 
+  const executionByRow = useMemo(() => {
+    const map = new Map<string, { created_at: string; executed_by?: string | null }>();
+    executions
+      .filter((e) => e.source === "whatsapp" && e.source_row_id)
+      .forEach((e) => map.set(e.source_row_id as string, { created_at: e.created_at, executed_by: e.executed_by }));
+    return map;
+  }, [executions]);
+
+  const operationalInfo = useCallback(
+    (r: ExtractionRow) =>
+      computeOperationalInfo(
+        {
+          status: r.status,
+          reviewed: r.reviewed,
+          reviewDecision: r.review_decision,
+          reviewNotes: r.review_notes,
+          pendingReasons: r.pending_reasons,
+          execution: executionByRow.get(r.id) ?? null,
+        },
+        PENDING_LABEL,
+      ),
+    [executionByRow],
+  );
+
   const filtered = useMemo(() => {
     const minConf = Number(fConfidence) || 0;
     const from = fFrom ? new Date(fFrom).getTime() : null;
@@ -240,6 +275,7 @@ export default function AdminImportWhatsapp() {
       if (fImport !== "all" && r.import_id !== fImport) return false;
       if (fStatus !== "all" && r.status !== fStatus) return false;
       if (fReviewed !== "all" && String(r.reviewed) !== fReviewed) return false;
+      if (fOperational !== "all" && operationalInfo(r).state !== fOperational) return false;
       if (fCliente && !(r.cliente_nome || "").toLowerCase().includes(fCliente.toLowerCase())) return false;
       if (fCnpj && !(r.cnpj || "").includes(fCnpj.replace(/\D/g, ""))) return false;
       if (Number(r.confidence) < minConf) return false;
@@ -248,7 +284,7 @@ export default function AdminImportWhatsapp() {
       if (to && ref > to) return false;
       return true;
     });
-  }, [rows, fImport, fStatus, fReviewed, fCliente, fCnpj, fConfidence, fFrom, fTo]);
+  }, [rows, fImport, fStatus, fReviewed, fOperational, operationalInfo, fCliente, fCnpj, fConfidence, fFrom, fTo]);
 
   const gmailField = (row: PendingGmail, key: string) => {
     const ov = row.manual_overrides ?? {};
@@ -530,6 +566,17 @@ export default function AdminImportWhatsapp() {
               </SelectContent>
             </Select>
           </div>
+          <div>
+            <Label className="text-xs">Status operacional</Label>
+            <Select value={fOperational} onValueChange={setFOperational}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {OPERATIONAL_FILTER_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardContent>
       </Card>
 
@@ -542,7 +589,10 @@ export default function AdminImportWhatsapp() {
           {!loading && filtered.length === 0 && (
             <p className="text-sm text-muted-foreground">Nenhum registro para os filtros selecionados.</p>
           )}
-          {filtered.map((row) => (
+          {filtered.map((row) => {
+            const op = operationalInfo(row);
+            const exec = executionByRow.get(row.id) ?? null;
+            return (
             <button
               key={row.id}
               onClick={() => openRow(row)}
@@ -555,7 +605,20 @@ export default function AdminImportWhatsapp() {
                 </Badge>
                 <Badge variant="outline">Confiança {Math.round(Number(row.confidence))}%</Badge>
                 {row.reviewed && <Badge variant="outline">Revisada</Badge>}
+                <Badge variant="outline" className={op.tone}>{op.label}</Badge>
               </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-1 text-xs text-muted-foreground mt-1">
+                <span>Triagem: {STATUS_LABEL[row.status] ?? row.status}</span>
+                <span>Revisão: {row.reviewed ? `Revisada${row.review_decision ? ` (${row.review_decision})` : ""}` : "Não revisada"}</span>
+                <span>Operacional: {op.label}</span>
+                <span>Liberação: {row.reviewed && op.state !== "nao_liberado" ? fmtDate(row.reviewed_at) : "—"}</span>
+                <span>Liberado por: {row.reviewed_by ? (userNames[row.reviewed_by] ?? row.reviewed_by) : "—"}</span>
+                <span>Execução: {exec ? fmtDate(exec.created_at) : "—"}</span>
+                <span>Status da execução: {exec ? "Card criado" : "Sem execução"}</span>
+              </div>
+              {op.blockReason && op.state !== "liberado" && op.state !== "executado" && (
+                <p className="mt-1 text-xs text-amber-400">Motivo do bloqueio: {op.blockReason}</p>
+              )}
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground mt-1">
                 <span>CNPJ {fmtCnpj(row.cnpj)}</span>
                 <span>Código {row.codigo_monnera || "—"}</span>
@@ -573,7 +636,8 @@ export default function AdminImportWhatsapp() {
                 </div>
               )}
             </button>
-          ))}
+            );
+          })}
         </CardContent>
       </Card>
 
