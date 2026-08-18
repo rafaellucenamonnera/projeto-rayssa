@@ -59,6 +59,7 @@ import {
 import { CampaignMoveDialog, CampanhaConcluidaDialog } from "@/components/admin/CampaignFlowDialogs";
 import CardAttachments from "@/components/admin/CardAttachments";
 import OnboardingEmailQaSection from "@/components/admin/OnboardingEmailQaSection";
+import JiraTaskDialog from "@/components/admin/JiraTaskDialog";
 
 import ClienteCrossDialog from "@/components/admin/ClienteCrossDialog";
 
@@ -2715,6 +2716,16 @@ const AdminLeads = () => {
                     onChanged={(patch) => {
                       setDetailLead((prev: any) => (prev ? { ...prev, ...patch } : prev));
                       setLeads((prev: any[]) => prev.map((l) => (l.id === detailLead.id ? { ...l, ...patch } : l)));
+                    }}
+                  />
+                  <JiraTaskDialog
+                    cardId={detailLead.id}
+                    jiraIssueKey={detailLead.jira_issue_key}
+                    jiraStatus={detailLead.jira_issue_status}
+                    canEdit={canEditLead}
+                    onCreated={(issueKey) => {
+                      setDetailLead((prev: any) => (prev ? { ...prev, jira_issue_key: issueKey, jira_issue_status: "criada" } : prev));
+                      setLeads((prev: any[]) => prev.map((l) => (l.id === detailLead.id ? { ...l, jira_issue_key: issueKey } : l)));
                     }}
                   />
                   <RepresentativeCardNotes cardId={detailLead.id} canEdit={canEditLead} />
