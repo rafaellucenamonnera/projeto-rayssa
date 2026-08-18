@@ -15,7 +15,7 @@ Falta (dependências reais):
 - Não existem tabelas de proveniência, de vínculo de origem nem `automation_runs`.
 - Status da tarefa Jira e data de sincronização ainda não têm campos no card.
 
-AccountId da Lívia Fernandes: usar diretamente o accountId confirmado, fixado como configuração da integração Jira. Nunca resolver por nome, nunca usar e-mail como substituto e nunca utilizar `@secret:TELEGRAM_BOT_TOKEN` ou qualquer outro secret como accountId. Observação operacional: no chat o valor chega mascarado como a referência de secret, então o accountId precisa ser colado uma vez em texto puro (formato `5b10a2844c20165700ede21g` ou `712020:...`) para ser fixado; até lá nenhuma tarefa Jira real é criada.
+AccountId fixo da Lívia Fernandes: usar diretamente o valor já confirmado na criação das tarefas Jira, gravado como configuração fixa da integração. Não resolver por nome ou e-mail. Nunca usar `@secret:TELEGRAM_BOT_TOKEN` ou qualquer outro secret como accountId. Não solicitar novo fornecimento do accountId no chat.
 
 Cards em `Criação Painel` hoje, sem tarefa Jira: UNIDASUL, DIST. MERCHANT, J R ATACADISTA, ZARB DISTRIBUIDORA, ATACADO MACHADO. ORCA LOGÍSTICA está em `Material Onboarding Cliente` e não é lida nem alterada em nenhuma etapa.
 
@@ -40,7 +40,7 @@ Botão `Criar ou reenviar tarefa Jira` no detalhe do card: prévia completa ante
 
 ## Fase 2 — Código Monnera
 
-Edge Function `jira-code-webhook`, nunca pública sem autenticação e **nunca com segredo em URL ou query string** (aparece em logs). Ordem de preferência: (1) header secreto comparado em tempo constante; (2) se o Jira não permitir header customizado, assinatura HMAC-SHA256 do corpo enviada em header/campo do payload, validada contra o corpo bruto com proteção de replay por timestamp. Chamadas sem segredo válido são rejeitadas com 401 e registradas. Localiza o card por `jira_issue_key` → card_id → thread_id → CNPJ → nome; aplica somente com correspondência inequívoca; ambiguidade gera pendência e notificação, sem tocar no card.
+Edge Function `jira-code-webhook`, nunca pública sem autenticação e **nunca com segredo em URL ou query string** (aparece em logs). Preferência: header secreto simples, comparado em tempo constante. Se o Jira não permitir header secreto simples, aceitar somente assinatura HMAC-SHA256 em header, calculada sobre o corpo bruto e acompanhada de timestamp. Nunca aceitar o segredo ou a assinatura como campo confiável do payload. Chamadas sem autenticação válida são rejeitadas com 401 e registradas. Localiza o card por `jira_issue_key` → card_id → thread_id → CNPJ → nome; aplica somente com correspondência inequívoca; ambiguidade gera pendência e notificação, sem tocar no card.
 
 Validação: exatamente 8 caracteres `A-Z0-9`; rejeita `3SAXJF92`, `UB5PXGDB`, `XXXXXXX`, `XXXXXXXX`, qualquer `MNR-...` e código já usado por outro CNPJ.
 
