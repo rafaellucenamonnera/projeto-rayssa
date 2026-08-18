@@ -17,6 +17,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  computeOperationalInfo,
+  OPERATIONAL_FILTER_OPTIONS,
+} from "@/lib/triageOperationalStatus";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -92,6 +96,10 @@ type PendingGmail = {
   received_at: string | null;
 };
 
+const OPERATIONAL_UI = {
+  compute: computeOperationalInfo,
+};
+
 const STATUS_TONE: Record<string, string> = {
   triage_ok: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
   triage_duplicado: "bg-sky-500/15 text-sky-400 border-sky-500/30",
@@ -138,6 +146,9 @@ export default function AdminImportWhatsapp() {
   const [fTo, setFTo] = useState("");
   const [fConfidence, setFConfidence] = useState("0");
   const [fReviewed, setFReviewed] = useState("all");
+  const [fOperational, setFOperational] = useState("all");
+  const [executions, setExecutions] = useState<Array<{ id: string; source: string; source_row_id: string | null; created_at: string; executed_by: string | null }>>([]);
+  const [userNames, setUserNames] = useState<Record<string, string>>({});
 
   const [selected, setSelected] = useState<ExtractionRow | null>(null);
   const [edit, setEdit] = useState<Partial<ExtractionRow>>({});
