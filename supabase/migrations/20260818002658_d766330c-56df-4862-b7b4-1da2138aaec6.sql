@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.preview_triage_activation(text, uuid) FROM supabase_read_only_user;
