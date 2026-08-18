@@ -15,7 +15,7 @@ Falta (dependências reais):
 - Não existem tabelas de proveniência, de vínculo de origem nem `automation_runs`.
 - Status da tarefa Jira e data de sincronização ainda não têm campos no card.
 
-Atenção — accountId da Lívia: o valor continua chegando como a referência de secret `@secret:TELEGRAM_BOT_TOKEN` (token do bot do Telegram), não como um accountId da Atlassian. Ele é **expressamente rejeitado e nunca será utilizado**. AccountId da Atlassian não é secret (formato tipo `5b10a2844c20165700ede21g` ou `712020:...`) e pode ser colado direto no chat. Enquanto o valor em texto puro não for informado, a integração resolve o accountId pela API da Atlassian a partir do nome/e-mail da Lívia e apresenta o resultado para sua confirmação antes de gravar. Nenhum token, secret ou identificador não confirmado é usado como responsável da tarefa.
+Atenção — accountId da Lívia: o valor chega sempre como a referência de secret `@secret:TELEGRAM_BOT_TOKEN`, nunca como um accountId real. Regras fixas: nunca usar esse (ou qualquer) secret como accountId; nunca resolver por nome; nunca usar e-mail como substituto. O accountId da Atlassian não é secret (formato `5b10a2844c20165700ede21g` ou `712020:...`) e precisa ser colado em texto puro no chat. Até que ele chegue assim, a criação de tarefa Jira fica configurada mas **sem responsável válido**, e nenhuma tarefa real é criada.
 
 Cards em `Criação Painel` hoje, sem tarefa Jira: UNIDASUL, DIST. MERCHANT, J R ATACADISTA, ZARB DISTRIBUIDORA, ATACADO MACHADO. ORCA LOGÍSTICA está em `Material Onboarding Cliente` e não é lida nem alterada em nenhuma etapa.
 
@@ -44,7 +44,7 @@ Edge Function `jira-code-webhook`, nunca pública sem autenticação e **nunca c
 
 Validação: exatamente 8 caracteres `A-Z0-9`; rejeita `3SAXJF92`, `UB5PXGDB`, `XXXXXXX`, `XXXXXXXX`, qualquer `MNR-...` e código já usado por outro CNPJ.
 
-Ao aceitar: grava o código, origem `jira_webhook`, evidência e data, registra histórico, notifica Rafael e Maycon e libera a etapa seguinte de forma idempotente.
+Ao aceitar o código: grava o código no card; registra origem, evidência e data; registra histórico; notifica Rafael e Maycon; inicia **apenas** a geração idempotente do Canva. O card **não é movido nesta etapa** — a movimentação para `Material Onboarding Cliente` só ocorre após o link público do Canva ser criado, validado e confirmado.
 
 Fallback Gmail: `gmail-baston-sync` passa a reconhecer mensagens de `jira@monnera.atlassian.net`, limitado à conta `rafael.lucena@monnera.com.br`. Identifica chave Jira, card, CNPJ, nome e código; só aplica com associação inequívoca; ignora e-mails não relacionados; não dispara follow-up nem cobrança. A extração é por conteúdo, sem depender do layout do e-mail.
 
