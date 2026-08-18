@@ -587,7 +587,7 @@ Deno.serve(async (req) => {
     }
 
     const query = encodeURIComponent(
-      `(from:(@${SENDER_DOMAIN}) OR to:(@${SENDER_DOMAIN})) newer_than:${days}d -in:spam -in:trash`,
+      `((from:(@${SENDER_DOMAIN}) OR to:(@${SENDER_DOMAIN})) OR (from:(${JIRA_SENDER}) to:(${MONITORED_RECIPIENT}))) newer_than:${days}d -in:spam -in:trash`,
     );
 
     const ids: Array<{ id: string; rowId?: string }> = [];
