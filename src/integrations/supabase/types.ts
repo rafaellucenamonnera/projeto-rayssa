@@ -289,6 +289,56 @@ export type Database = {
           },
         ]
       }
+      automation_runs: {
+        Row: {
+          attempt: number
+          card_id: string | null
+          cursor: string | null
+          error: string | null
+          finished_at: string | null
+          id: string
+          origin: string | null
+          payload: Json
+          stage: string
+          started_at: string
+          status: string
+        }
+        Insert: {
+          attempt?: number
+          card_id?: string | null
+          cursor?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          origin?: string | null
+          payload?: Json
+          stage: string
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          attempt?: number
+          card_id?: string | null
+          cursor?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          origin?: string | null
+          payload?: Json
+          stage?: string
+          started_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_runs_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "representative_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       canva_material_generations: {
         Row: {
           card_id: string
@@ -350,6 +400,112 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "canva_material_generations_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "representative_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      card_field_provenance: {
+        Row: {
+          card_id: string
+          confidence: string | null
+          created_at: string
+          created_by: string | null
+          evidence: string | null
+          field_name: string
+          field_value: string | null
+          id: string
+          source: string
+          source_record_id: string | null
+          status: string
+        }
+        Insert: {
+          card_id: string
+          confidence?: string | null
+          created_at?: string
+          created_by?: string | null
+          evidence?: string | null
+          field_name: string
+          field_value?: string | null
+          id?: string
+          source: string
+          source_record_id?: string | null
+          status?: string
+        }
+        Update: {
+          card_id?: string
+          confidence?: string | null
+          created_at?: string
+          created_by?: string | null
+          evidence?: string | null
+          field_name?: string
+          field_value?: string | null
+          id?: string
+          source?: string
+          source_record_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_field_provenance_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "representative_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      card_source_links: {
+        Row: {
+          active: boolean
+          card_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          justification: string | null
+          link_mode: string
+          source: string
+          source_record_id: string | null
+          thread_id: string | null
+          unlink_justification: string | null
+          unlinked_at: string | null
+          unlinked_by: string | null
+        }
+        Insert: {
+          active?: boolean
+          card_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          justification?: string | null
+          link_mode?: string
+          source: string
+          source_record_id?: string | null
+          thread_id?: string | null
+          unlink_justification?: string | null
+          unlinked_at?: string | null
+          unlinked_by?: string | null
+        }
+        Update: {
+          active?: boolean
+          card_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          justification?: string | null
+          link_mode?: string
+          source?: string
+          source_record_id?: string | null
+          thread_id?: string | null
+          unlink_justification?: string | null
+          unlinked_at?: string | null
+          unlinked_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_source_links_card_id_fkey"
             columns: ["card_id"]
             isOneToOne: false
             referencedRelation: "representative_cards"
@@ -2847,7 +3003,11 @@ export type Database = {
           full_name: string
           id: string
           is_blocked: boolean
+          jira_created_at: string | null
           jira_issue_key: string | null
+          jira_issue_status: string | null
+          jira_last_error: string | null
+          jira_synced_at: string | null
           notes: string | null
           origin_message_id: string | null
           origin_source: string | null
@@ -2902,7 +3062,11 @@ export type Database = {
           full_name: string
           id?: string
           is_blocked?: boolean
+          jira_created_at?: string | null
           jira_issue_key?: string | null
+          jira_issue_status?: string | null
+          jira_last_error?: string | null
+          jira_synced_at?: string | null
           notes?: string | null
           origin_message_id?: string | null
           origin_source?: string | null
@@ -2957,7 +3121,11 @@ export type Database = {
           full_name?: string
           id?: string
           is_blocked?: boolean
+          jira_created_at?: string | null
           jira_issue_key?: string | null
+          jira_issue_status?: string | null
+          jira_last_error?: string | null
+          jira_synced_at?: string | null
           notes?: string | null
           origin_message_id?: string | null
           origin_source?: string | null
@@ -4008,6 +4176,17 @@ export type Database = {
       preview_triage_activation: {
         Args: { p_row_id: string; p_source: string }
         Returns: Json
+      }
+      record_automation_run: {
+        Args: {
+          p_card_id?: string
+          p_error?: string
+          p_origin?: string
+          p_payload?: Json
+          p_stage: string
+          p_status: string
+        }
+        Returns: string
       }
       register_canva_material: {
         Args: {
