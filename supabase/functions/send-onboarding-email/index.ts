@@ -142,9 +142,6 @@ Deno.serve(async (req) => {
     if (!ALLOWED_CODES.has(codigo)) {
       return json({ error: "Codigo nao autorizado para envio nesta etapa." }, 403);
     }
-    if (!ALLOWED_LINKS.has(link)) {
-      return json({ error: "Link do material nao autorizado para envio nesta etapa." }, 403);
-    }
     if (!nome || !assunto || html.length < 500) {
       return json({ error: "Dados incompletos para envio." }, 400);
     }
@@ -158,13 +155,25 @@ Deno.serve(async (req) => {
     // ------------------------------------------------------- card autorizado
     const { data: card } = await admin
       .from("representative_cards")
-      .select("id, full_name, test_mode")
+      .select("id, full_name, test_mode, canva_public_url")
       .eq("id", cardId)
       .maybeSingle();
     if (!card) return json({ error: "Card nao encontrado." }, 404);
     if (card.test_mode !== true) {
       return json({ error: "Card nao esta em modo de teste; envio bloqueado." }, 403);
     }
+
+    // --------------------------------------------- link publico obrigatorio
+    const cardPublicUrl = String(card.canva_public_url ?? "").trim();
+    if (!cardPublicUrl || !isCanvaPublicLink(cardPublicUrl)) {
+      await notifyCanvaBlock(cardId, "Link público do material Canva ausente ou inválido no card", cardPublicUrl);
+      return json({ error: "Link público do Canva ausente ou inválido no card. Envio bloqueado." }, 422);
+    }
+    if (link !== cardPublicUrl) {
+      await notifyCanvaBlock(cardId, "Link enviado diverge do link público registrado no card", link);
+      return json({ error: "Link do material diverge do link público registrado no card." }, 422);
+    }
+
 
     if (!LOVABLE_API_KEY || !GMAIL_CONNECTION_KEY) {
       return json({ error: "Conexao Gmail nao vinculada ao projeto." }, 500);
