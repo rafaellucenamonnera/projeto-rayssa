@@ -1407,7 +1407,32 @@ export default function AdminTriagemGmail() {
               </div>
 
               <div className="rounded-md border border-border p-2">
-                <p className="font-medium mb-1">Pré-requisitos</p>
+                <p className="font-medium mb-1">Requisitos mínimos para criar o cadastro</p>
+                <ul className="space-y-0.5">
+                  {(activation.requisitos_criacao ?? []).map((p: any, i: number) => (
+                    <li key={i} className={p.ok ? "text-emerald-400" : "text-destructive"}>
+                      {p.ok ? "✓" : "✕"} {p.item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {(activation.dados_faltantes ?? []).length > 0 && (
+                <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-amber-300">
+                  <p className="font-medium">Card ficará pendente — dados faltantes</p>
+                  <ul className="list-disc pl-4">
+                    {(activation.dados_faltantes ?? []).map((f: any, i: number) => <li key={i}>{f.rotulo}</li>)}
+                  </ul>
+                  <p className="mt-1">
+                    Solicite exatamente esses dados por e-mail na aba do registro. O avanço para Criação Painel acontece
+                    automaticamente quando a resposta completar o cadastro.
+                  </p>
+                </div>
+              )}
+
+              <div className="rounded-md border border-border p-2">
+                <p className="font-medium mb-1">Requisitos para avançar a Criação Painel</p>
+
                 <ul className="space-y-0.5">
                   {(activation.pre_requisitos ?? []).map((p: any, i: number) => (
                     <li key={i} className={p.ok ? "text-emerald-400" : "text-destructive"}>
