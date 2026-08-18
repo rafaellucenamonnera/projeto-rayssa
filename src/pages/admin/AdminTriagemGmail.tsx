@@ -214,6 +214,11 @@ export default function AdminTriagemGmail() {
   const [linkCardId, setLinkCardId] = useState<string>("none");
   const [saving, setSaving] = useState(false);
 
+  const [form, setForm] = useState<Record<string, string>>({});
+  const [justification, setJustification] = useState("");
+  const [corrections, setCorrections] = useState<Correction[]>([]);
+  const [confirmRelease, setConfirmRelease] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
     const [msgRes, runRes, cardRes] = await Promise.all([
