@@ -3566,6 +3566,16 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_monnera_code_to_card: {
+        Args: {
+          p_card_id: string
+          p_codigo: string
+          p_evidence?: Json
+          p_jira_issue_key?: string
+          p_source?: string
+        }
+        Returns: Json
+      }
       business_days_between: {
         Args: { p_from: string; p_to: string }
         Returns: number
