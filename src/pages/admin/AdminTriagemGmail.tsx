@@ -1094,14 +1094,26 @@ export default function AdminTriagemGmail() {
                               <span className="text-muted-foreground">
                                 {c.card.cnpj ? `· ${c.card.cnpj} ` : ""}· {c.motivo}
                               </span>
-                              <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => setLinkCardId(c.card.id)}>
-                                Selecionar
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 px-2"
+                                onClick={() => linkCard(c.card.id)}
+                                disabled={!!linkingCardId}
+                              >
+                                {linkingCardId === c.card.id ? (
+                                  <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Vinculando...</>
+                                ) : selected.matched_card_id === c.card.id ? (
+                                  "Vinculado"
+                                ) : (
+                                  "Selecionar"
+                                )}
                               </Button>
                               <Button
                                 size="sm"
                                 variant="ghost"
                                 className="h-6 px-2"
-                                onClick={() => navigate(crossCardActionUrl(CROSS_PANEL_ID, c.card.id))}
+                                onClick={() => openCard(c.card.id)}
                               >
                                 <ExternalLink className="h-3 w-3 mr-1" /> Abrir
                               </Button>
