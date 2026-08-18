@@ -24,7 +24,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, ExternalLink, Loader2, RefreshCw, CheckCircle2, Mail } from "lucide-react";
+import { ArrowLeft, ExternalLink, Loader2, RefreshCw, CheckCircle2, Mail, ShieldCheck } from "lucide-react";
 
 const CROSS_PANEL_ID = "painel_msj9fyji";
 
