@@ -649,6 +649,40 @@ export default function AdminImportWhatsapp() {
                 ) : null,
               )}
 
+              <div className="space-y-2 rounded-md border border-border p-3">
+                <p className="text-xs font-medium">Registros do Gmail pendentes que podem ser corrigidos por esta conversa</p>
+                {suggestions.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Nenhuma correspondência encontrada por CNPJ, telefone ou nome.</p>
+                ) : (
+                  <>
+                    <Textarea
+                      rows={2}
+                      value={suggestionJustification}
+                      onChange={(e) => setSuggestionJustification(e.target.value.slice(0, 500))}
+                      placeholder="Justificativa da correção (obrigatória)."
+                    />
+                    <div className="space-y-2">
+                      {suggestions.map(({ row, reason }) => (
+                        <div key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-muted/40 p-2 text-xs">
+                          <div className="min-w-0">
+                            <p className="truncate text-foreground">{row.subject || "(sem assunto)"}</p>
+                            <p className="text-muted-foreground">
+                              {row.from_address} · {reason} · {fmtDate(row.received_at)}
+                            </p>
+                          </div>
+                          <Button size="sm" variant="secondary" disabled={saving} onClick={() => applySuggestion(row)}>
+                            Aplicar correção
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Dados ambíguos não são aplicados automaticamente; a correção fica registrada no histórico com o trecho da conversa.
+                    </p>
+                  </>
+                )}
+              </div>
+
               {!!selected.evidences?.length && (
                 <div>
                   <p className="text-xs font-medium mb-1">Trechos originais que fundamentaram a extração</p>
