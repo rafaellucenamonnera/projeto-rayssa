@@ -2,12 +2,17 @@
 
 ## Bloqueio inicial (precisa de você)
 
-O arquivo `email-onboarding-parceiro-baston-monnera-v2.html` está no seu computador (`C:\Users\...`) e o sistema não consegue ler caminhos locais. Para usar o HTML aprovado como fonte de verdade, é necessário que você:
+O anexo recebido (`email-onboarding-parceiro-baston-monnera-v2.txt`) contém apenas a **copy em texto puro**: assunto, seções 1/2/3, links fixos e os marcadores `{{LINK_MATERIAL_CLIENTE}}` e `{{CODIGO_CADASTRO_PARCEIRO}}`. Não há HTML, CSS inline, logo base64, cabeçalho `#003729`, cards clicáveis nem `{{NOME_PARCEIRO}}`.
 
-- cole o conteúdo do HTML no chat, ou
-- anexe o arquivo na conversa.
+Com esse conteúdo é impossível "preservar o layout exatamente igual" — o layout não veio junto. Para seguir, escolha um caminho:
 
-Todo o restante do plano assume esse HTML como base intacta (CSS inline, logo base64, cores, cards, seções). Nada de layout será recriado do zero.
+- **A (preferido):** anexar o arquivo `.html` de verdade (com o CSS inline e a logo base64). Ele vira a fonte de verdade intacta e apenas os três marcadores são substituídos.
+- **B:** eu monto o HTML na identidade Monnera (cabeçalho verde `#003729`, logo, cards clicáveis, todas as seções e a copy exatamente como no `.txt`), você revisa no preview e ajusta. Nesse caso o resultado é equivalente, não idêntico ao arquivo local.
+
+Em ambos os casos a instrução interna "Substitua este campo antes do envio para cada novo parceiro." é removida do corpo.
+
+Todo o restante do plano assume o HTML final como base intacta.
+
 
 ## O que será construído
 
