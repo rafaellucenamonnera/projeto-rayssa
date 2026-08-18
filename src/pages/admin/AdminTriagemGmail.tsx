@@ -717,7 +717,9 @@ export default function AdminTriagemGmail() {
       toast.error(`Execução bloqueada: ${error.message}`);
       return;
     }
-    toast.success(`Card criado na etapa Cadastro (1 registro processado, nenhum e-mail enviado).`);
+    toast.success(
+      `${(data as any)?.card_acao === "reutilizar" ? "Card existente associado" : "Card criado na etapa Cadastro"} e movido para Criação Painel. Tarefa Jira pendente de criação; nenhum e-mail enviado.`,
+    );
     setActivation(null);
     setSelected(null);
     load();
