@@ -37,7 +37,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, MessageSquare, RefreshCw, Upload, ExternalLink } from "lucide-react";
+import { findCandidateCards, handleBlockedTriage, BLOCK_EXAMPLES } from "@/lib/triageBlockHandling";
+import { ArrowLeft, Loader2, MessageSquare, RefreshCw, Upload, ExternalLink, AlertTriangle } from "lucide-react";
 
 const CROSS_PANEL_ID = "painel_msj9fyji";
 
