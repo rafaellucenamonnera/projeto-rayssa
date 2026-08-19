@@ -309,7 +309,13 @@ export default function JiraTaskDialog({ cardId, jiraIssueKey, jiraStatus, canEd
                 <p><strong>Cliente:</strong> {preview.card.nome ?? "—"}</p>
                 <p><strong>CNPJ:</strong> {preview.card.cnpj ?? "—"}</p>
                 <p><strong>Etapa:</strong> {preview.card.etapa ?? "—"}</p>
-                <p><strong>Projeto/Tipo:</strong> {preview.jira.project} / {preview.jira.issue_type}</p>
+                <p>
+                  <strong>Projeto:</strong> {preview.jira.project_key}
+                  {diagnostic?.project?.id ? ` (ID ${diagnostic.project.id})` : ""}
+                </p>
+                <p>
+                  <strong>Tipo:</strong> {diagnostic?.issue_type?.name ?? "—"} (ID {preview.jira.issue_type_id})
+                </p>
                 <p><strong>Responsável:</strong> {preview.jira.assignee ? "Lívia Fernandes (configurado)" : "não configurado"}</p>
               </div>
               <div className="rounded-md border border-border p-3">
