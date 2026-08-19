@@ -74,9 +74,19 @@ Deno.serve(async (req) => {
     const blockers: string[] = [];
     if (!card.full_name?.trim()) blockers.push("Nome do parceiro não confirmado.");
     if (!card.cnpj || card.cnpj.replace(/\D/g, "").length !== 14) blockers.push("CNPJ não confirmado (14 dígitos).");
-    if (!String(card.stage_id ?? "").includes(CRIACAO_PAINEL_STAGE_HINT)) {
+
+    // Etapa: comparar pelo rótulo configurado (o stage_id é técnico, ex.: etapa_painel_msj9fyji_2).
+    const { data: stageRow } = await admin
+      .from("pipeline_stages_config")
+      .select("value, label")
+      .eq("panel_key", CROSS_PANEL_ID)
+      .eq("value", card.stage_id ?? "")
+      .maybeSingle();
+    const stageLabel = stageRow?.label ?? "";
+    if (normalizeLabel(stageLabel) !== CRIACAO_PAINEL_LABEL) {
       blockers.push("Card não está na etapa Criação Painel.");
     }
+
 
     // 3. Deduplicação: por card, por CNPJ e por thread de origem.
     let duplicate: { id: string; full_name: string | null; jira_issue_key: string | null } | null = null;
