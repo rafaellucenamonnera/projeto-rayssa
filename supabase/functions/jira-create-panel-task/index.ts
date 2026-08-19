@@ -110,7 +110,8 @@ Deno.serve(async (req) => {
     }
 
     const assigneeAccountId = Deno.env.get("JIRA_ASSIGNEE_ACCOUNT_ID")?.trim();
-    if (!assigneeAccountId) blockers.push("JIRA_ASSIGNEE_ACCOUNT_ID não configurado: tarefa nunca é criada sem responsável.");
+    if (!assigneeAccountId) blockers.push("Responsável Jira não configurado ou não autorizado.");
+
 
     const appUrl = Deno.env.get("PUBLIC_APP_URL")?.replace(/\/+$/, "") ?? "";
     const cardUrl = appUrl ? `${appUrl}/admin/leads?panel=${CROSS_PANEL_ID}&card=${card.id}` : card.id;
