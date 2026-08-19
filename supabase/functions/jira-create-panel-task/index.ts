@@ -128,7 +128,7 @@ Deno.serve(async (req) => {
     ].join("\n");
 
     const preview = {
-      card: { id: card.id, nome: card.full_name, cnpj: card.cnpj, etapa: card.stage_id },
+      card: { id: card.id, nome: card.full_name, cnpj: card.cnpj, etapa: stageLabel || card.stage_id },
       jira: { project: JIRA_PROJECT_ID, issue_type: JIRA_ISSUE_TYPE_ID, assignee: assigneeAccountId ? "configurado" : null, summary, description },
       blockers,
       duplicate,
@@ -140,11 +140,12 @@ Deno.serve(async (req) => {
         p_status: "ignorado",
         p_card_id: card.id,
         p_error: blockers.join(" "),
-        p_origin: "manual",
+        p_origin: dryRun ? "manual_preview" : "manual",
         p_payload: { blockers },
       });
-      return json({ ok: false, preview, error: blockers.join(" ") }, 400);
+      return json({ ok: false, preview, error: blockers.join(" "), error_kind: "pre_requisito" }, 400);
     }
+
     if (duplicate) {
       return json({ ok: false, preview, error: `Já existe tarefa Jira (${duplicate.jira_issue_key}) para este card/CNPJ/thread.` }, 409);
     }
