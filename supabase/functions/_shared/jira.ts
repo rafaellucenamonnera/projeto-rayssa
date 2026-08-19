@@ -1,8 +1,16 @@
 // Helpers compartilhados de leitura da API Jira (somente GET).
-export const JIRA_PROJECT_ID = "10038";
-export const JIRA_ISSUE_TYPE_ID = "10042";
 export const JIRA_FLOW_LABEL = "monnera-onboarding";
 export const CROSS_PANEL_ID = "painel_msj9fyji";
+
+/** Chave do projeto Jira (secret JIRA_PROJECT_KEY; padrão MB apenas quando ausente). */
+export function jiraProjectKey(): string {
+  return Deno.env.get("JIRA_PROJECT_KEY")?.trim() || "MB";
+}
+
+/** Id do tipo de item (secret JIRA_IMPLEMENTATION_ISSUE_TYPE_ID; padrão 10042 apenas quando ausente). */
+export function jiraIssueTypeId(): string {
+  return Deno.env.get("JIRA_IMPLEMENTATION_ISSUE_TYPE_ID")?.trim() || "10042";
+}
 
 export function jiraEnv() {
   const site = Deno.env.get("ATLASSIAN_SITE_URL")?.trim().replace(/\/+$/, "");
@@ -11,7 +19,7 @@ export function jiraEnv() {
   if (!site || !email || !token) {
     throw new Error("Configuração Atlassian ausente (ATLASSIAN_SITE_URL, ATLASSIAN_EMAIL, ATLASSIAN_API_TOKEN).");
   }
-  return { site, auth: btoa(`${email}:${token}`) };
+  return { site, auth: btoa(`${email}:${token}`), projectKey: jiraProjectKey(), issueTypeId: jiraIssueTypeId() };
 }
 
 async function jiraGet(path: string): Promise<any> {
