@@ -10,9 +10,17 @@ import { toast } from "sonner";
 
 interface Preview {
   card: { id: string; nome: string | null; cnpj: string | null; etapa: string | null };
-  jira: { project: string; issue_type: string; assignee: string | null; summary: string; description: string };
+  jira: { project_key: string; issue_type_id: string; assignee: string | null; summary: string; description: string };
   blockers: string[];
   duplicate: { id: string; full_name: string | null; jira_issue_key: string | null } | null;
+}
+
+interface Diagnostic {
+  ok: boolean;
+  jira_user: { display_name: string | null; active: boolean | null } | null;
+  project: { key: string; name: string | null; id: string | null } | null;
+  permission: { create_issues: boolean } | null;
+  issue_type: { id: string; name: string | null } | null;
 }
 
 interface SyncPreview {
@@ -48,12 +56,18 @@ async function readFunctionError(fnError: any): Promise<FnErrorInfo> {
     body = null;
   }
   const kindLabel: Record<string, string> = {
-    autenticacao: "Erro de autenticação",
+    autenticacao: "Credenciais Atlassian",
+    configuracao: "Configuração incompleta",
+    projeto_inexistente: "Projeto Jira não encontrado",
+    sem_acesso_projeto: "Sem acesso ao projeto",
+    sem_permissao_criar: "Sem permissão para criar itens",
+    tipo_invalido: "Tipo de item inválido",
+    campos_invalidos: "Campos rejeitados pelo Jira",
     permissao: "Erro de permissão",
     payload: "Erro de dados enviados",
     pre_requisito: "Pré-requisito não atendido",
     duplicidade: "Duplicidade",
-    servidor_jira: "Erro no Jira",
+    servidor_jira: "Jira indisponível",
   };
   const parts: string[] = [];
   if (status) parts.push(`HTTP ${status}`);
@@ -76,6 +90,31 @@ export default function JiraTaskDialog({ cardId, jiraIssueKey, jiraStatus, canEd
   const [syncSaving, setSyncSaving] = useState(false);
   const [syncPreview, setSyncPreview] = useState<SyncPreview | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [diagLoading, setDiagLoading] = useState(false);
+  const [diagnostic, setDiagnostic] = useState<Diagnostic | null>(null);
+  const [diagError, setDiagError] = useState<string | null>(null);
+
+  // Diagnóstico: somente leitura no Jira. Não cria tarefa e não libera implicitamente a criação.
+  const runDiagnostic = async () => {
+    setDiagLoading(true);
+    setDiagError(null);
+    setDiagnostic(null);
+    const { data, error: fnError } = await supabase.functions.invoke("jira-create-panel-task?check=1", {
+      body: { check: true },
+    });
+    setDiagLoading(false);
+    if (fnError) {
+      const info = await readFunctionError(fnError);
+      setDiagError(info.message);
+      return;
+    }
+    const diag = (data as any)?.diagnostic as Diagnostic | undefined;
+    if (!diag?.ok) {
+      setDiagError((data as any)?.error ?? "Diagnóstico não confirmado.");
+      return;
+    }
+    setDiagnostic(diag);
+  };
 
   const openSync = async () => {
     setSyncOpen(true);
@@ -270,7 +309,13 @@ export default function JiraTaskDialog({ cardId, jiraIssueKey, jiraStatus, canEd
                 <p><strong>Cliente:</strong> {preview.card.nome ?? "—"}</p>
                 <p><strong>CNPJ:</strong> {preview.card.cnpj ?? "—"}</p>
                 <p><strong>Etapa:</strong> {preview.card.etapa ?? "—"}</p>
-                <p><strong>Projeto/Tipo:</strong> {preview.jira.project} / {preview.jira.issue_type}</p>
+                <p>
+                  <strong>Projeto:</strong> {preview.jira.project_key}
+                  {diagnostic?.project?.id ? ` (ID ${diagnostic.project.id})` : ""}
+                </p>
+                <p>
+                  <strong>Tipo:</strong> {diagnostic?.issue_type?.name ?? "—"} (ID {preview.jira.issue_type_id})
+                </p>
                 <p><strong>Responsável:</strong> {preview.jira.assignee ? "Lívia Fernandes (configurado)" : "não configurado"}</p>
               </div>
               <div className="rounded-md border border-border p-3">
@@ -292,6 +337,27 @@ export default function JiraTaskDialog({ cardId, jiraIssueKey, jiraStatus, canEd
 
           {error && <p className="text-sm text-destructive whitespace-pre-wrap">{error}</p>}
 
+          <div className="rounded-md border border-border p-3 space-y-2 text-sm">
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-medium">Diagnóstico da configuração Jira</p>
+              <Button size="sm" variant="outline" onClick={runDiagnostic} disabled={diagLoading}>
+                {diagLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Executar diagnóstico
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Somente leitura no Jira. Obrigatório antes de criar a tarefa.
+            </p>
+            {diagnostic && (
+              <ul className="text-xs space-y-0.5">
+                <li>Conta: {diagnostic.jira_user?.display_name ?? "—"}</li>
+                <li>Projeto: {diagnostic.project?.key} {diagnostic.project?.id ? `(ID ${diagnostic.project.id})` : ""}</li>
+                <li>Permissão de criação: {diagnostic.permission?.create_issues ? "confirmada" : "não confirmada"}</li>
+                <li>Tipo: {diagnostic.issue_type?.name ?? "—"} (ID {diagnostic.issue_type?.id})</li>
+              </ul>
+            )}
+            {diagError && <p className="text-xs text-destructive whitespace-pre-wrap">{diagError}</p>}
+          </div>
+
           <Textarea
             placeholder="Justificativa (obrigatória)"
             value={justification}
@@ -303,9 +369,16 @@ export default function JiraTaskDialog({ cardId, jiraIssueKey, jiraStatus, canEd
             <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
             <Button
               onClick={handleConfirm}
-              disabled={sending || !preview || preview.blockers.length > 0 || !!preview.duplicate}
+              disabled={
+                sending ||
+                !preview ||
+                preview.blockers.length > 0 ||
+                !!preview.duplicate ||
+                !diagnostic?.ok ||
+                !justification.trim()
+              }
             >
-              {sending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Confirmar e criar
+              {sending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Criar tarefa no Jira
             </Button>
           </DialogFooter>
         </DialogContent>
