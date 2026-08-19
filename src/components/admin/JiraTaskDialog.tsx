@@ -290,7 +290,7 @@ export default function JiraTaskDialog({ cardId, jiraIssueKey, jiraStatus, canEd
             </div>
           )}
 
-          {error && !preview && <p className="text-sm text-destructive">{error}</p>}
+          {error && <p className="text-sm text-destructive whitespace-pre-wrap">{error}</p>}
 
           <Textarea
             placeholder="Justificativa (obrigatória)"
