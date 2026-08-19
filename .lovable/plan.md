@@ -58,9 +58,9 @@ const issueTypeId = Deno.env.get("JIRA_IMPLEMENTATION_ISSUE_TYPE_ID") || "10042"
 ```text
 1. Verificar secrets presentes
 2. GET /rest/api/3/myself
-3. GET /rest/api/3/project/MB
-4. GET /rest/api/3/mypermissions?projectKey=MB&permissions=CREATE_ISSUES
-5. GET /rest/api/3/issue/createmeta?projectKeys=MB&issuetypeIds=10042&expand=projects.issuetypes.fields
+3. GET /rest/api/3/project/{projectKey}
+4. GET /rest/api/3/mypermissions?projectKey={projectKey}&permissions=CREATE_ISSUES
+5. GET /rest/api/3/issue/createmeta?projectKeys={projectKey}&issuetypeIds={issueTypeId}&expand=projects.issuetypes.fields
 6. Exibir diagnóstico
 7. Criação real apenas por ação explícita e separada do administrador na interface
 ```
