@@ -62,18 +62,24 @@ const issueTypeId = Deno.env.get("JIRA_IMPLEMENTATION_ISSUE_TYPE_ID") || "10042"
 4. GET /rest/api/3/mypermissions?projectKey=MB&permissions=CREATE_ISSUES
 5. GET /rest/api/3/issue/createmeta?projectKeys=MB&issuetypeIds=10042&expand=projects.issuetypes.fields
 6. Exibir diagnóstico
-7. Somente após confirmação manual do administrador, permitir a criação real
+7. Criação real apenas por ação explícita e separada do administrador na interface
 ```
 
 A permissão é considerada válida apenas quando `permissions.CREATE_ISSUES.havePermission === true`. O `createmeta` não confirma permissão: ele serve para confirmar que o tipo `10042` existe dentro do projeto `MB` e quais campos são obrigatórios — por isso é chamado sempre com `projectKeys`, `issuetypeIds` e `expand=projects.issuetypes.fields`, evitando resposta genérica ou paginada.
 
 ## Endpoint de diagnóstico `?check=1`
 
-- Exige sessão Supabase válida (401 sem sessão) e papel autorizado — admin ou gestor interno via `has_role` (403 sem papel).
+- Exige sessão Supabase válida (401 sem sessão) e papel autorizado (403 sem papel). Autorização pela função já existente no schema: `public.has_role(_user_id uuid, _role app_role) returns boolean`, com o enum `app_role` contendo hoje `admin` e `gestor_conta` — verificado no schema atual. Nenhuma função nova de autorização é criada e nenhum parâmetro é inventado.
 - Executa somente as quatro chamadas GET acima. Nunca chama `POST /rest/api/3/issue`.
-- Não cria nem altera tarefa, card ou projeto.
+- Não cria nem altera tarefa, card ou projeto, e **não libera implicitamente a criação**.
 - Não retorna token, e-mail, `Authorization`, headers ou qualquer secret.
 - Retorna apenas: usuário Jira resumido (displayName e active), projeto (chave e nome), `havePermission`, tipo permitido (id e nome) e status geral do diagnóstico.
+
+## Confirmação manual na interface
+
+- Botão "Executar diagnóstico" → chama `?check=1` e exibe o resultado item a item (conta, projeto, permissão, tipo).
+- Botão "Criar tarefa no Jira" separado, sempre uma ação explícita do administrador.
+- Enquanto o diagnóstico não retornar sucesso (ou se falhar), o botão de criação permanece bloqueado, com o motivo visível.
 
 ## Payload da criação real
 
