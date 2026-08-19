@@ -337,6 +337,27 @@ export default function JiraTaskDialog({ cardId, jiraIssueKey, jiraStatus, canEd
 
           {error && <p className="text-sm text-destructive whitespace-pre-wrap">{error}</p>}
 
+          <div className="rounded-md border border-border p-3 space-y-2 text-sm">
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-medium">Diagnóstico da configuração Jira</p>
+              <Button size="sm" variant="outline" onClick={runDiagnostic} disabled={diagLoading}>
+                {diagLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Executar diagnóstico
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Somente leitura no Jira. Obrigatório antes de criar a tarefa.
+            </p>
+            {diagnostic && (
+              <ul className="text-xs space-y-0.5">
+                <li>Conta: {diagnostic.jira_user?.display_name ?? "—"}</li>
+                <li>Projeto: {diagnostic.project?.key} {diagnostic.project?.id ? `(ID ${diagnostic.project.id})` : ""}</li>
+                <li>Permissão de criação: {diagnostic.permission?.create_issues ? "confirmada" : "não confirmada"}</li>
+                <li>Tipo: {diagnostic.issue_type?.name ?? "—"} (ID {diagnostic.issue_type?.id})</li>
+              </ul>
+            )}
+            {diagError && <p className="text-xs text-destructive whitespace-pre-wrap">{diagError}</p>}
+          </div>
+
           <Textarea
             placeholder="Justificativa (obrigatória)"
             value={justification}
@@ -348,9 +369,16 @@ export default function JiraTaskDialog({ cardId, jiraIssueKey, jiraStatus, canEd
             <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
             <Button
               onClick={handleConfirm}
-              disabled={sending || !preview || preview.blockers.length > 0 || !!preview.duplicate}
+              disabled={
+                sending ||
+                !preview ||
+                preview.blockers.length > 0 ||
+                !!preview.duplicate ||
+                !diagnostic?.ok ||
+                !justification.trim()
+              }
             >
-              {sending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Confirmar e criar
+              {sending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Criar tarefa no Jira
             </Button>
           </DialogFooter>
         </DialogContent>
