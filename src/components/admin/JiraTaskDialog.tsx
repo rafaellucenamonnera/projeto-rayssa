@@ -90,6 +90,31 @@ export default function JiraTaskDialog({ cardId, jiraIssueKey, jiraStatus, canEd
   const [syncSaving, setSyncSaving] = useState(false);
   const [syncPreview, setSyncPreview] = useState<SyncPreview | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [diagLoading, setDiagLoading] = useState(false);
+  const [diagnostic, setDiagnostic] = useState<Diagnostic | null>(null);
+  const [diagError, setDiagError] = useState<string | null>(null);
+
+  // Diagnóstico: somente leitura no Jira. Não cria tarefa e não libera implicitamente a criação.
+  const runDiagnostic = async () => {
+    setDiagLoading(true);
+    setDiagError(null);
+    setDiagnostic(null);
+    const { data, error: fnError } = await supabase.functions.invoke("jira-create-panel-task?check=1", {
+      body: { check: true },
+    });
+    setDiagLoading(false);
+    if (fnError) {
+      const info = await readFunctionError(fnError);
+      setDiagError(info.message);
+      return;
+    }
+    const diag = (data as any)?.diagnostic as Diagnostic | undefined;
+    if (!diag?.ok) {
+      setDiagError((data as any)?.error ?? "Diagnóstico não confirmado.");
+      return;
+    }
+    setDiagnostic(diag);
+  };
 
   const openSync = async () => {
     setSyncOpen(true);
