@@ -80,16 +80,20 @@ Deno.serve(async (req) => {
       console.error("lookup parceiro error", existErr);
     }
 
-    if (existingParceiro?.aprovado) {
+    // Um cadastro já existente (aprovado ou pendente) NUNCA pode ser sobrescrito
+    // por uma chamada pública: quem conhece o e-mail/CPF não prova ser o titular.
+    if (existingParceiro) {
       return json(
         {
-          error: "already_approved",
-          message: "Já existe um cadastro de Embaixador aprovado para este e-mail/CPF. Faça login ou redefina sua senha.",
+          error: existingParceiro.aprovado ? "already_approved" : "already_registered",
+          message:
+            "Já existe um cadastro de Embaixador para este e-mail/CPF. Faça login, redefina sua senha ou fale com a equipe Monnera para atualizar os dados.",
         },
         409,
         corsHeaders,
       );
     }
+
 
     // 2) Find or create auth user
     let userId: string | null = null;
@@ -147,33 +151,11 @@ Deno.serve(async (req) => {
       return json({ error: "auth_create_failed", message: "Falha ao criar usuário." }, 500, corsHeaders);
     }
 
-    // 3) Upsert parceiros_comerciais
+    // 3) Criar parceiros_comerciais (somente novos cadastros)
     let parceiro;
-    if (existingParceiro) {
-      const { data: updated, error: updErr } = await admin
-        .from("parceiros_comerciais")
-        .update({
-          user_id: userId,
-          nome,
-          cpf: cpfClean,
-          email: emailNorm,
-          telefone_ddd,
-          telefone_numero,
-          slug_consultor,
-          cliente_monnera: !!cliente_monnera,
-          cliente_monnera_cnpj: cliente_monnera ? (cliente_monnera_cnpj || null) : null,
-          ativo: true,
-        })
-        .eq("id", existingParceiro.id)
-        .select("id, nome, codigo_parceiro, slug_consultor")
-        .single();
-      if (updErr) {
-        console.error("update parceiro error", updErr);
-        return json({ error: "parceiro_update_failed", message: updErr.message }, 500, corsHeaders);
-      }
-      parceiro = updated;
-    } else {
+    {
       // Generate unique code
+
       let codigo_parceiro = "";
       for (let i = 0; i < 8; i++) {
         const c = genCode();
