@@ -33,6 +33,37 @@ interface Props {
   onCodeApplied?: (codigo: string) => void;
 }
 
+type FnErrorInfo = { status: number | null; message: string; body: any };
+
+async function readFunctionError(fnError: any): Promise<FnErrorInfo> {
+  const response = (fnError as any)?.context;
+  let body: any = null;
+  let status: number | null = null;
+  try {
+    if (response && typeof response.json === "function") {
+      status = typeof response.status === "number" ? response.status : null;
+      body = await response.clone().json();
+    }
+  } catch {
+    body = null;
+  }
+  const kindLabel: Record<string, string> = {
+    autenticacao: "Erro de autenticação",
+    permissao: "Erro de permissão",
+    payload: "Erro de dados enviados",
+    pre_requisito: "Pré-requisito não atendido",
+    duplicidade: "Duplicidade",
+    servidor_jira: "Erro no Jira",
+  };
+  const parts: string[] = [];
+  if (status) parts.push(`HTTP ${status}`);
+  if (body?.error_kind && kindLabel[body.error_kind]) parts.push(kindLabel[body.error_kind]);
+  const detail = body?.error ?? fnError?.message ?? "Falha desconhecida.";
+  const jiraPart = body?.jira_status ? ` (Jira ${body.jira_status}${body.jira_message ? `: ${body.jira_message}` : ""})` : "";
+  const message = `${parts.length ? `${parts.join(" · ")} — ` : ""}${detail}${jiraPart}`;
+  return { status, message, body };
+}
+
 export default function JiraTaskDialog({ cardId, jiraIssueKey, jiraStatus, canEdit, onCreated, onCodeApplied }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -56,7 +87,9 @@ export default function JiraTaskDialog({ cardId, jiraIssueKey, jiraStatus, canEd
     });
     setSyncLoading(false);
     if (fnError) {
-      setSyncError(fnError.message);
+      const info = await readFunctionError(fnError);
+      setSyncPreview(info.body?.preview ?? null);
+      setSyncError(info.message);
       return;
     }
     setSyncPreview((data as any)?.preview ?? null);
@@ -70,8 +103,14 @@ export default function JiraTaskDialog({ cardId, jiraIssueKey, jiraStatus, canEd
       body: { card_id: cardId, confirm: true },
     });
     setSyncSaving(false);
-    if (fnError || (data as any)?.ok === false) {
-      toast.error((data as any)?.error ?? fnError?.message ?? "Falha ao gravar o código Monnera.");
+    if (fnError) {
+      const info = await readFunctionError(fnError);
+      setSyncError(info.message);
+      toast.error(info.message);
+      return;
+    }
+    if ((data as any)?.ok === false) {
+      toast.error((data as any)?.error ?? "Falha ao gravar o código Monnera.");
       return;
     }
     const codigo = (data as any)?.codigo as string;
@@ -90,7 +129,9 @@ export default function JiraTaskDialog({ cardId, jiraIssueKey, jiraStatus, canEd
     });
     setLoading(false);
     if (fnError) {
-      setError(fnError.message);
+      const info = await readFunctionError(fnError);
+      setPreview(info.body?.preview ?? null);
+      setError(info.message);
       return;
     }
     setPreview((data as any)?.preview ?? null);
@@ -114,8 +155,16 @@ export default function JiraTaskDialog({ cardId, jiraIssueKey, jiraStatus, canEd
       body: { card_id: cardId, confirm: true, dry_run: false, justification: justification.trim() },
     });
     setSending(false);
-    if (fnError || (data as any)?.ok === false) {
-      toast.error((data as any)?.error ?? fnError?.message ?? "Falha ao criar a tarefa no Jira.");
+    if (fnError) {
+      const info = await readFunctionError(fnError);
+      setError(info.message);
+      toast.error(info.message);
+      return;
+    }
+    if ((data as any)?.ok === false) {
+      const msg = (data as any)?.error ?? "Falha ao criar a tarefa no Jira.";
+      setError(msg);
+      toast.error(msg);
       return;
     }
     const issueKey = (data as any)?.issue_key as string;
@@ -123,6 +172,7 @@ export default function JiraTaskDialog({ cardId, jiraIssueKey, jiraStatus, canEd
     onCreated?.(issueKey);
     setOpen(false);
   };
+
 
   return (
     <Card>
