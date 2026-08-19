@@ -1,41 +1,70 @@
-# Webhook Jira — nome do header e teste de conexão
+# Fluxo Onb Clientes Cross sem webhook Jira
 
-## Nome exato do header (já implementado na função)
+Objetivo: obter o Código Monnera do Jira por consulta (polling + botão manual), sem depender de Automation/Webhook, mantendo segurança, rastreabilidade e idempotência.
 
-A Edge Function `jira-code-webhook` aceita duas formas de autenticação:
+## 1. Criação manual da tarefa Jira (já existe — ajustes)
 
-1. Header secreto simples (recomendado para o Jira):
-   - Nome do header: `x-jira-webhook-secret`
-   - Valor: exatamente o mesmo `JIRA_WEBHOOK_SECRET` salvo no Lovable
-2. Assinatura HMAC-SHA256 (alternativa, para automações próprias):
-   - `x-jira-signature`: `sha256=<hex>` de HMAC-SHA256 sobre `"<timestamp>.<corpo bruto>"`
-   - `x-jira-timestamp`: epoch em segundos
+`jira-create-panel-task` e `JiraTaskDialog` já implementam: somente admin, etapa Criação Painel, nome + CNPJ confirmados, prévia, justificativa obrigatória, dedupe por card_id/CNPJ/thread/jira_issue_key, gravação da chave no card, `card_field_provenance`, histórico e `automation_runs`.
 
-Sem um desses conjuntos, a resposta é HTTP 401. Nomes de header são case-insensitive; o segredo nunca é lido do corpo do payload.
+Ajustes:
+- usar `project: { id: "10038" }` (hoje usa a chave `MB`), mantendo tipo `10042`;
+- responsável lido diretamente do secret `JIRA_ASSIGNEE_ACCOUNT_ID`; se ausente, erro explícito e nenhuma criação (comportamento atual mantido e reforçado na mensagem de UI).
 
-Configuração no Jira (Automation → Send web request), projeto MB, gatilho "Issue updated", tipo Tarefa:
-- URL: `https://bapxuzodzgahscatvofs.functions.supabase.co/jira-code-webhook`
-- Header: `x-jira-webhook-secret` = valor do `JIRA_WEBHOOK_SECRET`
-- Método POST, corpo JSON com `issue.key` e o campo do código.
+## 2. Nova Edge Function `jira-sync-panel-tasks`
 
-## Ajuste necessário antes do teste de conexão
+Leitura da API Jira (`/rest/api/3/search` no projeto 10038 + `/comment` da issue). Para cada tarefa do fluxo Monnera:
+- associação por `jira_issue_key` → `card_id` no texto → `thread_id` → CNPJ → nome exato; qualquer ambiguidade (0 ou >1 card) não aplica nada e registra `ambiguidade` em `automation_runs`;
+- extrai o código de descrição, comentários ou campo configurável (`JIRA_CODE_FIELD_ID`, opcional);
+- valida com `_shared/monneraCode.ts` (8 caracteres A-Z0-9; rejeita `3SAXJF92`, `UB5PXGDB`, `XXXXXXX`, `XXXXXXXX` e qualquer `MNR-`/com hífen);
+- rejeita código já usado por outro CNPJ no painel;
+- aplica via `apply_monnera_code_to_card` com `p_source = 'jira_polling'`, grava evidência em `card_field_provenance`, atualiza `jira_issue_status`/`jira_synced_at`;
+- idempotência: se o card já tem o mesmo código, marca `ignorado`; código diferente gera `divergencia` + notificação, sem sobrescrever;
+- nunca move o card e nunca toca em ORCA LOGÍSTICA (lista de cards protegidos);
+- **modo geral desligado**: só processa cards com `test_mode = true` enquanto a chave de ativação global estiver off.
 
-Hoje não existe modo de teste. Um payload válido sem card correspondente responde HTTP 202 (ignorado), e não 200 — o que dificulta validar a entrega sem tocar em card.
+Lote e cursor: novo registro em `sync_job_logs` (tipo `jira_polling`) guardando `last_issue_updated_at` e `last_issue_key`; lote padrão de 10 issues por execução, retomando do cursor. Bloqueio single-flight por lease com expiração para evitar execuções concorrentes.
 
-Alteração mínima em `supabase/functions/jira-code-webhook/index.ts`:
-- Após autenticar com sucesso, se o corpo contiver `{"ping": true}` (ou `"test_delivery": true`), responder HTTP 200 com `{ ok: true, mode: "ping" }`, registrar em `automation_runs` com etapa `jira_code_webhook` e status `sucesso`, origem `jira_webhook`, e encerrar sem consultar nem alterar nenhum card.
-- Nenhuma outra regra do fluxo muda: busca de card, validação de código, idempotência, divergência e notificações permanecem iguais.
+## 3. Botão "Sincronizar código Jira" no card
 
-## Roteiro de verificação (sem alterar o card QA)
+Novo bloco na UI do card (ao lado de "Criar tarefa Jira"), visível só para admin e só quando existe `jira_issue_key`:
+- passo 1 (`dry_run`): consulta apenas a issue vinculada e mostra o código encontrado, a origem (descrição / comentário #N / campo) e o trecho de evidência;
+- passo 2: confirmação administrativa explícita grava o código, com usuário responsável registrado em `card_field_provenance`, histórico do card e `automation_runs` (`origin: manual_jira_sync`).
 
-1. Entrega válida: POST com header correto e corpo `{"ping": true}` → esperado HTTP 200.
-2. Segredo inválido: mesmo POST com header errado → esperado HTTP 401 e registro de erro em `automation_runs`.
-3. Conferir nos logs da função e no painel "Saúde das automações" que nenhum card foi alterado (nenhuma execução com `card_id` preenchido no período do teste).
-4. Conferir no banco que `TESTE FASE A QA` segue com `codigo_monnera` e etapa inalterados.
+Nenhuma gravação ocorre no passo 1.
 
-Só após esses três resultados o teste real no card `TESTE FASE A QA` é autorizado, em mensagem separada.
+## 4. Cron de 2 horas
+
+O agendamento existente passa a chamar `jira-sync-panel-tasks` (além do worker Gmail). Lotes pequenos, cursor persistido, retomada, sem duplicar eventos, sem mover cards.
+
+## 5. Fluxo posterior ao código
+
+Após código válido: o card recebe o código e o card **não** é movido. A etapa Canva continua manual (link público colado e validado em `CanvaPublicLinkSection`), conforme a decisão anterior de não usar `CANVA_ACCESS_TOKEN`. Só com código válido + link `https://canva.link/...` confirmado + sem bloqueios o card pode ir para `Material Onboarding Cliente`, e o onboarding segue as validações já existentes em `send-onboarding-email`.
+
+Observação: a geração automática/idempotente do Canva citada no item 5 exige o token do Canva; sem ele, mantemos a entrada manual. Se quiser a geração automática, é preciso fornecer o secret.
+
+## 6. Webhook
+
+`jira-code-webhook` permanece publicado e funcional (inclusive o modo ping), porém opcional. Nenhuma etapa do fluxo depende dele.
+
+## 7. Segurança e limites
+
+Sem follow-up, sem régua, sem cobrança, sem WhatsApp. RLS preservada; a função usa service role apenas no servidor. Modo geral desligado; teste inicial exclusivamente no card `TESTE FASE A QA`; ORCA LOGÍSTICA intocada.
 
 ## Escopo técnico
 
-- Arquivo alterado: `supabase/functions/jira-code-webhook/index.ts` (apenas o bloco de ping).
-- Sem migrations, sem mudanças de UI, sem novos segredos.
+Migrations:
+1. `jira_sync_state` (cursor + lease single-flight: `id`, `last_issue_updated_at`, `last_issue_key`, `locked_until`, `paused`, `updated_at`) com RLS de leitura para admin e GRANTs; escrita apenas por service_role.
+2. Índice único parcial em `representative_cards (panel_id, codigo_monnera)` para impedir reuso do mesmo código por CNPJs diferentes (se ainda não existir).
+
+Edge Functions:
+- nova: `supabase/functions/jira-sync-panel-tasks/index.ts` (polling em lote, chamada pelo cron);
+- nova: `supabase/functions/jira-sync-card-code/index.ts` (prévia + confirmação de um único card, chamada pelo botão);
+- ajuste: `jira-create-panel-task` (project id 10038).
+
+Frontend:
+- `src/components/admin/JiraTaskDialog.tsx`: adiciona o botão "Sincronizar código Jira" com prévia e confirmação.
+
+Secrets necessários (todos já configurados; nenhum novo obrigatório):
+`ATLASSIAN_SITE_URL`, `ATLASSIAN_EMAIL`, `ATLASSIAN_API_TOKEN`, `JIRA_ASSIGNEE_ACCOUNT_ID`. Opcional: `JIRA_CODE_FIELD_ID` (id do campo customizado, se o código for preenchido em campo próprio).
+
+Garantia durante a implementação: nenhuma tarefa Jira, card, e-mail ou material Canva real será criado. As funções só executam quando invocadas; a validação será feita em modo prévia e, quando houver escrita, apenas no card `TESTE FASE A QA`.
