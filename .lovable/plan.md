@@ -42,7 +42,16 @@ Nenhum outro arquivo. Sem migrations. Sem novos componentes.
 
 `ATLASSIAN_SITE_URL`, `ATLASSIAN_EMAIL`, `ATLASSIAN_API_TOKEN`, `JIRA_PROJECT_KEY`, `JIRA_IMPLEMENTATION_ISSUE_TYPE_ID`, `JIRA_ASSIGNEE_ACCOUNT_ID`.
 
-Padrões: `JIRA_PROJECT_KEY = MB`, `JIRA_IMPLEMENTATION_ISSUE_TYPE_ID = 10042`. Nenhum outro nome é aceito e não há fallback silencioso para outra conta: secret ausente vira erro explícito.
+Padrões aplicados apenas quando o secret está ausente: `JIRA_PROJECT_KEY = MB`, `JIRA_IMPLEMENTATION_ISSUE_TYPE_ID = 10042`. Nenhum outro nome é aceito e não há fallback silencioso para outra conta: credencial ausente vira erro explícito.
+
+Toda constante fixa ativa de projeto/tipo sai de `_shared/jira.ts` e de `jira-create-panel-task/index.ts`. Passa a existir uma leitura única, centralizada em `jiraEnv`:
+
+```ts
+const projectKey = Deno.env.get("JIRA_PROJECT_KEY") || "MB";
+const issueTypeId = Deno.env.get("JIRA_IMPLEMENTATION_ISSUE_TYPE_ID") || "10042";
+```
+
+`JIRA_PROJECT_ID = "10038"` deixa de ser fonte ativa; a JQL de leitura passa a usar `project = <projectKey>` e `issuetype = <issueTypeId>`.
 
 ## Pré-validação Jira (somente GET, nesta ordem)
 
