@@ -83,16 +83,15 @@ Nenhum endpoint usa string fixa: todos recebem `projectKey` e `issueTypeId` carr
 
 ## Payload da criação real
 
-```json
-{
-  "fields": {
-    "project": { "key": "MB" },
-    "issuetype": { "id": "10042" }
-  }
+```ts
+fields: {
+  project: { key: projectKey },      // ex.: "MB"
+  issuetype: { id: issueTypeId },    // ex.: "10042"
+  // summary, description, labels, assignee: inalterados
 }
 ```
 
-A chave do projeto é sempre `MB`; `10038` é apenas o ID técnico e nunca é usado como chave. O tipo é sempre o ID `10042`, nunca o nome. Os demais campos (summary, description, labels, assignee) permanecem exatamente como estão hoje.
+A chave padrão do projeto é `MB`, mas a criação usa o valor validado de `JIRA_PROJECT_KEY`. `10038` é apenas o ID técnico e nunca é usado como chave. O tipo é sempre o ID vindo de `JIRA_IMPLEMENTATION_ISSUE_TYPE_ID`, nunca o nome. Os demais campos (summary, description, labels, assignee) permanecem exatamente como estão hoje.
 
 ## Mapeamento de erros
 
