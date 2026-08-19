@@ -42,6 +42,9 @@ interface KanbanLeadCardData {
   revenue_current_month?: string | null;
   revenue_previous_month?: string | null;
   partner_code?: string | null;
+  codigo_monnera?: string | null;
+  panel_id?: string | null;
+
   proposta_url?: string | null;
   teste_monnera_last_diagnostic_id?: string | null;
   teste_monnera_result_color?: string | null;
