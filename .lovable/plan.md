@@ -1,127 +1,57 @@
-# Corrigir a integração de criação de tarefas no Jira
+# Código Monnera visível no card — painel Onb Clientes Cross
 
-## Verificação prévia (feita, somente leitura)
+Tornar o Código Monnera um dado visível, rastreável e controlado no card, sem alterar Gmail, Jira, Canva, cron ou movimentações automáticas existentes.
 
-Consulta ao site monnera.atlassian.net, projetos com ação `create`:
+## O que será entregue
 
-| Projeto | ID | Chave | Tipos disponíveis |
-| --- | --- | --- | --- |
-| Monnera Board | 10038 | MB | Tarefa (10042), Subtarefa (10043), Bug (10047), Epic (10000), Forms (10039) |
+1. Bloco destacado "Código Monnera" no detalhe do card (painel Onb Clientes Cross), mostrando:
+   - código atual, quando existir;
+   - origem (`codigo_source`: Gmail/Jira, sincronização manual, edição administrativa, código de teste);
+   - data de recebimento;
+   - `thread_id` / referência da origem e chave Jira, quando existirem;
+   - status da validação, com selo colorido.
+2. Estados exibidos:
+   - `Pendente — aguardando criação do painel` (etapa Cadastro, sem tarefa Jira);
+   - `Pendente — aguardando retorno do Jira` (etapa Criação Painel com tarefa Jira criada);
+   - `Código recebido` (código gravado, ainda sem validação de formato concluída);
+   - `Código validado` (8 caracteres A-Z/0-9, sem divergência, não é exemplo);
+   - `Formato não confirmado` (ex.: `MNR-A1B2C3`);
+   - `Código de exemplo rejeitado` (`3SAXJF92`, `UB5PXGDB`, `XXXXXXX`, `XXXXXXXX`);
+   - `Código divergente` (código do card diferente do último código recebido da origem).
+3. Regras por etapa:
+   - **Cadastro**: mostra "Pendente — aguardando criação do painel". O código não é exigido e não bloqueia nada.
+   - **Criação Painel**: mostra o código assim que ele chega pelo fluxo já existente (e-mail Jira / sincronização manual), registrando origem e evidência.
+   - **Material Onboarding Cliente**: mostra o código como informação confirmada e impede a entrada na etapa quando o código estiver ausente, inválido, de exemplo, em formato não confirmado ou divergente.
+4. Visibilidade no board: selo compacto com o código (ou "sem código") no cartão da lista quando houver espaço.
+5. Permissões: somente leitura para usuários comuns. Administradores podem corrigir manualmente o código, com justificativa obrigatória (mínimo 10 caracteres) e registro em histórico.
+6. Códigos de exemplo nunca aparecem como válidos: são exibidos com o selo "Código de exemplo rejeitado".
 
-Portanto `MB` é a chave real e `10042` (Tarefa) é um tipo válido nesse projeto. O texto "I0038 / I0042" na prévia é apenas a renderização dos IDs técnicos, não um valor corrompido.
+## Detalhes técnicos
 
-Hoje esses valores estão fixos no código, não em secrets. Como o alvo está correto, a mensagem "O projeto não existe, ou você não tem direito neste projeto para criar questões" aponta para falta de acesso/permissão da conta usada em `ATLASSIAN_EMAIL` + `ATLASSIAN_API_TOKEN`. Essa hipótese será confirmada pelo diagnóstico, sem criar nada.
+**Estado atual verificado**
+- `representative_cards` já possui `codigo_monnera`, `codigo_source`, `codigo_evidencia`, `codigo_teste`, `origin_thread_id`, `jira_issue_key`, `jira_issue_status`, `jira_created_at`. Não existe coluna com a data de recebimento do código.
+- A RPC `apply_monnera_code_to_card` já valida formato de 8 caracteres, rejeita os quatro códigos de exemplo, rejeita `MNR-…`, detecta divergência e duplicidade, grava histórico em `representative_card_history` e notifica. Ela é reutilizada, não reescrita.
+- Etapas do painel `painel_msj9fyji`: `etapa_painel_msj9fyji_1` (Cadastro), `_2` (Criação Painel), `_3` (Material Onboarding Cliente). Hoje nenhuma regra de banco ou de tela exige código para entrar em `_3`.
+- O detalhe do card é montado em `src/pages/admin/AdminLeads.tsx` (bloco de seções `detalhes`).
 
-## Arquivos reais encontrados
+**Migrations**
+1. `alter table public.representative_cards add column if not exists codigo_recebido_at timestamptz;` — data de recebimento.
+2. Atualizar `apply_monnera_code_to_card` de forma aditiva: gravar `codigo_recebido_at = coalesce(codigo_recebido_at, now())` no mesmo `UPDATE`. Nenhuma outra regra da função muda.
+3. Nova RPC `set_monnera_code_manual(p_card_id uuid, p_codigo text, p_justificativa text)`, `SECURITY DEFINER`, `search_path = public`:
+   - exige `has_role(auth.uid(),'admin')` e justificativa com no mínimo 10 caracteres;
+   - aplica as mesmas validações de formato/exemplo/duplicidade da RPC existente;
+   - grava `codigo_source = 'edicao_admin'`, evidência com a justificativa e o usuário, `codigo_recebido_at`;
+   - registra `representative_card_history` (ação `codigo_monnera_editado_admin`) e `card_field_provenance` (`field_name = 'codigo_monnera'`, `source = 'manual'`, `evidence = justificativa`).
+4. Ajuste aditivo em `representative_card_guard_stage_change`: ao entrar na etapa cujo rótulo normalizado é "material onboarding cliente" no painel `painel_msj9fyji`, bloquear quando o código estiver ausente, fora do padrão `^[A-Z0-9]{8}$`, na lista de exemplos, ou marcado como teste em card não-teste. A regra é resolvida pelo rótulo em `pipeline_stages_config`, não por `stage_id` fixo. Nenhuma outra condição do trigger é alterada.
 
-Integração Jira no backend:
+**Frontend**
+- Novo componente `src/components/admin/CodigoMonneraSection.tsx`: bloco destacado com código, selo de status, origem, data, `thread_id`, chave Jira, evidência resumida e — para admin — formulário de correção manual com justificativa obrigatória, chamando `set_monnera_code_manual`.
+- Nova função pura `src/lib/monneraCode.ts` com `DEMO_CODES`, `isValidMonneraCode` e `resolveCodeStatus(card, stageLabel)` devolvendo um dos sete estados. Lógica testável, fora do JSX.
+- `src/pages/admin/AdminLeads.tsx`: renderizar `CodigoMonneraSection` no topo da seção de detalhes do painel Cross e propagar o patch de estado como já é feito nos demais blocos; passar `codigo_monnera` ao board.
+- `src/components/admin/PipelineKanban.tsx`: nova prop opcional `showMonneraCode` para exibir o selo compacto do código no cartão, ativada apenas no painel Cross.
 
-- `supabase/functions/_shared/jira.ts` — único lugar que monta as credenciais (`jiraEnv`), com `ATLASSIAN_SITE_URL`, `ATLASSIAN_EMAIL`, `ATLASSIAN_API_TOKEN`; hoje ainda carrega as constantes fixas `JIRA_PROJECT_ID = "10038"` e `JIRA_ISSUE_TYPE_ID = "10042"`, que serão **removidas como fonte ativa** (ver seção de secrets); helpers de leitura (GET).
-- `supabase/functions/jira-create-panel-task/index.ts` — criação manual da tarefa; hoje redeclara `JIRA_PROJECT_ID`/`JIRA_ISSUE_TYPE_ID` e monta as credenciais localmente; envia `project: { id: "10038" }`.
-- `supabase/functions/jira-sync-panel-tasks/index.ts`, `supabase/functions/jira-sync-card-code/index.ts`, `supabase/functions/jira-code-webhook/index.ts`, `supabase/functions/_shared/jiraCodeSync.ts` — somente leitura/sincronização; não declaram credenciais próprias (usam `_shared/jira.ts`).
+**Não será alterado**
+Worker Gmail, funções Jira, fluxo Canva, cron, régua de cobrança e movimentações automáticas. Nenhum código será aplicado a cards reais durante a implementação.
 
-Frontend:
-
-- `src/components/admin/JiraTaskDialog.tsx` — prévia e confirmação; linha 273 exibe `Projeto/Tipo: {project} / {issue_type}`.
-- `src/pages/admin/AdminLeads.tsx`, `src/components/admin/CardOriginTimeline.tsx`, `src/pages/admin/AdminTriagemGmail.tsx` — apenas leem campos `jira_*` do card; não serão alterados.
-
-Confirmações:
-
-- Não existem arquivos duplicados de integração Jira: só `_shared/jira.ts` e `jira-create-panel-task/index.ts` constroem autenticação.
-- Não existe nenhuma ocorrência de `JIRA_EMAIL` ou `JIRA_API_TOKEN` no projeto.
-
-## Arquivos que serão modificados
-
-1. `supabase/functions/_shared/jira.ts`
-2. `supabase/functions/jira-create-panel-task/index.ts`
-3. `src/components/admin/JiraTaskDialog.tsx`
-
-Nenhum outro arquivo. Sem migrations. Sem novos componentes.
-
-## Convenção única de secrets
-
-`ATLASSIAN_SITE_URL`, `ATLASSIAN_EMAIL`, `ATLASSIAN_API_TOKEN`, `JIRA_PROJECT_KEY`, `JIRA_IMPLEMENTATION_ISSUE_TYPE_ID`, `JIRA_ASSIGNEE_ACCOUNT_ID`.
-
-Padrões aplicados apenas quando o secret está ausente: `JIRA_PROJECT_KEY = MB`, `JIRA_IMPLEMENTATION_ISSUE_TYPE_ID = 10042`. Nenhum outro nome é aceito e não há fallback silencioso para outra conta: credencial ausente vira erro explícito.
-
-Toda constante fixa ativa de projeto/tipo sai de `_shared/jira.ts` e de `jira-create-panel-task/index.ts`. Passa a existir uma leitura única, centralizada em `jiraEnv`:
-
-```ts
-const projectKey = Deno.env.get("JIRA_PROJECT_KEY") || "MB";
-const issueTypeId = Deno.env.get("JIRA_IMPLEMENTATION_ISSUE_TYPE_ID") || "10042";
-```
-
-`JIRA_PROJECT_ID = "10038"` deixa de ser fonte ativa; a JQL de leitura passa a usar `project = <projectKey>` e `issuetype = <issueTypeId>`.
-
-## Pré-validação Jira (somente GET, nesta ordem)
-
-```text
-1. Verificar secrets presentes
-2. GET /rest/api/3/myself
-3. GET /rest/api/3/project/{projectKey}
-4. GET /rest/api/3/mypermissions?projectKey={projectKey}&permissions=CREATE_ISSUES
-5. GET /rest/api/3/issue/createmeta?projectKeys={projectKey}&issuetypeIds={issueTypeId}&expand=projects.issuetypes.fields
-6. Exibir diagnóstico
-7. Criação real apenas por ação explícita e separada do administrador na interface
-```
-
-Nenhum endpoint usa string fixa: todos recebem `projectKey` e `issueTypeId` carregados dos secrets. A permissão é considerada válida apenas quando `permissions.CREATE_ISSUES.havePermission === true`. O `createmeta` não confirma permissão: ele serve para confirmar que `issueTypeId` existe dentro de `projectKey` e quais campos são obrigatórios — por isso é chamado sempre com `projectKeys`, `issuetypeIds` e `expand=projects.issuetypes.fields`, evitando resposta genérica ou paginada.
-
-## Endpoint de diagnóstico `?check=1`
-
-- Exige sessão Supabase válida (401 sem sessão) e papel autorizado (403 sem papel). Autorização pela função já existente no schema: `public.has_role(_user_id uuid, _role app_role) returns boolean`, com o enum `app_role` contendo hoje `admin` e `gestor_conta` — verificado no schema atual. Nenhuma função nova de autorização é criada e nenhum parâmetro é inventado.
-- Executa somente as quatro chamadas GET acima. Nunca chama `POST /rest/api/3/issue`.
-- Não cria nem altera tarefa, card ou projeto, e **não libera implicitamente a criação**.
-- Não retorna token, e-mail, `Authorization`, headers ou qualquer secret.
-- Retorna apenas: usuário Jira resumido (displayName e active), projeto (chave e nome), `havePermission`, tipo permitido (id e nome) e status geral do diagnóstico.
-
-## Confirmação manual na interface
-
-- Botão "Executar diagnóstico" → chama `?check=1` e exibe o resultado item a item (conta, projeto, permissão, tipo).
-- Botão "Criar tarefa no Jira" separado, sempre uma ação explícita do administrador.
-- Enquanto o diagnóstico não retornar sucesso (ou se falhar), o botão de criação permanece bloqueado, com o motivo visível.
-
-## Payload da criação real
-
-```ts
-fields: {
-  project: { key: projectKey },      // ex.: "MB"
-  issuetype: { id: issueTypeId },    // ex.: "10042"
-  // summary, description, labels, assignee: inalterados
-}
-```
-
-A chave padrão do projeto é `MB`, mas a criação usa o valor validado de `JIRA_PROJECT_KEY`. `10038` é apenas o ID técnico e nunca é usado como chave. O tipo é sempre o ID vindo de `JIRA_IMPLEMENTATION_ISSUE_TYPE_ID`, nunca o nome. Os demais campos (summary, description, labels, assignee) permanecem exatamente como estão hoje.
-
-## Mapeamento de erros
-
-| Situação | Status devolvido | Mensagem |
-| --- | --- | --- |
-| Secret ausente ou inválido | 422 | Configuração Jira incompleta: `<nome do secret>` |
-| Jira 401 | 401 | Credenciais Atlassian inválidas ou expiradas |
-| Projeto 404 ou não visível | 422 | Projeto Jira `<key>` não existe ou não é visível para a conta de serviço |
-| Acesso negado ou `CREATE_ISSUES` falso | 403 | Conta de serviço sem permissão para criar itens em `<key>` |
-| Tipo não permitido no projeto | 422 | Tipo `<id>` não permitido em `<key>` (lista os tipos permitidos) |
-| Campos rejeitados pelo Jira (400 no POST) | 400 | Detalhe campo a campo, conforme resposta do Jira |
-| Timeout, falha de rede ou Jira 5xx | 502 | Jira indisponível |
-
-Nenhuma dessas categorias, exceto indisponibilidade real, devolve 502. Nenhuma mensagem inclui credenciais.
-
-## Prévia
-
-Sem efeitos e sem chamada de criação. Passa a exibir o projeto e o tipo carregados (chave e nome resolvidos pelo diagnóstico, com o ID entre parênteses):
-
-```text
-Projeto: MB (ID 10038)
-Tipo: Tarefa (ID 10042)
-```
-
-Nunca `I0038` nem `I0042`.
-
-## Preservado integralmente
-
-Texto atual da tarefa, responsável configurado (`JIRA_ASSIGNEE_ACCOUNT_ID`), regras de etapa, deduplicação por card/CNPJ/thread, prévia sem efeitos e fluxo atual do card. Nenhum card existente é alterado. Nenhum projeto é criado.
-
-## Validação após implementação
-
-`npm run build`, depois execução do `?check=1` com usuário admin — somente GETs, nenhuma tarefa real criada. O resultado do diagnóstico dirá quais secrets precisam ser ajustados e se a conta de serviço precisa receber a permissão "Criar itens" no projeto MB (ajuste no Jira, sem correção possível em código).
+**Testes**
+Verificação em modo leitura/simulação sobre cards existentes e o card `TESTE FASE A QA`: card sem código, com código válido, formato não confirmado (`MNR-…`), código de exemplo, código divergente, atualização vinda do fluxo Jira já existente e edição administrativa com justificativa. Ao final: `npm run build` e typecheck.
