@@ -62,6 +62,8 @@ import OnboardingEmailQaSection from "@/components/admin/OnboardingEmailQaSectio
 import JiraTaskDialog from "@/components/admin/JiraTaskDialog";
 import CanvaPublicLinkSection from "@/components/admin/CanvaPublicLinkSection";
 import CrossOnboardingSteps from "@/components/admin/CrossOnboardingSteps";
+import { describeMonneraCode } from "@/lib/monneraCode";
+
 
 import CardOriginTimeline from "@/components/admin/CardOriginTimeline";
 
@@ -2677,7 +2679,13 @@ const AdminLeads = () => {
                     <div>
                       <p className="text-muted-foreground text-xs mb-1">Nome do Parceiro</p>
                       <p className="font-medium">{detailLead.full_name || detailLead.nome_fantasia || "—"}</p>
+                      {(() => {
+                        const info = describeMonneraCode(detailLead.codigo_monnera);
+                        const tone = info.state === "valido" ? "text-emerald-500" : info.state === "aguardando" ? "text-muted-foreground" : "text-amber-500";
+                        return <p className={`text-xs font-mono mt-0.5 ${tone}`}>Código Monnera: {info.label}</p>;
+                      })()}
                     </div>
+
                     <div>
                       <p className="text-muted-foreground text-xs mb-1">CNPJ do Parceiro</p>
                       <p className="font-mono">{detailLead.cnpj || "—"}</p>
