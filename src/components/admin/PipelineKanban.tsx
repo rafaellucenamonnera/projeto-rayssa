@@ -4,6 +4,20 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { healthStatusColor, impactColor, normalizeHealthStatus, normalizeImpact } from "@/lib/healthStatusColors";
+import { describeMonneraCode } from "@/lib/monneraCode";
+
+const CROSS_CLIENT_PANEL_ID = "painel_msj9fyji";
+
+/** Linha "Código Monnera: ..." exibida logo abaixo do nome do parceiro (somente painel Cross). */
+function MonneraCodeLine({ code }: { code?: string | null }) {
+  const info = describeMonneraCode(code);
+  const tone =
+    info.state === "valido" ? "text-emerald-500"
+      : info.state === "aguardando" ? "text-muted-foreground"
+        : "text-amber-500";
+  return <p className={`text-[10px] font-mono truncate ${tone}`}>Código Monnera: {info.label}</p>;
+}
+
 
 interface KanbanLeadCardData {
   id: string;
