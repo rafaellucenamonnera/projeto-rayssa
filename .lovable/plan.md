@@ -58,14 +58,14 @@ const issueTypeId = Deno.env.get("JIRA_IMPLEMENTATION_ISSUE_TYPE_ID") || "10042"
 ```text
 1. Verificar secrets presentes
 2. GET /rest/api/3/myself
-3. GET /rest/api/3/project/MB
-4. GET /rest/api/3/mypermissions?projectKey=MB&permissions=CREATE_ISSUES
-5. GET /rest/api/3/issue/createmeta?projectKeys=MB&issuetypeIds=10042&expand=projects.issuetypes.fields
+3. GET /rest/api/3/project/{projectKey}
+4. GET /rest/api/3/mypermissions?projectKey={projectKey}&permissions=CREATE_ISSUES
+5. GET /rest/api/3/issue/createmeta?projectKeys={projectKey}&issuetypeIds={issueTypeId}&expand=projects.issuetypes.fields
 6. Exibir diagnóstico
 7. Criação real apenas por ação explícita e separada do administrador na interface
 ```
 
-A permissão é considerada válida apenas quando `permissions.CREATE_ISSUES.havePermission === true`. O `createmeta` não confirma permissão: ele serve para confirmar que o tipo `10042` existe dentro do projeto `MB` e quais campos são obrigatórios — por isso é chamado sempre com `projectKeys`, `issuetypeIds` e `expand=projects.issuetypes.fields`, evitando resposta genérica ou paginada.
+Nenhum endpoint usa string fixa: todos recebem `projectKey` e `issueTypeId` carregados dos secrets. A permissão é considerada válida apenas quando `permissions.CREATE_ISSUES.havePermission === true`. O `createmeta` não confirma permissão: ele serve para confirmar que `issueTypeId` existe dentro de `projectKey` e quais campos são obrigatórios — por isso é chamado sempre com `projectKeys`, `issuetypeIds` e `expand=projects.issuetypes.fields`, evitando resposta genérica ou paginada.
 
 ## Endpoint de diagnóstico `?check=1`
 
@@ -83,16 +83,15 @@ A permissão é considerada válida apenas quando `permissions.CREATE_ISSUES.hav
 
 ## Payload da criação real
 
-```json
-{
-  "fields": {
-    "project": { "key": "MB" },
-    "issuetype": { "id": "10042" }
-  }
+```ts
+fields: {
+  project: { key: projectKey },      // ex.: "MB"
+  issuetype: { id: issueTypeId },    // ex.: "10042"
+  // summary, description, labels, assignee: inalterados
 }
 ```
 
-A chave do projeto é sempre `MB`; `10038` é apenas o ID técnico e nunca é usado como chave. O tipo é sempre o ID `10042`, nunca o nome. Os demais campos (summary, description, labels, assignee) permanecem exatamente como estão hoje.
+A chave padrão do projeto é `MB`, mas a criação usa o valor validado de `JIRA_PROJECT_KEY`. `10038` é apenas o ID técnico e nunca é usado como chave. O tipo é sempre o ID vindo de `JIRA_IMPLEMENTATION_ISSUE_TYPE_ID`, nunca o nome. Os demais campos (summary, description, labels, assignee) permanecem exatamente como estão hoje.
 
 ## Mapeamento de erros
 
@@ -110,7 +109,7 @@ Nenhuma dessas categorias, exceto indisponibilidade real, devolve 502. Nenhuma m
 
 ## Prévia
 
-Sem efeitos e sem chamada de criação. Passa a exibir:
+Sem efeitos e sem chamada de criação. Passa a exibir o projeto e o tipo carregados (chave e nome resolvidos pelo diagnóstico, com o ID entre parênteses):
 
 ```text
 Projeto: MB (ID 10038)
