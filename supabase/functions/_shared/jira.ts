@@ -73,8 +73,8 @@ function mapIssue(raw: any): JiraIssue {
  */
 export async function searchFlowIssues(sinceIso: string | null, limit: number): Promise<JiraIssue[]> {
   const clauses = [
-    `project = ${JIRA_PROJECT_ID}`,
-    `issuetype = ${JIRA_ISSUE_TYPE_ID}`,
+    `project = "${jiraProjectKey()}"`,
+    `issuetype = ${jiraIssueTypeId()}`,
     `labels = "${JIRA_FLOW_LABEL}"`,
   ];
   if (sinceIso) {
