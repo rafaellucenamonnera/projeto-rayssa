@@ -12,17 +12,20 @@ Ajustes:
 
 ## 2. Nova Edge Function `jira-sync-panel-tasks`
 
-Leitura da API Jira (`/rest/api/3/search` no projeto 10038 + `/comment` da issue). Para cada tarefa do fluxo Monnera:
+Consulta na API Jira via JQL com **paginação completa** (`startAt`/`maxResults` até `isLast`), filtrando por projeto `10038`, tipo `10042`, label do fluxo Monnera (`monnera-onboarding`) e `updated >= <cursor>`, ordenado por `updated ASC`. Comentários lidos em `/rest/api/3/issue/{key}/comment` também paginados. Para cada tarefa:
 - associação por `jira_issue_key` → `card_id` no texto → `thread_id` → CNPJ → nome exato; qualquer ambiguidade (0 ou >1 card) não aplica nada e registra `ambiguidade` em `automation_runs`;
 - extrai o código de descrição, comentários ou campo configurável (`JIRA_CODE_FIELD_ID`, opcional);
 - valida com `_shared/monneraCode.ts` (8 caracteres A-Z0-9; rejeita `3SAXJF92`, `UB5PXGDB`, `XXXXXXX`, `XXXXXXXX` e qualquer `MNR-`/com hífen);
 - rejeita código já usado por outro CNPJ no painel;
 - aplica via `apply_monnera_code_to_card` com `p_source = 'jira_polling'`, grava evidência em `card_field_provenance`, atualiza `jira_issue_status`/`jira_synced_at`;
 - idempotência: se o card já tem o mesmo código, marca `ignorado`; código diferente gera `divergencia` + notificação, sem sobrescrever;
-- nunca move o card e nunca toca em ORCA LOGÍSTICA (lista de cards protegidos);
+- nunca move o card;
 - **modo geral desligado**: só processa cards com `test_mode = true` enquanto a chave de ativação global estiver off.
 
-Lote e cursor: novo registro em `sync_job_logs` (tipo `jira_polling`) guardando `last_issue_updated_at` e `last_issue_key`; lote padrão de 10 issues por execução, retomando do cursor. Bloqueio single-flight por lease com expiração para evitar execuções concorrentes.
+Proteção permanente de cards (substitui a lista fixa de nomes): nova coluna `is_protected` em `representative_cards` mais uma tabela `protected_entities` com `card_id` e/ou `cnpj` normalizado. Regra aplicada em camada de banco (função `is_card_protected(card_id)`, usada por trigger que bloqueia alteração de `codigo_monnera`, `stage_id` e campos operacionais) e reforçada em toda Edge Function do fluxo: card protegido é ignorado na leitura operacional, nunca é alterado nem avançado, e a tentativa fica registrada em `automation_runs` como `ignorado_protegido`. ORCA LOGÍSTICA entra nessa tabela por card_id e CNPJ.
+
+Lote e cursor: novo registro em `sync_job_logs` (tipo `jira_polling`) guardando `last_issue_updated_at` e `last_issue_key`; lote padrão de 10 issues por execução, retomando do cursor sem perder tarefas fora do primeiro lote (a paginação percorre todas as páginas até o limite do lote e o cursor avança pelo `updated` da última issue processada). Bloqueio single-flight por lease com expiração para evitar execuções concorrentes.
+
 
 ## 3. Botão "Sincronizar código Jira" no card
 
