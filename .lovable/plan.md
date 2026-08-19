@@ -39,6 +39,8 @@ Nenhuma gravação ocorre no passo 1.
 
 O agendamento existente passa a chamar `jira-sync-panel-tasks` (além do worker Gmail). Lotes pequenos, cursor persistido, retomada, sem duplicar eventos, sem mover cards.
 
+**Cron em modo somente leitura até a autorização do teste QA**: a função roda com `dry_run` forçado por flag persistida (`jira_sync_state.read_only = true`). Nesse modo ela consulta o Jira, associa, valida e registra tudo em `automation_runs` como `simulado`, sem gravar código, sem alterar card, sem notificar. A escrita só é habilitada quando você autorizar, e primeiro apenas para o card `TESTE FASE A QA`.
+
 ## 5. Fluxo posterior ao código
 
 Após código válido: o card recebe o código e o card **não** é movido. A etapa Canva continua manual (link público colado e validado em `CanvaPublicLinkSection`), conforme a decisão anterior de não usar `CANVA_ACCESS_TOKEN`. Só com código válido + link `https://canva.link/...` confirmado + sem bloqueios o card pode ir para `Material Onboarding Cliente`, e o onboarding segue as validações já existentes em `send-onboarding-email`.
