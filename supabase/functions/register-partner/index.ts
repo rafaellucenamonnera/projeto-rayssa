@@ -80,16 +80,20 @@ Deno.serve(async (req) => {
       console.error("lookup parceiro error", existErr);
     }
 
-    if (existingParceiro?.aprovado) {
+    // Um cadastro já existente (aprovado ou pendente) NUNCA pode ser sobrescrito
+    // por uma chamada pública: quem conhece o e-mail/CPF não prova ser o titular.
+    if (existingParceiro) {
       return json(
         {
-          error: "already_approved",
-          message: "Já existe um cadastro de Embaixador aprovado para este e-mail/CPF. Faça login ou redefina sua senha.",
+          error: existingParceiro.aprovado ? "already_approved" : "already_registered",
+          message:
+            "Já existe um cadastro de Embaixador para este e-mail/CPF. Faça login, redefina sua senha ou fale com a equipe Monnera para atualizar os dados.",
         },
         409,
         corsHeaders,
       );
     }
+
 
     // 2) Find or create auth user
     let userId: string | null = null;

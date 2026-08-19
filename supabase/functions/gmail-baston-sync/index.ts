@@ -609,7 +609,16 @@ async function resolveCnpj(params: {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  if (CRON_SECRET) {
+  // Autenticação obrigatória (fail-closed): sem o segredo configurado o worker
+  // recusa qualquer chamada, em vez de ficar aberto na internet.
+  if (!CRON_SECRET) {
+    console.error("GMAIL_SYNC_CRON_SECRET ausente — requisição recusada");
+    return new Response(JSON.stringify({ error: "Não autorizado" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  {
     const provided = req.headers.get("x-cron-secret") ?? "";
     if (provided !== CRON_SECRET) {
       return new Response(JSON.stringify({ error: "Não autorizado" }), {
@@ -618,6 +627,7 @@ Deno.serve(async (req) => {
       });
     }
   }
+
 
   // parâmetros opcionais de varredura (validados e limitados)
   let days = DEFAULT_DAYS;
