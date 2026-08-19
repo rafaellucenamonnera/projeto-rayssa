@@ -147,10 +147,11 @@ Deno.serve(async (req) => {
     }
 
     if (duplicate) {
-      return json({ ok: false, preview, error: `Já existe tarefa Jira (${duplicate.jira_issue_key}) para este card/CNPJ/thread.` }, 409);
+      return json({ ok: false, preview, error_kind: "duplicidade", error: `Já existe tarefa Jira (${duplicate.jira_issue_key}) para este card/CNPJ/thread.` }, 409);
     }
     if (dryRun) return json({ ok: true, dry_run: true, preview });
-    if (!justification) return json({ ok: false, preview, error: "Justificativa obrigatória." }, 400);
+    if (!justification) return json({ ok: false, preview, error: "Justificativa obrigatória.", error_kind: "pre_requisito" }, 400);
+
 
     // 4. Criação real no Jira.
     const site = env("ATLASSIAN_SITE_URL").replace(/\/+$/, "");
