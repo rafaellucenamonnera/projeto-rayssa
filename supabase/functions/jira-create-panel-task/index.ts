@@ -2,7 +2,12 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const CROSS_PANEL_ID = "painel_msj9fyji";
-const CRIACAO_PAINEL_STAGE_HINT = "criacao_painel";
+const CRIACAO_PAINEL_LABEL = "criacao painel";
+
+function normalizeLabel(value: string): string {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
 const JIRA_PROJECT_ID = "10038";
 const JIRA_ISSUE_TYPE_ID = "10042";
 const JIRA_FLOW_LABEL = "monnera-onboarding";
