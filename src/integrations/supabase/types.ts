@@ -684,6 +684,71 @@ export type Database = {
           },
         ]
       }
+      cross_onboarding_steps: {
+        Row: {
+          attempt: number
+          card_id: string
+          codigo_monnera: string | null
+          created_at: string
+          error: string | null
+          finished_at: string | null
+          gate_result: Json | null
+          id: string
+          jira_issue_key: string | null
+          message_id: string | null
+          payload: Json | null
+          started_at: string | null
+          status: string
+          step: string
+          thread_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          attempt?: number
+          card_id: string
+          codigo_monnera?: string | null
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          gate_result?: Json | null
+          id?: string
+          jira_issue_key?: string | null
+          message_id?: string | null
+          payload?: Json | null
+          started_at?: string | null
+          status?: string
+          step: string
+          thread_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attempt?: number
+          card_id?: string
+          codigo_monnera?: string | null
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          gate_result?: Json | null
+          id?: string
+          jira_issue_key?: string | null
+          message_id?: string | null
+          payload?: Json | null
+          started_at?: string | null
+          status?: string
+          step?: string
+          thread_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cross_onboarding_steps_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "representative_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documentation_articles: {
         Row: {
           answer: string
@@ -3057,6 +3122,7 @@ export type Database = {
           cnpj: string | null
           codigo_evidencia: Json | null
           codigo_monnera: string | null
+          codigo_recebido_at: string | null
           codigo_source: string | null
           codigo_teste: boolean
           contratante_monnera: string | null
@@ -3117,6 +3183,7 @@ export type Database = {
           cnpj?: string | null
           codigo_evidencia?: Json | null
           codigo_monnera?: string | null
+          codigo_recebido_at?: string | null
           codigo_source?: string | null
           codigo_teste?: boolean
           contratante_monnera?: string | null
@@ -3177,6 +3244,7 @@ export type Database = {
           cnpj?: string | null
           codigo_evidencia?: Json | null
           codigo_monnera?: string | null
+          codigo_recebido_at?: string | null
           codigo_source?: string | null
           codigo_teste?: boolean
           contratante_monnera?: string | null
@@ -4132,6 +4200,44 @@ export type Database = {
             Returns: string
           }
       cross_card_missing_fields: { Args: { p_card_id: string }; Returns: Json }
+      cross_onboarding_record_step: {
+        Args: {
+          p_card_id: string
+          p_codigo?: string
+          p_error?: string
+          p_gate?: Json
+          p_jira_key?: string
+          p_message_id?: string
+          p_payload?: Json
+          p_status: string
+          p_step: string
+          p_thread_id?: string
+        }
+        Returns: {
+          attempt: number
+          card_id: string
+          codigo_monnera: string | null
+          created_at: string
+          error: string | null
+          finished_at: string | null
+          gate_result: Json | null
+          id: string
+          jira_issue_key: string | null
+          message_id: string | null
+          payload: Json | null
+          started_at: string | null
+          status: string
+          step: string
+          thread_id: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "cross_onboarding_steps"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       duplicate_card: {
         Args: { card_id: string; target_stage_id: string }
         Returns: string
