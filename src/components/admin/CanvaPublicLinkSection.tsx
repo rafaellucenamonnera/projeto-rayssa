@@ -12,28 +12,18 @@ import { toast } from "sonner";
  * Não existe conexão oficial do Canva disponível neste workspace, portanto a
  * geração automática de material permanece desativada. O link público é
  * inserido manualmente, validado e só então libera a continuidade do fluxo.
+ *
+ * A validação é única e compartilhada com o backend (src/lib/canvaLink.ts e
+ * supabase/functions/_shared/canvaLink.ts usam exatamente a mesma regra).
  */
-const SHORTLINK_RE = /^https:\/\/canva\.link\/[A-Za-z0-9]+$/;
+export { validateCanvaPublicLink } from "@/lib/canvaLink";
+import { validateCanvaPublicLink } from "@/lib/canvaLink";
 
 const NOTIFY_USERS = [
   "d8e99940-2d3a-45e6-8170-0bf2f5fc98a9", // rafael.lucena@monnera.com.br
   "87842ad6-9a02-4e66-82ac-65f2743a2596", // maycon.santos@monnera.com.br
 ];
 
-export function validateCanvaPublicLink(url: string): { ok: boolean; reason?: string } {
-  const value = (url ?? "").trim();
-  if (!value) return { ok: false, reason: "Informe o link público do material." };
-  if (/\/edit(\?|$)/i.test(value) || /www\.canva\.com\/design\//i.test(value)) {
-    return { ok: false, reason: "Link de edição não é aceito. Use o link público de apresentação." };
-  }
-  if (/www\.canva\.com\/d\//i.test(value)) {
-    return { ok: false, reason: "Links https://www.canva.com/d/... não são aceitos. Publique como apresentação e use o link https://canva.link/..." };
-  }
-  if (!SHORTLINK_RE.test(value)) {
-    return { ok: false, reason: "Formato inválido. O link deve ser https://canva.link/..." };
-  }
-  return { ok: true };
-}
 
 interface Props {
   cardId: string;

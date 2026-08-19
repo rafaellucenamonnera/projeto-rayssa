@@ -61,6 +61,8 @@ import CardAttachments from "@/components/admin/CardAttachments";
 import OnboardingEmailQaSection from "@/components/admin/OnboardingEmailQaSection";
 import JiraTaskDialog from "@/components/admin/JiraTaskDialog";
 import CanvaPublicLinkSection from "@/components/admin/CanvaPublicLinkSection";
+import CrossOnboardingSteps from "@/components/admin/CrossOnboardingSteps";
+
 import CardOriginTimeline from "@/components/admin/CardOriginTimeline";
 
 
@@ -2741,7 +2743,9 @@ const AdminLeads = () => {
                       setDetailLead((prev: any) => (prev ? { ...prev, canva_public_url: url, canva_material_url: url } : prev));
                     }}
                   />
+                  <CrossOnboardingSteps cardId={detailLead.id} canRun={canEditLead} />
                   <CardOriginTimeline cardId={detailLead.id} canEdit={canEditLead} />
+
                   <RepresentativeCardNotes cardId={detailLead.id} canEdit={canEditLead} />
                   <CardAttachments cardId={detailLead.id} canEdit={canEditLead} trackHistory />
                   <OnboardingEmailQaSection cardId={detailLead.id} />
