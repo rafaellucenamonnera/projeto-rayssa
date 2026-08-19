@@ -65,7 +65,7 @@ const issueTypeId = Deno.env.get("JIRA_IMPLEMENTATION_ISSUE_TYPE_ID") || "10042"
 7. Criação real apenas por ação explícita e separada do administrador na interface
 ```
 
-A permissão é considerada válida apenas quando `permissions.CREATE_ISSUES.havePermission === true`. O `createmeta` não confirma permissão: ele serve para confirmar que o tipo `10042` existe dentro do projeto `MB` e quais campos são obrigatórios — por isso é chamado sempre com `projectKeys`, `issuetypeIds` e `expand=projects.issuetypes.fields`, evitando resposta genérica ou paginada.
+Nenhum endpoint usa string fixa: todos recebem `projectKey` e `issueTypeId` carregados dos secrets. A permissão é considerada válida apenas quando `permissions.CREATE_ISSUES.havePermission === true`. O `createmeta` não confirma permissão: ele serve para confirmar que `issueTypeId` existe dentro de `projectKey` e quais campos são obrigatórios — por isso é chamado sempre com `projectKeys`, `issuetypeIds` e `expand=projects.issuetypes.fields`, evitando resposta genérica ou paginada.
 
 ## Endpoint de diagnóstico `?check=1`
 
