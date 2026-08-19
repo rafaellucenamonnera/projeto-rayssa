@@ -39,7 +39,7 @@ Nenhuma gravação ocorre no passo 1.
 
 O agendamento existente passa a chamar `jira-sync-panel-tasks` (além do worker Gmail). Lotes pequenos, cursor persistido, retomada, sem duplicar eventos, sem mover cards.
 
-**Cron em modo somente leitura até a autorização do teste QA**: a função roda com `dry_run` forçado por flag persistida (`jira_sync_state.read_only = true`). Nesse modo ela consulta o Jira, associa, valida e registra tudo em `automation_runs` como `simulado`, sem gravar código, sem alterar card, sem notificar. A escrita só é habilitada quando você autorizar, e primeiro apenas para o card `TESTE FASE A QA`.
+**Cron em modo somente leitura até a autorização do teste QA**: a função roda com `dry_run` forçado por flag persistida (`jira_sync_state.read_only = true`). Nesse modo ela pode identificar e associar candidatos **apenas em memória**, para fins de análise, sem persistir vínculos, códigos, notificações ou alterações em qualquer card; o único registro gravado é a linha de auditoria em `automation_runs` com status `simulado` (e o avanço do cursor de leitura). A escrita só é habilitada quando você autorizar, e primeiro apenas para o card `TESTE FASE A QA`.
 
 ## 5. Fluxo posterior ao código
 
