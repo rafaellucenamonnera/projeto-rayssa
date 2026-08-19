@@ -179,13 +179,29 @@ Deno.serve(async (req) => {
     });
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const message = JSON.stringify(payload).slice(0, 500);
+      // Mensagens da API do Jira apenas; nenhuma credencial é registrada ou devolvida.
+      const jiraMessages: string[] = Array.isArray((payload as any)?.errorMessages) ? (payload as any).errorMessages : [];
+      const fieldErrors = (payload as any)?.errors && typeof (payload as any).errors === "object"
+        ? Object.entries((payload as any).errors).map(([k, v]) => `${k}: ${v}`)
+        : [];
+      const message = [...jiraMessages, ...fieldErrors].join(" | ").slice(0, 500) || JSON.stringify(payload).slice(0, 500);
+      const errorKind = res.status === 401 ? "autenticacao"
+        : res.status === 403 ? "permissao"
+        : res.status === 400 ? "payload"
+        : "servidor_jira";
+      const assigneeIssue = fieldErrors.some((e) => e.toLowerCase().startsWith("assignee"));
+      const friendly = res.status === 401
+        ? "Credenciais Atlassian inválidas ou expiradas."
+        : res.status === 403 || assigneeIssue
+          ? "Responsável Jira não configurado ou não autorizado."
+          : `Falha ao criar tarefa no Jira: ${message}`;
       await admin.from("representative_cards").update({ jira_last_error: message, jira_synced_at: new Date().toISOString() }).eq("id", card.id);
       await admin.rpc("record_automation_run", {
         p_stage: "jira_create_task", p_status: "erro", p_card_id: card.id, p_error: message, p_origin: "manual", p_payload: payload,
       });
-      return json({ ok: false, error: `Falha ao criar tarefa no Jira: ${message}` }, 502);
+      return json({ ok: false, error: friendly, error_kind: errorKind, jira_status: res.status, jira_message: message }, 502);
     }
+
 
     const issueKey = payload.key as string;
     await admin.rpc("register_jira_panel_task", { p_execution_id: null, p_issue_key: issueKey, p_payload: payload }).catch(() => null);
