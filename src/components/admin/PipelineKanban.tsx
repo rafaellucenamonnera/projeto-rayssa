@@ -506,6 +506,8 @@ export const PipelineKanban = memo(({
                         {!showCsInsteadOfPartner && (
                           <p className="text-xs font-medium truncate">{l.nome_fantasia}</p>
                         )}
+                        {l.panel_id === CROSS_CLIENT_PANEL_ID && <MonneraCodeLine code={l.codigo_monnera} />}
+
                         {l.partner_code && (
                           <p className="text-[10px] font-mono text-primary truncate">{l.partner_code}</p>
                         )}
