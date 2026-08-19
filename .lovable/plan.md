@@ -109,7 +109,7 @@ Nenhuma dessas categorias, exceto indisponibilidade real, devolve 502. Nenhuma m
 
 ## Prévia
 
-Sem efeitos e sem chamada de criação. Passa a exibir:
+Sem efeitos e sem chamada de criação. Passa a exibir o projeto e o tipo carregados (chave e nome resolvidos pelo diagnóstico, com o ID entre parênteses):
 
 ```text
 Projeto: MB (ID 10038)
