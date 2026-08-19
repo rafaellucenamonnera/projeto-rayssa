@@ -1073,6 +1073,42 @@ export type Database = {
           },
         ]
       }
+      jira_sync_state: {
+        Row: {
+          id: string
+          last_error: string | null
+          last_issue_key: string | null
+          last_issue_updated_at: string | null
+          last_run_at: string | null
+          locked_until: string | null
+          paused: boolean
+          read_only: boolean
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          last_error?: string | null
+          last_issue_key?: string | null
+          last_issue_updated_at?: string | null
+          last_run_at?: string | null
+          locked_until?: string | null
+          paused?: boolean
+          read_only?: boolean
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          last_error?: string | null
+          last_issue_key?: string | null
+          last_issue_updated_at?: string | null
+          last_run_at?: string | null
+          locked_until?: string | null
+          paused?: boolean
+          read_only?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       kit_argumentos: {
         Row: {
           created_at: string
@@ -2585,6 +2621,38 @@ export type Database = {
         }
         Relationships: []
       }
+      protected_entities: {
+        Row: {
+          card_id: string | null
+          cnpj_normalizado: string | null
+          created_at: string
+          id: string
+          motivo: string
+        }
+        Insert: {
+          card_id?: string | null
+          cnpj_normalizado?: string | null
+          created_at?: string
+          id?: string
+          motivo: string
+        }
+        Update: {
+          card_id?: string | null
+          cnpj_normalizado?: string | null
+          created_at?: string
+          id?: string
+          motivo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "protected_entities_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "representative_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       representative_card_attachments: {
         Row: {
           content_sha256: string | null
@@ -3003,6 +3071,7 @@ export type Database = {
           full_name: string
           id: string
           is_blocked: boolean
+          is_protected: boolean
           jira_created_at: string | null
           jira_issue_key: string | null
           jira_issue_status: string | null
@@ -3062,6 +3131,7 @@ export type Database = {
           full_name: string
           id?: string
           is_blocked?: boolean
+          is_protected?: boolean
           jira_created_at?: string | null
           jira_issue_key?: string | null
           jira_issue_status?: string | null
@@ -3121,6 +3191,7 @@ export type Database = {
           full_name?: string
           id?: string
           is_blocked?: boolean
+          is_protected?: boolean
           jira_created_at?: string | null
           jira_issue_key?: string | null
           jira_issue_status?: string | null
@@ -4143,6 +4214,7 @@ export type Database = {
         Returns: boolean
       }
       is_canva_public_link: { Args: { p_url: string }; Returns: boolean }
+      is_card_protected: { Args: { _card_id: string }; Returns: boolean }
       is_commercial_panel: { Args: { p_panel_id: string }; Returns: boolean }
       is_valid_parceiro: { Args: { p_id: string }; Returns: boolean }
       link_gmail_triage_card: {
