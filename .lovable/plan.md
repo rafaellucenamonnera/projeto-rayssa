@@ -16,39 +16,59 @@ Consequência: como o alvo está correto, a mensagem "O projeto não existe, ou 
 
 ## O que será feito
 
-1. **Configuração por secret, com validação**
-   - Passam a ser lidos `JIRA_PROJECT_KEY` (padrão `MB`) e `JIRA_IMPLEMENTATION_ISSUE_TYPE_ID` (padrão `10042`).
-   - O payload passa a usar `project: { key: <JIRA_PROJECT_KEY> }` e `issuetype: { id: <tipo> }`.
-   - Antes do POST, a função faz duas leituras: `GET /rest/api/3/project/{key}` e `GET /rest/api/3/issue/createmeta` para o projeto. Isso confirma, na mesma chamada, se o projeto existe, se a conta o enxerga, se pode criar itens nele e se o tipo informado é permitido.
+1. **Configuração por secret, com nomes únicos**
+   - Secrets lidos: `JIRA_PROJECT_KEY` (padrão `MB`), `JIRA_IMPLEMENTATION_ISSUE_TYPE_ID` (padrão `10042`), `ATLASSIAN_SITE_URL`, `ATLASSIAN_EMAIL`, `ATLASSIAN_API_TOKEN`, `JIRA_ASSIGNEE_ACCOUNT_ID`.
+   - Convenção única em todos os arquivos: `ATLASSIAN_EMAIL` / `ATLASSIAN_API_TOKEN`. Nenhum fallback silencioso para `JIRA_EMAIL` ou outra conta — secret ausente é erro explícito.
+   - Payload da criação real, sem substituições: `project: { key: "MB" }` (chave, nunca o id) e `issuetype: { id: "10042" }` (id, nunca o nome).
 
-2. **Diagnóstico da conta de serviço**
-   - Endpoint de verificação somente-leitura (`?check=1`) que responde: conta autenticada (`/myself`), projeto visível, permissão `CREATE_ISSUES` (`/mypermissions`), tipos permitidos. Nenhum token, e-mail ou header é devolvido.
+2. **Pré-checagem somente leitura, nesta ordem**
 
-3. **Erros separados e com status correto** (nada de 502 para configuração/rejeição):
+   ```text
+   1. Verificar secrets presentes
+   2. GET /rest/api/3/myself
+   3. GET /rest/api/3/project/MB
+   4. GET /rest/api/3/mypermissions?projectKey=MB&permissions=CREATE_ISSUES
+   5. GET /rest/api/3/issue/createmeta?projectKeys=MB&issuetypeIds=10042&expand=projects.issuetypes.fields
+   6. Exibir diagnóstico
+   7. Somente após confirmação manual do administrador, permitir a criação real
+   ```
 
-   | Situação | status | mensagem |
-   | --- | --- | --- |
-   | Secret ausente/ inválido | 422 | Configuração Jira incompleta: `<nome do secret>` |
-   | Projeto inexistente | 422 | Projeto Jira `<key>` não existe |
-   | Conta sem acesso ao projeto | 403 | Conta de serviço sem acesso ao projeto `<key>` |
-   | Sem permissão de criar itens | 403 | Conta de serviço sem permissão para criar itens em `<key>` |
-   | Tipo de item inválido | 422 | Tipo de item `<id>` não permitido em `<key>` (lista os permitidos) |
-   | Campos obrigatórios inválidos | 400 | Campo a campo, conforme resposta do Jira |
-   | Credenciais inválidas | 401 | Credenciais Atlassian inválidas ou expiradas |
-   | Indisponibilidade do Jira (5xx/timeout) | 502 | Jira indisponível — apenas neste caso |
+   - Autorizado apenas quando `permissions.CREATE_ISSUES.havePermission === true`. O `createmeta` sozinho não vale como prova de permissão; serve para confirmar o tipo dentro do projeto e os campos obrigatórios.
+   - O `createmeta` é sempre chamado com `projectKeys` e `issuetypeIds` explícitos e `expand=projects.issuetypes.fields`, para evitar resposta paginada ou genérica.
 
-4. **Sem alteração de comportamento no resto**: texto da tarefa, responsável (`JIRA_ASSIGNEE_ACCOUNT_ID`), regras de etapa, deduplicação, prévia e fluxo do card permanecem exatamente como estão. A prévia continua sem efeitos; passa a exibir também a chave do projeto e o nome do tipo, além dos ids.
+3. **Endpoint de diagnóstico protegido (`?check=1`)**
+   - Exige sessão Supabase válida e papel de administrador (mesma checagem `has_role` já usada na função). Sem sessão → 401; sem papel → 403.
+   - Executa **apenas** `/myself`, `/project/{key}`, `/mypermissions`, `/createmeta`. Nunca executa `POST /rest/api/3/issue`.
+   - Retorna somente: nome de exibição da conta Jira, chave/nome do projeto, `havePermission`, tipos permitidos. Nunca token, e-mail, headers ou qualquer secret.
 
-5. **Nada é criado nem alterado**: nenhum projeto criado, nenhum card existente tocado, nenhuma tarefa real durante a validação.
+4. **Erros separados e com status correto** (502 apenas para indisponibilidade real):
 
-6. **Validação**: `npm run build` e execução do endpoint de verificação e da prévia (dry-run).
+   | Situação | resposta do Jira | status devolvido | mensagem |
+   | --- | --- | --- | --- |
+   | Secret ausente/inválido | — | 422 | Configuração Jira incompleta: `<nome do secret>` |
+   | Credenciais inválidas | 401 | 401 | Credenciais Atlassian inválidas ou expiradas |
+   | Projeto não visível ou inexistente | 404 em `/project/MB` | 422 | Projeto Jira `<key>` não existe ou não é visível para a conta de serviço |
+   | Conta sem acesso ao projeto | 403 no projeto | 403 | Conta de serviço sem acesso ao projeto `<key>` |
+   | Sem permissão de criar itens | `havePermission === false` | 403 | Conta de serviço sem permissão CREATE_ISSUES em `<key>` |
+   | Tipo de item inválido | ausente no createmeta | 422 | Tipo `<id>` não permitido em `<key>` (lista os permitidos) |
+   | Campos obrigatórios inválidos | 400 no POST | 400 | Campo a campo, conforme resposta do Jira |
+   | Jira 5xx, timeout ou falha de rede | 5xx/timeout | 502 | Jira indisponível |
+
+5. **Sem alteração de comportamento no resto**: texto da tarefa, responsável (`JIRA_ASSIGNEE_ACCOUNT_ID`), regras de etapa, deduplicação e fluxo do card permanecem exatamente como estão.
+
+6. **Prévia**: continua sem efeitos e sem acionar criação — nenhuma chamada de POST a partir do frontend. Passa a exibir `Projeto: MB (ID 10038)` e `Tipo: Tarefa (ID 10042)`, eliminando a leitura ambígua "I0038 / I0042".
+
+7. **Nada é criado nem alterado**: nenhum projeto criado, nenhum card existente tocado, nenhuma tarefa real durante a validação.
+
+8. **Validação**: `npm run build` e execução do `?check=1` e da prévia (dry-run).
 
 ## Detalhes técnicos
 
-- `supabase/functions/jira-create-panel-task/index.ts`: leitura dos secrets com defaults, pré-checagem (`/project/{key}`, `/mypermissions?projectKey=`, `/issue/createmeta`), mapeamento de status, `error_kind` por categoria; `record_automation_run` recebe a categoria.
-- `supabase/functions/_shared/jira.ts`: constantes passam a ler os mesmos secrets (mantendo a JQL por id quando disponível).
-- `src/components/admin/JiraTaskDialog.tsx`: exibe a categoria, o status e a mensagem; prévia mostra `MB (10038)` e `Tarefa (10042)`.
+- `supabase/functions/jira-create-panel-task/index.ts`: leitura dos secrets (sem fallback), ramo `?check=1` com autenticação e `has_role('admin')`, pré-checagem na ordem definida, mapeamento status→categoria (`error_kind`), `record_automation_run` recebendo a categoria; nenhum POST no ramo de diagnóstico.
+- `supabase/functions/_shared/jira.ts`: passa a usar exclusivamente `ATLASSIAN_EMAIL`/`ATLASSIAN_API_TOKEN` e os mesmos secrets de projeto/tipo (JQL continua por id `10038`/`10042`).
+- `src/components/admin/JiraTaskDialog.tsx`: exibe categoria, status e mensagem; prévia com `MB (ID 10038)` e `Tarefa (ID 10042)`; botão de diagnóstico chamando `?check=1`.
 - Sem migrations.
+
 
 ## Configuração no Supabase Secrets (após implementação)
 
