@@ -16,7 +16,7 @@ Hoje esses valores estão fixos no código, não em secrets. Como o alvo está c
 
 Integração Jira no backend:
 
-- `supabase/functions/_shared/jira.ts` — único lugar que monta as credenciais (`jiraEnv`), com `ATLASSIAN_SITE_URL`, `ATLASSIAN_EMAIL`, `ATLASSIAN_API_TOKEN`; constantes fixas `JIRA_PROJECT_ID = "10038"` e `JIRA_ISSUE_TYPE_ID = "10042"`; helpers de leitura (GET).
+- `supabase/functions/_shared/jira.ts` — único lugar que monta as credenciais (`jiraEnv`), com `ATLASSIAN_SITE_URL`, `ATLASSIAN_EMAIL`, `ATLASSIAN_API_TOKEN`; hoje ainda carrega as constantes fixas `JIRA_PROJECT_ID = "10038"` e `JIRA_ISSUE_TYPE_ID = "10042"`, que serão **removidas como fonte ativa** (ver seção de secrets); helpers de leitura (GET).
 - `supabase/functions/jira-create-panel-task/index.ts` — criação manual da tarefa; hoje redeclara `JIRA_PROJECT_ID`/`JIRA_ISSUE_TYPE_ID` e monta as credenciais localmente; envia `project: { id: "10038" }`.
 - `supabase/functions/jira-sync-panel-tasks/index.ts`, `supabase/functions/jira-sync-card-code/index.ts`, `supabase/functions/jira-code-webhook/index.ts`, `supabase/functions/_shared/jiraCodeSync.ts` — somente leitura/sincronização; não declaram credenciais próprias (usam `_shared/jira.ts`).
 
