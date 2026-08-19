@@ -93,6 +93,7 @@
   "overrides": {
     "ws": "^8.18.0",
     "lodash": "^4.17.21",
-    "@remix-run/router": "^1.23.3"
+    "@remix-run/router": "^1.23.3",
+    "rolldown": "1.2.4"
   }
 }
