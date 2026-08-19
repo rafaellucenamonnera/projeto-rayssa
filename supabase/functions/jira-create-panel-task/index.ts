@@ -3,9 +3,10 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const CROSS_PANEL_ID = "painel_msj9fyji";
 const CRIACAO_PAINEL_STAGE_HINT = "criacao_painel";
-const JIRA_PROJECT_KEY = "MB";
+const JIRA_PROJECT_ID = "10038";
 const JIRA_ISSUE_TYPE_ID = "10042";
-// Cards protegidos: nunca recebem tarefa automática.
+const JIRA_FLOW_LABEL = "monnera-onboarding";
+// Cards protegidos: nunca recebem tarefa automática (reforço em código; a regra permanente é no banco).
 const PROTECTED_CARD_NAMES = ["ORCA LOGÍSTICA", "ORCA LOGISTICA"];
 
 function json(body: unknown, status = 200) {
@@ -49,15 +50,26 @@ Deno.serve(async (req) => {
     // 2. Carrega o card e aplica as regras de liberação.
     const { data: card, error: cardErr } = await admin
       .from("representative_cards")
-      .select("id, panel_id, stage_id, full_name, cnpj, jira_issue_key, origin_thread_id")
+      .select("id, panel_id, stage_id, full_name, cnpj, jira_issue_key, origin_thread_id, is_protected")
       .eq("id", cardId)
       .maybeSingle();
     if (cardErr) throw cardErr;
     if (!card) return json({ error: "Card não encontrado." }, 404);
     if (card.panel_id !== CROSS_PANEL_ID) return json({ error: "Card fora do painel Onb Clientes Cross." }, 400);
-    if (PROTECTED_CARD_NAMES.includes((card.full_name ?? "").toUpperCase())) {
+
+    // Proteção permanente: flag no card, tabela protected_entities e reforço por nome.
+    const { data: protectedRows } = await admin
+      .from("protected_entities")
+      .select("id")
+      .or(`card_id.eq.${card.id},cnpj_normalizado.eq.${(card.cnpj ?? "").replace(/\D/g, "")}`);
+    if (card.is_protected || protectedRows?.length || PROTECTED_CARD_NAMES.includes((card.full_name ?? "").toUpperCase())) {
+      await admin.rpc("record_automation_run", {
+        p_stage: "jira_create_task", p_status: "ignorado_protegido", p_card_id: card.id,
+        p_error: "Card protegido.", p_origin: "manual", p_payload: {},
+      }).catch(() => null);
       return json({ error: "Card protegido: não recebe tarefa Jira." }, 400);
     }
+
 
     const blockers: string[] = [];
     if (!card.full_name?.trim()) blockers.push("Nome do parceiro não confirmado.");
@@ -101,7 +113,7 @@ Deno.serve(async (req) => {
 
     const preview = {
       card: { id: card.id, nome: card.full_name, cnpj: card.cnpj, etapa: card.stage_id },
-      jira: { project: JIRA_PROJECT_KEY, issue_type: JIRA_ISSUE_TYPE_ID, assignee: assigneeAccountId ? "configurado" : null, summary, description },
+      jira: { project: JIRA_PROJECT_ID, issue_type: JIRA_ISSUE_TYPE_ID, assignee: assigneeAccountId ? "configurado" : null, summary, description },
       blockers,
       duplicate,
     };
@@ -131,9 +143,10 @@ Deno.serve(async (req) => {
       headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({
         fields: {
-          project: { key: JIRA_PROJECT_KEY },
+          project: { id: JIRA_PROJECT_ID },
           issuetype: { id: JIRA_ISSUE_TYPE_ID },
           assignee: { id: assigneeAccountId },
+          labels: [JIRA_FLOW_LABEL],
           summary,
           description: {
             type: "doc",

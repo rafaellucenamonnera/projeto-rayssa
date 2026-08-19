@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Loader2, Send } from "lucide-react";
+import { ExternalLink, Loader2, RefreshCw, Send } from "lucide-react";
 import { toast } from "sonner";
 
 interface Preview {
@@ -15,21 +15,71 @@ interface Preview {
   duplicate: { id: string; full_name: string | null; jira_issue_key: string | null } | null;
 }
 
+interface SyncPreview {
+  issue_key: string;
+  codigo: string | null;
+  origem?: string;
+  evidencia?: string;
+  codigo_atual?: string | null;
+  bloqueio?: string | null;
+}
+
 interface Props {
   cardId: string;
   jiraIssueKey?: string | null;
   jiraStatus?: string | null;
   canEdit: boolean;
   onCreated?: (issueKey: string) => void;
+  onCodeApplied?: (codigo: string) => void;
 }
 
-export default function JiraTaskDialog({ cardId, jiraIssueKey, jiraStatus, canEdit, onCreated }: Props) {
+export default function JiraTaskDialog({ cardId, jiraIssueKey, jiraStatus, canEdit, onCreated, onCodeApplied }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [justification, setJustification] = useState("");
+  const [syncOpen, setSyncOpen] = useState(false);
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [syncSaving, setSyncSaving] = useState(false);
+  const [syncPreview, setSyncPreview] = useState<SyncPreview | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  const openSync = async () => {
+    setSyncOpen(true);
+    setSyncPreview(null);
+    setSyncError(null);
+    setSyncLoading(true);
+    const { data, error: fnError } = await supabase.functions.invoke("jira-sync-card-code", {
+      body: { card_id: cardId, confirm: false },
+    });
+    setSyncLoading(false);
+    if (fnError) {
+      setSyncError(fnError.message);
+      return;
+    }
+    setSyncPreview((data as any)?.preview ?? null);
+    if ((data as any)?.ok === false) setSyncError((data as any)?.error ?? "Não foi possível ler o código na tarefa Jira.");
+  };
+
+  const confirmSync = async () => {
+    if (syncSaving) return;
+    setSyncSaving(true);
+    const { data, error: fnError } = await supabase.functions.invoke("jira-sync-card-code", {
+      body: { card_id: cardId, confirm: true },
+    });
+    setSyncSaving(false);
+    if (fnError || (data as any)?.ok === false) {
+      toast.error((data as any)?.error ?? fnError?.message ?? "Falha ao gravar o código Monnera.");
+      return;
+    }
+    const codigo = (data as any)?.codigo as string;
+    toast.success(`Código ${codigo} aplicado ao card. O card não foi movido.`);
+    onCodeApplied?.(codigo);
+    setSyncOpen(false);
+  };
+
 
   const loadPreview = async () => {
     setLoading(true);
@@ -98,10 +148,58 @@ export default function JiraTaskDialog({ cardId, jiraIssueKey, jiraStatus, canEd
             <span className="text-muted-foreground">Nenhuma tarefa vinculada a este card.</span>
           )}
         </div>
-        <Button onClick={handleOpen} disabled={!canEdit || !!jiraIssueKey}>
-          <Send className="mr-2 h-4 w-4" /> Criar tarefa Jira
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={handleOpen} disabled={!canEdit || !!jiraIssueKey}>
+            <Send className="mr-2 h-4 w-4" /> Criar tarefa Jira
+          </Button>
+          <Button variant="outline" onClick={openSync} disabled={!canEdit || !jiraIssueKey}>
+            <RefreshCw className="mr-2 h-4 w-4" /> Sincronizar código Jira
+          </Button>
+        </div>
       </CardContent>
+
+      <Dialog open={syncOpen} onOpenChange={setSyncOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Código Monnera na tarefa Jira</DialogTitle>
+            <DialogDescription>
+              Consulta somente a tarefa vinculada a este card. Nada é gravado até a confirmação.
+            </DialogDescription>
+          </DialogHeader>
+
+          {syncLoading && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Consultando o Jira...
+            </div>
+          )}
+
+          {syncPreview && (
+            <div className="space-y-2 rounded-md border border-border p-3 text-sm">
+              <p><strong>Tarefa:</strong> {syncPreview.issue_key}</p>
+              <p><strong>Código encontrado:</strong> {syncPreview.codigo ?? "—"}</p>
+              <p><strong>Origem:</strong> {syncPreview.origem ?? "—"}</p>
+              <p><strong>Código atual do card:</strong> {syncPreview.codigo_atual ?? "—"}</p>
+              {syncPreview.evidencia && (
+                <pre className="whitespace-pre-wrap text-xs text-muted-foreground">{syncPreview.evidencia}</pre>
+              )}
+              {syncPreview.bloqueio && <p className="text-destructive">{syncPreview.bloqueio}</p>}
+            </div>
+          )}
+
+          {syncError && <p className="text-sm text-destructive">{syncError}</p>}
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setSyncOpen(false)}>Cancelar</Button>
+            <Button
+              onClick={confirmSync}
+              disabled={syncSaving || syncLoading || !syncPreview?.codigo || !!syncPreview?.bloqueio}
+            >
+              {syncSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Confirmar e gravar código
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl">
