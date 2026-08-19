@@ -56,12 +56,18 @@ async function readFunctionError(fnError: any): Promise<FnErrorInfo> {
     body = null;
   }
   const kindLabel: Record<string, string> = {
-    autenticacao: "Erro de autenticação",
+    autenticacao: "Credenciais Atlassian",
+    configuracao: "Configuração incompleta",
+    projeto_inexistente: "Projeto Jira não encontrado",
+    sem_acesso_projeto: "Sem acesso ao projeto",
+    sem_permissao_criar: "Sem permissão para criar itens",
+    tipo_invalido: "Tipo de item inválido",
+    campos_invalidos: "Campos rejeitados pelo Jira",
     permissao: "Erro de permissão",
     payload: "Erro de dados enviados",
     pre_requisito: "Pré-requisito não atendido",
     duplicidade: "Duplicidade",
-    servidor_jira: "Erro no Jira",
+    servidor_jira: "Jira indisponível",
   };
   const parts: string[] = [];
   if (status) parts.push(`HTTP ${status}`);
