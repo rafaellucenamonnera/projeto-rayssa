@@ -2,7 +2,12 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const CROSS_PANEL_ID = "painel_msj9fyji";
-const CRIACAO_PAINEL_STAGE_HINT = "criacao_painel";
+const CRIACAO_PAINEL_LABEL = "criacao painel";
+
+function normalizeLabel(value: string): string {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
 const JIRA_PROJECT_ID = "10038";
 const JIRA_ISSUE_TYPE_ID = "10042";
 const JIRA_FLOW_LABEL = "monnera-onboarding";
@@ -74,9 +79,19 @@ Deno.serve(async (req) => {
     const blockers: string[] = [];
     if (!card.full_name?.trim()) blockers.push("Nome do parceiro não confirmado.");
     if (!card.cnpj || card.cnpj.replace(/\D/g, "").length !== 14) blockers.push("CNPJ não confirmado (14 dígitos).");
-    if (!String(card.stage_id ?? "").includes(CRIACAO_PAINEL_STAGE_HINT)) {
+
+    // Etapa: comparar pelo rótulo configurado (o stage_id é técnico, ex.: etapa_painel_msj9fyji_2).
+    const { data: stageRow } = await admin
+      .from("pipeline_stages_config")
+      .select("value, label")
+      .eq("panel_key", CROSS_PANEL_ID)
+      .eq("value", card.stage_id ?? "")
+      .maybeSingle();
+    const stageLabel = stageRow?.label ?? "";
+    if (normalizeLabel(stageLabel) !== CRIACAO_PAINEL_LABEL) {
       blockers.push("Card não está na etapa Criação Painel.");
     }
+
 
     // 3. Deduplicação: por card, por CNPJ e por thread de origem.
     let duplicate: { id: string; full_name: string | null; jira_issue_key: string | null } | null = null;
@@ -95,7 +110,8 @@ Deno.serve(async (req) => {
     }
 
     const assigneeAccountId = Deno.env.get("JIRA_ASSIGNEE_ACCOUNT_ID")?.trim();
-    if (!assigneeAccountId) blockers.push("JIRA_ASSIGNEE_ACCOUNT_ID não configurado: tarefa nunca é criada sem responsável.");
+    if (!assigneeAccountId) blockers.push("Responsável Jira não configurado ou não autorizado.");
+
 
     const appUrl = Deno.env.get("PUBLIC_APP_URL")?.replace(/\/+$/, "") ?? "";
     const cardUrl = appUrl ? `${appUrl}/admin/leads?panel=${CROSS_PANEL_ID}&card=${card.id}` : card.id;
@@ -112,7 +128,7 @@ Deno.serve(async (req) => {
     ].join("\n");
 
     const preview = {
-      card: { id: card.id, nome: card.full_name, cnpj: card.cnpj, etapa: card.stage_id },
+      card: { id: card.id, nome: card.full_name, cnpj: card.cnpj, etapa: stageLabel || card.stage_id },
       jira: { project: JIRA_PROJECT_ID, issue_type: JIRA_ISSUE_TYPE_ID, assignee: assigneeAccountId ? "configurado" : null, summary, description },
       blockers,
       duplicate,
@@ -124,16 +140,18 @@ Deno.serve(async (req) => {
         p_status: "ignorado",
         p_card_id: card.id,
         p_error: blockers.join(" "),
-        p_origin: "manual",
+        p_origin: dryRun ? "manual_preview" : "manual",
         p_payload: { blockers },
       });
-      return json({ ok: false, preview, error: blockers.join(" ") }, 400);
+      return json({ ok: false, preview, error: blockers.join(" "), error_kind: "pre_requisito" }, 400);
     }
+
     if (duplicate) {
-      return json({ ok: false, preview, error: `Já existe tarefa Jira (${duplicate.jira_issue_key}) para este card/CNPJ/thread.` }, 409);
+      return json({ ok: false, preview, error_kind: "duplicidade", error: `Já existe tarefa Jira (${duplicate.jira_issue_key}) para este card/CNPJ/thread.` }, 409);
     }
     if (dryRun) return json({ ok: true, dry_run: true, preview });
-    if (!justification) return json({ ok: false, preview, error: "Justificativa obrigatória." }, 400);
+    if (!justification) return json({ ok: false, preview, error: "Justificativa obrigatória.", error_kind: "pre_requisito" }, 400);
+
 
     // 4. Criação real no Jira.
     const site = env("ATLASSIAN_SITE_URL").replace(/\/+$/, "");
@@ -161,13 +179,29 @@ Deno.serve(async (req) => {
     });
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const message = JSON.stringify(payload).slice(0, 500);
+      // Mensagens da API do Jira apenas; nenhuma credencial é registrada ou devolvida.
+      const jiraMessages: string[] = Array.isArray((payload as any)?.errorMessages) ? (payload as any).errorMessages : [];
+      const fieldErrors = (payload as any)?.errors && typeof (payload as any).errors === "object"
+        ? Object.entries((payload as any).errors).map(([k, v]) => `${k}: ${v}`)
+        : [];
+      const message = [...jiraMessages, ...fieldErrors].join(" | ").slice(0, 500) || JSON.stringify(payload).slice(0, 500);
+      const errorKind = res.status === 401 ? "autenticacao"
+        : res.status === 403 ? "permissao"
+        : res.status === 400 ? "payload"
+        : "servidor_jira";
+      const assigneeIssue = fieldErrors.some((e) => e.toLowerCase().startsWith("assignee"));
+      const friendly = res.status === 401
+        ? "Credenciais Atlassian inválidas ou expiradas."
+        : res.status === 403 || assigneeIssue
+          ? "Responsável Jira não configurado ou não autorizado."
+          : `Falha ao criar tarefa no Jira: ${message}`;
       await admin.from("representative_cards").update({ jira_last_error: message, jira_synced_at: new Date().toISOString() }).eq("id", card.id);
       await admin.rpc("record_automation_run", {
         p_stage: "jira_create_task", p_status: "erro", p_card_id: card.id, p_error: message, p_origin: "manual", p_payload: payload,
       });
-      return json({ ok: false, error: `Falha ao criar tarefa no Jira: ${message}` }, 502);
+      return json({ ok: false, error: friendly, error_kind: errorKind, jira_status: res.status, jira_message: message }, 502);
     }
+
 
     const issueKey = payload.key as string;
     await admin.rpc("register_jira_panel_task", { p_execution_id: null, p_issue_key: issueKey, p_payload: payload }).catch(() => null);
