@@ -78,22 +78,24 @@ export async function searchFlowIssues(sinceIso: string | null, limit: number): 
   const jql = `${clauses.join(" AND ")} ORDER BY updated ASC`;
 
   const out: JiraIssue[] = [];
-  let startAt = 0;
   const pageSize = Math.min(50, limit);
-  // Paginação completa: só para quando o Jira sinaliza fim ou o limite do lote é atingido.
+  const codeFieldId = Deno.env.get("JIRA_CODE_FIELD_ID")?.trim();
+  const fields = ["summary", "description", "labels", "updated", ...(codeFieldId ? [codeFieldId] : [])];
+  let nextPageToken: string | null = null;
+  // Endpoint atual: /rest/api/3/search/jql (o antigo /search foi removido pela Atlassian).
+  // Paginação completa por nextPageToken; para no fim da lista ou no limite do lote.
   while (out.length < limit) {
     const params = new URLSearchParams({
       jql,
-      startAt: String(startAt),
       maxResults: String(pageSize),
-      fields: "summary,description,labels,updated" + (Deno.env.get("JIRA_CODE_FIELD_ID")?.trim() ? `,${Deno.env.get("JIRA_CODE_FIELD_ID")!.trim()}` : ""),
+      fields: fields.join(","),
     });
-    const page = await jiraGet(`/rest/api/3/search?${params.toString()}`);
+    if (nextPageToken) params.set("nextPageToken", nextPageToken);
+    const page = await jiraGet(`/rest/api/3/search/jql?${params.toString()}`);
     const issues: any[] = page?.issues ?? [];
     out.push(...issues.map(mapIssue));
-    const total = typeof page?.total === "number" ? page.total : out.length;
-    startAt += issues.length;
-    if (page?.isLast === true || issues.length === 0 || startAt >= total) break;
+    nextPageToken = page?.nextPageToken ?? null;
+    if (page?.isLast === true || !nextPageToken || issues.length === 0) break;
   }
   return out.slice(0, limit);
 }
