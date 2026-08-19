@@ -58,8 +58,9 @@ Sem follow-up, sem régua, sem cobrança, sem WhatsApp. RLS preservada; a funç�
 ## Escopo técnico
 
 Migrations:
-1. `jira_sync_state` (cursor + lease single-flight: `id`, `last_issue_updated_at`, `last_issue_key`, `locked_until`, `paused`, `updated_at`) com RLS de leitura para admin e GRANTs; escrita apenas por service_role.
+1. `jira_sync_state` (cursor + lease single-flight + modo leitura: `id`, `last_issue_updated_at`, `last_issue_key`, `locked_until`, `paused`, `read_only` default `true`, `updated_at`) com RLS de leitura para admin e GRANTs; escrita apenas por service_role.
 2. Índice único parcial em `representative_cards (panel_id, codigo_monnera)` para impedir reuso do mesmo código por CNPJs diferentes (se ainda não existir).
+3. Proteção permanente: coluna `is_protected` em `representative_cards`, tabela `protected_entities` (`card_id`, `cnpj_normalizado`, motivo) com RLS/GRANTs, função `is_card_protected` e trigger que bloqueia alterações operacionais em cards protegidos. Seed com ORCA LOGÍSTICA.
 
 Edge Functions:
 - nova: `supabase/functions/jira-sync-panel-tasks/index.ts` (polling em lote, chamada pelo cron);
