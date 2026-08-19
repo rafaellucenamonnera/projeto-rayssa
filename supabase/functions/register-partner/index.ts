@@ -151,33 +151,11 @@ Deno.serve(async (req) => {
       return json({ error: "auth_create_failed", message: "Falha ao criar usuário." }, 500, corsHeaders);
     }
 
-    // 3) Upsert parceiros_comerciais
+    // 3) Criar parceiros_comerciais (somente novos cadastros)
     let parceiro;
-    if (existingParceiro) {
-      const { data: updated, error: updErr } = await admin
-        .from("parceiros_comerciais")
-        .update({
-          user_id: userId,
-          nome,
-          cpf: cpfClean,
-          email: emailNorm,
-          telefone_ddd,
-          telefone_numero,
-          slug_consultor,
-          cliente_monnera: !!cliente_monnera,
-          cliente_monnera_cnpj: cliente_monnera ? (cliente_monnera_cnpj || null) : null,
-          ativo: true,
-        })
-        .eq("id", existingParceiro.id)
-        .select("id, nome, codigo_parceiro, slug_consultor")
-        .single();
-      if (updErr) {
-        console.error("update parceiro error", updErr);
-        return json({ error: "parceiro_update_failed", message: updErr.message }, 500, corsHeaders);
-      }
-      parceiro = updated;
-    } else {
+    {
       // Generate unique code
+
       let codigo_parceiro = "";
       for (let i = 0; i < 8; i++) {
         const c = genCode();
