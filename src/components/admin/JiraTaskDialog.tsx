@@ -10,9 +10,17 @@ import { toast } from "sonner";
 
 interface Preview {
   card: { id: string; nome: string | null; cnpj: string | null; etapa: string | null };
-  jira: { project: string; issue_type: string; assignee: string | null; summary: string; description: string };
+  jira: { project_key: string; issue_type_id: string; assignee: string | null; summary: string; description: string };
   blockers: string[];
   duplicate: { id: string; full_name: string | null; jira_issue_key: string | null } | null;
+}
+
+interface Diagnostic {
+  ok: boolean;
+  jira_user: { display_name: string | null; active: boolean | null } | null;
+  project: { key: string; name: string | null; id: string | null } | null;
+  permission: { create_issues: boolean } | null;
+  issue_type: { id: string; name: string | null } | null;
 }
 
 interface SyncPreview {
