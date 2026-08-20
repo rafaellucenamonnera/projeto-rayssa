@@ -15,6 +15,7 @@
 // ============================================================================
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { getIssue, jiraEnv, jiraGetRaw } from "../_shared/jira.ts";
+import { ONBOARDING_EMAIL_SUBJECT, renderOnboardingEmail } from "../_shared/onboardingEmailTemplate.ts";
 import {
   CARD_FIELDS,
   MAX_CARDS_PER_RUN,
@@ -25,10 +26,9 @@ import {
   buildRecipients,
   canvaGate,
   entryGate,
-  
+  htmlChecklist,
   nextStep,
   resolveStages,
-  threadGate,
   type CrossCard,
   type Gate,
   type Step,
