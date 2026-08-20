@@ -2008,7 +2008,7 @@ const AdminLeads = () => {
       }
     }
     handleStatusChange(id, lead.nome_fantasia, newStage);
-  }, [canMovePipeline, leads, isCustomCrmPanel, isCommercialPanel, moveRepresentativeCard, handleStatusChange]);
+  }, [canMovePipeline, leads, isCustomCrmPanel, isCrossClientPanel, isCommercialPanel, moveRepresentativeCard, handleStatusChange]);
 
 
   const isConvertedOrBeyond = (status: string) =>
