@@ -1968,13 +1968,32 @@ const AdminLeads = () => {
     const lead = leads.find((l) => l.id === id);
     if (!lead) return;
     if (isCustomCrmPanel) {
+      // Painel Onb Clientes Cross: movimentação manual usa os mesmos gates da automação.
+      if (isCrossClientPanel) {
+        const from = lead.stage_id;
+        const codeInfo = describeMonneraCode(lead.codigo_monnera);
+        if (
+          from === CROSS_STAGE_CRIACAO_PAINEL &&
+          newStage === CROSS_STAGE_MATERIAL_ONBOARDING &&
+          codeInfo.state !== "valido"
+        ) {
+          toast.error("Ainda falta o código Monnera para avançarmos. Insira o código Monnera e seguiremos com as próximas etapas.");
+          return;
+        }
+      }
       moveRepresentativeCard(id, newStage).then(({ error }: any) => {
         if (error) return toast.error("Erro ao mover card: " + error.message);
         setLeads((prev) => prev.map((p) => (p.id === id ? { ...p, stage_id: newStage } : p)));
         toast.success("Card movido com sucesso");
+        if (isCrossClientPanel && newStage === CROSS_STAGE_MATERIAL_ONBOARDING) {
+          void supabase.functions.invoke("cross-onboarding-advance", {
+            body: { card_id: id, dry_run: false, origin: "manual_move" },
+          });
+        }
       });
       return;
     }
+
     // Painel comercial: atualizar contagens por etapa localmente (sem recarregar).
     if (isCommercialPanel) {
       const from = lead.status_lead || lead.status;
