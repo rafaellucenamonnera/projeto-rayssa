@@ -314,34 +314,63 @@ Deno.serve(async (req) => {
     if (recordError) return await finish({ error: recordError.message }, "erro", recordError.message);
 
     if (!gate.ok) {
-      await notify(card.id, `Onboarding Cross pendente: ${step}`, gate.reason);
+      const label = STEP_LABELS[step] ?? step;
+      // Falha nunca é simulada como sucesso: pendência no card + notificação a Rafael e Maycon.
+      await admin.rpc("cross_onboarding_upsert_pendencia", {
+        p_card_id: card.id,
+        p_titulo: `Onboarding Cross pendente: ${label}`,
+        p_descricao: gate.reason,
+        p_assigned_to: NOTIFY_USERS[0],
+      });
+      await notify(card.id, `Onboarding Cross pendente: ${label}`, gate.reason);
       return await finish({ step, status: stepStatus, reason: gate.reason, recorded }, "ignorado", gate.reason);
     }
 
-    // Único efeito externo desta função: mover a etapa após envio confirmado.
-    if (step === "card_movido") {
+    // Efeitos externos desta função: as duas movimentações de etapa do fluxo.
+    const moves: Record<string, { from: string; to: string; label: string }> = {
+      card_movido_material: {
+        from: stages.criacaoPainel,
+        to: stages.materialOnboarding,
+        label: "Material Onboarding Cliente",
+      },
+      card_movido: {
+        from: stages.materialOnboarding,
+        to: stages.recebimentoDados,
+        label: "Recebimento Dados",
+      },
+    };
+    const move = moves[step];
+    if (move) {
       const { error: moveError } = await admin
         .from("representative_cards")
-        .update({ stage_id: STAGE_MATERIAL_ONBOARDING })
+        .update({ stage_id: move.to })
         .eq("id", card.id)
-        .eq("stage_id", STAGE_CRIACAO_PAINEL);
+        .eq("stage_id", move.from);
       if (moveError) {
         await admin.rpc("cross_onboarding_record_step", {
           p_card_id: card.id, p_step: step, p_status: "erro",
           p_error: moveError.message, p_payload: payload,
         });
+        await admin.rpc("cross_onboarding_upsert_pendencia", {
+          p_card_id: card.id,
+          p_titulo: `Onboarding Cross falhou: ${STEP_LABELS[step] ?? step}`,
+          p_descricao: moveError.message,
+          p_assigned_to: NOTIFY_USERS[0],
+        });
+        await notify(card.id, `Onboarding Cross falhou: ${STEP_LABELS[step] ?? step}`, moveError.message);
         return await finish({ step, error: moveError.message }, "erro", moveError.message);
       }
       await admin.from("representative_card_history").insert({
         representative_card_id: card.id,
         action: "stage_change",
         actor_label: "cross-onboarding-advance",
-        source_stage_id: STAGE_CRIACAO_PAINEL,
-        destination_stage_id: STAGE_MATERIAL_ONBOARDING,
+        source_stage_id: move.from,
+        destination_stage_id: move.to,
         payload,
       });
-      await notify(card.id, "Onboarding Cross concluído", `Card movido para Material Onboarding Cliente após envio ${payload.message_id}.`);
+      await notify(card.id, "Onboarding Cross avançou", `Card movido para ${move.label}.`);
     }
+
 
     return await finish({ step, status: stepStatus, payload, recorded }, "sucesso");
   } catch (error) {
