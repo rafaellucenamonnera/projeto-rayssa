@@ -227,26 +227,33 @@ Deno.serve(async (req) => {
       return json({ error: "Conexao Gmail nao vinculada ao projeto." }, 500);
     }
 
-    // ------------------------------------------- protecao contra duplicidade
+    // ------------------- envio anterior: exige confirmacao explicita de reenvio
+    const confirmarReenvio = body.confirmar_reenvio === true;
     const { data: alreadySent } = await admin
       .from("onboarding_email_sends")
-      .select("id, sent_at, message_id")
+      .select("id, sent_at, message_id, destinatarios")
       .eq("card_id", cardId)
       .eq("codigo_parceiro", codigo)
       .eq("status", "enviado")
+      .order("sent_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
-    if (alreadySent) {
+    if (alreadySent && !confirmarReenvio) {
       return json(
         {
-          error: "E-mail de onboarding ja enviado para este card/codigo.",
+          error: "E-mail de onboarding já enviado para este card/código. Confirme o reenvio para prosseguir.",
           duplicate: true,
+          requires_resend_confirmation: true,
           log_id: alreadySent.id,
           message_id: alreadySent.message_id,
           sent_at: alreadySent.sent_at,
+          destinatarios_anteriores: alreadySent.destinatarios ?? [],
         },
         409,
       );
     }
+    const isResend = Boolean(alreadySent);
+    if (isResend) avisos.push("Este envio é um REENVIO: já existia um e-mail enviado para este card/código.");
 
     // -------------------------------------------------- registro (pendente)
     const { data: logRow, error: logError } = await admin
@@ -265,7 +272,10 @@ Deno.serve(async (req) => {
         template_version: TEMPLATE_VERSION,
         gmail_account: SENDER_ACCOUNT,
         test_mode: true,
+        is_resend: isResend,
+        resend_of: alreadySent?.id ?? null,
       })
+
       .select("id")
       .single();
     if (logError) {
