@@ -19,7 +19,9 @@ Não. O conector Canva está ligado ao agente Lovable nesta conversa, não ao ru
 
 **6. Somente a ORCA muda.** A migração filtra pelo id do card e pelo id do registro em `protected_entities`. Nenhum outro card do painel tem proteção.
 
-**7. ORCA não será processada sem sua autorização.** A liberação remove a proteção, mas o card fica em modo simulação até você mandar executar de verdade; nenhum Canva, e-mail ou movimentação real acontece nesta entrega.
+**7. Liberação ≠ autorização de execução.** São duas coisas separadas e implementadas separadamente: (a) remoção auditada da proteção — feita nesta entrega, com histórico; (b) autorização para execução real do fluxo na ORCA — não incluída. Enquanto você não autorizar por escrito, a ORCA roda apenas em simulação: nenhum Canva, e-mail, tarefa ou movimentação real. A execução real exigirá `dry_run: false` mais a inclusão explícita da ORCA na allowlist de execução, que é uma lista distinta da allowlist de elegibilidade.
+
+**Stage IDs confirmados no banco** (`pipeline_stages_config`, `panel_key = painel_msj9fyji`): Criação Painel = `etapa_painel_msj9fyji_2` (ordem 2); Material Onboarding Cliente = `etapa_painel_msj9fyji_3` (ordem 3); Recebimento Dados = `etapa_painel_msj9fyji_4` (ordem 4). Ainda assim, o código lerá os IDs por rótulo em `pipeline_stages_config` em vez de constantes fixas, para não quebrar se a configuração mudar.
 
 ---
 
