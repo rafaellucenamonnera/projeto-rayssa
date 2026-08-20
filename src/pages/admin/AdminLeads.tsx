@@ -720,6 +720,38 @@ const AdminLeads = () => {
         }))
       : rawLeads;
     setLeads(mappedLeads);
+    // Origem de leitura do Código Monnera: card > registro de triagem já liberado (Jira).
+    if (isCustomCrmPanel && currentPanelId === CROSS_CLIENT_PANEL_ID) {
+      const semCodigo = mappedLeads.filter((r: any) => !r.codigo_monnera).map((r: any) => r.id);
+      if (semCodigo.length > 0) {
+        const { data: triagem } = await (supabase as any)
+          .from("gmail_processed_messages")
+          .select("matched_card_id, codigo_encontrado, jira_issue_key, subject, received_at")
+          .in("matched_card_id", semCodigo)
+          .eq("operational_status", "liberado")
+          .not("codigo_encontrado", "is", null)
+          .order("received_at", { ascending: false });
+        const fallback: Record<string, { code: string; origem: string }> = {};
+        ((triagem as any[]) || []).forEach((m) => {
+          if (!m.matched_card_id || fallback[m.matched_card_id]) return;
+          if (describeMonneraCode(m.codigo_encontrado).state !== "valido") return;
+          fallback[m.matched_card_id] = {
+            code: String(m.codigo_encontrado).trim().toUpperCase(),
+            origem: m.jira_issue_key ? `Triagem Gmail · Jira ${m.jira_issue_key}` : "Triagem Gmail",
+          };
+        });
+        if (Object.keys(fallback).length > 0) {
+          setLeads((prev) =>
+            prev.map((r: any) =>
+              fallback[r.id]
+                ? { ...r, codigo_monnera: fallback[r.id].code, codigo_monnera_origem: fallback[r.id].origem }
+                : r,
+            ),
+          );
+        }
+      }
+    }
+
     const map: Record<string, string> = {};
     const list = parceirosRes.data || [];
     list.forEach((p: any) => { map[p.id] = p.nome; });
@@ -2682,8 +2714,18 @@ const AdminLeads = () => {
                       {(() => {
                         const info = describeMonneraCode(detailLead.codigo_monnera);
                         const tone = info.state === "valido" ? "text-emerald-500" : info.state === "aguardando" ? "text-muted-foreground" : "text-amber-500";
-                        return <p className={`text-xs font-mono mt-0.5 ${tone}`}>Código Monnera: {info.label}</p>;
+                        return (
+                          <>
+                            <p className={`text-xs font-mono mt-0.5 ${tone}`}>Código Monnera: {info.label}</p>
+                            {info.state === "valido" && (detailLead as any).codigo_monnera_origem && (
+                              <p className="text-[11px] text-muted-foreground mt-0.5">
+                                Origem: {(detailLead as any).codigo_monnera_origem}
+                              </p>
+                            )}
+                          </>
+                        );
                       })()}
+
                     </div>
 
                     <div>
