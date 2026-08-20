@@ -14,7 +14,7 @@
 //     e só é considerado concluído com message_id confirmado pela API Gmail.
 // ============================================================================
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { getIssue } from "../_shared/jira.ts";
+import { getIssue, jiraEnv, jiraGetRaw } from "../_shared/jira.ts";
 import {
   CARD_FIELDS,
   MAX_CARDS_PER_RUN,
