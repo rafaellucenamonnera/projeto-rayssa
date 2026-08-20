@@ -258,7 +258,8 @@ export function buildRecipients(params: {
   senderAccount: string;
   qaMode: boolean;
 }): { to: string[]; excluded: string[]; lastResort: boolean } {
-  if (params.qaMode) return { to: [QA_ALLOWED_RECIPIENT], excluded: [], lastResort: false };
+  // Modo QA: apenas os endereços autorizados, nunca participantes da thread.
+  if (params.qaMode) return { to: [...QA_ALLOWED_RECIPIENTS], excluded: [], lastResort: false };
 
   const excluded: string[] = [];
   const seen = new Set<string>();
