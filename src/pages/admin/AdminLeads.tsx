@@ -2709,6 +2709,7 @@ const AdminLeads = () => {
 
               {activeSection === "detalhes" && isCrossClientPanel && (
                 <div className="space-y-4">
+                  <CrossFlowAlert cardId={detailLead.id} />
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="text-muted-foreground text-xs mb-1">Nome do Parceiro</p>
