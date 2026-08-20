@@ -22,6 +22,15 @@ export function jiraEnv() {
   return { site, auth: btoa(`${email}:${token}`), projectKey: jiraProjectKey(), issueTypeId: jiraIssueTypeId() };
 }
 
+/** GET cru: devolve status + corpo, sem lançar. Usado pelo diagnóstico somente leitura. */
+export async function jiraGetRaw(path: string): Promise<{ status: number; body: string }> {
+  const { site, auth } = jiraEnv();
+  const res = await fetch(`${site}${path}`, {
+    headers: { Authorization: `Basic ${auth}`, Accept: "application/json" },
+  });
+  return { status: res.status, body: (await res.text()).slice(0, 600) };
+}
+
 async function jiraGet(path: string): Promise<any> {
   const { site, auth } = jiraEnv();
   const res = await fetch(`${site}${path}`, {
@@ -31,6 +40,7 @@ async function jiraGet(path: string): Promise<any> {
   if (!res.ok) throw new Error(`Jira ${res.status}: ${text.slice(0, 400)}`);
   return text ? JSON.parse(text) : {};
 }
+
 
 /** Texto plano de um campo ADF (description, comentário) ou string simples. */
 export function adfToText(node: unknown): string {
@@ -108,12 +118,48 @@ export async function searchFlowIssues(sinceIso: string | null, limit: number): 
   return out.slice(0, limit);
 }
 
+/**
+ * Resolve uma issue já existente. Nunca cria nada.
+ * Tentativas em cascata (a chave é sempre a mesma, só muda a forma de leitura):
+ *   1. /issue/KEY?fields=... (campo customizado incluído quando configurado);
+ *   2. /issue/KEY sem `fields` (descarta JIRA_CODE_FIELD_ID inválido como causa);
+ *   3. /search/jql com `key = KEY` (algumas permissões respondem só pela busca).
+ */
 export async function getIssue(issueKey: string): Promise<JiraIssue> {
+  const key = issueKey.trim();
   const codeFieldId = Deno.env.get("JIRA_CODE_FIELD_ID")?.trim();
   const fields = "summary,description,labels,updated" + (codeFieldId ? `,${codeFieldId}` : "");
-  const raw = await jiraGet(`/rest/api/3/issue/${encodeURIComponent(issueKey)}?fields=${fields}`);
-  return mapIssue(raw);
+  const errors: string[] = [];
+
+  try {
+    return mapIssue(await jiraGet(`/rest/api/3/issue/${encodeURIComponent(key)}?fields=${fields}`));
+  } catch (e) {
+    errors.push(e instanceof Error ? e.message : String(e));
+  }
+
+  try {
+    return mapIssue(await jiraGet(`/rest/api/3/issue/${encodeURIComponent(key)}`));
+  } catch (e) {
+    errors.push(e instanceof Error ? e.message : String(e));
+  }
+
+  try {
+    const params = new URLSearchParams({
+      jql: `key = "${key}"`,
+      maxResults: "1",
+      fields: "summary,description,labels,updated",
+    });
+    const page = await jiraGet(`/rest/api/3/search/jql?${params.toString()}`);
+    const found = (page?.issues ?? [])[0];
+    if (found) return mapIssue(found);
+    errors.push("search/jql: nenhuma issue retornada");
+  } catch (e) {
+    errors.push(e instanceof Error ? e.message : String(e));
+  }
+
+  throw new Error(errors[0] ?? `Jira: falha ao resolver ${key}`);
 }
+
 
 export interface JiraComment { id: string; created: string; author: string; body: string }
 

@@ -14,7 +14,7 @@
 //     e só é considerado concluído com message_id confirmado pela API Gmail.
 // ============================================================================
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { getIssue } from "../_shared/jira.ts";
+import { getIssue, jiraEnv, jiraGetRaw } from "../_shared/jira.ts";
 import {
   CARD_FIELDS,
   MAX_CARDS_PER_RUN,
@@ -92,10 +92,44 @@ Deno.serve(async (req) => {
     if (!isAdmin) return json({ error: "Acesso restrito a administradores." }, 403);
 
     const body = await req.json().catch(() => ({}));
+
+    // ---- Modo diagnóstico somente leitura da resolução Jira ----------------
+    // Não toca em card, Canva, e-mail, etapa ou tarefa. Só executa GETs no Jira.
+    const diagKey = String(body?.diag_issue_key ?? "").trim();
+    if (diagKey) {
+      const { site } = jiraEnv();
+      const host = (() => { try { return new URL(site).host; } catch { return site; } })();
+      const codeFieldId = Deno.env.get("JIRA_CODE_FIELD_ID")?.trim();
+      const fields = "summary,description,labels,updated" + (codeFieldId ? `,${codeFieldId}` : "");
+      const enc = encodeURIComponent(diagKey);
+      const checks: Record<string, string> = {
+        myself: "/rest/api/3/myself",
+        issue_with_fields: `/rest/api/3/issue/${enc}?fields=${fields}`,
+        issue_without_fields: `/rest/api/3/issue/${enc}`,
+        issue_full: `/rest/api/3/issue/${enc}?fields=summary,status,assignee`,
+        search_by_key: `/rest/api/3/search/jql?jql=${encodeURIComponent(`key = "${diagKey}"`)}&maxResults=1&fields=summary,status,assignee`,
+        mypermissions: `/rest/api/3/mypermissions?issueKey=${enc}&permissions=BROWSE_PROJECTS`,
+      };
+      const results: Record<string, unknown> = {};
+      for (const [name, path] of Object.entries(checks)) {
+        try {
+          const r = await jiraGetRaw(path);
+          results[name] = { endpoint: `https://${host}${path}`, http_status: r.status, body: r.body };
+        } catch (e) {
+          results[name] = { endpoint: `https://${host}${path}`, error: e instanceof Error ? e.message : String(e) };
+        }
+      }
+      let resolved: unknown = null;
+      let resolveError: string | null = null;
+      try { resolved = await getIssue(diagKey); } catch (e) { resolveError = e instanceof Error ? e.message : String(e); }
+      return json({ diagnostic: true, issue_key: diagKey, jira_host: host, checks: results, resolved, resolve_error: resolveError });
+    }
+
     const cardId = String(body?.card_id ?? "").trim();
     const dryRun = body?.dry_run === false ? false : true; // padrão sempre dry-run
     const controlledMode = body?.controlled_mode === false ? false : true;
     if (!cardId) return json({ error: "card_id obrigatório." }, 400);
+
 
     // Um card por execução, sempre.
     const cards = [cardId].slice(0, MAX_CARDS_PER_RUN);

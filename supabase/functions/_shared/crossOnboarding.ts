@@ -220,9 +220,17 @@ export async function jiraLinkGate(card: CrossCard, getIssue: (key: string) => P
     return { ok: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return block(`Jira não resolvível para ${card.jira_issue_key}: ${message.slice(0, 200)}`);
+    const status = /Jira (\d{3})/.exec(message)?.[1] ?? "";
+    let hint = "";
+    if (status === "404" || status === "403") {
+      hint = " — issue não visível pela conta de integração (verificar permissão Browse Projects ou credenciais ATLASSIAN_EMAIL/ATLASSIAN_API_TOKEN).";
+    } else if (status === "401") {
+      hint = " — credenciais Atlassian inválidas.";
+    }
+    return block(`Jira não resolvível para ${card.jira_issue_key}: ${message.slice(0, 200)}${hint}`);
   }
 }
+
 
 export function canvaGate(card: CrossCard): Gate {
   const validation = validateCanvaPublicLink(card.canva_public_url);
