@@ -151,10 +151,10 @@ export default function CrossOnboardingSteps({ cardId, canRun }: Props) {
         <div>
           <CardTitle className="text-base">Fluxo de onboarding Cross</CardTitle>
           <CardDescription>
-            Simulação somente leitura: nenhuma tarefa, material, e-mail ou etapa é alterado.
+            Simular avanço é somente leitura. Executar avanço grava as etapas, move o card e registra pendências.
           </CardDescription>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
             <RefreshCw className="mr-1 h-4 w-4" />Atualizar
           </Button>
@@ -164,12 +164,19 @@ export default function CrossOnboardingSteps({ cardId, canRun }: Props) {
             </Button>
           )}
           {canRun && (
-            <Button size="sm" onClick={() => void runDryRun()} disabled={running}>
+            <Button variant="outline" size="sm" onClick={() => void runDryRun()} disabled={running || executing}>
               {running ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <PlayCircle className="mr-1 h-4 w-4" />}
               Simular avanço
             </Button>
           )}
+          {canRun && (
+            <Button size="sm" onClick={() => setConfirmOpen(true)} disabled={running || executing}>
+              {executing ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Rocket className="mr-1 h-4 w-4" />}
+              Executar avanço
+            </Button>
+          )}
         </div>
+
       </CardHeader>
       <CardContent className="space-y-3">
         <ul className="space-y-2">
