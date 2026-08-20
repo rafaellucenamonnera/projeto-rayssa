@@ -78,6 +78,8 @@ type PipelineStage = { value: string; label: string; sort_order: number; followu
 
 const AMBASSADOR_PANEL_ID = "painel_mp5q4du9";
 const CROSS_CLIENT_PANEL_ID = "painel_msj9fyji";
+const CROSS_STAGE_CRIACAO_PAINEL = "etapa_painel_msj9fyji_2";
+const CROSS_STAGE_MATERIAL_ONBOARDING = "etapa_painel_msj9fyji_3";
 
 
 const buildTesteMonneraMessage = (linkTesteMonnera: string) => `Olá, tudo bem?
