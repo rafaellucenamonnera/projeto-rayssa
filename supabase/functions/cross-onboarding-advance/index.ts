@@ -25,7 +25,7 @@ import {
   buildRecipients,
   canvaGate,
   entryGate,
-  jiraLinkGate,
+  
   nextStep,
   resolveStages,
   threadGate,
