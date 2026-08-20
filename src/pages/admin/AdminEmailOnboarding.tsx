@@ -113,7 +113,7 @@ export default function AdminEmailOnboarding() {
   };
 
 
-  const handleSend = async () => {
+  const handleSend = async (confirmarReenvio = false) => {
     const html = preview ?? build();
     if (!html || !isQaSend) return;
     setSending(true);
@@ -126,30 +126,49 @@ export default function AdminEmailOnboarding() {
         assunto: assunto.trim(),
         destinatarios: recipients,
         html,
+        confirmar_reenvio: confirmarReenvio,
       },
     });
     setSending(false);
     setConfirmOpen(false);
     if (error || (data as any)?.error) {
-      let detail = (data as any)?.error ?? error?.message ?? "erro desconhecido";
+      let payload: any = data ?? null;
       const ctx = (error as any)?.context;
       if (ctx && typeof ctx.json === "function") {
         try {
-          const body = await ctx.json();
-          if (body?.error) detail = `${body.error}${body.detail ? ` — ${body.detail}` : ""}`;
+          payload = await ctx.json();
         } catch {
           /* mantem mensagem generica */
         }
       }
+      if (payload?.duplicate && !confirmarReenvio) {
+        setResendInfo({
+          sentAt: payload.sent_at ?? null,
+          messageId: payload.message_id ?? null,
+          destinatarios: payload.destinatarios_anteriores ?? [],
+        });
+        setResendOpen(true);
+        loadHistory();
+        return;
+      }
+      const detail = payload?.error
+        ? `${payload.error}${payload.detail ? ` — ${payload.detail}` : ""}`
+        : error?.message ?? "erro desconhecido";
       toast.error(`Falha no envio: ${detail}`);
       loadHistory();
       return;
     }
 
     const result = data as any;
-    toast.success(`E-mail enviado. message_id ${result.message_id ?? "-"}`);
+    setResendOpen(false);
+    setResendInfo(null);
+    toast.success(
+      `${result.is_resend ? "REENVIO realizado" : "E-mail enviado"}. message_id ${result.message_id ?? "-"}`,
+    );
+    (result.avisos ?? []).forEach((aviso: string) => toast.warning(aviso));
     loadHistory();
   };
+
 
 
 
