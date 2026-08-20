@@ -143,7 +143,9 @@ export interface CrossCard {
   test_mode: boolean | null;
 }
 
-export type Gate = { ok: true } | { ok: false; reason: string; status: "bloqueado" | "pendencia_manual" };
+export type Gate =
+  | { ok: true; note?: string }
+  | { ok: false; reason: string; status: "bloqueado" | "pendencia_manual" };
 
 const block = (reason: string): Gate => ({ ok: false, reason, status: "bloqueado" });
 const pending = (reason: string): Gate => ({ ok: false, reason, status: "pendencia_manual" });
@@ -193,10 +195,8 @@ export async function entryGate(
   const codeCheck = validateCodeForCard(card);
   if (!codeCheck.ok) return codeCheck;
 
-  // Vínculo Jira só é exigido a partir de Material Onboarding Cliente.
-  if (card.stage_id === stages.materialOnboarding && !card.jira_issue_key) {
-    return block("Vínculo Jira ausente: crie a tarefa de Criação Painel antes de avançar.");
-  }
+  // Jira não é gate: chave ausente nunca bloqueia o avanço após código válido.
+
   return { ok: true };
 }
 
@@ -212,24 +212,25 @@ export function validateCodeForCard(card: CrossCard): Gate {
   return { ok: true };
 }
 
-/** Confirma que a chave Jira existe e é resolvível. 403 ou chave inválida interrompem o fluxo. */
+/**
+ * Leitura informativa da issue Jira. NUNCA bloqueia: 401, 403, 404, timeout ou
+ * chave ausente geram apenas observação no trace/auditoria. O Jira só é
+ * obrigatório na criação da tarefa para Lívia (jira-create-panel-task).
+ */
 export async function jiraLinkGate(card: CrossCard, getIssue: (key: string) => Promise<unknown>): Promise<Gate> {
-  if (!card.jira_issue_key) return block("Vínculo Jira ausente.");
+  if (!card.jira_issue_key) return { ok: true, note: "Sem chave Jira: observação apenas, fluxo segue pelo código Monnera." };
   try {
     await getIssue(card.jira_issue_key);
     return { ok: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    const status = /Jira (\d{3})/.exec(message)?.[1] ?? "";
-    let hint = "";
-    if (status === "404" || status === "403") {
-      hint = " — issue não visível pela conta de integração (verificar permissão Browse Projects ou credenciais ATLASSIAN_EMAIL/ATLASSIAN_API_TOKEN).";
-    } else if (status === "401") {
-      hint = " — credenciais Atlassian inválidas.";
-    }
-    return block(`Jira não resolvível para ${card.jira_issue_key}: ${message.slice(0, 200)}${hint}`);
+    return {
+      ok: true,
+      note: `Jira não resolvível para ${card.jira_issue_key} (${message.slice(0, 160)}) — registrado como observação; não bloqueia o fluxo.`,
+    };
   }
 }
+
 
 
 export function canvaGate(card: CrossCard): Gate {

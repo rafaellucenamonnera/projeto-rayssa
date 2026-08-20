@@ -164,24 +164,19 @@ Deno.serve(async (req) => {
     }
     trace.push({ step: "gate_entrada", status: "ok" });
 
-    // --------------------------- vínculo Jira resolvível (só quando já existe chave)
+    // ------------------ leitura informativa do Jira (nunca bloqueia o fluxo)
     if (card.jira_issue_key) {
       const jira = await jiraLinkGate(card, getIssue);
-      if (!jira.ok) {
-        trace.push({ step: "gate_jira", status: jira.status, detail: jira.reason });
-        if (!dryRun) {
-          await admin.rpc("cross_onboarding_record_step", {
-            p_card_id: card.id, p_step: "codigo_validado", p_status: "bloqueado",
-            p_gate: { reason: jira.reason }, p_error: jira.reason,
-            p_codigo: card.codigo_monnera, p_jira_key: card.jira_issue_key,
-          });
-        }
-        return await finish({ blocked: true, reason: jira.reason }, "ignorado", jira.reason);
-      }
-      trace.push({ step: "gate_jira", status: "ok", detail: card.jira_issue_key });
+      const note = jira.ok ? jira.note : undefined;
+      trace.push({
+        step: "gate_jira",
+        status: note ? "observacao" : "ok",
+        detail: note ?? card.jira_issue_key,
+      });
     } else {
-      trace.push({ step: "gate_jira", status: "ok", detail: "sem chave Jira nesta etapa" });
+      trace.push({ step: "gate_jira", status: "observacao", detail: "sem chave Jira: não bloqueia" });
     }
+
 
     // ------------------------------------------------------ etapas já concluídas
     const { data: stepRows } = await admin
