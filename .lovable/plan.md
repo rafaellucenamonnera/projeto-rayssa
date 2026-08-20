@@ -86,7 +86,7 @@ A etapa de Canva usa o link público manual como fonte de verdade: se o card nã
 - Tarefa de pendência é atualizada, não recriada.
 
 **Teste**
-Somente TESTE FASE A QA (`32d1e94e…`, `QATEST01`, MB-4838) em execução real; ORCA fica liberada porém em simulação até sua autorização; nenhum outro cliente entra na allowlist. Antes do teste eu confirmo código válido, Jira vinculado, link Canva presente, HTML v2 e destinatário `rafael.lucena@monnera.com.br`.
+Execução real somente no TESTE FASE A QA (`32d1e94e…`, `QATEST01`, MB-4838), com envio restrito aos seis endereços autorizados acima. A ORCA entra apenas como card liberado e elegível, em simulação, até autorização específica sua. Nenhum outro cliente entra em qualquer allowlist. Antes do teste eu confirmo código válido, Jira vinculado, link Canva presente e HTML v2 renderizado.
 
 ## Fora deste escopo
 Nenhum refactor estrutural, nenhuma alteração comercial nos cards, nenhuma criação de credencial Canva e nenhum envio a clientes reais.
