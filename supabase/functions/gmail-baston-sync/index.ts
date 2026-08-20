@@ -370,13 +370,14 @@ async function addComment(cardId: string, systemUserId: string | null, texto: st
 const MONNERA_CODE_RE = /^[A-Z0-9]{8}$/;
 
 // Códigos demonstrativos: mesmo no formato válido, NUNCA são código real.
-const DEMO_CODES = new Set(["3SAXJF92", "UB5PXGDB", "XXXXXXX", "XXXXXXXX"]);
+// 3SAXJF92 saiu da lista: é código real (MB-4815 / DISTRIBUIDORA MASCOTE).
+const DEMO_CODES = new Set(["UB5PXGDB", "XXXXXXX", "XXXXXXXX"]);
 const isDemoCode = (v: string) => DEMO_CODES.has(v.trim().toUpperCase());
 
 function extractCodigo(
   text: string,
 ): { codigo: string | null; unconfirmed: string | null; demo: string | null } {
-  const demoHit = text.match(/\b(3SAXJF92|UB5PXGDB|X{7,8})\b/i)?.[0];
+  const demoHit = text.match(/\b(UB5PXGDB|X{7,8})\b/i)?.[0];
   const labeled = labelValue(text, ["c[oó]digo", "c[oó]digo do card", "c[oó]digo do cliente", "protocolo"]);
   const labeledCode = labeled?.match(/[A-Z0-9]{8}/i)?.[0]?.toUpperCase();
   if (labeledCode && MONNERA_CODE_RE.test(labeledCode) && !isDemoCode(labeledCode)) {
