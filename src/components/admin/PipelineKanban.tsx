@@ -7,6 +7,8 @@ import { healthStatusColor, impactColor, normalizeHealthStatus, normalizeImpact 
 import { describeMonneraCode } from "@/lib/monneraCode";
 
 const CROSS_CLIENT_PANEL_ID = "painel_msj9fyji";
+/** Etapas do painel Cross em que a ausência do código Monnera bloqueia o avanço. */
+const CROSS_CODE_REQUIRED_STAGES = ["etapa_painel_msj9fyji_2", "etapa_painel_msj9fyji_3"];
 
 /** Linha "Código Monnera: ..." exibida logo abaixo do nome do parceiro (somente painel Cross). */
 function MonneraCodeLine({ code }: { code?: string | null }) {
