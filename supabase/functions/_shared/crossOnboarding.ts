@@ -143,7 +143,9 @@ export interface CrossCard {
   test_mode: boolean | null;
 }
 
-export type Gate = { ok: true } | { ok: false; reason: string; status: "bloqueado" | "pendencia_manual" };
+export type Gate =
+  | { ok: true; note?: string }
+  | { ok: false; reason: string; status: "bloqueado" | "pendencia_manual" };
 
 const block = (reason: string): Gate => ({ ok: false, reason, status: "bloqueado" });
 const pending = (reason: string): Gate => ({ ok: false, reason, status: "pendencia_manual" });
