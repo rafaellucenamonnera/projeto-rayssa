@@ -507,6 +507,13 @@ export const PipelineKanban = memo(({
                           <p className="text-xs font-medium truncate">{l.nome_fantasia}</p>
                         )}
                         {l.panel_id === CROSS_CLIENT_PANEL_ID && <MonneraCodeLine code={l.codigo_monnera} />}
+                        {l.panel_id === CROSS_CLIENT_PANEL_ID &&
+                          CROSS_CODE_REQUIRED_STAGES.includes(l.stage_id ?? "") &&
+                          describeMonneraCode(l.codigo_monnera).state !== "valido" && (
+                            <p className="mt-1 rounded border border-destructive/50 bg-destructive/10 px-1.5 py-1 text-[10px] leading-tight text-destructive">
+                              Aguardando código Monnera para avançar
+                            </p>
+                          )}
 
                         {l.partner_code && (
                           <p className="text-[10px] font-mono text-primary truncate">{l.partner_code}</p>
