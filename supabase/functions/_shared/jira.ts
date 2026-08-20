@@ -22,6 +22,15 @@ export function jiraEnv() {
   return { site, auth: btoa(`${email}:${token}`), projectKey: jiraProjectKey(), issueTypeId: jiraIssueTypeId() };
 }
 
+/** GET cru: devolve status + corpo, sem lançar. Usado pelo diagnóstico somente leitura. */
+export async function jiraGetRaw(path: string): Promise<{ status: number; body: string }> {
+  const { site, auth } = jiraEnv();
+  const res = await fetch(`${site}${path}`, {
+    headers: { Authorization: `Basic ${auth}`, Accept: "application/json" },
+  });
+  return { status: res.status, body: (await res.text()).slice(0, 600) };
+}
+
 async function jiraGet(path: string): Promise<any> {
   const { site, auth } = jiraEnv();
   const res = await fetch(`${site}${path}`, {
@@ -31,6 +40,7 @@ async function jiraGet(path: string): Promise<any> {
   if (!res.ok) throw new Error(`Jira ${res.status}: ${text.slice(0, 400)}`);
   return text ? JSON.parse(text) : {};
 }
+
 
 /** Texto plano de um campo ADF (description, comentário) ou string simples. */
 export function adfToText(node: unknown): string {
