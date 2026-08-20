@@ -39,6 +39,7 @@ interface HistoryRow {
   thread_id: string | null;
   template_name: string | null;
   template_version: string | null;
+  is_resend?: boolean | null;
 }
 
 const statusVariant = (status: string) =>
@@ -182,7 +183,7 @@ export default function AdminEmailOnboarding() {
   const loadHistory = async () => {
     const { data } = await (supabase as any)
       .from("onboarding_email_sends")
-      .select("id,nome_parceiro,codigo_parceiro,link_material,assunto,destinatarios,status,created_at,message_id,thread_id,template_name,template_version")
+      .select("id,nome_parceiro,codigo_parceiro,link_material,assunto,destinatarios,status,created_at,message_id,thread_id,template_name,template_version,is_resend")
       .order("created_at", { ascending: false })
       .limit(30);
     setHistory((data as HistoryRow[]) || []);
@@ -405,6 +406,7 @@ export default function AdminEmailOnboarding() {
                 <span className="text-xs text-muted-foreground">
                   {new Date(row.created_at).toLocaleString("pt-BR")}
                 </span>
+                {row.is_resend && <Badge variant="outline">reenvio</Badge>}
                 <Badge variant={statusVariant(row.status) as any}>{row.status}</Badge>
               </div>
             </div>
