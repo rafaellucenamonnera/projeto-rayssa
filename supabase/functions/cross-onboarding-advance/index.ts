@@ -15,6 +15,7 @@
 // ============================================================================
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { getIssue, jiraEnv, jiraGetRaw } from "../_shared/jira.ts";
+import { ONBOARDING_EMAIL_SUBJECT, renderOnboardingEmail } from "../_shared/onboardingEmailTemplate.ts";
 import {
   CARD_FIELDS,
   MAX_CARDS_PER_RUN,
@@ -25,10 +26,9 @@ import {
   buildRecipients,
   canvaGate,
   entryGate,
-  
+  htmlChecklist,
   nextStep,
   resolveStages,
-  threadGate,
   type CrossCard,
   type Gate,
   type Step,
@@ -182,179 +182,168 @@ Deno.serve(async (req) => {
       .select("step, status, message_id")
       .eq("card_id", card.id);
     const done: Record<string, string> = {};
-    for (const row of stepRows ?? []) done[row.step] = row.status;
+    const messageIds: Record<string, string | null> = {};
+    for (const row of stepRows ?? []) {
+      done[row.step] = row.status;
+      messageIds[row.step] = row.message_id ?? null;
+    }
+    // A retomada reavalia a etapa indicada mesmo que já tenha sido gravada.
+    if (resumeFrom && (STEPS as readonly string[]).includes(resumeFrom)) delete done[resumeFrom];
 
-    // A retomada reinicia exclusivamente a etapa que falhou.
-    const step = ((resumeFrom && (STEPS as readonly string[]).includes(resumeFrom)
-      ? resumeFrom
-      : nextStep(done)) ?? null) as Step | null;
-    if (!step) return await finish({ completed: true, reason: "Fluxo já concluído." }, "sucesso");
+    // Estado local do card: atualizado a cada movimentação executada no laço.
+    let currentStage = card.stage_id;
 
-    // ------------------------------------------------------- gate da etapa atual
-    let gate: Gate = { ok: true };
-    let stepStatus: "sucesso" | "bloqueado" | "pendencia_manual" = "sucesso";
-    const payload: Record<string, unknown> = {};
+    /** Avalia o gate de uma etapa sem executar efeito algum. */
+    const evaluateStep = async (
+      step: Step,
+    ): Promise<{ gate: Gate; payload: Record<string, unknown> }> => {
+      const payload: Record<string, unknown> = {};
+      let gate: Gate = { ok: true };
 
-    switch (step) {
-      case "codigo_validado":
-        payload.codigo = card.codigo_monnera;
-        payload.codigo_recebido_at = card.codigo_recebido_at;
-        break;
+      switch (step) {
+        case "codigo_validado":
+          payload.codigo = card.codigo_monnera;
+          payload.codigo_recebido_at = card.codigo_recebido_at;
+          break;
 
-      case "codigo_aplicado": {
-        // Código já validado no gate de entrada; aqui apenas confirmamos a gravação no card.
-        if (!card.codigo_monnera) {
-          gate = { ok: false, status: "bloqueado", reason: "Código Monnera ausente no card." };
+        case "codigo_aplicado":
+          if (!card.codigo_monnera) {
+            gate = { ok: false, status: "bloqueado", reason: "Código Monnera ausente no card." };
+          }
+          payload.codigo = card.codigo_monnera;
+          break;
+
+        case "card_movido_material": {
+          if (currentStage === stages.materialOnboarding) {
+            // Movimentação manual é reconhecida: nada é movido de novo.
+            payload.already_in_stage = true;
+            payload.origem = "manual_move";
+          } else if (currentStage !== stages.criacaoPainel) {
+            gate = {
+              ok: false,
+              status: "bloqueado",
+              reason: `Movimentação exige o card em Criação Painel (atual: ${currentStage ?? "sem etapa"}).`,
+            };
+          }
+          payload.from_stage = stages.criacaoPainel;
+          payload.to_stage = stages.materialOnboarding;
+          break;
         }
-        payload.codigo = card.codigo_monnera;
-        break;
-      }
 
-      case "card_movido_material": {
-        if (card.stage_id === stages.materialOnboarding) {
-          payload.already_in_stage = true;
-        } else if (card.stage_id !== stages.criacaoPainel) {
-          gate = {
-            ok: false,
-            status: "bloqueado",
-            reason: `Movimentação exige o card em Criação Painel (atual: ${card.stage_id ?? "sem etapa"}).`,
-          };
+        case "canva_pronto":
+          gate = canvaGate(card);
+          payload.canva_public_url = card.canva_public_url;
+          break;
+
+        case "html_pronto": {
+          gate = canvaGate(card);
+          if (gate.ok && !card.full_name) {
+            gate = { ok: false, status: "bloqueado", reason: "Nome do parceiro ausente." };
+          }
+          if (gate.ok) {
+            const render = renderOnboardingEmail({
+              nomeParceiro: card.full_name ?? "",
+              codigoParceiro: card.codigo_monnera ?? "",
+              linkMaterial: card.canva_public_url ?? "",
+            });
+            if (render.errors.length) {
+              gate = { ok: false, status: "bloqueado", reason: `HTML não pôde ser gerado: ${render.errors.join(" ")}` };
+            } else {
+              const checklist = htmlChecklist(render.html, {
+                nome: card.full_name ?? "",
+                codigo: (card.codigo_monnera ?? "").toUpperCase(),
+                link: card.canva_public_url ?? "",
+                assunto: ONBOARDING_EMAIL_SUBJECT,
+              });
+              if (!checklist.ok) {
+                gate = {
+                  ok: false,
+                  status: "bloqueado",
+                  reason: `Checklist do HTML reprovado: ${checklist.problems.join(" ")}`,
+                };
+              } else {
+                payload.assunto = ONBOARDING_EMAIL_SUBJECT;
+                payload.html_length = render.html.length;
+                payload.html_snapshot = render.html;
+              }
+            }
+          }
+          break;
         }
-        payload.from_stage = stages.criacaoPainel;
-        payload.to_stage = stages.materialOnboarding;
-        break;
-      }
 
-
-      case "canva_pendente":
-      case "canva_pronto": {
-        gate = canvaGate(card);
-        payload.canva_public_url = card.canva_public_url;
-        break;
-      }
-
-      case "html_pronto": {
-        gate = canvaGate(card);
-        if (gate.ok && !card.full_name) gate = { ok: false, status: "bloqueado", reason: "Nome do parceiro ausente." };
-        payload.render_inputs = {
-          NOME_PARCEIRO: card.full_name,
-          CODIGO_CADASTRO_PARCEIRO: card.codigo_monnera,
-          LINK_MATERIAL_CLIENTE: card.canva_public_url,
-        };
-        break;
-      }
-
-      case "email_pendente": {
-        gate = threadGate(card);
-        if (gate.ok) {
-          const { data: msg } = await admin
-            .from("gmail_processed_messages")
-            .select("thread_participants")
-            .eq("thread_id", card.origin_thread_id)
-            .limit(1)
-            .maybeSingle();
-          const participants: string[] = Array.isArray(msg?.thread_participants) ? msg!.thread_participants : [];
+        case "email_pendente": {
+          // Thread ausente não bloqueia: os e-mails rastreados no card valem como origem.
+          let participants: string[] = [];
+          if (card.origin_thread_id) {
+            const { data: msg } = await admin
+              .from("gmail_processed_messages")
+              .select("thread_participants")
+              .eq("thread_id", card.origin_thread_id)
+              .limit(1)
+              .maybeSingle();
+            participants = Array.isArray(msg?.thread_participants) ? msg!.thread_participants : [];
+          }
           const recipients = buildRecipients({
             cardEmail: card.email,
             threadParticipants: participants,
             senderAccount: "rafael.lucena@monnera.com.br",
             qaMode: card.id === QA_CARD_ID && card.test_mode === true,
           });
+          payload.thread_id = card.origin_thread_id;
           payload.destinatarios = recipients.to;
           payload.excluidos = recipients.excluded;
           payload.ultimo_recurso = recipients.lastResort;
           if (!recipients.to.length) {
-            gate = { ok: false, status: "pendencia_manual", reason: "Nenhum destinatário comprovado na thread ou no card." };
+            gate = {
+              ok: false,
+              status: "pendencia_manual",
+              reason: "Nenhum destinatário comprovado na thread ou no card.",
+            };
           }
+          break;
         }
-        break;
+
+        case "email_enviado": {
+          // Só conclui com message_id confirmado pela API Gmail (registrado por send-onboarding-email).
+          const { data: sent } = await admin
+            .from("onboarding_email_sends")
+            .select("id, message_id, thread_id, sent_at")
+            .eq("card_id", card.id)
+            .eq("status", "enviado")
+            .not("message_id", "is", null)
+            .order("sent_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (!sent?.message_id) {
+            gate = {
+              ok: false,
+              status: "pendencia_manual",
+              reason: "Envio ainda não confirmado pela API Gmail (sem message_id). Outbox não é envio concluído.",
+            };
+          } else {
+            payload.message_id = sent.message_id;
+            payload.thread_id = sent.thread_id;
+          }
+          break;
+        }
+
+        case "card_movido": {
+          const confirmedMessageId = messageIds["email_enviado"];
+          if (done["email_enviado"] !== "sucesso" || !confirmedMessageId) {
+            gate = { ok: false, status: "bloqueado", reason: "Movimentação exige envio confirmado com message_id." };
+          } else {
+            payload.from_stage = stages.materialOnboarding;
+            payload.to_stage = stages.recebimentoDados;
+            payload.message_id = confirmedMessageId;
+          }
+          break;
+        }
       }
 
-      case "email_enviado": {
-        // Só conclui com message_id confirmado pela API Gmail (registrado por send-onboarding-email).
-        const { data: sent } = await admin
-          .from("onboarding_email_sends")
-          .select("id, message_id, thread_id, sent_at")
-          .eq("card_id", card.id)
-          .eq("status", "enviado")
-          .not("message_id", "is", null)
-          .order("sent_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (!sent?.message_id) {
-          gate = {
-            ok: false,
-            status: "pendencia_manual",
-            reason: "Envio ainda não confirmado pela API Gmail (sem message_id). Outbox não é envio concluído.",
-          };
-        } else {
-          payload.message_id = sent.message_id;
-          payload.thread_id = sent.thread_id;
-        }
-        break;
-      }
+      return { gate, payload };
+    };
 
-      case "card_movido": {
-        const emailStep = (stepRows ?? []).find((r) => r.step === "email_enviado");
-        if (emailStep?.status !== "sucesso" || !emailStep?.message_id) {
-          gate = { ok: false, status: "bloqueado", reason: "Movimentação exige envio confirmado com message_id." };
-        } else {
-          payload.from_stage = stages.materialOnboarding;
-          payload.to_stage = stages.recebimentoDados;
-          payload.message_id = emailStep.message_id;
-        }
-        break;
-      }
-
-    }
-
-    if (!gate.ok) stepStatus = gate.status;
-    trace.push({ step, status: gate.ok ? "ok" : gate.status, detail: gate.ok ? undefined : gate.reason });
-
-    // ----------------------------------------------------------------- dry-run
-    if (dryRun) {
-      return await finish(
-        {
-          next_step: step,
-          would_be_status: stepStatus,
-          gate: gate.ok ? { ok: true } : { ok: false, reason: gate.reason },
-          payload,
-          note: "dry_run: nenhum card, etapa, tarefa, Canva, e-mail ou notificação foi alterado.",
-        },
-        gate.ok ? "sucesso" : "ignorado",
-        gate.ok ? undefined : gate.reason,
-      );
-    }
-
-    // -------------------------------------------------------------- execução real
-    const { data: recorded, error: recordError } = await admin.rpc("cross_onboarding_record_step", {
-      p_card_id: card.id,
-      p_step: step,
-      p_status: stepStatus,
-      p_gate: gate.ok ? { ok: true } : { ok: false, reason: gate.reason },
-      p_payload: payload,
-      p_error: gate.ok ? null : gate.reason,
-      p_codigo: card.codigo_monnera,
-      p_jira_key: card.jira_issue_key,
-      p_thread_id: card.origin_thread_id,
-      p_message_id: (payload.message_id as string | undefined) ?? null,
-    });
-    if (recordError) return await finish({ error: recordError.message }, "erro", recordError.message);
-
-    if (!gate.ok) {
-      const label = STEP_LABELS[step] ?? step;
-      // Falha nunca é simulada como sucesso: pendência no card + notificação a Rafael e Maycon.
-      await admin.rpc("cross_onboarding_upsert_pendencia", {
-        p_card_id: card.id,
-        p_titulo: `Onboarding Cross pendente: ${label}`,
-        p_descricao: gate.reason,
-        p_assigned_to: NOTIFY_USERS[0],
-      });
-      await notify(card.id, `Onboarding Cross pendente: ${label}`, gate.reason);
-      return await finish({ step, status: stepStatus, reason: gate.reason, recorded }, "ignorado", gate.reason);
-    }
-
-    // Efeitos externos desta função: as duas movimentações de etapa do fluxo.
+    // Movimentações de etapa: únicos efeitos externos desta função.
     const moves: Record<string, { from: string; to: string; label: string }> = {
       card_movido_material: {
         from: stages.criacaoPainel,
@@ -367,40 +356,114 @@ Deno.serve(async (req) => {
         label: "Recebimento Dados",
       },
     };
-    const move = moves[step];
-    if (move) {
-      const { error: moveError } = await admin
-        .from("representative_cards")
-        .update({ stage_id: move.to })
-        .eq("id", card.id)
-        .eq("stage_id", move.from);
-      if (moveError) {
-        await admin.rpc("cross_onboarding_record_step", {
-          p_card_id: card.id, p_step: step, p_status: "erro",
-          p_error: moveError.message, p_payload: payload,
-        });
+
+    // --------------------------------------------------- laço sequencial de etapas
+    const executed: Array<{ step: string; status: string; reason?: string }> = [];
+    let stoppedAt: { step: string; status: string; reason: string } | null = null;
+
+    for (const step of STEPS) {
+      if (done[step] === "sucesso") continue;
+
+      const { gate, payload } = await evaluateStep(step);
+      const stepStatus: "sucesso" | "bloqueado" | "pendencia_manual" = gate.ok ? "sucesso" : gate.status;
+      trace.push({ step, status: gate.ok ? "ok" : gate.status, detail: gate.ok ? undefined : gate.reason });
+
+      if (dryRun) {
+        executed.push({ step, status: stepStatus, reason: gate.ok ? undefined : gate.reason });
+        if (!gate.ok) {
+          stoppedAt = { step, status: stepStatus, reason: gate.reason };
+          break;
+        }
+        done[step] = "sucesso";
+        if (moves[step] && !payload.already_in_stage) currentStage = moves[step].to;
+        continue;
+      }
+
+      const { error: recordError } = await admin.rpc("cross_onboarding_record_step", {
+        p_card_id: card.id,
+        p_step: step,
+        p_status: stepStatus,
+        p_gate: gate.ok ? { ok: true } : { ok: false, reason: gate.reason },
+        p_payload: payload,
+        p_error: gate.ok ? null : gate.reason,
+        p_codigo: card.codigo_monnera,
+        p_jira_key: card.jira_issue_key,
+        p_thread_id: card.origin_thread_id,
+        p_message_id: (payload.message_id as string | undefined) ?? null,
+      });
+      if (recordError) return await finish({ step, executed, error: recordError.message }, "erro", recordError.message);
+
+      if (!gate.ok) {
+        const label = STEP_LABELS[step] ?? step;
         await admin.rpc("cross_onboarding_upsert_pendencia", {
           p_card_id: card.id,
-          p_titulo: `Onboarding Cross falhou: ${STEP_LABELS[step] ?? step}`,
-          p_descricao: moveError.message,
+          p_titulo: `Onboarding Cross pendente: ${label}`,
+          p_descricao: gate.reason,
           p_assigned_to: NOTIFY_USERS[0],
         });
-        await notify(card.id, `Onboarding Cross falhou: ${STEP_LABELS[step] ?? step}`, moveError.message);
-        return await finish({ step, error: moveError.message }, "erro", moveError.message);
+        await notify(card.id, `Onboarding Cross pendente: ${label}`, gate.reason);
+        executed.push({ step, status: stepStatus, reason: gate.reason });
+        stoppedAt = { step, status: stepStatus, reason: gate.reason };
+        break;
       }
-      await admin.from("representative_card_history").insert({
-        representative_card_id: card.id,
-        action: "stage_change",
-        actor_label: "cross-onboarding-advance",
-        source_stage_id: move.from,
-        destination_stage_id: move.to,
-        payload,
-      });
-      await notify(card.id, "Onboarding Cross avançou", `Card movido para ${move.label}.`);
+
+      const move = moves[step];
+      if (move && !payload.already_in_stage) {
+        const { error: moveError } = await admin
+          .from("representative_cards")
+          .update({ stage_id: move.to })
+          .eq("id", card.id)
+          .eq("stage_id", move.from);
+        if (moveError) {
+          await admin.rpc("cross_onboarding_record_step", {
+            p_card_id: card.id, p_step: step, p_status: "erro",
+            p_error: moveError.message, p_payload: payload,
+          });
+          await admin.rpc("cross_onboarding_upsert_pendencia", {
+            p_card_id: card.id,
+            p_titulo: `Onboarding Cross falhou: ${STEP_LABELS[step] ?? step}`,
+            p_descricao: moveError.message,
+            p_assigned_to: NOTIFY_USERS[0],
+          });
+          await notify(card.id, `Onboarding Cross falhou: ${STEP_LABELS[step] ?? step}`, moveError.message);
+          return await finish({ step, executed, error: moveError.message }, "erro", moveError.message);
+        }
+        currentStage = move.to;
+        await admin.from("representative_card_history").insert({
+          representative_card_id: card.id,
+          action: "stage_change",
+          actor_label: "cross-onboarding-advance",
+          source_stage_id: move.from,
+          destination_stage_id: move.to,
+          payload,
+        });
+        await notify(card.id, "Onboarding Cross avançou", `Card movido para ${move.label}.`);
+      }
+
+      done[step] = "sucesso";
+      if (payload.message_id) messageIds[step] = payload.message_id as string;
+      executed.push({ step, status: "sucesso" });
     }
 
+    const remaining = nextStep(done);
+    if (!executed.length && !remaining) {
+      return await finish({ completed: true, reason: "Fluxo já concluído." }, "sucesso");
+    }
 
-    return await finish({ step, status: stepStatus, payload, recorded }, "sucesso");
+    return await finish(
+      {
+        executed,
+        stopped_at: stoppedAt,
+        next_step: remaining,
+        completed: !remaining,
+        note: dryRun
+          ? "dry_run: nenhum card, etapa, tarefa, Canva, e-mail ou notificação foi alterado."
+          : undefined,
+      },
+      stoppedAt ? "ignorado" : "sucesso",
+      stoppedAt?.reason,
+    );
+
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro inesperado";
     return json({ error: message }, 500);

@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, CheckCircle2, Clock, Loader2, PlayCircle, RefreshCw, RotateCcw } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, Loader2, PlayCircle, RefreshCw, Rocket, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,13 +17,12 @@ import { Label } from "@/components/ui/label";
 const STEP_LABELS: Record<string, string> = {
   codigo_validado: "1. Código validado",
   codigo_aplicado: "2. Código aplicado ao card",
-  card_movido_material: "3. Card movido para Material Onboarding Cliente",
-  canva_pendente: "4. Material Canva pendente",
-  canva_pronto: "5. Link Canva válido",
-  html_pronto: "6. HTML personalizado",
-  email_pendente: "7. Destinatários definidos",
-  email_enviado: "8. E-mail enviado (message_id)",
-  card_movido: "9. Card movido para Recebimento Dados",
+  card_movido_material: "3. Card em Material Onboarding Cliente",
+  canva_pronto: "4. Material Canva (link público validado)",
+  html_pronto: "5. HTML personalizado",
+  email_pendente: "6. Destinatários definidos",
+  email_enviado: "7. E-mail enviado (message_id)",
+  card_movido: "8. Card movido para Recebimento Dados",
 };
 
 const STEP_ORDER = Object.keys(STEP_LABELS);
@@ -46,6 +45,8 @@ export default function CrossOnboardingSteps({ cardId, canRun }: Props) {
   const [rows, setRows] = useState<StepRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
+  const [executing, setExecuting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [preview, setPreview] = useState<Record<string, unknown> | null>(null);
   const [resumeOpen, setResumeOpen] = useState(false);
   const [justificativa, setJustificativa] = useState("");
@@ -78,6 +79,27 @@ export default function CrossOnboardingSteps({ cardId, canRun }: Props) {
     toast.success("Simulação concluída — nada foi alterado.");
     void load();
   };
+
+  const runReal = async () => {
+    setExecuting(true);
+    setPreview(null);
+    const { data, error } = await supabase.functions.invoke("cross-onboarding-advance", {
+      body: { card_id: cardId, dry_run: false, origin: "manual_move" },
+    });
+    setExecuting(false);
+    setConfirmOpen(false);
+    if (error) {
+      toast.error("A execução não pôde ser concluída. Verifique a pendência registrada no card.");
+      void load();
+      return;
+    }
+    setPreview(data as Record<string, unknown>);
+    const stopped = (data as { stopped_at?: { step?: string; reason?: string } | null })?.stopped_at;
+    if (stopped?.step) toast.warning(`Fluxo parou em ${STEP_LABELS[stopped.step] ?? stopped.step}.`);
+    else toast.success("Fluxo avançado até onde as regras permitem.");
+    void load();
+  };
+
 
   // Etapa em falha corrigível: base do botão "Retomar automação".
   const failedRow = rows.find((r) => ["erro", "bloqueado", "pendencia_manual"].includes(r.status));
@@ -129,10 +151,10 @@ export default function CrossOnboardingSteps({ cardId, canRun }: Props) {
         <div>
           <CardTitle className="text-base">Fluxo de onboarding Cross</CardTitle>
           <CardDescription>
-            Simulação somente leitura: nenhuma tarefa, material, e-mail ou etapa é alterado.
+            Simular avanço é somente leitura. Executar avanço grava as etapas, move o card e registra pendências.
           </CardDescription>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
             <RefreshCw className="mr-1 h-4 w-4" />Atualizar
           </Button>
@@ -142,12 +164,19 @@ export default function CrossOnboardingSteps({ cardId, canRun }: Props) {
             </Button>
           )}
           {canRun && (
-            <Button size="sm" onClick={() => void runDryRun()} disabled={running}>
+            <Button variant="outline" size="sm" onClick={() => void runDryRun()} disabled={running || executing}>
               {running ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <PlayCircle className="mr-1 h-4 w-4" />}
               Simular avanço
             </Button>
           )}
+          {canRun && (
+            <Button size="sm" onClick={() => setConfirmOpen(true)} disabled={running || executing}>
+              {executing ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Rocket className="mr-1 h-4 w-4" />}
+              Executar avanço
+            </Button>
+          )}
         </div>
+
       </CardHeader>
       <CardContent className="space-y-3">
         <ul className="space-y-2">
@@ -175,6 +204,24 @@ export default function CrossOnboardingSteps({ cardId, canRun }: Props) {
           </div>
         )}
       </CardContent>
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Executar avanço do fluxo</DialogTitle>
+            <DialogDescription>
+              As etapas serão percorridas em sequência até o primeiro bloqueio. O card pode ser movido de etapa e
+              pendências podem ser registradas. O envio de e-mail continua restrito à autorização já existente.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={executing}>Cancelar</Button>
+            <Button onClick={() => void runReal()} disabled={executing}>
+              {executing && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Executar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={resumeOpen} onOpenChange={setResumeOpen}>
         <DialogContent>
