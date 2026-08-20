@@ -354,7 +354,7 @@ export type Database = {
           public_url: string | null
           public_url_kind: string | null
           source: string
-          template_design_id: string
+          template_design_id: string | null
           test_mode: boolean
           version: number
           view_url: string | null
@@ -373,7 +373,7 @@ export type Database = {
           public_url?: string | null
           public_url_kind?: string | null
           source?: string
-          template_design_id: string
+          template_design_id?: string | null
           test_mode?: boolean
           version?: number
           view_url?: string | null
@@ -392,7 +392,7 @@ export type Database = {
           public_url?: string | null
           public_url_kind?: string | null
           source?: string
-          template_design_id?: string
+          template_design_id?: string | null
           test_mode?: boolean
           version?: number
           view_url?: string | null
