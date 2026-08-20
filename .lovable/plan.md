@@ -35,4 +35,4 @@ Confirmado no banco: `template_design_id` e `design_id` estão como NOT NULL; n�
 
 ## Teste
 
-No card TESTE FASE A QA: salvar um link `https://canva.link/...` válido, confirmar gravação (badge "Link confirmado"), conferir o registro em `canva_material_generations` com `source = manual_link`, e verificar que a etapa Canva do painel de etapas passa a "Concluído" sem envio de e-mail nem movimentação indevida. Repetir o mesmo link não deve criar registro duplicado.
+Teste exclusivamente no card TESTE FASE A QA, confirmando: badge "Link confirmado"; registro com `source = manual_link`; `template_design_id` nulo; `metadata.canva_design_created = false`; etapa Canva concluída no painel de etapas; nenhum e-mail enviado; nenhuma movimentação de etapa indevida; e o mesmo link salvo novamente retorna o registro existente, sem duplicidade.
