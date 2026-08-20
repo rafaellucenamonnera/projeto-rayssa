@@ -13,12 +13,14 @@ import { toast } from "sonner";
  */
 const STEP_LABELS: Record<string, string> = {
   codigo_validado: "1. Código validado",
-  canva_pendente: "2. Material Canva pendente",
-  canva_pronto: "3. Link Canva válido",
-  html_pronto: "4. HTML personalizado",
-  email_pendente: "5. Destinatários definidos",
-  email_enviado: "6. E-mail enviado (message_id)",
-  card_movido: "7. Card movido",
+  codigo_aplicado: "2. Código aplicado ao card",
+  card_movido_material: "3. Card movido para Material Onboarding Cliente",
+  canva_pendente: "4. Material Canva pendente",
+  canva_pronto: "5. Link Canva válido",
+  html_pronto: "6. HTML personalizado",
+  email_pendente: "7. Destinatários definidos",
+  email_enviado: "8. E-mail enviado (message_id)",
+  card_movido: "9. Card movido para Recebimento Dados",
 };
 
 const STEP_ORDER = Object.keys(STEP_LABELS);
