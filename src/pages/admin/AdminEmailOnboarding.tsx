@@ -82,7 +82,14 @@ export default function AdminEmailOnboarding() {
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [resendOpen, setResendOpen] = useState(false);
+  const [resendInfo, setResendInfo] = useState<{
+    sentAt: string | null;
+    messageId: string | null;
+    destinatarios: string[];
+  } | null>(null);
   const [history, setHistory] = useState<HistoryRow[]>([]);
+
 
   const recipients = useMemo(() => parseRecipients(destinatarios), [destinatarios]);
   const invalidRecipients = useMemo(
