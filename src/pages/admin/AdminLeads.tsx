@@ -63,6 +63,8 @@ import JiraTaskDialog from "@/components/admin/JiraTaskDialog";
 import CanvaPublicLinkSection from "@/components/admin/CanvaPublicLinkSection";
 import CrossOnboardingSteps from "@/components/admin/CrossOnboardingSteps";
 import { describeMonneraCode } from "@/lib/monneraCode";
+import MonneraCodeManual from "@/components/admin/MonneraCodeManual";
+
 
 
 import CardOriginTimeline from "@/components/admin/CardOriginTimeline";
@@ -2725,8 +2727,19 @@ const AdminLeads = () => {
                           </>
                         );
                       })()}
-
+                      <div className="mt-2">
+                        <MonneraCodeManual
+                          cardId={detailLead.id}
+                          currentCode={detailLead.codigo_monnera}
+                          isAdmin={isAdmin}
+                          onApplied={(patch) => {
+                            setDetailLead((prev: any) => (prev ? { ...prev, ...patch } : prev));
+                            setLeads((prev: any[]) => prev.map((l) => (l.id === detailLead.id ? { ...l, ...patch } : l)));
+                          }}
+                        />
+                      </div>
                     </div>
+
 
                     <div>
                       <p className="text-muted-foreground text-xs mb-1">CNPJ do Parceiro</p>
