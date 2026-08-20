@@ -150,7 +150,18 @@ const pending = (reason: string): Gate => ({ ok: false, reason, status: "pendenc
 const digits = (v: string | null | undefined) => (v ?? "").replace(/\D/g, "");
 
 /** Gate de entrada: nada acontece sem passar por aqui. */
-export async function entryGate(admin: any, card: CrossCard, opts: { controlledMode: boolean }): Promise<Gate> {
+export async function entryGate(
+  admin: any,
+  card: CrossCard,
+  opts: { controlledMode: boolean; dryRun?: boolean; stages?: ResolvedStages },
+): Promise<Gate> {
+  const stages = opts.stages ?? {
+    cadastro: STAGE_CADASTRO,
+    criacaoPainel: STAGE_CRIACAO_PAINEL,
+    materialOnboarding: STAGE_MATERIAL_ONBOARDING,
+    recebimentoDados: STAGE_RECEBIMENTO_DADOS,
+  };
+
   if (card.panel_id !== CROSS_PANEL_ID) return block("Card fora do painel Onb Clientes Cross.");
   if (card.is_protected) return block("Card protegido: nenhuma alteração permitida.");
 
@@ -163,24 +174,32 @@ export async function entryGate(admin: any, card: CrossCard, opts: { controlledM
   if (card.is_blocked) return block("Card bloqueado operacionalmente.");
 
   if (opts.controlledMode && !ALLOWLIST_CARD_IDS.has(card.id)) {
-    return block("Modo controlado: somente o card TESTE FASE A QA é elegível.");
+    return block("Modo controlado: card não está na allowlist de elegibilidade.");
+  }
+  // Liberar a proteção da ORCA não autoriza execução real: isso exige allowlist própria.
+  if (opts.controlledMode && opts.dryRun === false && !EXECUTION_ALLOWLIST_CARD_IDS.has(card.id)) {
+    return block("Execução real não autorizada para este card (somente simulação).");
   }
 
-  if (card.stage_id === STAGE_CADASTRO) {
+  if (card.stage_id === stages.cadastro) {
     return block("Card na etapa Cadastro: o orquestrador nunca inicia automaticamente aqui.");
   }
-  if (card.stage_id !== STAGE_CRIACAO_PAINEL) {
-    return block(`Card fora da etapa Criação Painel (stage_id atual: ${card.stage_id ?? "sem etapa"}).`);
+  if (card.stage_id !== stages.criacaoPainel && card.stage_id !== stages.materialOnboarding) {
+    return block(
+      `Card fora das etapas Criação Painel / Material Onboarding Cliente (stage_id atual: ${card.stage_id ?? "sem etapa"}).`,
+    );
   }
 
   const codeCheck = validateCodeForCard(card);
   if (!codeCheck.ok) return codeCheck;
 
-  if (!card.jira_issue_key) {
+  // Vínculo Jira só é exigido a partir de Material Onboarding Cliente.
+  if (card.stage_id === stages.materialOnboarding && !card.jira_issue_key) {
     return block("Vínculo Jira ausente: crie a tarefa de Criação Painel antes de avançar.");
   }
   return { ok: true };
 }
+
 
 /** QATEST01 só existe no card de QA com test_mode = true. */
 export function validateCodeForCard(card: CrossCard): Gate {
