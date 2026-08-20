@@ -295,7 +295,7 @@ Deno.serve(async (req) => {
           note: "dry_run: nenhum card, etapa, tarefa, Canva, e-mail ou notificação foi alterado.",
         },
         gate.ok ? "sucesso" : "ignorado",
-        gate.ok ? null : gate.reason,
+        gate.ok ? undefined : gate.reason,
       );
     }
 
