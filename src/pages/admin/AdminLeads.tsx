@@ -62,6 +62,7 @@ import OnboardingEmailQaSection from "@/components/admin/OnboardingEmailQaSectio
 import JiraTaskDialog from "@/components/admin/JiraTaskDialog";
 import CanvaPublicLinkSection from "@/components/admin/CanvaPublicLinkSection";
 import CrossOnboardingSteps from "@/components/admin/CrossOnboardingSteps";
+import CrossFlowAlert from "@/components/admin/CrossFlowAlert";
 import { describeMonneraCode } from "@/lib/monneraCode";
 import MonneraCodeManual from "@/components/admin/MonneraCodeManual";
 
@@ -77,6 +78,8 @@ type PipelineStage = { value: string; label: string; sort_order: number; followu
 
 const AMBASSADOR_PANEL_ID = "painel_mp5q4du9";
 const CROSS_CLIENT_PANEL_ID = "painel_msj9fyji";
+const CROSS_STAGE_CRIACAO_PAINEL = "etapa_painel_msj9fyji_2";
+const CROSS_STAGE_MATERIAL_ONBOARDING = "etapa_painel_msj9fyji_3";
 
 
 const buildTesteMonneraMessage = (linkTesteMonnera: string) => `Olá, tudo bem?
@@ -1967,13 +1970,32 @@ const AdminLeads = () => {
     const lead = leads.find((l) => l.id === id);
     if (!lead) return;
     if (isCustomCrmPanel) {
+      // Painel Onb Clientes Cross: movimentação manual usa os mesmos gates da automação.
+      if (isCrossClientPanel) {
+        const from = lead.stage_id;
+        const codeInfo = describeMonneraCode(lead.codigo_monnera);
+        if (
+          from === CROSS_STAGE_CRIACAO_PAINEL &&
+          newStage === CROSS_STAGE_MATERIAL_ONBOARDING &&
+          codeInfo.state !== "valido"
+        ) {
+          toast.error("Ainda falta o código Monnera para avançarmos. Insira o código Monnera e seguiremos com as próximas etapas.");
+          return;
+        }
+      }
       moveRepresentativeCard(id, newStage).then(({ error }: any) => {
         if (error) return toast.error("Erro ao mover card: " + error.message);
         setLeads((prev) => prev.map((p) => (p.id === id ? { ...p, stage_id: newStage } : p)));
         toast.success("Card movido com sucesso");
+        if (isCrossClientPanel && newStage === CROSS_STAGE_MATERIAL_ONBOARDING) {
+          void supabase.functions.invoke("cross-onboarding-advance", {
+            body: { card_id: id, dry_run: false, origin: "manual_move" },
+          });
+        }
       });
       return;
     }
+
     // Painel comercial: atualizar contagens por etapa localmente (sem recarregar).
     if (isCommercialPanel) {
       const from = lead.status_lead || lead.status;
@@ -1986,7 +2008,7 @@ const AdminLeads = () => {
       }
     }
     handleStatusChange(id, lead.nome_fantasia, newStage);
-  }, [canMovePipeline, leads, isCustomCrmPanel, isCommercialPanel, moveRepresentativeCard, handleStatusChange]);
+  }, [canMovePipeline, leads, isCustomCrmPanel, isCrossClientPanel, isCommercialPanel, moveRepresentativeCard, handleStatusChange]);
 
 
   const isConvertedOrBeyond = (status: string) =>
@@ -2709,6 +2731,7 @@ const AdminLeads = () => {
 
               {activeSection === "detalhes" && isCrossClientPanel && (
                 <div className="space-y-4">
+                  <CrossFlowAlert cardId={detailLead.id} />
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="text-muted-foreground text-xs mb-1">Nome do Parceiro</p>

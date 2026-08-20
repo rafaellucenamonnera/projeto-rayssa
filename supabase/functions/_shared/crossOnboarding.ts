@@ -11,15 +11,81 @@ import { validateCanvaPublicLink } from "./canvaLink.ts";
 
 export const CROSS_PANEL_ID = "painel_msj9fyji";
 
-/** Etapas oficiais validadas por stage_id (label serve apenas para exibição). */
+/**
+ * Etapas oficiais validadas por stage_id (label serve apenas para exibição).
+ * Valores confirmados em pipeline_stages_config (panel_key = painel_msj9fyji):
+ *   Cadastro = _1 | Criação Painel = _2 | Material Onboarding Cliente = _3 | Recebimento Dados = _4
+ * Ainda assim os ids são resolvidos por rótulo em runtime (resolveStages).
+ */
 export const STAGE_CADASTRO = "etapa_painel_msj9fyji_1";
 export const STAGE_CRIACAO_PAINEL = "etapa_painel_msj9fyji_2";
 export const STAGE_MATERIAL_ONBOARDING = "etapa_painel_msj9fyji_3";
+export const STAGE_RECEBIMENTO_DADOS = "etapa_painel_msj9fyji_4";
 
-/** Allowlist do modo controlado: somente o card TESTE FASE A QA. */
+export const STAGE_LABELS = {
+  cadastro: "Cadastro",
+  criacaoPainel: "Criação Painel",
+  materialOnboarding: "Material Onboarding Cliente",
+  recebimentoDados: "Recebimento Dados",
+} as const;
+
+export interface ResolvedStages {
+  cadastro: string;
+  criacaoPainel: string;
+  materialOnboarding: string;
+  recebimentoDados: string;
+}
+
+/** Lê os stage_id reais por rótulo; cai nos ids confirmados se a consulta falhar. */
+export async function resolveStages(admin: any): Promise<ResolvedStages> {
+  const fallback: ResolvedStages = {
+    cadastro: STAGE_CADASTRO,
+    criacaoPainel: STAGE_CRIACAO_PAINEL,
+    materialOnboarding: STAGE_MATERIAL_ONBOARDING,
+    recebimentoDados: STAGE_RECEBIMENTO_DADOS,
+  };
+  try {
+    const { data } = await admin
+      .from("pipeline_stages_config")
+      .select("value, label")
+      .eq("panel_key", CROSS_PANEL_ID);
+    const byLabel = new Map<string, string>(
+      (data ?? []).map((r: { value: string; label: string }) => [(r.label ?? "").trim().toLowerCase(), r.value]),
+    );
+    const pick = (label: string, fb: string) => byLabel.get(label.trim().toLowerCase()) ?? fb;
+    return {
+      cadastro: pick(STAGE_LABELS.cadastro, fallback.cadastro),
+      criacaoPainel: pick(STAGE_LABELS.criacaoPainel, fallback.criacaoPainel),
+      materialOnboarding: pick(STAGE_LABELS.materialOnboarding, fallback.materialOnboarding),
+      recebimentoDados: pick(STAGE_LABELS.recebimentoDados, fallback.recebimentoDados),
+    };
+  } catch (_) {
+    return fallback;
+  }
+}
+
+/** Allowlist de ELEGIBILIDADE do modo controlado (QA + ORCA liberada). */
 export const QA_CARD_ID = "32d1e94e-ab53-42b3-9118-ab3ad2d07c77";
-export const QA_ALLOWED_RECIPIENT = "rafael.lucena@monnera.com.br";
-export const ALLOWLIST_CARD_IDS = new Set<string>([QA_CARD_ID]);
+export const ORCA_CARD_ID = "f76d5bfa-680b-47e2-9f11-ca443ee2c40b";
+export const ALLOWLIST_CARD_IDS = new Set<string>([QA_CARD_ID, ORCA_CARD_ID]);
+
+/**
+ * Allowlist de EXECUÇÃO REAL: liberar a proteção da ORCA não autoriza execução real.
+ * A ORCA só entra aqui mediante autorização explícita do operador.
+ */
+export const EXECUTION_ALLOWLIST_CARD_IDS = new Set<string>([QA_CARD_ID]);
+
+/** Destinatários autorizados no modo QA (nenhum outro endereço recebe e-mail em QA). */
+export const QA_ALLOWED_RECIPIENTS = [
+  "rafael.lucena@monnera.com.br",
+  "alexandre.rodrigues@monnera.com.br",
+  "maycon.santos@monnera.com.br",
+  "rodrigo.cristo@monnera.com.br",
+  "gilberto.freitas@monnera.com.br",
+  "bruno.vivas@monnera.com.br",
+];
+/** Compatibilidade com chamadas antigas. */
+export const QA_ALLOWED_RECIPIENT = QA_ALLOWED_RECIPIENTS[0];
 
 /** Um card por execução, em qualquer origem (cron, manual, retry, reprocessamento). */
 export const MAX_CARDS_PER_RUN = 1;
@@ -32,6 +98,8 @@ export const NOTIFY_USERS = [
 
 export const STEPS = [
   "codigo_validado",
+  "codigo_aplicado",
+  "card_movido_material",
   "canva_pendente",
   "canva_pronto",
   "html_pronto",
@@ -40,6 +108,19 @@ export const STEPS = [
   "card_movido",
 ] as const;
 export type Step = (typeof STEPS)[number];
+
+export const STEP_LABELS: Record<Step, string> = {
+  codigo_validado: "Código Monnera validado",
+  codigo_aplicado: "Código aplicado ao card",
+  card_movido_material: "Card movido para Material Onboarding Cliente",
+  canva_pendente: "Material Canva pendente",
+  canva_pronto: "Material Canva pronto",
+  html_pronto: "HTML v2 personalizado",
+  email_pendente: "E-mail preparado",
+  email_enviado: "E-mail enviado na thread",
+  card_movido: "Card movido para Recebimento Dados",
+};
+
 
 export const CARD_FIELDS =
   "id, full_name, cnpj, email, panel_id, stage_id, codigo_monnera, codigo_recebido_at, jira_issue_key, " +
@@ -69,7 +150,18 @@ const pending = (reason: string): Gate => ({ ok: false, reason, status: "pendenc
 const digits = (v: string | null | undefined) => (v ?? "").replace(/\D/g, "");
 
 /** Gate de entrada: nada acontece sem passar por aqui. */
-export async function entryGate(admin: any, card: CrossCard, opts: { controlledMode: boolean }): Promise<Gate> {
+export async function entryGate(
+  admin: any,
+  card: CrossCard,
+  opts: { controlledMode: boolean; dryRun?: boolean; stages?: ResolvedStages },
+): Promise<Gate> {
+  const stages = opts.stages ?? {
+    cadastro: STAGE_CADASTRO,
+    criacaoPainel: STAGE_CRIACAO_PAINEL,
+    materialOnboarding: STAGE_MATERIAL_ONBOARDING,
+    recebimentoDados: STAGE_RECEBIMENTO_DADOS,
+  };
+
   if (card.panel_id !== CROSS_PANEL_ID) return block("Card fora do painel Onb Clientes Cross.");
   if (card.is_protected) return block("Card protegido: nenhuma alteração permitida.");
 
@@ -82,24 +174,32 @@ export async function entryGate(admin: any, card: CrossCard, opts: { controlledM
   if (card.is_blocked) return block("Card bloqueado operacionalmente.");
 
   if (opts.controlledMode && !ALLOWLIST_CARD_IDS.has(card.id)) {
-    return block("Modo controlado: somente o card TESTE FASE A QA é elegível.");
+    return block("Modo controlado: card não está na allowlist de elegibilidade.");
+  }
+  // Liberar a proteção da ORCA não autoriza execução real: isso exige allowlist própria.
+  if (opts.controlledMode && opts.dryRun === false && !EXECUTION_ALLOWLIST_CARD_IDS.has(card.id)) {
+    return block("Execução real não autorizada para este card (somente simulação).");
   }
 
-  if (card.stage_id === STAGE_CADASTRO) {
+  if (card.stage_id === stages.cadastro) {
     return block("Card na etapa Cadastro: o orquestrador nunca inicia automaticamente aqui.");
   }
-  if (card.stage_id !== STAGE_CRIACAO_PAINEL) {
-    return block(`Card fora da etapa Criação Painel (stage_id atual: ${card.stage_id ?? "sem etapa"}).`);
+  if (card.stage_id !== stages.criacaoPainel && card.stage_id !== stages.materialOnboarding) {
+    return block(
+      `Card fora das etapas Criação Painel / Material Onboarding Cliente (stage_id atual: ${card.stage_id ?? "sem etapa"}).`,
+    );
   }
 
   const codeCheck = validateCodeForCard(card);
   if (!codeCheck.ok) return codeCheck;
 
-  if (!card.jira_issue_key) {
+  // Vínculo Jira só é exigido a partir de Material Onboarding Cliente.
+  if (card.stage_id === stages.materialOnboarding && !card.jira_issue_key) {
     return block("Vínculo Jira ausente: crie a tarefa de Criação Painel antes de avançar.");
   }
   return { ok: true };
 }
+
 
 /** QATEST01 só existe no card de QA com test_mode = true. */
 export function validateCodeForCard(card: CrossCard): Gate {
@@ -158,7 +258,8 @@ export function buildRecipients(params: {
   senderAccount: string;
   qaMode: boolean;
 }): { to: string[]; excluded: string[]; lastResort: boolean } {
-  if (params.qaMode) return { to: [QA_ALLOWED_RECIPIENT], excluded: [], lastResort: false };
+  // Modo QA: apenas os endereços autorizados, nunca participantes da thread.
+  if (params.qaMode) return { to: [...QA_ALLOWED_RECIPIENTS], excluded: [], lastResort: false };
 
   const excluded: string[] = [];
   const seen = new Set<string>();

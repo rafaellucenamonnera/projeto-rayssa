@@ -5,7 +5,7 @@
 //
 // Escopo travado nesta etapa (QA):
 //   - somente o card TESTE FASE A QA (allowlist por card_id);
-//   - somente o destinatario rafael.lucena@monnera.com.br;
+//   - somente os destinatarios internos autorizados (@monnera.com.br);
 //   - somente o codigo QATEST01 e o link Canva aprovado;
 //   - um envio por confirmacao explicita do administrador.
 // Nao existe caminho de envio em massa, cobranca ou regua neste arquivo.
@@ -25,7 +25,14 @@ const TEMPLATE_VERSION = "v2";
 
 // Allowlist rigida de QA
 const ALLOWED_CARD_IDS = new Set(["32d1e94e-ab53-42b3-9118-ab3ad2d07c77"]);
-const ALLOWED_RECIPIENTS = new Set(["rafael.lucena@monnera.com.br"]);
+const ALLOWED_RECIPIENTS = new Set([
+  "rafael.lucena@monnera.com.br",
+  "alexandre.rodrigues@monnera.com.br",
+  "maycon.santos@monnera.com.br",
+  "rodrigo.cristo@monnera.com.br",
+  "gilberto.freitas@monnera.com.br",
+  "bruno.vivas@monnera.com.br",
+]);
 const ALLOWED_CODES = new Set(["QATEST01"]);
 
 // Notificados quando o link publico do Canva estiver ausente/invalido.

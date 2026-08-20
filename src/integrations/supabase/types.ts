@@ -4200,6 +4200,10 @@ export type Database = {
             Returns: string
           }
       cross_card_missing_fields: { Args: { p_card_id: string }; Returns: Json }
+      cross_onboarding_card_status: {
+        Args: { p_card_id: string }
+        Returns: Json
+      }
       cross_onboarding_record_step: {
         Args: {
           p_card_id: string
@@ -4237,6 +4241,19 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      cross_onboarding_resume: {
+        Args: { p_card_id: string; p_justificativa: string }
+        Returns: Json
+      }
+      cross_onboarding_upsert_pendencia: {
+        Args: {
+          p_assigned_to: string
+          p_card_id: string
+          p_descricao: string
+          p_titulo: string
+        }
+        Returns: string
       }
       duplicate_card: {
         Args: { card_id: string; target_stage_id: string }
