@@ -45,6 +45,8 @@ export default function CrossOnboardingSteps({ cardId, canRun }: Props) {
   const [rows, setRows] = useState<StepRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
+  const [executing, setExecuting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [preview, setPreview] = useState<Record<string, unknown> | null>(null);
   const [resumeOpen, setResumeOpen] = useState(false);
   const [justificativa, setJustificativa] = useState("");
@@ -77,6 +79,27 @@ export default function CrossOnboardingSteps({ cardId, canRun }: Props) {
     toast.success("Simulação concluída — nada foi alterado.");
     void load();
   };
+
+  const runReal = async () => {
+    setExecuting(true);
+    setPreview(null);
+    const { data, error } = await supabase.functions.invoke("cross-onboarding-advance", {
+      body: { card_id: cardId, dry_run: false, origin: "manual_move" },
+    });
+    setExecuting(false);
+    setConfirmOpen(false);
+    if (error) {
+      toast.error("A execução não pôde ser concluída. Verifique a pendência registrada no card.");
+      void load();
+      return;
+    }
+    setPreview(data as Record<string, unknown>);
+    const stopped = (data as { stopped_at?: { step?: string; reason?: string } | null })?.stopped_at;
+    if (stopped?.step) toast.warning(`Fluxo parou em ${STEP_LABELS[stopped.step] ?? stopped.step}.`);
+    else toast.success("Fluxo avançado até onde as regras permitem.");
+    void load();
+  };
+
 
   // Etapa em falha corrigível: base do botão "Retomar automação".
   const failedRow = rows.find((r) => ["erro", "bloqueado", "pendencia_manual"].includes(r.status));
