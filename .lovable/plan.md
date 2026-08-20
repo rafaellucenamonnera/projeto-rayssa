@@ -65,10 +65,12 @@ A etapa de Canva usa o link público manual como fonte de verdade: se o card nã
 **Edge Function `cross-onboarding-advance`** (ajuste, sem refactor)
 - Máquina de estados passa a cobrir os dois saltos: `codigo_aplicado` → move `etapa_painel_msj9fyji_2` → `_3`; e, a partir de `_3`, Canva → HTML → e-mail → `message_id` → move `_3` → `etapa_painel_msj9fyji_4`.
 - `entryGate` aceita cards em `_2` e em `_3` (hoje só `_2`), mantém bloqueio de card protegido e de `is_blocked`.
-- Allowlist do modo controlado passa a conter o card QA e a ORCA; qualquer outro card continua barrado.
+- Allowlist de **elegibilidade** passa a conter o card QA e a ORCA. Allowlist de **execução real** contém apenas o card QA; a ORCA fica elegível mas restrita a simulação até autorização explícita.
 - Falha de qualquer etapa: grava `erro` com motivo e timestamp, cria/atualiza a tarefa de pendência via `representative_card_tasks`, notifica Rafael e Maycon, não move o card.
 - Aceita `origin: "manual_move" | "resume" | "cron"` e `resume_from`, sempre reexecutando só a etapa pendente.
-- `dry_run` continua padrão `true`; execução real exige `dry_run: false` explícito e card na allowlist.
+- `dry_run` continua padrão `true`; execução real exige `dry_run: false` explícito e card na allowlist de execução.
+- Destinatários no modo QA passam de um único endereço para a lista autorizada: rafael.lucena, alexandre.rodrigues, maycon.santos, rodrigo.cristo, gilberto.freitas e bruno.vivas (todos @monnera.com.br). Em modo QA nenhum endereço fora dessa lista recebe e-mail, mesmo se aparecer na thread. Ajuste em `QA_ALLOWED_RECIPIENT` → `QA_ALLOWED_RECIPIENTS` em `_shared/crossOnboarding.ts` e na verificação equivalente de `send-onboarding-email`.
+
 
 **Frontend**
 - `src/pages/admin/AdminLeads.tsx`: no drag entre etapas do painel Cross, checar gate antes de gravar; recusar com toast amigável quando faltar código; ao permitir, invocar o orquestrador com `origin: "manual_move"`.
