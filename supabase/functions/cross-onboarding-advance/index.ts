@@ -20,6 +20,7 @@ import {
   MAX_CARDS_PER_RUN,
   NOTIFY_USERS,
   QA_CARD_ID,
+  STEPS,
   STEP_LABELS,
   buildRecipients,
   canvaGate,
