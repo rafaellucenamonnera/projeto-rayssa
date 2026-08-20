@@ -62,6 +62,7 @@ import OnboardingEmailQaSection from "@/components/admin/OnboardingEmailQaSectio
 import JiraTaskDialog from "@/components/admin/JiraTaskDialog";
 import CanvaPublicLinkSection from "@/components/admin/CanvaPublicLinkSection";
 import CrossOnboardingSteps from "@/components/admin/CrossOnboardingSteps";
+import CrossFlowAlert from "@/components/admin/CrossFlowAlert";
 import { describeMonneraCode } from "@/lib/monneraCode";
 import MonneraCodeManual from "@/components/admin/MonneraCodeManual";
 
