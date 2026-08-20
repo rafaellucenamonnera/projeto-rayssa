@@ -3,8 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, CheckCircle2, Clock, Loader2, PlayCircle, RefreshCw } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, Loader2, PlayCircle, RefreshCw, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 /**
  * Acompanhamento do fluxo pós-código Monnera.
@@ -44,6 +47,9 @@ export default function CrossOnboardingSteps({ cardId, canRun }: Props) {
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [preview, setPreview] = useState<Record<string, unknown> | null>(null);
+  const [resumeOpen, setResumeOpen] = useState(false);
+  const [justificativa, setJustificativa] = useState("");
+  const [resuming, setResuming] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -73,6 +79,41 @@ export default function CrossOnboardingSteps({ cardId, canRun }: Props) {
     void load();
   };
 
+  // Etapa em falha corrigível: base do botão "Retomar automação".
+  const failedRow = rows.find((r) => ["erro", "bloqueado", "pendencia_manual"].includes(r.status));
+
+  const resume = async () => {
+    if (!justificativa.trim()) {
+      toast.error("Informe a justificativa da retomada.");
+      return;
+    }
+    setResuming(true);
+    const { data: resumeData, error: resumeError } = await supabase.rpc(
+      "cross_onboarding_resume" as never,
+      { p_card_id: cardId, p_justificativa: justificativa.trim() } as never,
+    );
+    if (resumeError) {
+      setResuming(false);
+      toast.error(resumeError.message);
+      return;
+    }
+    const resumeFrom = (resumeData as { resume_from?: string } | null)?.resume_from ?? failedRow?.step;
+    const { data, error } = await supabase.functions.invoke("cross-onboarding-advance", {
+      body: { card_id: cardId, dry_run: false, origin: "resume", resume_from: resumeFrom },
+    });
+    setResuming(false);
+    if (error) {
+      toast.error("A retomada não pôde ser concluída. Verifique a pendência registrada no card.");
+      void load();
+      return;
+    }
+    setPreview(data as Record<string, unknown>);
+    setResumeOpen(false);
+    setJustificativa("");
+    toast.success(`Automação retomada na etapa ${STEP_LABELS[resumeFrom ?? ""] ?? resumeFrom}.`);
+    void load();
+  };
+
   const statusOf = (step: string) => rows.find((r) => r.step === step);
 
   const badgeFor = (status?: string) => {
@@ -95,6 +136,11 @@ export default function CrossOnboardingSteps({ cardId, canRun }: Props) {
           <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
             <RefreshCw className="mr-1 h-4 w-4" />Atualizar
           </Button>
+          {canRun && failedRow && (
+            <Button variant="destructive" size="sm" onClick={() => setResumeOpen(true)}>
+              <RotateCcw className="mr-1 h-4 w-4" />Retomar automação
+            </Button>
+          )}
           {canRun && (
             <Button size="sm" onClick={() => void runDryRun()} disabled={running}>
               {running ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <PlayCircle className="mr-1 h-4 w-4" />}
@@ -129,6 +175,38 @@ export default function CrossOnboardingSteps({ cardId, canRun }: Props) {
           </div>
         )}
       </CardContent>
+
+      <Dialog open={resumeOpen} onOpenChange={setResumeOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Retomar automação</DialogTitle>
+            <DialogDescription>
+              A retomada reinicia somente a etapa que falhou
+              {failedRow ? `: ${STEP_LABELS[failedRow.step] ?? failedRow.step}` : ""}. Nenhuma etapa já concluída é refeita.
+            </DialogDescription>
+          </DialogHeader>
+          {failedRow?.error && (
+            <p className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
+              {failedRow.error}
+            </p>
+          )}
+          <div className="space-y-2">
+            <Label htmlFor="resume-justificativa">Justificativa (obrigatória)</Label>
+            <Textarea
+              id="resume-justificativa"
+              value={justificativa}
+              onChange={(e) => setJustificativa(e.target.value)}
+              placeholder="O que foi corrigido antes da retomada?"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResumeOpen(false)} disabled={resuming}>Cancelar</Button>
+            <Button onClick={() => void resume()} disabled={resuming}>
+              {resuming && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Retomar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
