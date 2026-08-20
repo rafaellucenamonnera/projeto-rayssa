@@ -63,6 +63,8 @@ import JiraTaskDialog from "@/components/admin/JiraTaskDialog";
 import CanvaPublicLinkSection from "@/components/admin/CanvaPublicLinkSection";
 import CrossOnboardingSteps from "@/components/admin/CrossOnboardingSteps";
 import { describeMonneraCode } from "@/lib/monneraCode";
+import MonneraCodeManual from "@/components/admin/MonneraCodeManual";
+
 
 
 import CardOriginTimeline from "@/components/admin/CardOriginTimeline";
