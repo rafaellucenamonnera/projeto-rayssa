@@ -271,12 +271,13 @@ Deno.serve(async (req) => {
         if (emailStep?.status !== "sucesso" || !emailStep?.message_id) {
           gate = { ok: false, status: "bloqueado", reason: "Movimentação exige envio confirmado com message_id." };
         } else {
-          payload.from_stage = STAGE_CRIACAO_PAINEL;
-          payload.to_stage = STAGE_MATERIAL_ONBOARDING;
+          payload.from_stage = stages.materialOnboarding;
+          payload.to_stage = stages.recebimentoDados;
           payload.message_id = emailStep.message_id;
         }
         break;
       }
+
     }
 
     if (!gate.ok) stepStatus = gate.status;
