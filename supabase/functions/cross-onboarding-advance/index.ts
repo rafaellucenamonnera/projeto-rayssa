@@ -106,7 +106,14 @@ Deno.serve(async (req) => {
       .maybeSingle<CrossCard>();
     if (!card) return json({ error: "Card não encontrado." }, 404);
 
-    const origin = dryRun ? "dry_run" : "manual";
+    const stages = await resolveStages(admin);
+    const requestedOrigin = String(body?.origin ?? "").trim();
+    const origin = dryRun
+      ? "dry_run"
+      : ["manual_move", "resume", "cron"].includes(requestedOrigin)
+        ? requestedOrigin
+        : "manual";
+    const resumeFrom = String(body?.resume_from ?? "").trim();
     const trace: Array<{ step: string; status: string; detail?: string }> = [];
 
     const finish = async (result: Record<string, unknown>, status: string, error?: string) => {
@@ -115,27 +122,31 @@ Deno.serve(async (req) => {
     };
 
     // ------------------------------------------------------------- gate de entrada
-    const entry = await entryGate(admin, card, { controlledMode });
+    const entry = await entryGate(admin, card, { controlledMode, dryRun, stages });
     if (!entry.ok) {
       trace.push({ step: "gate_entrada", status: entry.status, detail: entry.reason });
       return await finish({ blocked: true, reason: entry.reason }, "ignorado", entry.reason);
     }
     trace.push({ step: "gate_entrada", status: "ok" });
 
-    // ------------------------------------------------ vínculo Jira resolvível (GET)
-    const jira = await jiraLinkGate(card, getIssue);
-    if (!jira.ok) {
-      trace.push({ step: "gate_jira", status: jira.status, detail: jira.reason });
-      if (!dryRun) {
-        await admin.rpc("cross_onboarding_record_step", {
-          p_card_id: card.id, p_step: "codigo_validado", p_status: "bloqueado",
-          p_gate: { reason: jira.reason }, p_error: jira.reason,
-          p_codigo: card.codigo_monnera, p_jira_key: card.jira_issue_key,
-        });
+    // --------------------------- vínculo Jira resolvível (só quando já existe chave)
+    if (card.jira_issue_key) {
+      const jira = await jiraLinkGate(card, getIssue);
+      if (!jira.ok) {
+        trace.push({ step: "gate_jira", status: jira.status, detail: jira.reason });
+        if (!dryRun) {
+          await admin.rpc("cross_onboarding_record_step", {
+            p_card_id: card.id, p_step: "codigo_validado", p_status: "bloqueado",
+            p_gate: { reason: jira.reason }, p_error: jira.reason,
+            p_codigo: card.codigo_monnera, p_jira_key: card.jira_issue_key,
+          });
+        }
+        return await finish({ blocked: true, reason: jira.reason }, "ignorado", jira.reason);
       }
-      return await finish({ blocked: true, reason: jira.reason }, "ignorado", jira.reason);
+      trace.push({ step: "gate_jira", status: "ok", detail: card.jira_issue_key });
+    } else {
+      trace.push({ step: "gate_jira", status: "ok", detail: "sem chave Jira nesta etapa" });
     }
-    trace.push({ step: "gate_jira", status: "ok", detail: card.jira_issue_key ?? undefined });
 
     // ------------------------------------------------------ etapas já concluídas
     const { data: stepRows } = await admin
@@ -145,7 +156,10 @@ Deno.serve(async (req) => {
     const done: Record<string, string> = {};
     for (const row of stepRows ?? []) done[row.step] = row.status;
 
-    const step = nextStep(done) as Step | null;
+    // A retomada reinicia exclusivamente a etapa que falhou.
+    const step = ((resumeFrom && (STEPS as readonly string[]).includes(resumeFrom)
+      ? resumeFrom
+      : nextStep(done)) ?? null) as Step | null;
     if (!step) return await finish({ completed: true, reason: "Fluxo já concluído." }, "sucesso");
 
     // ------------------------------------------------------- gate da etapa atual
@@ -158,6 +172,31 @@ Deno.serve(async (req) => {
         payload.codigo = card.codigo_monnera;
         payload.codigo_recebido_at = card.codigo_recebido_at;
         break;
+
+      case "codigo_aplicado": {
+        // Código já validado no gate de entrada; aqui apenas confirmamos a gravação no card.
+        if (!card.codigo_monnera) {
+          gate = { ok: false, status: "bloqueado", reason: "Código Monnera ausente no card." };
+        }
+        payload.codigo = card.codigo_monnera;
+        break;
+      }
+
+      case "card_movido_material": {
+        if (card.stage_id === stages.materialOnboarding) {
+          payload.already_in_stage = true;
+        } else if (card.stage_id !== stages.criacaoPainel) {
+          gate = {
+            ok: false,
+            status: "bloqueado",
+            reason: `Movimentação exige o card em Criação Painel (atual: ${card.stage_id ?? "sem etapa"}).`,
+          };
+        }
+        payload.from_stage = stages.criacaoPainel;
+        payload.to_stage = stages.materialOnboarding;
+        break;
+      }
+
 
       case "canva_pendente":
       case "canva_pronto": {
