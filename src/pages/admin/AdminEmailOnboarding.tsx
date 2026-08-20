@@ -39,6 +39,7 @@ interface HistoryRow {
   thread_id: string | null;
   template_name: string | null;
   template_version: string | null;
+  is_resend?: boolean | null;
 }
 
 const statusVariant = (status: string) =>
@@ -82,7 +83,14 @@ export default function AdminEmailOnboarding() {
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [resendOpen, setResendOpen] = useState(false);
+  const [resendInfo, setResendInfo] = useState<{
+    sentAt: string | null;
+    messageId: string | null;
+    destinatarios: string[];
+  } | null>(null);
   const [history, setHistory] = useState<HistoryRow[]>([]);
+
 
   const recipients = useMemo(() => parseRecipients(destinatarios), [destinatarios]);
   const invalidRecipients = useMemo(
@@ -113,7 +121,7 @@ export default function AdminEmailOnboarding() {
   };
 
 
-  const handleSend = async () => {
+  const handleSend = async (confirmarReenvio = false) => {
     const html = preview ?? build();
     if (!html || !isQaSend) return;
     setSending(true);
@@ -126,37 +134,56 @@ export default function AdminEmailOnboarding() {
         assunto: assunto.trim(),
         destinatarios: recipients,
         html,
+        confirmar_reenvio: confirmarReenvio,
       },
     });
     setSending(false);
     setConfirmOpen(false);
     if (error || (data as any)?.error) {
-      let detail = (data as any)?.error ?? error?.message ?? "erro desconhecido";
+      let payload: any = data ?? null;
       const ctx = (error as any)?.context;
       if (ctx && typeof ctx.json === "function") {
         try {
-          const body = await ctx.json();
-          if (body?.error) detail = `${body.error}${body.detail ? ` — ${body.detail}` : ""}`;
+          payload = await ctx.json();
         } catch {
           /* mantem mensagem generica */
         }
       }
+      if (payload?.duplicate && !confirmarReenvio) {
+        setResendInfo({
+          sentAt: payload.sent_at ?? null,
+          messageId: payload.message_id ?? null,
+          destinatarios: payload.destinatarios_anteriores ?? [],
+        });
+        setResendOpen(true);
+        loadHistory();
+        return;
+      }
+      const detail = payload?.error
+        ? `${payload.error}${payload.detail ? ` — ${payload.detail}` : ""}`
+        : error?.message ?? "erro desconhecido";
       toast.error(`Falha no envio: ${detail}`);
       loadHistory();
       return;
     }
 
     const result = data as any;
-    toast.success(`E-mail enviado. message_id ${result.message_id ?? "-"}`);
+    setResendOpen(false);
+    setResendInfo(null);
+    toast.success(
+      `${result.is_resend ? "REENVIO realizado" : "E-mail enviado"}. message_id ${result.message_id ?? "-"}`,
+    );
+    (result.avisos ?? []).forEach((aviso: string) => toast.warning(aviso));
     loadHistory();
   };
+
 
 
 
   const loadHistory = async () => {
     const { data } = await (supabase as any)
       .from("onboarding_email_sends")
-      .select("id,nome_parceiro,codigo_parceiro,link_material,assunto,destinatarios,status,created_at,message_id,thread_id,template_name,template_version")
+      .select("id,nome_parceiro,codigo_parceiro,link_material,assunto,destinatarios,status,created_at,message_id,thread_id,template_name,template_version,is_resend")
       .order("created_at", { ascending: false })
       .limit(30);
     setHistory((data as HistoryRow[]) || []);
@@ -379,6 +406,7 @@ export default function AdminEmailOnboarding() {
                 <span className="text-xs text-muted-foreground">
                   {new Date(row.created_at).toLocaleString("pt-BR")}
                 </span>
+                {row.is_resend && <Badge variant="outline">reenvio</Badge>}
                 <Badge variant={statusVariant(row.status) as any}>{row.status}</Badge>
               </div>
             </div>
@@ -417,6 +445,45 @@ export default function AdminEmailOnboarding() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={resendOpen} onOpenChange={setResendOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Atenção: este e-mail já foi enviado</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-1 text-sm">
+                <p>
+                  Já existe um envio concluído para <strong>{codigo.trim().toUpperCase()}</strong>. Ao continuar,
+                  você está fazendo um <strong>REENVIO</strong> e o destinatário receberá o e-mail novamente.
+                </p>
+                <p>
+                  <strong>Enviado em:</strong>{" "}
+                  {resendInfo?.sentAt ? new Date(resendInfo.sentAt).toLocaleString("pt-BR") : "-"}
+                </p>
+                <p className="break-all"><strong>message_id anterior:</strong> {resendInfo?.messageId ?? "-"}</p>
+                <p className="break-all">
+                  <strong>Destinatários anteriores:</strong>{" "}
+                  {resendInfo?.destinatarios?.join(", ") || "-"}
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={sending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={sending}
+              onClick={(e) => {
+                e.preventDefault();
+                handleSend(true);
+              }}
+            >
+              {sending ? "Reenviando..." : "Confirmar reenvio"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
 
     </div>
   );

@@ -184,6 +184,7 @@ Deno.serve(async (req) => {
       return json({ error: "Código Monnera ausente no card ou diferente do informado. Envio bloqueado." }, 422);
     }
 
+    // Etapa do card é informativa: não bloqueia o envio quando os dados estão completos.
     const stageId = String(card.stage_id ?? "");
     const { data: stageRow } = await admin
       .from("pipeline_stages_config")
@@ -191,17 +192,21 @@ Deno.serve(async (req) => {
       .eq("value", stageId)
       .maybeSingle();
     const stageLabel = String(stageRow?.label ?? "");
+    const avisos: string[] = [];
     if (!/material\s+onboarding/i.test(stageLabel)) {
+      avisos.push(
+        `Card fora da etapa Material Onboarding Cliente (${stageLabel || stageId || "sem etapa"}). Envio autorizado mesmo assim.`,
+      );
       await admin.rpc("record_automation_run", {
         p_stage: "onboarding_email",
-        p_status: "erro",
+        p_status: "aviso",
         p_card_id: cardId,
-        p_error: `Card fora da etapa Material Onboarding Cliente (${stageLabel || stageId || "sem etapa"})`,
+        p_error: `Envio fora da etapa Material Onboarding Cliente (${stageLabel || stageId || "sem etapa"})`,
         p_origin: "send-onboarding-email",
         p_payload: { stage_id: stageId, stage_label: stageLabel },
       });
-      return json({ error: "Card não está na etapa Material Onboarding Cliente. Envio bloqueado." }, 422);
     }
+
 
 
     // --------------------------------------------- link publico obrigatorio
@@ -222,26 +227,33 @@ Deno.serve(async (req) => {
       return json({ error: "Conexao Gmail nao vinculada ao projeto." }, 500);
     }
 
-    // ------------------------------------------- protecao contra duplicidade
+    // ------------------- envio anterior: exige confirmacao explicita de reenvio
+    const confirmarReenvio = body.confirmar_reenvio === true;
     const { data: alreadySent } = await admin
       .from("onboarding_email_sends")
-      .select("id, sent_at, message_id")
+      .select("id, sent_at, message_id, destinatarios")
       .eq("card_id", cardId)
       .eq("codigo_parceiro", codigo)
       .eq("status", "enviado")
+      .order("sent_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
-    if (alreadySent) {
+    if (alreadySent && !confirmarReenvio) {
       return json(
         {
-          error: "E-mail de onboarding ja enviado para este card/codigo.",
+          error: "E-mail de onboarding já enviado para este card/código. Confirme o reenvio para prosseguir.",
           duplicate: true,
+          requires_resend_confirmation: true,
           log_id: alreadySent.id,
           message_id: alreadySent.message_id,
           sent_at: alreadySent.sent_at,
+          destinatarios_anteriores: alreadySent.destinatarios ?? [],
         },
         409,
       );
     }
+    const isResend = Boolean(alreadySent);
+    if (isResend) avisos.push("Este envio é um REENVIO: já existia um e-mail enviado para este card/código.");
 
     // -------------------------------------------------- registro (pendente)
     const { data: logRow, error: logError } = await admin
@@ -260,7 +272,10 @@ Deno.serve(async (req) => {
         template_version: TEMPLATE_VERSION,
         gmail_account: SENDER_ACCOUNT,
         test_mode: true,
+        is_resend: isResend,
+        resend_of: alreadySent?.id ?? null,
       })
+
       .select("id")
       .single();
     if (logError) {
@@ -318,7 +333,11 @@ Deno.serve(async (req) => {
       template_version: TEMPLATE_VERSION,
       account: SENDER_ACCOUNT,
       recipient: recipients[0],
+      is_resend: isResend,
+      resend_of: alreadySent?.id ?? null,
+      avisos,
     });
+
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "Erro inesperado" }, 500);
   }

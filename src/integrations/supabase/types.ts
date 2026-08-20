@@ -2363,9 +2363,11 @@ export type Database = {
           gmail_account: string | null
           html_snapshot: string | null
           id: string
+          is_resend: boolean
           link_material: string
           message_id: string | null
           nome_parceiro: string
+          resend_of: string | null
           sent_at: string | null
           status: string
           template_name: string
@@ -2385,9 +2387,11 @@ export type Database = {
           gmail_account?: string | null
           html_snapshot?: string | null
           id?: string
+          is_resend?: boolean
           link_material: string
           message_id?: string | null
           nome_parceiro: string
+          resend_of?: string | null
           sent_at?: string | null
           status?: string
           template_name?: string
@@ -2407,9 +2411,11 @@ export type Database = {
           gmail_account?: string | null
           html_snapshot?: string | null
           id?: string
+          is_resend?: boolean
           link_material?: string
           message_id?: string | null
           nome_parceiro?: string
+          resend_of?: string | null
           sent_at?: string | null
           status?: string
           template_name?: string
@@ -2424,6 +2430,13 @@ export type Database = {
             columns: ["card_id"]
             isOneToOne: false
             referencedRelation: "representative_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_email_sends_resend_of_fkey"
+            columns: ["resend_of"]
+            isOneToOne: false
+            referencedRelation: "onboarding_email_sends"
             referencedColumns: ["id"]
           },
         ]
