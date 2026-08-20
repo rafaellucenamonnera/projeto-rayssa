@@ -12,13 +12,16 @@ Regras recebidas aceitas integralmente. Nada será executado (tarefa, e-mail, Ca
 ## 2. Alterações propostas (mínimas, sem refatorar integrações)
 
 ### 2.1 `supabase/functions/_shared/crossOnboarding.ts`
-- `jiraLinkGate` passa a ser **não bloqueante**: erro de leitura da issue registra observação no trace/auditoria e retorna `{ ok: true }`. Nenhuma etapa depende mais da resolução da issue.
-- `entryGate`: remover a exigência de `jira_issue_key` para avançar a partir de Material Onboarding Cliente. O gate obrigatório passa a ser exclusivamente o **código Monnera válido** (`validateCodeForCard`), como já está.
+- `jiraLinkGate` passa a ser **não bloqueante**: qualquer falha de `getIssue` (401, 403, 404, timeout, credencial ausente) registra apenas observação e retorna `{ ok: true }`.
+- `entryGate`: remover a exigência de `jira_issue_key` em Material Onboarding Cliente. `jira_issue_key` ausente nunca bloqueia.
 - Nada mais muda nesse arquivo: allowlists, gates de Canva, e-mail, destinatários e `buildRecipients` ficam idênticos.
+
+**Confirmação explícita:** após a aplicação válida do código Monnera vindo do Gmail, o Jira deixa de ser gate em **todas** as etapas seguintes. Card em Criação Painel com código válido avança para Material Onboarding Cliente mesmo sem `jira_issue_key`, mesmo com `getIssue` falhando e mesmo com 401/404 — a ocorrência entra apenas como observação no trace, em `automation_runs` e no histórico do card. O Jira continua obrigatório somente para a criação da tarefa para Lívia, quando os dados cadastrais estiverem completos.
 
 ### 2.2 `supabase/functions/cross-onboarding-advance/index.ts`
 - O bloco `gate_jira` deixa de retornar `blocked`; passa a gravar apenas `status: "observacao"` no trace quando a leitura falhar.
 - Nenhuma outra etapa, ordem, RPC ou efeito é alterado.
+
 
 ### 2.3 Nada é alterado em
 - `jira-create-panel-task` (criação da tarefa para Lívia, com anti-duplicidade) — preservado como está.
