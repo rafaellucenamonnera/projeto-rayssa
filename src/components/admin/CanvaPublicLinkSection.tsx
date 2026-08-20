@@ -74,18 +74,35 @@ export default function CanvaPublicLinkSection({
       return;
     }
 
+    const publicUrl = link.trim();
+    // Token do link público: usado apenas como chave de idempotência.
+    // Não representa um design criado via API do Canva.
+    const token = publicUrl.split("/").filter(Boolean).pop() ?? publicUrl;
+    const { data: authData } = await supabase.auth.getUser();
+
     setSaving(true);
     const { data, error } = await supabase.rpc("register_canva_material", {
       p_card_id: cardId,
       p_codigo: codigoMonnera,
       p_template_design_id: null,
-      p_design_id: link.trim().split("/").pop() ?? null,
-      p_view_url: link.trim(),
+      p_design_id: token,
+      p_view_url: publicUrl,
       p_edit_url: null,
       p_edited_page: 12,
-      p_source: "manual",
-      p_metadata: { origem: "link_publico_manual", canva_conector: false },
-      p_public_url: link.trim(),
+      p_source: "manual_link",
+      p_metadata: {
+        source_type: "manual_link",
+        canva_design_created: false,
+        public_link_validated: true,
+        public_link_token: token,
+        public_url: publicUrl,
+        card_id: cardId,
+        codigo_monnera: codigoMonnera,
+        registrado_por: authData?.user?.id ?? null,
+        registrado_por_email: authData?.user?.email ?? null,
+        registrado_em: new Date().toISOString(),
+      },
+      p_public_url: publicUrl,
     });
     setSaving(false);
 
@@ -97,11 +114,21 @@ export default function CanvaPublicLinkSection({
       return;
     }
 
-    setSaved(link.trim());
+    setSaved(publicUrl);
     setLink("");
-    toast.success("Link público confirmado. Fluxo liberado para a próxima etapa.");
-    onSaved?.(link.trim());
+    toast.success("Link público confirmado. Continuando o fluxo a partir da etapa Canva.");
+    onSaved?.(publicUrl);
+
+    // Continuidade automática: executa somente a etapa Canva pendente e reavalia
+    // os gates seguintes. Não envia e-mail nem move o card por conta própria.
+    const { error: advanceError } = await supabase.functions.invoke("cross-onboarding-advance", {
+      body: { card_id: cardId, dry_run: false, origin: "resume", resume_from: "canva_pronto" },
+    });
+    if (advanceError) {
+      toast.warning("Link salvo. A continuidade automática não pôde ser concluída — verifique a pendência no card.");
+    }
   };
+
 
   return (
     <Card>
