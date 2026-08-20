@@ -195,10 +195,8 @@ export async function entryGate(
   const codeCheck = validateCodeForCard(card);
   if (!codeCheck.ok) return codeCheck;
 
-  // Vínculo Jira só é exigido a partir de Material Onboarding Cliente.
-  if (card.stage_id === stages.materialOnboarding && !card.jira_issue_key) {
-    return block("Vínculo Jira ausente: crie a tarefa de Criação Painel antes de avançar.");
-  }
+  // Jira não é gate: chave ausente nunca bloqueia o avanço após código válido.
+
   return { ok: true };
 }
 
