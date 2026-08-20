@@ -333,7 +333,11 @@ Deno.serve(async (req) => {
       template_version: TEMPLATE_VERSION,
       account: SENDER_ACCOUNT,
       recipient: recipients[0],
+      is_resend: isResend,
+      resend_of: alreadySent?.id ?? null,
+      avisos,
     });
+
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "Erro inesperado" }, 500);
   }
