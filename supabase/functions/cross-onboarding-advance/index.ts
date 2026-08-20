@@ -25,7 +25,7 @@ import {
   buildRecipients,
   canvaGate,
   entryGate,
-  jiraLinkGate,
+  
   nextStep,
   resolveStages,
   threadGate,
@@ -164,18 +164,16 @@ Deno.serve(async (req) => {
     }
     trace.push({ step: "gate_entrada", status: "ok" });
 
-    // ------------------ leitura informativa do Jira (nunca bloqueia o fluxo)
-    if (card.jira_issue_key) {
-      const jira = await jiraLinkGate(card, getIssue);
-      const note = jira.ok ? jira.note : undefined;
-      trace.push({
-        step: "gate_jira",
-        status: note ? "observacao" : "ok",
-        detail: note ?? card.jira_issue_key,
-      });
-    } else {
-      trace.push({ step: "gate_jira", status: "observacao", detail: "sem chave Jira: não bloqueia" });
-    }
+    // ---- Jira NÃO é consultado no avanço --------------------------------
+    // O código Monnera chega por e-mail (Gmail). Nenhuma leitura de issue aqui.
+    trace.push({
+      step: "gate_jira",
+      status: "ignorado",
+      detail: card.jira_issue_key
+        ? `Jira não consultado (${card.jira_issue_key}); fonte do código é o Gmail.`
+        : "Jira não consultado; fonte do código é o Gmail.",
+    });
+
 
 
     // ------------------------------------------------------ etapas já concluídas
