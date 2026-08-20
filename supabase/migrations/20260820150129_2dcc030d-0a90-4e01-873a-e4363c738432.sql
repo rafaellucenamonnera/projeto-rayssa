@@ -1,0 +1,1 @@
+ALTER TABLE public.canva_material_generations ALTER COLUMN template_design_id DROP NOT NULL;
