@@ -12,11 +12,13 @@ Confirmado no banco: `template_design_id` e `design_id` estão como NOT NULL; n�
 2. Manter a mesma rotina `register_canva_material`, com a mesma assinatura, sem mudar validações (código de 8 caracteres, link `https://canva.link/...`, card não bloqueado, código igual ao do card).
 3. Na tela do card, gravar a entrada manual com:
    - `source = "manual_link"`;
-   - `design_id` = token final do próprio link público (sem criar design no Canva);
-   - `template_design_id` = ausente;
-   - evidência preservada em `metadata`: link informado, origem manual, card, código e data.
-   O usuário autor e a data já são gravados pelo banco (`created_by`, `created_at`), e o histórico do card continua recebendo o evento `canva_material_gerado`.
-4. Após o link salvo com sucesso, a tela dispara automaticamente a continuidade do fluxo a partir da etapa Canva (mesma chamada já usada pelo painel de etapas, em execução real e idempotente). O operador não precisa mover o card manualmente.
+   - `design_id` = apenas o token final do próprio link público, usado só como chave de idempotência — nunca tratado como design criado via API do Canva;
+   - `template_design_id` = nulo;
+   - `metadata` com: `source_type = "manual_link"`, `canva_design_created = false`, `public_link_validated = true`, token do link, URL pública completa, usuário e data.
+   O usuário autor e a data também são gravados pelo banco (`created_by`, `created_at`), e o histórico do card continua recebendo o evento `canva_material_gerado`.
+4. Após o link salvo com sucesso, a tela dispara a continuidade automática: executa **somente** a etapa Canva pendente e reavalia os gates seguintes, sem forçar nenhuma outra ação. O operador não precisa mover o card manualmente.
+5. Reenviar o mesmo link retorna o registro já existente (índice único `card_id + código + design_id`), sem criar duplicidade nem nova versão.
+
 
 ## O que continua igual
 
@@ -33,4 +35,4 @@ Confirmado no banco: `template_design_id` e `design_id` estão como NOT NULL; n�
 
 ## Teste
 
-No card TESTE FASE A QA: salvar um link `https://canva.link/...` válido, confirmar gravação (badge "Link confirmado"), conferir o registro em `canva_material_generations` com `source = manual_link`, e verificar que a etapa Canva do painel de etapas passa a "Concluído" sem envio de e-mail nem movimentação indevida. Repetir o mesmo link não deve criar registro duplicado.
+Teste exclusivamente no card TESTE FASE A QA, confirmando: badge "Link confirmado"; registro com `source = manual_link`; `template_design_id` nulo; `metadata.canva_design_created = false`; etapa Canva concluída no painel de etapas; nenhum e-mail enviado; nenhuma movimentação de etapa indevida; e o mesmo link salvo novamente retorna o registro existente, sem duplicidade.
