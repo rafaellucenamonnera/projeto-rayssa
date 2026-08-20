@@ -293,7 +293,7 @@ export interface OnboardingEmailFields {
   linkMaterial: string;
 }
 
-export const DEMO_CODES = new Set(["3SAXJF92", "UB5PXGDB", "XXXXXXXX", "XXXXXXX"]);
+export const DEMO_CODES = new Set(["UB5PXGDB", "XXXXXXXX", "XXXXXXX"]);
 
 const escapeHtml = (value: string) =>
   value

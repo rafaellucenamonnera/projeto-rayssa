@@ -106,7 +106,7 @@ export const PENDING_LABEL: Record<string, string> = {
 export const MONNERA_CODE_RE = /^[A-Z0-9]{8}$/;
 
 /** Códigos demonstrativos: mesmo no formato válido, nunca são código real. */
-export const DEMO_MONNERA_CODES = new Set(["3SAXJF92", "UB5PXGDB", "XXXXXXX", "XXXXXXXX"]);
+export const DEMO_MONNERA_CODES = new Set(["UB5PXGDB", "XXXXXXX", "XXXXXXXX"]);
 
 export const isDemoMonneraCode = (value: string) =>
   DEMO_MONNERA_CODES.has(value.trim().toUpperCase());
@@ -311,7 +311,7 @@ export const extractFromConversation = (messages: WhatsappMessage[]): WhatsappEx
     ? null
     : firstMatch(usable, UNCONFIRMED_CODE_RE, 0);
 
-  const demoHit = firstMatch(usable, /\b(3SAXJF92|UB5PXGDB|X{7,8})\b/i, 0);
+  const demoHit = firstMatch(usable, /\b(UB5PXGDB|X{7,8})\b/i, 0);
 
   let codigo: { value: string; snippet: string; msg: WhatsappMessage } | null = null;
   if (demoHit || (codigoOficial && isDemoMonneraCode(codigoOficial.value))) {

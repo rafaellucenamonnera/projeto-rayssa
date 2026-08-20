@@ -1,7 +1,8 @@
 // Exibição do Código Monnera no painel Onb Clientes Cross.
 // Usa somente o código já salvo no card. Códigos de exemplo nunca aparecem como válidos.
 
-export const DEMO_MONNERA_CODES = new Set(["3SAXJF92", "UB5PXGDB", "XXXXXXX", "XXXXXXXX"]);
+// 3SAXJF92 foi removido desta lista: é um código real (MB-4815 / DISTRIBUIDORA MASCOTE).
+export const DEMO_MONNERA_CODES = new Set(["UB5PXGDB", "XXXXXXX", "XXXXXXXX"]);
 
 export type MonneraCodeDisplay =
   | { state: "aguardando"; label: "aguardando"; code: null }

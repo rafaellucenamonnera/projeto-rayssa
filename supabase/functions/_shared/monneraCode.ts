@@ -1,6 +1,6 @@
 // Validação do código Monnera (8 caracteres A-Z0-9), com lista de códigos demonstrativos proibidos.
+// 3SAXJF92 saiu da lista: é código real (MB-4815 / DISTRIBUIDORA MASCOTE).
 export const DEMO_MONNERA_CODES = new Set([
-  "3SAXJF92",
   "UB5PXGDB",
   "XXXXXXX",
   "XXXXXXXX",
