@@ -444,6 +444,45 @@ export default function AdminEmailOnboarding() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={resendOpen} onOpenChange={setResendOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Atenção: este e-mail já foi enviado</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-1 text-sm">
+                <p>
+                  Já existe um envio concluído para <strong>{codigo.trim().toUpperCase()}</strong>. Ao continuar,
+                  você está fazendo um <strong>REENVIO</strong> e o destinatário receberá o e-mail novamente.
+                </p>
+                <p>
+                  <strong>Enviado em:</strong>{" "}
+                  {resendInfo?.sentAt ? new Date(resendInfo.sentAt).toLocaleString("pt-BR") : "-"}
+                </p>
+                <p className="break-all"><strong>message_id anterior:</strong> {resendInfo?.messageId ?? "-"}</p>
+                <p className="break-all">
+                  <strong>Destinatários anteriores:</strong>{" "}
+                  {resendInfo?.destinatarios?.join(", ") || "-"}
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={sending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={sending}
+              onClick={(e) => {
+                e.preventDefault();
+                handleSend(true);
+              }}
+            >
+              {sending ? "Reenviando..." : "Confirmar reenvio"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
+
     </div>
   );
 }
