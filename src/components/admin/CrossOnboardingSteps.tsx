@@ -205,6 +205,24 @@ export default function CrossOnboardingSteps({ cardId, canRun }: Props) {
         )}
       </CardContent>
 
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Executar avanço do fluxo</DialogTitle>
+            <DialogDescription>
+              As etapas serão percorridas em sequência até o primeiro bloqueio. O card pode ser movido de etapa e
+              pendências podem ser registradas. O envio de e-mail continua restrito à autorização já existente.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={executing}>Cancelar</Button>
+            <Button onClick={() => void runReal()} disabled={executing}>
+              {executing && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Executar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={resumeOpen} onOpenChange={setResumeOpen}>
         <DialogContent>
           <DialogHeader>
