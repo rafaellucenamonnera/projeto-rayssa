@@ -184,6 +184,7 @@ Deno.serve(async (req) => {
       return json({ error: "Código Monnera ausente no card ou diferente do informado. Envio bloqueado." }, 422);
     }
 
+    // Etapa do card é informativa: não bloqueia o envio quando os dados estão completos.
     const stageId = String(card.stage_id ?? "");
     const { data: stageRow } = await admin
       .from("pipeline_stages_config")
@@ -191,17 +192,21 @@ Deno.serve(async (req) => {
       .eq("value", stageId)
       .maybeSingle();
     const stageLabel = String(stageRow?.label ?? "");
+    const avisos: string[] = [];
     if (!/material\s+onboarding/i.test(stageLabel)) {
+      avisos.push(
+        `Card fora da etapa Material Onboarding Cliente (${stageLabel || stageId || "sem etapa"}). Envio autorizado mesmo assim.`,
+      );
       await admin.rpc("record_automation_run", {
         p_stage: "onboarding_email",
-        p_status: "erro",
+        p_status: "aviso",
         p_card_id: cardId,
-        p_error: `Card fora da etapa Material Onboarding Cliente (${stageLabel || stageId || "sem etapa"})`,
+        p_error: `Envio fora da etapa Material Onboarding Cliente (${stageLabel || stageId || "sem etapa"})`,
         p_origin: "send-onboarding-email",
         p_payload: { stage_id: stageId, stage_label: stageLabel },
       });
-      return json({ error: "Card não está na etapa Material Onboarding Cliente. Envio bloqueado." }, 422);
     }
+
 
 
     // --------------------------------------------- link publico obrigatorio
