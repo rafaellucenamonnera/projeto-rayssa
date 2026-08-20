@@ -2714,8 +2714,18 @@ const AdminLeads = () => {
                       {(() => {
                         const info = describeMonneraCode(detailLead.codigo_monnera);
                         const tone = info.state === "valido" ? "text-emerald-500" : info.state === "aguardando" ? "text-muted-foreground" : "text-amber-500";
-                        return <p className={`text-xs font-mono mt-0.5 ${tone}`}>Código Monnera: {info.label}</p>;
+                        return (
+                          <>
+                            <p className={`text-xs font-mono mt-0.5 ${tone}`}>Código Monnera: {info.label}</p>
+                            {info.state === "valido" && (detailLead as any).codigo_monnera_origem && (
+                              <p className="text-[11px] text-muted-foreground mt-0.5">
+                                Origem: {(detailLead as any).codigo_monnera_origem}
+                              </p>
+                            )}
+                          </>
+                        );
                       })()}
+
                     </div>
 
                     <div>
