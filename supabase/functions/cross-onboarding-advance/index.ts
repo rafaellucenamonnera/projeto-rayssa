@@ -375,6 +375,7 @@ Deno.serve(async (req) => {
           break;
         }
         done[step] = "sucesso";
+        if (payload.message_id) messageIds[step] = payload.message_id as string;
         if (moves[step] && !payload.already_in_stage) currentStage = moves[step].to;
         continue;
       }
