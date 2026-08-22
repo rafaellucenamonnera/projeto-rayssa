@@ -2810,7 +2810,6 @@ const AdminLeads = () => {
                     }}
                   />
                   <CanvaPublicLinkSection
-
                     cardId={detailLead.id}
                     canEdit={canEditLead}
                     cardName={detailLead.full_name}
@@ -2820,7 +2819,16 @@ const AdminLeads = () => {
                       setDetailLead((prev: any) => (prev ? { ...prev, canva_public_url: url, canva_material_url: url } : prev));
                     }}
                   />
-                  <CrossOnboardingSteps cardId={detailLead.id} canRun={canEditLead} />
+                  <CrossOnboardingSteps
+                    cardId={detailLead.id}
+                    canRun={canEditLead}
+                    card={detailLead}
+                    onCardMoved={(stageId) => {
+                      setDetailLead((prev: any) => (prev ? { ...prev, stage_id: stageId } : prev));
+                      setLeads((prev: any[]) => prev.map((l) => (l.id === detailLead.id ? { ...l, stage_id: stageId } : l)));
+                    }}
+                  />
+
                   <CardOriginTimeline cardId={detailLead.id} canEdit={canEditLead} />
 
                   <RepresentativeCardNotes cardId={detailLead.id} canEdit={canEditLead} />
