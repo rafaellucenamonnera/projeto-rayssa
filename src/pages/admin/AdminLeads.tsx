@@ -2809,17 +2809,8 @@ const AdminLeads = () => {
                       setLeads((prev: any[]) => prev.map((l) => (l.id === detailLead.id ? { ...l, ...patch } : l)));
                     }}
                   />
-                  <JiraTaskDialog
-                    cardId={detailLead.id}
-                    jiraIssueKey={detailLead.jira_issue_key}
-                    jiraStatus={detailLead.jira_issue_status}
-                    canEdit={canEditLead}
-                    onCreated={(issueKey) => {
-                      setDetailLead((prev: any) => (prev ? { ...prev, jira_issue_key: issueKey, jira_issue_status: "criada" } : prev));
-                      setLeads((prev: any[]) => prev.map((l) => (l.id === detailLead.id ? { ...l, jira_issue_key: issueKey } : l)));
-                    }}
-                  />
                   <CanvaPublicLinkSection
+
                     cardId={detailLead.id}
                     canEdit={canEditLead}
                     cardName={detailLead.full_name}
