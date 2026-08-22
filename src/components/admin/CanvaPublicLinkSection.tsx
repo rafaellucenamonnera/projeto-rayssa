@@ -116,18 +116,10 @@ export default function CanvaPublicLinkSection({
 
     setSaved(publicUrl);
     setLink("");
-    toast.success("Link público confirmado. Continuando o fluxo a partir da etapa Canva.");
+    toast.success("Link público confirmado. Marque a conferência do material no checklist do card.");
     onSaved?.(publicUrl);
-
-    // Continuidade automática: executa somente a etapa Canva pendente e reavalia
-    // os gates seguintes. Não envia e-mail nem move o card por conta própria.
-    const { error: advanceError } = await supabase.functions.invoke("cross-onboarding-advance", {
-      body: { card_id: cardId, dry_run: false, origin: "resume", resume_from: "canva_pronto" },
-    });
-    if (advanceError) {
-      toast.warning("Link salvo. A continuidade automática não pôde ser concluída — verifique a pendência no card.");
-    }
   };
+
 
 
   return (

@@ -59,7 +59,6 @@ import {
 import { CampaignMoveDialog, CampanhaConcluidaDialog } from "@/components/admin/CampaignFlowDialogs";
 import CardAttachments from "@/components/admin/CardAttachments";
 import OnboardingEmailQaSection from "@/components/admin/OnboardingEmailQaSection";
-import JiraTaskDialog from "@/components/admin/JiraTaskDialog";
 import CanvaPublicLinkSection from "@/components/admin/CanvaPublicLinkSection";
 import CrossOnboardingSteps from "@/components/admin/CrossOnboardingSteps";
 import CrossFlowAlert from "@/components/admin/CrossFlowAlert";
@@ -2809,16 +2808,6 @@ const AdminLeads = () => {
                       setLeads((prev: any[]) => prev.map((l) => (l.id === detailLead.id ? { ...l, ...patch } : l)));
                     }}
                   />
-                  <JiraTaskDialog
-                    cardId={detailLead.id}
-                    jiraIssueKey={detailLead.jira_issue_key}
-                    jiraStatus={detailLead.jira_issue_status}
-                    canEdit={canEditLead}
-                    onCreated={(issueKey) => {
-                      setDetailLead((prev: any) => (prev ? { ...prev, jira_issue_key: issueKey, jira_issue_status: "criada" } : prev));
-                      setLeads((prev: any[]) => prev.map((l) => (l.id === detailLead.id ? { ...l, jira_issue_key: issueKey } : l)));
-                    }}
-                  />
                   <CanvaPublicLinkSection
                     cardId={detailLead.id}
                     canEdit={canEditLead}
@@ -2829,7 +2818,16 @@ const AdminLeads = () => {
                       setDetailLead((prev: any) => (prev ? { ...prev, canva_public_url: url, canva_material_url: url } : prev));
                     }}
                   />
-                  <CrossOnboardingSteps cardId={detailLead.id} canRun={canEditLead} />
+                  <CrossOnboardingSteps
+                    cardId={detailLead.id}
+                    canRun={canEditLead}
+                    card={detailLead}
+                    onCardMoved={(stageId) => {
+                      setDetailLead((prev: any) => (prev ? { ...prev, stage_id: stageId } : prev));
+                      setLeads((prev: any[]) => prev.map((l) => (l.id === detailLead.id ? { ...l, stage_id: stageId } : l)));
+                    }}
+                  />
+
                   <CardOriginTimeline cardId={detailLead.id} canEdit={canEditLead} />
 
                   <RepresentativeCardNotes cardId={detailLead.id} canEdit={canEditLead} />
