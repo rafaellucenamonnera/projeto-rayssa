@@ -2742,6 +2742,7 @@ export type Database = {
           representative_card_id: string
           size_bytes: number | null
           storage_path: string
+          task_id: string | null
         }
         Insert: {
           content_sha256?: string | null
@@ -2753,6 +2754,7 @@ export type Database = {
           representative_card_id: string
           size_bytes?: number | null
           storage_path: string
+          task_id?: string | null
         }
         Update: {
           content_sha256?: string | null
@@ -2764,6 +2766,7 @@ export type Database = {
           representative_card_id?: string
           size_bytes?: number | null
           storage_path?: string
+          task_id?: string | null
         }
         Relationships: [
           {
@@ -2771,6 +2774,13 @@ export type Database = {
             columns: ["representative_card_id"]
             isOneToOne: false
             referencedRelation: "representative_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "representative_card_attachments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "representative_card_tasks"
             referencedColumns: ["id"]
           },
         ]
