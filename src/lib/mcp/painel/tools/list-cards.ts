@@ -76,9 +76,8 @@ export default defineTool({
       }
 
       const { data, error, count } = await query;
-      if (error) return { content: [], isError: true, ...JSON.parse("{}") } && (await Promise.resolve(
-        (await import("../shared")).failure("QUERY_FAILED", error.message)
-      ));
+      if (error) return failure("QUERY_FAILED", error.message);
+
 
       const labels = new Map(stages.map((s) => [s.value, s.label]));
       const cards = (data ?? []).map((c: Record<string, unknown>) => ({
