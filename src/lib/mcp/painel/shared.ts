@@ -66,12 +66,31 @@ export function failure(error_code: string, message: string, details: Json = {})
   };
 }
 
-export function requireUser(ctx: ToolContext): string {
-  if (!ctx.isAuthenticated()) throw new Error("UNAUTHENTICATED: sessão OAuth obrigatória.");
-  const userId = ctx.getUserId();
-  if (!userId) throw new Error("UNAUTHENTICATED: não foi possível identificar o usuário.");
-  return userId;
+/** Retorna o user id autenticado ou null. */
+export function authUser(ctx: ToolContext): string | null {
+  if (!ctx.isAuthenticated()) return null;
+  return ctx.getUserId() ?? null;
 }
+
+export const UNAUTH = () =>
+  failure("UNAUTHENTICATED", "Sessão OAuth obrigatória para usar esta ferramenta.");
+
+export const CARD_NOT_FOUND = (card_id: string) =>
+  failure("CARD_NOT_FOUND", "Card não encontrado no painel ou sem permissão de acesso.", {
+    card_id,
+    panel_id: PANEL_ID,
+  });
+
+/** Executa o handler capturando erros inesperados em formato JSON padronizado. */
+export async function guard<T>(operation: string, fn: () => Promise<T>) {
+  try {
+    return await fn();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return failure("INTERNAL_ERROR", message, { operation });
+  }
+}
+
 
 export function client(ctx: ToolContext) {
   return supabaseForUser(ctx);
