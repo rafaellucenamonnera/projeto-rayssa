@@ -51,7 +51,8 @@ export default defineMcp({
   title: "Monnera Parceiros",
   version: "0.1.0",
   instructions:
-    "Ferramentas do CRM Monnera Parceiros. Use listar_paineis para descobrir painéis e etapas, listar_embaixadores para obter o parceiro_id antes de criar um lead e listar_responsaveis para definir responsáveis. Cards de lead vivem no painel comercial; clientes do painel Onb Clientes Cross usam as ferramentas *_cliente_cross — inclusive mover_cliente_cross_etapa (aceita o rótulo da etapa, ex.: \"Aguardando Informações\") e anexar_arquivo_cliente_cross para upload de anexos em base64. Para o painel Onb Clientes Cross use listar_clientes_cross e obter_cliente_cross para localizar cards, listar_etapas_cross para descobrir stage_ids, e as ferramentas de comentário, tarefa e anexo específicas desse painel. Todas as ações respeitam as permissões do usuário autenticado.",
+    "Ferramentas do CRM Monnera Parceiros. Painel Onb Clientes Cross (painel_msj9fyji): use as ferramentas em inglês list_cards, find_cards_by_cnpj, get_card, create_card, update_card, move_card, list_tasks, create_task, update_task, complete_task, reopen_task, add_note, list_attachments, attach_file, get_attachment_url, delete_attachment e get_card_history — todas retornam JSON padronizado com success, operation, data e evidence, e operam exclusivamente nesse painel. find_cards_by_cnpj aceita CNPJ com ou sem máscara e retorna todos os cards encontrados sem decidir duplicidade. attach_file recebe o arquivo em base64 (até 10 MB) e pode vincular o anexo a uma tarefa. Nenhuma dessas ferramentas dispara automações, e-mails ou integrações: só executam o que o agente pedir. Para o painel comercial use listar_paineis, listar_leads, listar_embaixadores e listar_responsaveis. Todas as ações respeitam as permissões do usuário autenticado.",
+
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",
