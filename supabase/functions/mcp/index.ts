@@ -1104,7 +1104,7 @@ async function sha256Hex(bytes) {
 async function loadCard(supabase, cardId, fields = CARD_FIELDS) {
   const { data, error } = await supabase.from("representative_cards").select(fields).eq("id", cardId).eq("panel_id", PANEL_ID).maybeSingle();
   if (error) throw new Error(error.message);
-  return data;
+  return data ?? null;
 }
 async function stageLabels(supabase) {
   const { data } = await supabase.from("pipeline_stages_config").select("value, label, sort_order").eq("panel_key", PANEL_ID).order("sort_order");

@@ -139,7 +139,7 @@ export async function loadCard(
     .eq("panel_id", PANEL_ID)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  return data as Record<string, unknown> | null;
+  return (data ?? null) as unknown as Record<string, unknown> | null;
 }
 
 export async function stageLabels(supabase: ReturnType<typeof supabaseForUser>) {
