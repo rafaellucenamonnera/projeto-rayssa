@@ -24,6 +24,26 @@ import listarComentariosClienteCross from "./tools/listar-comentarios-cliente-cr
 import criarTarefaClienteCross from "./tools/criar-tarefa-cliente-cross";
 import listarTarefasClienteCross from "./tools/listar-tarefas-cliente-cross";
 
+import listCards from "./painel/tools/list-cards";
+import findCardsByCnpj from "./painel/tools/find-cards-by-cnpj";
+import getCard from "./painel/tools/get-card";
+import createCard from "./painel/tools/create-card";
+import updateCard from "./painel/tools/update-card";
+import moveCard from "./painel/tools/move-card";
+import listTasks from "./painel/tools/list-tasks";
+import createTask from "./painel/tools/create-task";
+import updateTask from "./painel/tools/update-task";
+import completeTask from "./painel/tools/complete-task";
+import reopenTask from "./painel/tools/reopen-task";
+import addNote from "./painel/tools/add-note";
+import listAttachments from "./painel/tools/list-attachments";
+import attachFile from "./painel/tools/attach-file";
+import getAttachmentUrl from "./painel/tools/get-attachment-url";
+import deleteAttachment from "./painel/tools/delete-attachment";
+import getCardHistory from "./painel/tools/get-card-history";
+
+
+
 const projectRef = import.meta.env.VITE_SUPABASE_PROJECT_ID ?? "project-ref-unset";
 
 export default defineMcp({
