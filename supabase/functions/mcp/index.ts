@@ -1001,6 +1001,923 @@ var listar_tarefas_cliente_cross_default = defineTool23({
   }
 });
 
+// src/lib/mcp/painel/tools/list-cards.ts
+import { defineTool as defineTool24 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z21 } from "npm:zod@^3.25.76";
+
+// src/lib/mcp/painel/shared.ts
+var PANEL_ID = "painel_msj9fyji";
+var ATTACHMENT_BUCKET = "representative-card-attachments";
+var MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+var ALLOWED_EXTENSIONS = [
+  "pdf",
+  "doc",
+  "docx",
+  "xls",
+  "xlsx",
+  "csv",
+  "txt",
+  "html",
+  "json",
+  "jpg",
+  "jpeg",
+  "png",
+  "gif",
+  "webp"
+];
+var MIME_BY_EXTENSION = {
+  pdf: "application/pdf",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  csv: "text/csv",
+  txt: "text/plain",
+  html: "text/html",
+  json: "application/json",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  gif: "image/gif",
+  webp: "image/webp"
+};
+var CARD_FIELDS = "id, panel_id, stage_id, full_name, cnpj, phone, email, notes, city, state, region, status, source, responsible_user_id, created_by_user_id, parceiro_id, partner_code, focal_name, focal_phone, focal_email, contratante_monnera, vendor_name, vendor_phone, vendor_email, codigo_monnera, codigo_source, jira_issue_key, jira_issue_status, canva_public_url, canva_internal_url, canva_material_url, is_blocked, blocked_reason, is_protected, pending_complement, pending_fields, test_mode, created_at, updated_at";
+function success(operation, data, extra = {}) {
+  const payload = {
+    success: true,
+    operation,
+    ...extra,
+    data,
+    evidence: { queried_at: (/* @__PURE__ */ new Date()).toISOString(), panel_id: PANEL_ID }
+  };
+  return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }] };
+}
+function failure(error_code, message, details = {}) {
+  const payload = { success: false, error_code, message, details };
+  return {
+    content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+    isError: true
+  };
+}
+function authUser(ctx) {
+  if (!ctx.isAuthenticated()) return null;
+  return ctx.getUserId() ?? null;
+}
+var UNAUTH = () => failure("UNAUTHENTICATED", "Sess\xE3o OAuth obrigat\xF3ria para usar esta ferramenta.");
+var CARD_NOT_FOUND = (card_id) => failure("CARD_NOT_FOUND", "Card n\xE3o encontrado no painel ou sem permiss\xE3o de acesso.", {
+  card_id,
+  panel_id: PANEL_ID
+});
+async function guard(operation, fn) {
+  try {
+    return await fn();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return failure("INTERNAL_ERROR", message, { operation });
+  }
+}
+function client(ctx) {
+  return supabaseForUser(ctx);
+}
+function digitsOnly(value) {
+  return (value ?? "").replace(/\D/g, "");
+}
+function safeFileName(name) {
+  const base = name.split(/[\\/]/).pop() ?? "";
+  const clean = base.replace(/\.{2,}/g, ".").replace(/[^\w.\-]+/g, "_").replace(/^\.+/, "");
+  return clean.slice(0, 180);
+}
+function extensionOf(name) {
+  return safeFileName(name).split(".").pop()?.toLowerCase() ?? "";
+}
+function decodeBase642(input) {
+  const clean = input.startsWith("data:") && input.includes(",") ? input.slice(input.indexOf(",") + 1) : input;
+  const binary = atob(clean.replace(/\s+/g, ""));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+async function sha256Hex(bytes) {
+  const digest = await crypto.subtle.digest("SHA-256", bytes.slice().buffer);
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+async function loadCard(supabase, cardId, fields = CARD_FIELDS) {
+  const { data, error } = await supabase.from("representative_cards").select(fields).eq("id", cardId).eq("panel_id", PANEL_ID).maybeSingle();
+  if (error) throw new Error(error.message);
+  return data;
+}
+async function stageLabels(supabase) {
+  const { data } = await supabase.from("pipeline_stages_config").select("value, label, sort_order").eq("panel_key", PANEL_ID).order("sort_order");
+  return data ?? [];
+}
+async function logHistory(supabase, params) {
+  const { error } = await supabase.from("representative_card_history").insert({
+    representative_card_id: params.cardId,
+    actor_user_id: params.userId,
+    actor_label: params.actorLabel ?? "mcp",
+    action: params.action,
+    source_stage_id: params.sourceStageId ?? null,
+    destination_stage_id: params.destinationStageId ?? null,
+    payload: { origem: "mcp", ...params.payload ?? {} }
+  });
+  if (error) console.error("[mcp painel] falha ao registrar hist\xF3rico:", error.message);
+}
+
+// src/lib/mcp/painel/tools/list-cards.ts
+var list_cards_default = defineTool24({
+  name: "list_cards",
+  title: "Listar cards do painel",
+  description: "Lista e pesquisa cards do painel painel_msj9fyji por nome, CNPJ, e-mail ou etapa, com pagina\xE7\xE3o. Somente leitura.",
+  inputSchema: {
+    query: z21.string().optional().describe("Texto livre: raz\xE3o social, contato, e-mail, CNPJ ou contratante."),
+    nome: z21.string().optional().describe("Pesquisa por nome/raz\xE3o social do parceiro."),
+    email: z21.string().optional().describe("Pesquisa por e-mail (focal ou vendedor)."),
+    cnpj: z21.string().optional().describe("Pesquisa por CNPJ (com ou sem m\xE1scara)."),
+    stage_id: z21.string().optional().describe("Filtra por etapa (stage_id ou r\xF3tulo exato)."),
+    limit: z21.number().int().optional().describe("Registros por p\xE1gina (padr\xE3o 25, m\xE1ximo 200)."),
+    offset: z21.number().int().optional().describe("Deslocamento para pagina\xE7\xE3o (padr\xE3o 0).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async (input, ctx) => guard("list_cards", async () => {
+    if (!authUser(ctx)) return UNAUTH();
+    const supabase = client(ctx);
+    const take = Math.min(Math.max(input.limit ?? 25, 1), 200);
+    const skip = Math.max(input.offset ?? 0, 0);
+    let query = supabase.from("representative_cards").select(CARD_FIELDS, { count: "exact" }).eq("panel_id", PANEL_ID).order("created_at", { ascending: false }).range(skip, skip + take - 1);
+    const stages = await stageLabels(supabase);
+    if (input.stage_id) {
+      const alvo = input.stage_id.trim().toLowerCase();
+      const stage = stages.find(
+        (s) => s.value.toLowerCase() === alvo || (s.label ?? "").toLowerCase() === alvo
+      );
+      query = query.eq("stage_id", stage?.value ?? input.stage_id.trim());
+    }
+    if (input.nome?.trim()) query = query.ilike("full_name", `%${input.nome.trim()}%`);
+    if (input.email?.trim()) {
+      const like = `%${input.email.trim()}%`;
+      query = query.or(`focal_email.ilike.${like},email.ilike.${like},vendor_email.ilike.${like}`);
+    }
+    const cnpjDigits = digitsOnly(input.cnpj);
+    if (cnpjDigits) query = query.ilike("cnpj", `%${cnpjDigits}%`);
+    if (input.query?.trim()) {
+      const termo = input.query.trim().replace(/[,()]/g, " ");
+      const like = `%${termo}%`;
+      const filtros = [
+        `full_name.ilike.${like}`,
+        `focal_name.ilike.${like}`,
+        `focal_email.ilike.${like}`,
+        `email.ilike.${like}`,
+        `contratante_monnera.ilike.${like}`,
+        `vendor_name.ilike.${like}`,
+        `vendor_email.ilike.${like}`
+      ];
+      const digits = digitsOnly(termo);
+      if (digits) filtros.push(`cnpj.ilike.%${digits}%`);
+      query = query.or(filtros.join(","));
+    }
+    const { data, error, count } = await query;
+    if (error) return failure("QUERY_FAILED", error.message);
+    const labels = new Map(stages.map((s) => [s.value, s.label]));
+    const cards = (data ?? []).map((c) => ({
+      ...c,
+      card_id: c.id,
+      stage_label: labels.get(String(c.stage_id)) ?? c.stage_id
+    }));
+    const total = count ?? cards.length;
+    return success("list_cards", cards, {
+      total,
+      limit: take,
+      offset: skip,
+      returned: cards.length,
+      has_more: skip + cards.length < total,
+      next_offset: skip + cards.length < total ? skip + cards.length : null
+    });
+  })
+});
+
+// src/lib/mcp/painel/tools/find-cards-by-cnpj.ts
+import { defineTool as defineTool25 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z22 } from "npm:zod@^3.25.76";
+var find_cards_by_cnpj_default = defineTool25({
+  name: "find_cards_by_cnpj",
+  title: "Pesquisar cards por CNPJ",
+  description: "Consulta cards do painel painel_msj9fyji por CNPJ (aceita com ou sem m\xE1scara, normaliza para 14 d\xEDgitos) e retorna todos os encontrados. N\xE3o decide duplicidade nem altera dados.",
+  inputSchema: {
+    cnpj: z22.string().describe("CNPJ com ou sem m\xE1scara.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ cnpj }, ctx) => guard("find_cards_by_cnpj", async () => {
+    if (!authUser(ctx)) return UNAUTH();
+    const digits = digitsOnly(cnpj);
+    if (digits.length !== 14) {
+      return failure("INVALID_CNPJ", "CNPJ inv\xE1lido: s\xE3o necess\xE1rios 14 d\xEDgitos.", {
+        received: cnpj,
+        normalized: digits
+      });
+    }
+    const supabase = client(ctx);
+    const { data, error } = await supabase.from("representative_cards").select(CARD_FIELDS).eq("panel_id", PANEL_ID).order("created_at", { ascending: true }).limit(500);
+    if (error) return failure("QUERY_FAILED", error.message);
+    const stages = await stageLabels(supabase);
+    const labels = new Map(stages.map((s) => [s.value, s.label]));
+    const cards = (data ?? []).filter((c) => digitsOnly(String(c.cnpj ?? "")) === digits).map((c) => ({
+      ...c,
+      card_id: c.id,
+      stage_label: labels.get(String(c.stage_id)) ?? c.stage_id
+    }));
+    return success("find_cards_by_cnpj", cards, { cnpj: digits, matches: cards.length });
+  })
+});
+
+// src/lib/mcp/painel/tools/get-card.ts
+import { defineTool as defineTool26 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z23 } from "npm:zod@^3.25.76";
+var get_card_default = defineTool26({
+  name: "get_card",
+  title: "Consultar card por ID",
+  description: "Retorna todos os campos de um card do painel painel_msj9fyji, incluindo etapa, tarefas, coment\xE1rios e anexos. Somente leitura.",
+  inputSchema: {
+    card_id: z23.string().describe("UUID do card."),
+    include_tasks: z23.boolean().optional().describe("Incluir tarefas (padr\xE3o true)."),
+    include_attachments: z23.boolean().optional().describe("Incluir anexos (padr\xE3o true)."),
+    include_notes: z23.boolean().optional().describe("Incluir coment\xE1rios/observa\xE7\xF5es (padr\xE3o true).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ card_id, include_tasks, include_attachments, include_notes }, ctx) => guard("get_card", async () => {
+    if (!authUser(ctx)) return UNAUTH();
+    const supabase = client(ctx);
+    const card = await loadCard(supabase, card_id, "*");
+    if (!card) return CARD_NOT_FOUND(card_id);
+    const stages = await stageLabels(supabase);
+    const stage = stages.find((s) => s.value === card.stage_id);
+    const data = {
+      card_id,
+      panel_id: PANEL_ID,
+      stage: stage ? { stage_id: stage.value, label: stage.label, sort_order: stage.sort_order } : { stage_id: card.stage_id },
+      card
+    };
+    if (include_tasks !== false) {
+      const { data: tasks } = await supabase.from("representative_card_tasks").select("id, titulo, descricao, due_at, assigned_to, status, completed_at, completed_note, created_at, updated_at").eq("representative_card_id", card_id).is("deleted_at", null).order("due_at", { ascending: true });
+      data.tasks = tasks ?? [];
+    }
+    if (include_notes !== false) {
+      const { data: notes } = await supabase.from("representative_card_comments").select("id, usuario, comentario, etapa, data_comentario").eq("representative_card_id", card_id).order("data_comentario", { ascending: false }).limit(100);
+      data.notes = notes ?? [];
+    }
+    if (include_attachments !== false) {
+      const { data: attachments } = await supabase.from("representative_card_attachments").select("id, task_id, file_name, mime_type, size_bytes, content_sha256, created_at").eq("representative_card_id", card_id).order("created_at", { ascending: false });
+      data.attachments = attachments ?? [];
+    }
+    return success("get_card", data, { card_id });
+  })
+});
+
+// src/lib/mcp/painel/tools/create-card.ts
+import { defineTool as defineTool27 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z24 } from "npm:zod@^3.25.76";
+var create_card_default = defineTool27({
+  name: "create_card",
+  title: "Criar card no painel",
+  description: "Cria um card no painel painel_msj9fyji com os dados enviados pelo agente. N\xE3o dispara automa\xE7\xF5es, e-mails nem integra\xE7\xF5es.",
+  inputSchema: {
+    razao_social: z24.string().describe("Raz\xE3o social / nome do parceiro."),
+    cnpj: z24.string().describe("CNPJ com ou sem m\xE1scara (14 d\xEDgitos)."),
+    nome_contato_parceiro: z24.string().optional().describe("Nome do contato focal."),
+    telefone_parceiro: z24.string().optional(),
+    email_parceiro: z24.string().optional(),
+    contratante: z24.string().optional().describe("Contratante Monnera."),
+    responsavel: z24.string().optional().describe("UUID do usu\xE1rio respons\xE1vel."),
+    codigo_monnera: z24.string().optional(),
+    jira_issue_key: z24.string().optional(),
+    stage_id: z24.string().optional().describe("Etapa inicial (stage_id ou r\xF3tulo). Padr\xE3o: primeira etapa do painel."),
+    observacao: z24.string().optional().describe("Anota\xE7\xF5es do card (at\xE9 500 caracteres).")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  handler: async (input, ctx) => guard("create_card", async () => {
+    const userId = authUser(ctx);
+    if (!userId) return UNAUTH();
+    const supabase = client(ctx);
+    const nome = input.razao_social.trim();
+    if (!nome) return failure("INVALID_INPUT", "razao_social \xE9 obrigat\xF3rio.");
+    const cnpj = digitsOnly(input.cnpj);
+    if (cnpj.length !== 14) return failure("INVALID_CNPJ", "CNPJ inv\xE1lido: s\xE3o necess\xE1rios 14 d\xEDgitos.", { cnpj });
+    if ((input.observacao?.length ?? 0) > 500)
+      return failure("INVALID_INPUT", "observacao deve ter no m\xE1ximo 500 caracteres.");
+    const stages = await stageLabels(supabase);
+    let stageId = stages[0]?.value;
+    if (input.stage_id) {
+      const alvo = input.stage_id.trim().toLowerCase();
+      const stage = stages.find(
+        (s) => s.value.toLowerCase() === alvo || (s.label ?? "").toLowerCase() === alvo
+      );
+      if (!stage)
+        return failure("STAGE_NOT_FOUND", `Etapa "${input.stage_id}" n\xE3o existe neste painel.`, {
+          stages: stages.map((s) => ({ stage_id: s.value, label: s.label }))
+        });
+      stageId = stage.value;
+    }
+    if (!stageId) return failure("STAGE_NOT_FOUND", "O painel n\xE3o possui etapas configuradas.");
+    const email = input.email_parceiro?.trim().toLowerCase() || null;
+    const phone = input.telefone_parceiro?.trim() || null;
+    const { data, error } = await supabase.from("representative_cards").insert({
+      panel_id: PANEL_ID,
+      stage_id: stageId,
+      full_name: nome,
+      cnpj,
+      focal_name: input.nome_contato_parceiro?.trim() || null,
+      focal_phone: phone,
+      focal_email: email,
+      phone: phone ?? "",
+      email: email ?? "",
+      contratante_monnera: input.contratante?.trim() || null,
+      responsible_user_id: input.responsavel?.trim() || null,
+      codigo_monnera: input.codigo_monnera?.trim() || null,
+      jira_issue_key: input.jira_issue_key?.trim() || null,
+      notes: input.observacao?.trim() || null,
+      created_by_user_id: userId,
+      source: "mcp"
+    }).select(CARD_FIELDS).single();
+    if (error) return failure("CREATE_FAILED", error.message, { cnpj });
+    await logHistory(supabase, {
+      cardId: data.id,
+      userId,
+      action: "card_criado",
+      destinationStageId: stageId,
+      payload: { ferramenta: "create_card", cnpj }
+    });
+    return success("create_card", data, { card_id: data.id });
+  })
+});
+
+// src/lib/mcp/painel/tools/update-card.ts
+import { defineTool as defineTool28 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z25 } from "npm:zod@^3.25.76";
+var update_card_default = defineTool28({
+  name: "update_card",
+  title: "Atualizar campos do card",
+  description: "Atualiza campos de um card do painel painel_msj9fyji. Envie apenas os campos que devem mudar. Para trocar de etapa use move_card.",
+  inputSchema: {
+    card_id: z25.string().describe("UUID do card."),
+    razao_social: z25.string().optional(),
+    cnpj: z25.string().optional(),
+    nome_contato_parceiro: z25.string().optional(),
+    telefone_parceiro: z25.string().optional(),
+    email_parceiro: z25.string().optional(),
+    contratante: z25.string().optional(),
+    responsavel: z25.string().optional().describe("UUID do respons\xE1vel."),
+    codigo_monnera: z25.string().optional(),
+    jira_issue_key: z25.string().optional(),
+    jira_url: z25.string().optional().describe("URL da issue Jira (registrada no hist\xF3rico como evid\xEAncia)."),
+    observacao: z25.string().optional().describe("Anota\xE7\xF5es do card (at\xE9 500 caracteres).")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  handler: async (input, ctx) => guard("update_card", async () => {
+    const userId = authUser(ctx);
+    if (!userId) return UNAUTH();
+    const supabase = client(ctx);
+    const card = await loadCard(supabase, input.card_id, "id, stage_id");
+    if (!card) return CARD_NOT_FOUND(input.card_id);
+    if ((input.observacao?.length ?? 0) > 500)
+      return failure("INVALID_INPUT", "observacao deve ter no m\xE1ximo 500 caracteres.");
+    const updates = {};
+    if (input.razao_social !== void 0) updates.full_name = input.razao_social.trim();
+    if (input.nome_contato_parceiro !== void 0)
+      updates.focal_name = input.nome_contato_parceiro.trim() || null;
+    if (input.telefone_parceiro !== void 0) {
+      updates.focal_phone = input.telefone_parceiro.trim() || null;
+      updates.phone = input.telefone_parceiro.trim() || "";
+    }
+    if (input.email_parceiro !== void 0) {
+      const email = input.email_parceiro.trim().toLowerCase();
+      updates.focal_email = email || null;
+      updates.email = email;
+    }
+    if (input.contratante !== void 0) updates.contratante_monnera = input.contratante.trim() || null;
+    if (input.responsavel !== void 0) updates.responsible_user_id = input.responsavel.trim() || null;
+    if (input.codigo_monnera !== void 0) updates.codigo_monnera = input.codigo_monnera.trim() || null;
+    if (input.jira_issue_key !== void 0) updates.jira_issue_key = input.jira_issue_key.trim() || null;
+    if (input.observacao !== void 0) updates.notes = input.observacao.trim() || null;
+    if (input.cnpj !== void 0) {
+      const cnpj = digitsOnly(input.cnpj);
+      if (cnpj.length !== 14) return failure("INVALID_CNPJ", "CNPJ inv\xE1lido: s\xE3o necess\xE1rios 14 d\xEDgitos.", { cnpj });
+      updates.cnpj = cnpj;
+    }
+    if (Object.keys(updates).length === 0 && !input.jira_url)
+      return failure("INVALID_INPUT", "Nenhum campo informado para atualiza\xE7\xE3o.");
+    let data = null;
+    if (Object.keys(updates).length > 0) {
+      const result = await supabase.from("representative_cards").update(updates).eq("id", input.card_id).eq("panel_id", PANEL_ID).select(CARD_FIELDS).maybeSingle();
+      if (result.error) return failure("UPDATE_FAILED", result.error.message);
+      if (!result.data) return CARD_NOT_FOUND(input.card_id);
+      data = result.data;
+    } else {
+      data = await loadCard(supabase, input.card_id);
+    }
+    await logHistory(supabase, {
+      cardId: input.card_id,
+      userId,
+      action: "card_atualizado",
+      payload: { ferramenta: "update_card", campos: Object.keys(updates), jira_url: input.jira_url ?? null }
+    });
+    return success("update_card", data, { card_id: input.card_id, updated_fields: Object.keys(updates) });
+  })
+});
+
+// src/lib/mcp/painel/tools/move-card.ts
+import { defineTool as defineTool29 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z26 } from "npm:zod@^3.25.76";
+var normalize2 = (v) => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+var move_card_default = defineTool29({
+  name: "move_card",
+  title: "Mover card de etapa",
+  description: "Move um card do painel painel_msj9fyji para outra etapa, quando o agente solicitar. Aceita stage_id ou o r\xF3tulo da etapa. N\xE3o executa automa\xE7\xF5es.",
+  inputSchema: {
+    card_id: z26.string().describe("UUID do card."),
+    stage_id: z26.string().describe('Etapa de destino: stage_id ou r\xF3tulo (ex.: "Recebimento Dados").'),
+    motivo: z26.string().optional().describe("Motivo/observa\xE7\xE3o registrada no hist\xF3rico.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  handler: async ({ card_id, stage_id, motivo }, ctx) => guard("move_card", async () => {
+    const userId = authUser(ctx);
+    if (!userId) return UNAUTH();
+    const supabase = client(ctx);
+    const card = await loadCard(supabase, card_id, "id, stage_id");
+    if (!card) return CARD_NOT_FOUND(card_id);
+    const stages = await stageLabels(supabase);
+    const alvo = normalize2(stage_id);
+    const stage = stages.find((s) => normalize2(s.value) === alvo || normalize2(s.label ?? "") === alvo);
+    if (!stage)
+      return failure("STAGE_NOT_FOUND", `Etapa "${stage_id}" n\xE3o existe neste painel.`, {
+        stages: stages.map((s) => ({ stage_id: s.value, label: s.label }))
+      });
+    const origem = String(card.stage_id);
+    const { data, error } = await supabase.from("representative_cards").update({ stage_id: stage.value }).eq("id", card_id).eq("panel_id", PANEL_ID).select(CARD_FIELDS).maybeSingle();
+    if (error) return failure("MOVE_FAILED", error.message);
+    if (!data) return CARD_NOT_FOUND(card_id);
+    await logHistory(supabase, {
+      cardId: card_id,
+      userId,
+      action: "card_movido",
+      sourceStageId: origem,
+      destinationStageId: stage.value,
+      payload: { ferramenta: "move_card", motivo: motivo ?? null, stage_label: stage.label }
+    });
+    return success("move_card", data, {
+      card_id,
+      from_stage_id: origem,
+      to_stage_id: stage.value,
+      to_stage_label: stage.label
+    });
+  })
+});
+
+// src/lib/mcp/painel/tools/list-tasks.ts
+import { defineTool as defineTool30 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z27 } from "npm:zod@^3.25.76";
+var list_tasks_default = defineTool30({
+  name: "list_tasks",
+  title: "Listar tarefas do card",
+  description: "Lista as tarefas de um card do painel painel_msj9fyji, com status, prazo e respons\xE1vel. Somente leitura.",
+  inputSchema: {
+    card_id: z27.string().describe("UUID do card."),
+    status: z27.enum(["pendente", "concluida", "todas"]).optional().describe("Filtro de status (padr\xE3o: todas).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ card_id, status }, ctx) => guard("list_tasks", async () => {
+    if (!authUser(ctx)) return UNAUTH();
+    const supabase = client(ctx);
+    const card = await loadCard(supabase, card_id, "id");
+    if (!card) return CARD_NOT_FOUND(card_id);
+    let query = supabase.from("representative_card_tasks").select("id, representative_card_id, titulo, descricao, due_at, assigned_to, status, completed_at, completed_note, created_by, created_at, updated_at").eq("representative_card_id", card_id).is("deleted_at", null).order("due_at", { ascending: true });
+    if (status && status !== "todas") query = query.eq("status", status);
+    const { data, error } = await query;
+    if (error) return failure("QUERY_FAILED", error.message);
+    return success("list_tasks", data ?? [], { card_id, total: data?.length ?? 0 });
+  })
+});
+
+// src/lib/mcp/painel/tools/create-task.ts
+import { defineTool as defineTool31 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z28 } from "npm:zod@^3.25.76";
+var create_task_default = defineTool31({
+  name: "create_task",
+  title: "Criar tarefa no card",
+  description: "Cria uma tarefa vinculada a um card do painel painel_msj9fyji, com t\xEDtulo, descri\xE7\xE3o, prazo e respons\xE1vel.",
+  inputSchema: {
+    card_id: z28.string().describe("UUID do card."),
+    titulo: z28.string().describe("T\xEDtulo da tarefa."),
+    descricao: z28.string().optional().describe("Descri\xE7\xE3o/detalhamento da tarefa."),
+    due_at: z28.string().optional().describe("Prazo em ISO 8601, ex.: 2026-08-20T14:00:00Z."),
+    assigned_to: z28.string().optional().describe("UUID do respons\xE1vel (padr\xE3o: usu\xE1rio autenticado).")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  handler: async ({ card_id, titulo, descricao, due_at, assigned_to }, ctx) => guard("create_task", async () => {
+    const userId = authUser(ctx);
+    if (!userId) return UNAUTH();
+    const supabase = client(ctx);
+    const card = await loadCard(supabase, card_id, "id");
+    if (!card) return CARD_NOT_FOUND(card_id);
+    const texto = titulo.trim();
+    if (!texto) return failure("INVALID_INPUT", "titulo \xE9 obrigat\xF3rio.");
+    let prazo = null;
+    if (due_at) {
+      const parsed = new Date(due_at);
+      if (Number.isNaN(parsed.getTime()))
+        return failure("INVALID_INPUT", "due_at inv\xE1lido. Use ISO 8601.", { due_at });
+      prazo = parsed.toISOString();
+    }
+    const { data, error } = await supabase.from("representative_card_tasks").insert({
+      representative_card_id: card_id,
+      titulo: texto,
+      descricao: descricao?.trim() || null,
+      due_at: prazo,
+      assigned_to: assigned_to?.trim() || userId,
+      status: "pendente",
+      created_by: userId
+    }).select("id, representative_card_id, titulo, descricao, due_at, assigned_to, status, created_at").single();
+    if (error) return failure("CREATE_FAILED", error.message);
+    await logHistory(supabase, {
+      cardId: card_id,
+      userId,
+      action: "tarefa_criada",
+      payload: { ferramenta: "create_task", task_id: data.id, titulo: texto }
+    });
+    return success("create_task", data, { card_id, task_id: data.id });
+  })
+});
+
+// src/lib/mcp/painel/tools/update-task.ts
+import { defineTool as defineTool32 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z29 } from "npm:zod@^3.25.76";
+var update_task_default = defineTool32({
+  name: "update_task",
+  title: "Atualizar tarefa do card",
+  description: "Atualiza t\xEDtulo, descri\xE7\xE3o, prazo ou respons\xE1vel de uma tarefa de um card do painel painel_msj9fyji. Para concluir ou reabrir use complete_task/reopen_task.",
+  inputSchema: {
+    card_id: z29.string().describe("UUID do card."),
+    task_id: z29.string().describe("UUID da tarefa."),
+    titulo: z29.string().optional(),
+    descricao: z29.string().optional(),
+    due_at: z29.string().optional().describe("Prazo em ISO 8601."),
+    assigned_to: z29.string().optional().describe("UUID do respons\xE1vel.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  handler: async ({ card_id, task_id, titulo, descricao, due_at, assigned_to }, ctx) => guard("update_task", async () => {
+    const userId = authUser(ctx);
+    if (!userId) return UNAUTH();
+    const supabase = client(ctx);
+    const card = await loadCard(supabase, card_id, "id");
+    if (!card) return CARD_NOT_FOUND(card_id);
+    const updates = {};
+    if (titulo !== void 0) {
+      if (!titulo.trim()) return failure("INVALID_INPUT", "titulo n\xE3o pode ficar vazio.");
+      updates.titulo = titulo.trim();
+    }
+    if (descricao !== void 0) updates.descricao = descricao.trim() || null;
+    if (assigned_to !== void 0) updates.assigned_to = assigned_to.trim() || null;
+    if (due_at !== void 0) {
+      const parsed = new Date(due_at);
+      if (Number.isNaN(parsed.getTime()))
+        return failure("INVALID_INPUT", "due_at inv\xE1lido. Use ISO 8601.", { due_at });
+      updates.due_at = parsed.toISOString();
+    }
+    if (Object.keys(updates).length === 0)
+      return failure("INVALID_INPUT", "Nenhum campo informado para atualiza\xE7\xE3o.");
+    const { data, error } = await supabase.from("representative_card_tasks").update(updates).eq("id", task_id).eq("representative_card_id", card_id).select("id, titulo, descricao, due_at, assigned_to, status, completed_at, completed_note").maybeSingle();
+    if (error) return failure("UPDATE_FAILED", error.message);
+    if (!data) return failure("TASK_NOT_FOUND", "Tarefa n\xE3o encontrada neste card ou sem permiss\xE3o.", { task_id });
+    await logHistory(supabase, {
+      cardId: card_id,
+      userId,
+      action: "tarefa_atualizada",
+      payload: { ferramenta: "update_task", task_id, campos: Object.keys(updates) }
+    });
+    return success("update_task", data, { card_id, task_id, updated_fields: Object.keys(updates) });
+  })
+});
+
+// src/lib/mcp/painel/tools/complete-task.ts
+import { defineTool as defineTool33 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z30 } from "npm:zod@^3.25.76";
+var complete_task_default = defineTool33({
+  name: "complete_task",
+  title: "Concluir tarefa do card",
+  description: "Marca uma tarefa de um card do painel painel_msj9fyji como conclu\xEDda, com observa\xE7\xE3o opcional.",
+  inputSchema: {
+    card_id: z30.string().describe("UUID do card."),
+    task_id: z30.string().describe("UUID da tarefa."),
+    observacao: z30.string().optional().describe("Observa\xE7\xE3o de conclus\xE3o.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ card_id, task_id, observacao }, ctx) => guard("complete_task", async () => {
+    const userId = authUser(ctx);
+    if (!userId) return UNAUTH();
+    const supabase = client(ctx);
+    const card = await loadCard(supabase, card_id, "id");
+    if (!card) return CARD_NOT_FOUND(card_id);
+    const { data, error } = await supabase.from("representative_card_tasks").update({
+      status: "concluida",
+      completed_at: (/* @__PURE__ */ new Date()).toISOString(),
+      completed_by: userId,
+      completed_note: observacao?.trim() || null
+    }).eq("id", task_id).eq("representative_card_id", card_id).select("id, titulo, status, completed_at, completed_note, due_at, assigned_to").maybeSingle();
+    if (error) return failure("UPDATE_FAILED", error.message);
+    if (!data) return failure("TASK_NOT_FOUND", "Tarefa n\xE3o encontrada neste card ou sem permiss\xE3o.", { task_id });
+    await logHistory(supabase, {
+      cardId: card_id,
+      userId,
+      action: "tarefa_concluida",
+      payload: { ferramenta: "complete_task", task_id, observacao: observacao ?? null }
+    });
+    return success("complete_task", data, { card_id, task_id });
+  })
+});
+
+// src/lib/mcp/painel/tools/reopen-task.ts
+import { defineTool as defineTool34 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z31 } from "npm:zod@^3.25.76";
+var reopen_task_default = defineTool34({
+  name: "reopen_task",
+  title: "Reabrir tarefa do card",
+  description: "Reabre uma tarefa conclu\xEDda de um card do painel painel_msj9fyji, voltando o status para pendente.",
+  inputSchema: {
+    card_id: z31.string().describe("UUID do card."),
+    task_id: z31.string().describe("UUID da tarefa."),
+    motivo: z31.string().optional().describe("Motivo da reabertura (registrado no hist\xF3rico).")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ card_id, task_id, motivo }, ctx) => guard("reopen_task", async () => {
+    const userId = authUser(ctx);
+    if (!userId) return UNAUTH();
+    const supabase = client(ctx);
+    const card = await loadCard(supabase, card_id, "id");
+    if (!card) return CARD_NOT_FOUND(card_id);
+    const { data, error } = await supabase.from("representative_card_tasks").update({ status: "pendente", completed_at: null, completed_by: null, completed_note: null }).eq("id", task_id).eq("representative_card_id", card_id).select("id, titulo, status, due_at, assigned_to").maybeSingle();
+    if (error) return failure("UPDATE_FAILED", error.message);
+    if (!data) return failure("TASK_NOT_FOUND", "Tarefa n\xE3o encontrada neste card ou sem permiss\xE3o.", { task_id });
+    await logHistory(supabase, {
+      cardId: card_id,
+      userId,
+      action: "tarefa_reaberta",
+      payload: { ferramenta: "reopen_task", task_id, motivo: motivo ?? null }
+    });
+    return success("reopen_task", data, { card_id, task_id });
+  })
+});
+
+// src/lib/mcp/painel/tools/add-note.ts
+import { defineTool as defineTool35 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z32 } from "npm:zod@^3.25.76";
+var add_note_default = defineTool35({
+  name: "add_note",
+  title: "Adicionar observa\xE7\xE3o no card",
+  description: "Registra uma observa\xE7\xE3o/coment\xE1rio no hist\xF3rico de um card do painel painel_msj9fyji, sempre vinculada \xE0 etapa atual.",
+  inputSchema: {
+    card_id: z32.string().describe("UUID do card."),
+    texto: z32.string().describe("Texto da observa\xE7\xE3o (at\xE9 500 caracteres)."),
+    autor: z32.string().optional().describe("R\xF3tulo do autor exibido no hist\xF3rico (padr\xE3o: usu\xE1rio autenticado).")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  handler: async ({ card_id, texto, autor }, ctx) => guard("add_note", async () => {
+    const userId = authUser(ctx);
+    if (!userId) return UNAUTH();
+    const supabase = client(ctx);
+    const conteudo = texto.trim();
+    if (!conteudo) return failure("INVALID_INPUT", "texto n\xE3o pode ficar vazio.");
+    if (conteudo.length > 500) return failure("INVALID_INPUT", "texto deve ter no m\xE1ximo 500 caracteres.");
+    const card = await loadCard(supabase, card_id, "id, stage_id");
+    if (!card) return CARD_NOT_FOUND(card_id);
+    const { data: profile } = await supabase.from("profiles").select("nome").eq("user_id", userId).maybeSingle();
+    const { data, error } = await supabase.from("representative_card_comments").insert({
+      representative_card_id: card_id,
+      user_id: userId,
+      etapa: String(card.stage_id),
+      usuario: autor?.trim() || profile?.nome || ctx.getUserEmail() || "Agente MCP",
+      comentario: conteudo
+    }).select("id, usuario, comentario, etapa, data_comentario").single();
+    if (error) return failure("CREATE_FAILED", error.message);
+    await logHistory(supabase, {
+      cardId: card_id,
+      userId,
+      action: "observacao_registrada",
+      payload: { ferramenta: "add_note", comment_id: data.id }
+    });
+    return success("add_note", data, { card_id, note_id: data.id });
+  })
+});
+
+// src/lib/mcp/painel/tools/list-attachments.ts
+import { defineTool as defineTool36 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z33 } from "npm:zod@^3.25.76";
+var list_attachments_default = defineTool36({
+  name: "list_attachments",
+  title: "Listar anexos do card",
+  description: "Lista os anexos de um card do painel painel_msj9fyji (opcionalmente filtrando por tarefa), com metadados e hash. Somente leitura.",
+  inputSchema: {
+    card_id: z33.string().describe("UUID do card."),
+    task_id: z33.string().optional().describe("Opcional: filtra anexos vinculados a uma tarefa.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ card_id, task_id }, ctx) => guard("list_attachments", async () => {
+    if (!authUser(ctx)) return UNAUTH();
+    const supabase = client(ctx);
+    const card = await loadCard(supabase, card_id, "id");
+    if (!card) return CARD_NOT_FOUND(card_id);
+    let query = supabase.from("representative_card_attachments").select("id, representative_card_id, task_id, file_name, mime_type, size_bytes, storage_path, content_sha256, uploaded_by, created_at").eq("representative_card_id", card_id).order("created_at", { ascending: false });
+    if (task_id) query = query.eq("task_id", task_id);
+    const { data, error } = await query;
+    if (error) return failure("QUERY_FAILED", error.message);
+    return success("list_attachments", data ?? [], { card_id, task_id: task_id ?? null, total: data?.length ?? 0 });
+  })
+});
+
+// src/lib/mcp/painel/tools/attach-file.ts
+import { defineTool as defineTool37 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z34 } from "npm:zod@^3.25.76";
+var attach_file_default = defineTool37({
+  name: "attach_file",
+  title: "Anexar arquivo ao card",
+  description: "Faz upload de um arquivo (conte\xFAdo em base64) para um card do painel painel_msj9fyji, opcionalmente vinculado a uma tarefa. M\xE1ximo de 10 MB.",
+  inputSchema: {
+    card_id: z34.string().describe("UUID do card."),
+    file_name: z34.string().describe("Nome do arquivo com extens\xE3o, ex.: onboarding.html."),
+    content_base64: z34.string().describe("Conte\xFAdo do arquivo em base64 (aceita data URL)."),
+    mime_type: z34.string().optional().describe("MIME type; inferido pela extens\xE3o quando omitido."),
+    task_id: z34.string().optional().describe("Opcional: vincula o anexo a uma tarefa do card.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  handler: async ({ card_id, file_name, content_base64, mime_type, task_id }, ctx) => guard("attach_file", async () => {
+    const userId = authUser(ctx);
+    if (!userId) return UNAUTH();
+    const supabase = client(ctx);
+    const card = await loadCard(supabase, card_id, "id");
+    if (!card) return CARD_NOT_FOUND(card_id);
+    const nome = safeFileName(file_name);
+    if (!nome) return failure("INVALID_FILE_NAME", "Nome de arquivo inv\xE1lido.", { file_name });
+    const ext = extensionOf(nome);
+    if (!ALLOWED_EXTENSIONS.includes(ext))
+      return failure("UNSUPPORTED_FILE_TYPE", `Extens\xE3o .${ext} n\xE3o permitida.`, {
+        allowed: ALLOWED_EXTENSIONS
+      });
+    let bytes;
+    try {
+      bytes = decodeBase642(content_base64);
+    } catch {
+      return failure("INVALID_BASE64", "content_base64 n\xE3o \xE9 um base64 v\xE1lido.");
+    }
+    if (!bytes.length) return failure("EMPTY_FILE", "O arquivo enviado est\xE1 vazio.");
+    if (bytes.length > MAX_ATTACHMENT_BYTES)
+      return failure("FILE_TOO_LARGE", "O arquivo excede o limite de 10 MB.", { size_bytes: bytes.length });
+    if (task_id) {
+      const { data: task } = await supabase.from("representative_card_tasks").select("id").eq("id", task_id).eq("representative_card_id", card_id).maybeSingle();
+      if (!task) return failure("TASK_NOT_FOUND", "Tarefa n\xE3o encontrada neste card.", { task_id });
+    }
+    const contentType = mime_type?.trim() || MIME_BY_EXTENSION[ext] || "application/octet-stream";
+    const hash = await sha256Hex(bytes);
+    const storagePath = `${card_id}/${Date.now()}-${hash.slice(0, 12)}-${nome}`;
+    const { error: uploadError } = await supabase.storage.from(ATTACHMENT_BUCKET).upload(storagePath, bytes.slice().buffer, { contentType, upsert: false });
+    if (uploadError) return failure("UPLOAD_FAILED", uploadError.message, { storage_path: storagePath });
+    const { data, error } = await supabase.from("representative_card_attachments").insert({
+      representative_card_id: card_id,
+      task_id: task_id ?? null,
+      file_name: nome,
+      mime_type: contentType,
+      size_bytes: bytes.length,
+      storage_path: storagePath,
+      content_sha256: hash,
+      uploaded_by: userId
+    }).select("id, task_id, file_name, mime_type, size_bytes, storage_path, content_sha256, created_at").single();
+    if (error) {
+      await supabase.storage.from(ATTACHMENT_BUCKET).remove([storagePath]);
+      return failure("CREATE_FAILED", error.message);
+    }
+    const { data: signed } = await supabase.storage.from(ATTACHMENT_BUCKET).createSignedUrl(storagePath, 600);
+    await logHistory(supabase, {
+      cardId: card_id,
+      userId,
+      action: "anexo_adicionado",
+      payload: { ferramenta: "attach_file", attachment_id: data.id, file_name: nome, sha256: hash }
+    });
+    return success("attach_file", { ...data, url: signed?.signedUrl ?? null, url_expires_in: 600 }, {
+      card_id,
+      attachment_id: data.id
+    });
+  })
+});
+
+// src/lib/mcp/painel/tools/get-attachment-url.ts
+import { defineTool as defineTool38 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z35 } from "npm:zod@^3.25.76";
+var get_attachment_url_default = defineTool38({
+  name: "get_attachment_url",
+  title: "Obter link tempor\xE1rio de anexo",
+  description: "Gera um link assinado tempor\xE1rio para download de um anexo de card do painel painel_msj9fyji. Somente leitura.",
+  inputSchema: {
+    card_id: z35.string().describe("UUID do card."),
+    attachment_id: z35.string().describe("UUID do anexo."),
+    expires_in: z35.number().int().optional().describe("Validade do link em segundos (padr\xE3o 600, m\xE1ximo 3600).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ card_id, attachment_id, expires_in }, ctx) => guard("get_attachment_url", async () => {
+    if (!authUser(ctx)) return UNAUTH();
+    const supabase = client(ctx);
+    const card = await loadCard(supabase, card_id, "id");
+    if (!card) return CARD_NOT_FOUND(card_id);
+    const { data: attachment, error } = await supabase.from("representative_card_attachments").select("id, file_name, mime_type, size_bytes, storage_path, content_sha256, created_at").eq("id", attachment_id).eq("representative_card_id", card_id).maybeSingle();
+    if (error) return failure("QUERY_FAILED", error.message);
+    if (!attachment)
+      return failure("ATTACHMENT_NOT_FOUND", "Anexo n\xE3o encontrado neste card ou sem permiss\xE3o.", { attachment_id });
+    const ttl = Math.min(Math.max(expires_in ?? 600, 60), 3600);
+    const { data: signed, error: signError } = await supabase.storage.from(ATTACHMENT_BUCKET).createSignedUrl(attachment.storage_path, ttl);
+    if (signError) return failure("SIGN_URL_FAILED", signError.message);
+    return success(
+      "get_attachment_url",
+      { ...attachment, url: signed?.signedUrl ?? null, url_expires_in: ttl },
+      { card_id, attachment_id }
+    );
+  })
+});
+
+// src/lib/mcp/painel/tools/delete-attachment.ts
+import { defineTool as defineTool39 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z36 } from "npm:zod@^3.25.76";
+var delete_attachment_default = defineTool39({
+  name: "delete_attachment",
+  title: "Excluir anexo do card",
+  description: "Remove definitivamente um anexo de um card do painel painel_msj9fyji, apagando o arquivo do armazenamento e o registro.",
+  inputSchema: {
+    card_id: z36.string().describe("UUID do card."),
+    attachment_id: z36.string().describe("UUID do anexo."),
+    motivo: z36.string().optional().describe("Motivo da exclus\xE3o (registrado no hist\xF3rico).")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ card_id, attachment_id, motivo }, ctx) => guard("delete_attachment", async () => {
+    const userId = authUser(ctx);
+    if (!userId) return UNAUTH();
+    const supabase = client(ctx);
+    const card = await loadCard(supabase, card_id, "id");
+    if (!card) return CARD_NOT_FOUND(card_id);
+    const { data: attachment } = await supabase.from("representative_card_attachments").select("id, file_name, storage_path, content_sha256").eq("id", attachment_id).eq("representative_card_id", card_id).maybeSingle();
+    if (!attachment)
+      return failure("ATTACHMENT_NOT_FOUND", "Anexo n\xE3o encontrado neste card ou sem permiss\xE3o.", { attachment_id });
+    const { error } = await supabase.from("representative_card_attachments").delete().eq("id", attachment_id).eq("representative_card_id", card_id);
+    if (error) return failure("DELETE_FAILED", error.message);
+    const { error: storageError } = await supabase.storage.from(ATTACHMENT_BUCKET).remove([attachment.storage_path]);
+    await logHistory(supabase, {
+      cardId: card_id,
+      userId,
+      action: "anexo_removido",
+      payload: {
+        ferramenta: "delete_attachment",
+        attachment_id,
+        file_name: attachment.file_name,
+        sha256: attachment.content_sha256,
+        motivo: motivo ?? null
+      }
+    });
+    return success(
+      "delete_attachment",
+      {
+        attachment_id,
+        file_name: attachment.file_name,
+        removed_from_storage: !storageError,
+        storage_warning: storageError?.message ?? null
+      },
+      { card_id, attachment_id }
+    );
+  })
+});
+
+// src/lib/mcp/painel/tools/get-card-history.ts
+import { defineTool as defineTool40 } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { z as z37 } from "npm:zod@^3.25.76";
+var get_card_history_default = defineTool40({
+  name: "get_card_history",
+  title: "Hist\xF3rico do card",
+  description: "Retorna o hist\xF3rico audit\xE1vel de um card do painel painel_msj9fyji (movimenta\xE7\xF5es, edi\xE7\xF5es, tarefas e anexos), do mais recente para o mais antigo. Somente leitura.",
+  inputSchema: {
+    card_id: z37.string().describe("UUID do card."),
+    limit: z37.number().int().optional().describe("Quantidade de eventos (padr\xE3o 100, m\xE1ximo 500).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ card_id, limit }, ctx) => guard("get_card_history", async () => {
+    if (!authUser(ctx)) return UNAUTH();
+    const supabase = client(ctx);
+    const card = await loadCard(supabase, card_id, "id");
+    if (!card) return CARD_NOT_FOUND(card_id);
+    const take = Math.min(Math.max(limit ?? 100, 1), 500);
+    const { data, error } = await supabase.from("representative_card_history").select("id, action, actor_user_id, actor_label, source_stage_id, destination_stage_id, payload, created_at").eq("representative_card_id", card_id).order("created_at", { ascending: false }).limit(take);
+    if (error) return failure("QUERY_FAILED", error.message);
+    const labels = new Map((await stageLabels(supabase)).map((s) => [s.value, s.label]));
+    const eventos = (data ?? []).map((e) => ({
+      ...e,
+      source_stage_label: e.source_stage_id ? labels.get(e.source_stage_id) ?? e.source_stage_id : null,
+      destination_stage_label: e.destination_stage_id ? labels.get(e.destination_stage_id) ?? e.destination_stage_id : null
+    }));
+    return success("get_card_history", eventos, { card_id, total: eventos.length });
+  })
+});
+
 // src/lib/mcp/index.ts
 var projectRef = "bapxuzodzgahscatvofs";
 var mcp_default = defineMcp({
@@ -1035,6 +1952,23 @@ var mcp_default = defineMcp({
     adicionar_comentario_cliente_cross_default,
     listar_comentarios_cliente_cross_default,
     criar_tarefa_cliente_cross_default,
+    list_cards_default,
+    find_cards_by_cnpj_default,
+    get_card_default,
+    create_card_default,
+    update_card_default,
+    move_card_default,
+    list_tasks_default,
+    create_task_default,
+    update_task_default,
+    complete_task_default,
+    reopen_task_default,
+    add_note_default,
+    list_attachments_default,
+    attach_file_default,
+    get_attachment_url_default,
+    delete_attachment_default,
+    get_card_history_default,
     listar_tarefas_cliente_cross_default
   ]
 });
