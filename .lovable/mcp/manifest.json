@@ -810,6 +810,665 @@
         "outputSchema": null
       },
       {
+        "name": "list_cards",
+        "title": "Listar cards do painel",
+        "description": "Lista e pesquisa cards do painel painel_msj9fyji por nome, CNPJ, e-mail ou etapa, com paginação. Somente leitura.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Texto livre: razão social, contato, e-mail, CNPJ ou contratante."
+            },
+            "nome": {
+              "type": "string",
+              "description": "Pesquisa por nome/razão social do parceiro."
+            },
+            "email": {
+              "type": "string",
+              "description": "Pesquisa por e-mail (focal ou vendedor)."
+            },
+            "cnpj": {
+              "type": "string",
+              "description": "Pesquisa por CNPJ (com ou sem máscara)."
+            },
+            "stage_id": {
+              "type": "string",
+              "description": "Filtra por etapa (stage_id ou rótulo exato)."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Registros por página (padrão 25, máximo 200)."
+            },
+            "offset": {
+              "type": "integer",
+              "description": "Deslocamento para paginação (padrão 0)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "find_cards_by_cnpj",
+        "title": "Pesquisar cards por CNPJ",
+        "description": "Consulta cards do painel painel_msj9fyji por CNPJ (aceita com ou sem máscara, normaliza para 14 dígitos) e retorna todos os encontrados. Não decide duplicidade nem altera dados.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "cnpj": {
+              "type": "string",
+              "description": "CNPJ com ou sem máscara."
+            }
+          },
+          "required": [
+            "cnpj"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_card",
+        "title": "Consultar card por ID",
+        "description": "Retorna todos os campos de um card do painel painel_msj9fyji, incluindo etapa, tarefas, comentários e anexos. Somente leitura.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "card_id": {
+              "type": "string",
+              "description": "UUID do card."
+            },
+            "include_tasks": {
+              "type": "boolean",
+              "description": "Incluir tarefas (padrão true)."
+            },
+            "include_attachments": {
+              "type": "boolean",
+              "description": "Incluir anexos (padrão true)."
+            },
+            "include_notes": {
+              "type": "boolean",
+              "description": "Incluir comentários/observações (padrão true)."
+            }
+          },
+          "required": [
+            "card_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_card",
+        "title": "Criar card no painel",
+        "description": "Cria um card no painel painel_msj9fyji com os dados enviados pelo agente. Não dispara automações, e-mails nem integrações.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "razao_social": {
+              "type": "string",
+              "description": "Razão social / nome do parceiro."
+            },
+            "cnpj": {
+              "type": "string",
+              "description": "CNPJ com ou sem máscara (14 dígitos)."
+            },
+            "nome_contato_parceiro": {
+              "type": "string",
+              "description": "Nome do contato focal."
+            },
+            "telefone_parceiro": {
+              "type": "string"
+            },
+            "email_parceiro": {
+              "type": "string"
+            },
+            "contratante": {
+              "type": "string",
+              "description": "Contratante Monnera."
+            },
+            "responsavel": {
+              "type": "string",
+              "description": "UUID do usuário responsável."
+            },
+            "codigo_monnera": {
+              "type": "string"
+            },
+            "jira_issue_key": {
+              "type": "string"
+            },
+            "stage_id": {
+              "type": "string",
+              "description": "Etapa inicial (stage_id ou rótulo). Padrão: primeira etapa do painel."
+            },
+            "observacao": {
+              "type": "string",
+              "description": "Anotações do card (até 500 caracteres)."
+            }
+          },
+          "required": [
+            "razao_social",
+            "cnpj"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_card",
+        "title": "Atualizar campos do card",
+        "description": "Atualiza campos de um card do painel painel_msj9fyji. Envie apenas os campos que devem mudar. Para trocar de etapa use move_card.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "card_id": {
+              "type": "string",
+              "description": "UUID do card."
+            },
+            "razao_social": {
+              "type": "string"
+            },
+            "cnpj": {
+              "type": "string"
+            },
+            "nome_contato_parceiro": {
+              "type": "string"
+            },
+            "telefone_parceiro": {
+              "type": "string"
+            },
+            "email_parceiro": {
+              "type": "string"
+            },
+            "contratante": {
+              "type": "string"
+            },
+            "responsavel": {
+              "type": "string",
+              "description": "UUID do responsável."
+            },
+            "codigo_monnera": {
+              "type": "string"
+            },
+            "jira_issue_key": {
+              "type": "string"
+            },
+            "jira_url": {
+              "type": "string",
+              "description": "URL da issue Jira (registrada no histórico como evidência)."
+            },
+            "observacao": {
+              "type": "string",
+              "description": "Anotações do card (até 500 caracteres)."
+            }
+          },
+          "required": [
+            "card_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "move_card",
+        "title": "Mover card de etapa",
+        "description": "Move um card do painel painel_msj9fyji para outra etapa, quando o agente solicitar. Aceita stage_id ou o rótulo da etapa. Não executa automações.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "card_id": {
+              "type": "string",
+              "description": "UUID do card."
+            },
+            "stage_id": {
+              "type": "string",
+              "description": "Etapa de destino: stage_id ou rótulo (ex.: \"Recebimento Dados\")."
+            },
+            "motivo": {
+              "type": "string",
+              "description": "Motivo/observação registrada no histórico."
+            }
+          },
+          "required": [
+            "card_id",
+            "stage_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_tasks",
+        "title": "Listar tarefas do card",
+        "description": "Lista as tarefas de um card do painel painel_msj9fyji, com status, prazo e responsável. Somente leitura.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "card_id": {
+              "type": "string",
+              "description": "UUID do card."
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "pendente",
+                "concluida",
+                "todas"
+              ],
+              "description": "Filtro de status (padrão: todas)."
+            }
+          },
+          "required": [
+            "card_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_task",
+        "title": "Criar tarefa no card",
+        "description": "Cria uma tarefa vinculada a um card do painel painel_msj9fyji, com título, descrição, prazo e responsável.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "card_id": {
+              "type": "string",
+              "description": "UUID do card."
+            },
+            "titulo": {
+              "type": "string",
+              "description": "Título da tarefa."
+            },
+            "descricao": {
+              "type": "string",
+              "description": "Descrição/detalhamento da tarefa."
+            },
+            "due_at": {
+              "type": "string",
+              "description": "Prazo em ISO 8601, ex.: 2026-08-20T14:00:00Z."
+            },
+            "assigned_to": {
+              "type": "string",
+              "description": "UUID do responsável (padrão: usuário autenticado)."
+            }
+          },
+          "required": [
+            "card_id",
+            "titulo"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_task",
+        "title": "Atualizar tarefa do card",
+        "description": "Atualiza título, descrição, prazo ou responsável de uma tarefa de um card do painel painel_msj9fyji. Para concluir ou reabrir use complete_task/reopen_task.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "card_id": {
+              "type": "string",
+              "description": "UUID do card."
+            },
+            "task_id": {
+              "type": "string",
+              "description": "UUID da tarefa."
+            },
+            "titulo": {
+              "type": "string"
+            },
+            "descricao": {
+              "type": "string"
+            },
+            "due_at": {
+              "type": "string",
+              "description": "Prazo em ISO 8601."
+            },
+            "assigned_to": {
+              "type": "string",
+              "description": "UUID do responsável."
+            }
+          },
+          "required": [
+            "card_id",
+            "task_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "complete_task",
+        "title": "Concluir tarefa do card",
+        "description": "Marca uma tarefa de um card do painel painel_msj9fyji como concluída, com observação opcional.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "card_id": {
+              "type": "string",
+              "description": "UUID do card."
+            },
+            "task_id": {
+              "type": "string",
+              "description": "UUID da tarefa."
+            },
+            "observacao": {
+              "type": "string",
+              "description": "Observação de conclusão."
+            }
+          },
+          "required": [
+            "card_id",
+            "task_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "reopen_task",
+        "title": "Reabrir tarefa do card",
+        "description": "Reabre uma tarefa concluída de um card do painel painel_msj9fyji, voltando o status para pendente.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "card_id": {
+              "type": "string",
+              "description": "UUID do card."
+            },
+            "task_id": {
+              "type": "string",
+              "description": "UUID da tarefa."
+            },
+            "motivo": {
+              "type": "string",
+              "description": "Motivo da reabertura (registrado no histórico)."
+            }
+          },
+          "required": [
+            "card_id",
+            "task_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_note",
+        "title": "Adicionar observação no card",
+        "description": "Registra uma observação/comentário no histórico de um card do painel painel_msj9fyji, sempre vinculada à etapa atual.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "card_id": {
+              "type": "string",
+              "description": "UUID do card."
+            },
+            "texto": {
+              "type": "string",
+              "description": "Texto da observação (até 500 caracteres)."
+            },
+            "autor": {
+              "type": "string",
+              "description": "Rótulo do autor exibido no histórico (padrão: usuário autenticado)."
+            }
+          },
+          "required": [
+            "card_id",
+            "texto"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_attachments",
+        "title": "Listar anexos do card",
+        "description": "Lista os anexos de um card do painel painel_msj9fyji (opcionalmente filtrando por tarefa), com metadados e hash. Somente leitura.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "card_id": {
+              "type": "string",
+              "description": "UUID do card."
+            },
+            "task_id": {
+              "type": "string",
+              "description": "Opcional: filtra anexos vinculados a uma tarefa."
+            }
+          },
+          "required": [
+            "card_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "attach_file",
+        "title": "Anexar arquivo ao card",
+        "description": "Faz upload de um arquivo (conteúdo em base64) para um card do painel painel_msj9fyji, opcionalmente vinculado a uma tarefa. Máximo de 10 MB.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "card_id": {
+              "type": "string",
+              "description": "UUID do card."
+            },
+            "file_name": {
+              "type": "string",
+              "description": "Nome do arquivo com extensão, ex.: onboarding.html."
+            },
+            "content_base64": {
+              "type": "string",
+              "description": "Conteúdo do arquivo em base64 (aceita data URL)."
+            },
+            "mime_type": {
+              "type": "string",
+              "description": "MIME type; inferido pela extensão quando omitido."
+            },
+            "task_id": {
+              "type": "string",
+              "description": "Opcional: vincula o anexo a uma tarefa do card."
+            }
+          },
+          "required": [
+            "card_id",
+            "file_name",
+            "content_base64"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_attachment_url",
+        "title": "Obter link temporário de anexo",
+        "description": "Gera um link assinado temporário para download de um anexo de card do painel painel_msj9fyji. Somente leitura.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "card_id": {
+              "type": "string",
+              "description": "UUID do card."
+            },
+            "attachment_id": {
+              "type": "string",
+              "description": "UUID do anexo."
+            },
+            "expires_in": {
+              "type": "integer",
+              "description": "Validade do link em segundos (padrão 600, máximo 3600)."
+            }
+          },
+          "required": [
+            "card_id",
+            "attachment_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "delete_attachment",
+        "title": "Excluir anexo do card",
+        "description": "Remove definitivamente um anexo de um card do painel painel_msj9fyji, apagando o arquivo do armazenamento e o registro.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "card_id": {
+              "type": "string",
+              "description": "UUID do card."
+            },
+            "attachment_id": {
+              "type": "string",
+              "description": "UUID do anexo."
+            },
+            "motivo": {
+              "type": "string",
+              "description": "Motivo da exclusão (registrado no histórico)."
+            }
+          },
+          "required": [
+            "card_id",
+            "attachment_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_card_history",
+        "title": "Histórico do card",
+        "description": "Retorna o histórico auditável de um card do painel painel_msj9fyji (movimentações, edições, tarefas e anexos), do mais recente para o mais antigo. Somente leitura.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "card_id": {
+              "type": "string",
+              "description": "UUID do card."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Quantidade de eventos (padrão 100, máximo 500)."
+            }
+          },
+          "required": [
+            "card_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
         "name": "listar_tarefas_cliente_cross",
         "title": "Listar tarefas do cliente Onb Clientes Cross",
         "description": "Lista as tarefas de um card do painel Onb Clientes Cross, com prazo, responsável e status.",
