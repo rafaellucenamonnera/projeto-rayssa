@@ -1,43 +1,36 @@
-# Destravar o fluxo Cross para todos os cards (hoje só o card de QA anda)
+# Corrigir erro "uploaded_by" no upload de anexos (MCP)
 
-## Por que nada avança
+## Diagnóstico (verificado)
 
-O card J R ATACADISTA está bloqueado logo no gate de entrada, antes de qualquer etapa ser avaliada. Por isso as 8 etapas aparecem "Aguardando" mesmo com código, CNPJ, e-mail e coluna corretos. São três travas de QA ainda ativas no código:
+A tabela `representative_card_attachments` existe com estas colunas:
+`id, representative_card_id, storage_path, file_name, mime_type, size_bytes, created_by, created_at, content_sha256, task_id`.
 
-1. **Allowlist de elegibilidade** (`supabase/functions/_shared/crossOnboarding.ts`, `ALLOWLIST_CARD_IDS`): só dois cards (TESTE FASE A QA e ORCA) passam. É exatamente a mensagem do print: "Modo controlado: card não está na allowlist de elegibilidade".
-2. **Allowlist de execução real** (`EXECUTION_ALLOWLIST_CARD_IDS`): mesmo passando a primeira, só o card de QA pode rodar fora de simulação.
-3. **Allowlist do envio de e-mail** (`supabase/functions/send-onboarding-email/index.ts`): `ALLOWED_CARD_IDS` (só QA), `ALLOWED_RECIPIENTS` (só @monnera.com.br interno) e `ALLOWED_CODES` (só `QATEST01`). Ou seja, mesmo destravando o orquestrador, a etapa 7 falharia para cliente real.
+Não existe coluna `uploaded_by`. O autor do anexo é gravado em `created_by`.
 
-Sobre a etapa 4: **o link do Canva não é gerado automaticamente hoje**. No card de QA ele foi salvo manualmente pela seção "Material Canva" (RPC `register_canva_material`) e o gate apenas valida o formato `https://canva.link/...`. Não existe função que crie o material no Canva — isso precisa ser decidido à parte (ver "Pergunta em aberto").
+Duas ferramentas MCP do painel usam o nome errado:
+- `src/lib/mcp/painel/tools/attach-file.ts` — insere `uploaded_by: userId` (causa direta do erro).
+- `src/lib/mcp/painel/tools/list-attachments.ts` — seleciona `uploaded_by` (quebraria a leitura).
 
-## Correção proposta
+Todo o resto do projeto já usa `created_by`: `src/lib/cardAttachments.ts` (upload pela interface) e `src/lib/mcp/tools/anexar-arquivo-cliente-cross.ts`.
 
-### 1. Sair do modo controlado por card
-- Remover a trava por `ALLOWLIST_CARD_IDS` e trocá-la por regras objetivas que já existem: painel Onb Clientes Cross, card não protegido, não bloqueado, etapa Criação Painel ou Material Onboarding, código Monnera válido.
-- Manter `test_mode`/`QATEST01` restrito ao card de QA (código de teste continua proibido em card real).
-- Execução real passa a ser permitida para qualquer card elegível, ainda exigindo confirmação explícita no botão "Executar avanço".
+## Decisão
 
-### 2. Envio de e-mail para cliente real
-- Substituir `ALLOWED_CARD_IDS`/`ALLOWED_CODES` por validação de conteúdo: card do painel Cross, código Monnera do próprio card, link público Canva válido, HTML sem placeholders.
-- Destinatários: passam a vir do card (e-mail do focal) + participantes da thread, com exclusão de endereços técnicos, como já faz `buildRecipients`. A lista interna @monnera.com.br fica apenas como cópia opcional, não como única permitida.
-- Mantidos: registro em `onboarding_email_sends`, detecção de reenvio com confirmação e auditoria.
+Alinhar o código ao schema, **sem migração**. Criar a coluna `uploaded_by` duplicaria a informação de autoria já mantida em `created_by` e deixaria dois campos concorrentes para o mesmo dado — pior para auditoria e inconsistente com a interface, que continuaria gravando só `created_by`. A correção mínima e segura é usar `created_by` nas duas ferramentas MCP.
 
-### 3. Etapas 4 e 5 para todos
-- Etapa 4 continua exigindo link público válido salvo no card; se ausente, vira pendência com ação direta ("Salvar link do material") em vez de ficar só "Aguardando".
-- Etapa 5 (HTML) já é automática e passa a rodar para qualquer card assim que a 4 estiver ok — nada muda além de deixar de ser bloqueada pelo gate de entrada.
+Nenhuma alteração de dados, RLS ou storage é necessária. A política atual ("Admins and gestores manage card attachments") não referencia autoria, então continua válida.
 
-### 4. Retomada dos cards já movidos manualmente
-Para cards que já estão em Material Onboarding (como o J R ATACADISTA), o avanço em cadeia registra as etapas 1 a 3 como concluídas com origem `manual_move`, sem mover nada de novo.
+## Alterações
 
-## Pergunta em aberto
+1. `src/lib/mcp/painel/tools/attach-file.ts`: trocar `uploaded_by: userId` por `created_by: userId` no insert, e `uploaded_by` por `created_by` na lista de colunas do `.select(...)`.
+2. `src/lib/mcp/painel/tools/list-attachments.ts`: trocar `uploaded_by` por `created_by` no `.select(...)`.
 
-Geração automática do material Canva: existe conector Canva disponível. Posso criar uma etapa que gere o design a partir de um brand template e publique o link, mas isso é um bloco de trabalho separado (template, campos, aprovação). Se preferir, na primeira entrega o link continua sendo colado manualmente e o resto do fluxo já roda sozinho.
+## Validação antes de publicar
 
-## Detalhes técnicos
+- Build limpo.
+- Upload de arquivo de teste via `attach_file` em um card do painel `painel_msj9fyji`: retorna `attachment_id`, `content_sha256`, `size_bytes` e URL assinada.
+- `list_attachments` retorna o registro com metadados e autoria.
+- `attach_file` com `task_id` válido grava o vínculo; com `task_id` inválido retorna `TASK_NOT_FOUND`.
+- Sem sessão OAuth: retorna `UNAUTHENTICATED`; com usuário sem papel admin/gestor: bloqueio por RLS.
+- Nenhum card real alterado — apenas linhas novas em `representative_card_attachments` do card de teste, removíveis por `delete_attachment`.
 
-- `supabase/functions/_shared/crossOnboarding.ts`: `entryGate` deixa de usar `ALLOWLIST_CARD_IDS`/`EXECUTION_ALLOWLIST_CARD_IDS`; mantém painel, proteção, bloqueio, etapa e `validateCodeForCard`.
-- `supabase/functions/cross-onboarding-advance/index.ts`: sem mudança estrutural; `controlled_mode` deixa de bloquear por id.
-- `supabase/functions/send-onboarding-email/index.ts`: troca das allowlists por validação de conteúdo + destinatários derivados do card; `qaMode` só quando `card.test_mode = true`.
-- `src/pages/admin/AdminEmailOnboarding.tsx`: `isQaSend` deixa de travar o botão; passa a validar campos preenchidos e card selecionado.
-- Redeploy de `cross-onboarding-advance` e `send-onboarding-email`. Sem migrations.
-- Validação: rodar simulação no J R ATACADISTA e conferir a cadeia até a etapa 6; execução real só após sua autorização.
+Publicação em produção somente após sua aprovação do resultado do teste.
