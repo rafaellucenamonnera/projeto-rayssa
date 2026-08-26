@@ -89,9 +89,9 @@ export default defineTool({
           size_bytes: bytes.length,
           storage_path: storagePath,
           content_sha256: hash,
-          uploaded_by: userId,
+          created_by: userId,
         })
-        .select("id, task_id, file_name, mime_type, size_bytes, storage_path, content_sha256, created_at")
+        .select("id, task_id, file_name, mime_type, size_bytes, storage_path, content_sha256, created_by, created_at")
         .single();
 
       if (error) {

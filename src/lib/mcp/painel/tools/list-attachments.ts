@@ -22,7 +22,7 @@ export default defineTool({
 
       let query = supabase
         .from("representative_card_attachments")
-        .select("id, representative_card_id, task_id, file_name, mime_type, size_bytes, storage_path, content_sha256, uploaded_by, created_at")
+        .select("id, representative_card_id, task_id, file_name, mime_type, size_bytes, storage_path, content_sha256, created_by, created_at")
         .eq("representative_card_id", card_id)
         .order("created_at", { ascending: false });
       if (task_id) query = query.eq("task_id", task_id);
