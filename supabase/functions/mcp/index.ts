@@ -1723,7 +1723,7 @@ var list_attachments_default = defineTool36({
     const supabase = client(ctx);
     const card = await loadCard(supabase, card_id, "id");
     if (!card) return CARD_NOT_FOUND(card_id);
-    let query = supabase.from("representative_card_attachments").select("id, representative_card_id, task_id, file_name, mime_type, size_bytes, storage_path, content_sha256, uploaded_by, created_at").eq("representative_card_id", card_id).order("created_at", { ascending: false });
+    let query = supabase.from("representative_card_attachments").select("id, representative_card_id, task_id, file_name, mime_type, size_bytes, storage_path, content_sha256, created_by, created_at").eq("representative_card_id", card_id).order("created_at", { ascending: false });
     if (task_id) query = query.eq("task_id", task_id);
     const { data, error } = await query;
     if (error) return failure("QUERY_FAILED", error.message);
@@ -1785,8 +1785,8 @@ var attach_file_default = defineTool37({
       size_bytes: bytes.length,
       storage_path: storagePath,
       content_sha256: hash,
-      uploaded_by: userId
-    }).select("id, task_id, file_name, mime_type, size_bytes, storage_path, content_sha256, created_at").single();
+      created_by: userId
+    }).select("id, task_id, file_name, mime_type, size_bytes, storage_path, content_sha256, created_by, created_at").single();
     if (error) {
       await supabase.storage.from(ATTACHMENT_BUCKET).remove([storagePath]);
       return failure("CREATE_FAILED", error.message);
