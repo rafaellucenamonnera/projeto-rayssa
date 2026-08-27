@@ -4149,6 +4149,7 @@ export type Database = {
           p_codigo: string
           p_evidence?: Json
           p_jira_issue_key?: string
+          p_replace?: boolean
           p_source?: string
         }
         Returns: Json

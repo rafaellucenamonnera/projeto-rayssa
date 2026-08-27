@@ -25,9 +25,12 @@ export default function MonneraCodeManual({ cardId, currentCode, isAdmin, onAppl
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");
   const [justificativa, setJustificativa] = useState("");
+  const [confirmarTroca, setConfirmarTroca] = useState(false);
   const [saving, setSaving] = useState(false);
 
   if (!isAdmin) return null;
+
+  const isReplacing = !!currentCode && code.trim().toUpperCase() !== currentCode.trim().toUpperCase();
 
   const submit = async () => {
     const normalized = code.trim().toUpperCase();
@@ -46,6 +49,10 @@ export default function MonneraCodeManual({ cardId, currentCode, isAdmin, onAppl
       toast.error("Informe a justificativa (mínimo 10 caracteres).");
       return;
     }
+    if (isReplacing && !confirmarTroca) {
+      toast.error("Marque a confirmação de substituição do código atual.");
+      return;
+    }
 
     setSaving(true);
     try {
@@ -53,9 +60,11 @@ export default function MonneraCodeManual({ cardId, currentCode, isAdmin, onAppl
         p_card_id: cardId,
         p_codigo: normalized,
         p_source: "manual_admin",
+        p_replace: isReplacing,
         p_evidence: {
           origem: "inserção manual no painel",
           justificativa: justificativa.trim().slice(0, 500),
+          codigo_anterior: currentCode ?? null,
           applied_at: new Date().toISOString(),
         },
       });
@@ -66,17 +75,19 @@ export default function MonneraCodeManual({ cardId, currentCode, isAdmin, onAppl
         await supabase.functions.invoke("cross-onboarding-advance", { body: { card_id: cardId, dry_run: true } });
       } catch (_) { /* best-effort */ }
 
-      toast.success("Código Monnera aplicado ao card.");
+      toast.success(isReplacing ? `Código substituído: ${currentCode} → ${normalized}.` : "Código Monnera aplicado ao card.");
       onApplied({ codigo_monnera: normalized, codigo_monnera_origem: "Inserção manual (admin)" });
       setOpen(false);
       setCode("");
       setJustificativa("");
+      setConfirmarTroca(false);
     } catch (e: any) {
       toast.error(e?.message || "Não foi possível aplicar o código.");
     } finally {
       setSaving(false);
     }
   };
+
 
   return (
     <>
@@ -88,7 +99,7 @@ export default function MonneraCodeManual({ cardId, currentCode, isAdmin, onAppl
       <Dialog open={open} onOpenChange={(v) => !saving && setOpen(v)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Adicionar Código Monnera</DialogTitle>
+            <DialogTitle>{currentCode ? "Editar Código Monnera" : "Adicionar Código Monnera"}</DialogTitle>
             <DialogDescription>
               O código segue as mesmas validações e o mesmo registro do recebimento automático.
               {currentCode ? ` Código atual: ${currentCode}.` : ""}
@@ -104,6 +115,15 @@ export default function MonneraCodeManual({ cardId, currentCode, isAdmin, onAppl
                 className="font-mono"
                 maxLength={8}
               />
+              {currentCode ? (
+                <button
+                  type="button"
+                  className="text-[11px] text-muted-foreground underline"
+                  onClick={() => setCode(currentCode.toUpperCase())}
+                >
+                  Usar código atual ({currentCode})
+                </button>
+              ) : null}
             </div>
             <div className="space-y-1">
               <Label>Justificativa *</Label>
@@ -115,12 +135,28 @@ export default function MonneraCodeManual({ cardId, currentCode, isAdmin, onAppl
               />
               <p className="text-[11px] text-muted-foreground text-right">{justificativa.length}/500</p>
             </div>
+            {isReplacing && (
+              <label className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={confirmarTroca}
+                  onChange={(e) => setConfirmarTroca(e.target.checked)}
+                />
+                <span>
+                  Confirmo a substituição do código <strong>{currentCode}</strong> por{" "}
+                  <strong>{code.trim().toUpperCase()}</strong>. A troca fica registrada no histórico do card.
+                </span>
+              </label>
+            )}
             <div className="flex justify-end gap-2">
+
               <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>Cancelar</Button>
               <Button onClick={submit} disabled={saving}>
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Salvar código
+                {isReplacing ? "Substituir código" : "Salvar código"}
               </Button>
+
             </div>
           </div>
         </DialogContent>
