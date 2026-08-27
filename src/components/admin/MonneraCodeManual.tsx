@@ -154,8 +154,9 @@ export default function MonneraCodeManual({ cardId, currentCode, isAdmin, onAppl
               <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>Cancelar</Button>
               <Button onClick={submit} disabled={saving}>
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Salvar código
+                {isReplacing ? "Substituir código" : "Salvar código"}
               </Button>
+
             </div>
           </div>
         </DialogContent>
