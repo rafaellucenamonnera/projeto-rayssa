@@ -99,7 +99,7 @@ export default function MonneraCodeManual({ cardId, currentCode, isAdmin, onAppl
       <Dialog open={open} onOpenChange={(v) => !saving && setOpen(v)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Adicionar Código Monnera</DialogTitle>
+            <DialogTitle>{currentCode ? "Editar Código Monnera" : "Adicionar Código Monnera"}</DialogTitle>
             <DialogDescription>
               O código segue as mesmas validações e o mesmo registro do recebimento automático.
               {currentCode ? ` Código atual: ${currentCode}.` : ""}
@@ -115,6 +115,15 @@ export default function MonneraCodeManual({ cardId, currentCode, isAdmin, onAppl
                 className="font-mono"
                 maxLength={8}
               />
+              {currentCode ? (
+                <button
+                  type="button"
+                  className="text-[11px] text-muted-foreground underline"
+                  onClick={() => setCode(currentCode.toUpperCase())}
+                >
+                  Usar código atual ({currentCode})
+                </button>
+              ) : null}
             </div>
             <div className="space-y-1">
               <Label>Justificativa *</Label>
@@ -126,7 +135,22 @@ export default function MonneraCodeManual({ cardId, currentCode, isAdmin, onAppl
               />
               <p className="text-[11px] text-muted-foreground text-right">{justificativa.length}/500</p>
             </div>
+            {isReplacing && (
+              <label className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={confirmarTroca}
+                  onChange={(e) => setConfirmarTroca(e.target.checked)}
+                />
+                <span>
+                  Confirmo a substituição do código <strong>{currentCode}</strong> por{" "}
+                  <strong>{code.trim().toUpperCase()}</strong>. A troca fica registrada no histórico do card.
+                </span>
+              </label>
+            )}
             <div className="flex justify-end gap-2">
+
               <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>Cancelar</Button>
               <Button onClick={submit} disabled={saving}>
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
