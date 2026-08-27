@@ -25,6 +25,7 @@ export default function MonneraCodeManual({ cardId, currentCode, isAdmin, onAppl
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");
   const [justificativa, setJustificativa] = useState("");
+  const [confirmarTroca, setConfirmarTroca] = useState(false);
   const [saving, setSaving] = useState(false);
 
   if (!isAdmin) return null;
