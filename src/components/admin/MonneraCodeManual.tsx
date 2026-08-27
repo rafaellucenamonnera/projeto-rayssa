@@ -29,6 +29,8 @@ export default function MonneraCodeManual({ cardId, currentCode, isAdmin, onAppl
 
   if (!isAdmin) return null;
 
+  const isReplacing = !!currentCode && code.trim().toUpperCase() !== currentCode.trim().toUpperCase();
+
   const submit = async () => {
     const normalized = code.trim().toUpperCase();
     const info = describeMonneraCode(normalized);
@@ -46,6 +48,10 @@ export default function MonneraCodeManual({ cardId, currentCode, isAdmin, onAppl
       toast.error("Informe a justificativa (mínimo 10 caracteres).");
       return;
     }
+    if (isReplacing && !confirmarTroca) {
+      toast.error("Marque a confirmação de substituição do código atual.");
+      return;
+    }
 
     setSaving(true);
     try {
@@ -53,9 +59,11 @@ export default function MonneraCodeManual({ cardId, currentCode, isAdmin, onAppl
         p_card_id: cardId,
         p_codigo: normalized,
         p_source: "manual_admin",
+        p_replace: isReplacing,
         p_evidence: {
           origem: "inserção manual no painel",
           justificativa: justificativa.trim().slice(0, 500),
+          codigo_anterior: currentCode ?? null,
           applied_at: new Date().toISOString(),
         },
       });
@@ -66,17 +74,19 @@ export default function MonneraCodeManual({ cardId, currentCode, isAdmin, onAppl
         await supabase.functions.invoke("cross-onboarding-advance", { body: { card_id: cardId, dry_run: true } });
       } catch (_) { /* best-effort */ }
 
-      toast.success("Código Monnera aplicado ao card.");
+      toast.success(isReplacing ? `Código substituído: ${currentCode} → ${normalized}.` : "Código Monnera aplicado ao card.");
       onApplied({ codigo_monnera: normalized, codigo_monnera_origem: "Inserção manual (admin)" });
       setOpen(false);
       setCode("");
       setJustificativa("");
+      setConfirmarTroca(false);
     } catch (e: any) {
       toast.error(e?.message || "Não foi possível aplicar o código.");
     } finally {
       setSaving(false);
     }
   };
+
 
   return (
     <>
