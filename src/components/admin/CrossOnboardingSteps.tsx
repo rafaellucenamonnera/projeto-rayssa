@@ -192,12 +192,21 @@ export default function CrossOnboardingSteps({ cardId, canRun, card, onCardMoved
 
   const okTudo = okCodigo && okCanva && okHtml && okDestinatarios && okEmail;
 
+  const contratante = cardData?.contratante_monnera ?? null;
+
+  const obrigatorios = useMemo(() => destinatariosObrigatorios(contratante), [contratante]);
+
   const sugeridos = useMemo(() => {
-    const base = [cardData?.email ?? "", ...DESTINATARIOS_OBRIGATORIOS]
+    const base = [cardData?.email ?? "", ...obrigatorios]
       .map((e) => e.trim().toLowerCase())
-      .filter((e) => EMAIL_RE.test(e) && !TECNICOS.some((re) => re.test(e)));
+      .filter(
+        (e) =>
+          EMAIL_RE.test(e) &&
+          !TECNICOS.some((re) => re.test(e)) &&
+          !dominioBloqueado(e, contratante),
+      );
     return Array.from(new Set(base));
-  }, [cardData?.email]);
+  }, [cardData?.email, obrigatorios, contratante]);
 
   // ------------------------------------------------------------------- ações
   const uploadHtml = async (file: File) => {
