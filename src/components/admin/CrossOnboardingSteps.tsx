@@ -310,12 +310,21 @@ export default function CrossOnboardingSteps({ cardId, canRun, card, onCardMoved
       toast.error(`O endereço ${tecnico} é técnico e não pode entrar na lista.`);
       return;
     }
+    const foraDoContratante = informados.find((e) => dominioBloqueado(e, contratante));
+    if (foraDoContratante) {
+      toast.error(
+        `O endereço ${foraDoContratante} pertence a outro contratante e não pode entrar neste card${
+          contratante ? ` (${contratante})` : ""
+        }.`,
+      );
+      return;
+    }
     const lista = Array.from(new Set([...sugeridos, ...informados]));
     if (!lista.length) {
       toast.error("Inclua ao menos um destinatário antes de confirmar.");
       return;
     }
-    const faltando = DESTINATARIOS_OBRIGATORIOS.filter((e) => !lista.includes(e));
+    const faltando = obrigatorios.filter((e) => !lista.includes(e));
     if (faltando.length) {
       toast.error(`Ainda faltam os destinatários obrigatórios: ${faltando.join(", ")}.`);
       return;
