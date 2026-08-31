@@ -23,17 +23,45 @@ import { CARD_ATTACHMENTS_BUCKET, formatBytes, getCardAttachmentUrl } from "@/li
 const STEP_DESTINATARIOS = "destinatarios_confirmados";
 const STEP_EMAIL = "email_confirmado";
 
-/** Destinatários obrigatórios confirmados pela operação. */
-export const DESTINATARIOS_OBRIGATORIOS = [
+/** Destinatários internos Monnera: valem para qualquer contratante. */
+export const DESTINATARIOS_MONNERA = [
   "rafael.lucena@monnera.com.br",
   "maycon.santos@monnera.com.br",
-  "denise@baston.com.br",
-  "deise.stadler@baston.com.br",
-  "marcos.miranda@baston.com.br",
 ];
+
+/** Destinatários por contratante: só entram nos cards do respectivo contratante. */
+export const DESTINATARIOS_POR_CONTRATANTE: Array<{
+  match: RegExp;
+  dominio: RegExp;
+  emails: string[];
+}> = [
+  {
+    match: /baston/i,
+    dominio: /@baston\.com\.br$/i,
+    emails: ["denise@baston.com.br", "deise.stadler@baston.com.br", "marcos.miranda@baston.com.br"],
+  },
+  {
+    match: /maxi\s*nutri/i,
+    dominio: /@maxinutri\.com\.br$/i,
+    emails: ["comercial@maxinutri.com.br"],
+  },
+];
+
+/** Lista obrigatória do card, conforme o contratante Monnera. */
+export const destinatariosObrigatorios = (contratante?: string | null) => {
+  const grupo = DESTINATARIOS_POR_CONTRATANTE.find((g) => g.match.test(contratante ?? ""));
+  return [...DESTINATARIOS_MONNERA, ...(grupo?.emails ?? [])];
+};
+
+/** Domínios de contratante que não podem aparecer em cards de outro contratante. */
+const dominioBloqueado = (email: string, contratante?: string | null) =>
+  DESTINATARIOS_POR_CONTRATANTE.some(
+    (g) => g.dominio.test(email) && !g.match.test(contratante ?? ""),
+  );
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TECNICOS = [/^no-?reply@/i, /^nao-?responda@/i, /^notifications?@/i, /^jira@/i, /@monnera\.atlassian\.net$/i, /^mailer-daemon@/i];
+
 
 interface StepRow {
   step: string;
@@ -56,6 +84,8 @@ interface CardInfo {
   full_name?: string | null;
   email?: string | null;
   codigo_monnera?: string | null;
+  contratante_monnera?: string | null;
+
   canva_public_url?: string | null;
   stage_id?: string | null;
 }
@@ -105,7 +135,7 @@ export default function CrossOnboardingSteps({ cardId, canRun, card, onCardMoved
         .eq("card_id", cardId),
       supabase
         .from("representative_cards")
-        .select("id, full_name, email, codigo_monnera, canva_public_url, stage_id")
+        .select("id, full_name, email, codigo_monnera, contratante_monnera, canva_public_url, stage_id")
         .eq("id", cardId)
         .maybeSingle(),
       (supabase as any)
@@ -162,12 +192,21 @@ export default function CrossOnboardingSteps({ cardId, canRun, card, onCardMoved
 
   const okTudo = okCodigo && okCanva && okHtml && okDestinatarios && okEmail;
 
+  const contratante = cardData?.contratante_monnera ?? null;
+
+  const obrigatorios = useMemo(() => destinatariosObrigatorios(contratante), [contratante]);
+
   const sugeridos = useMemo(() => {
-    const base = [cardData?.email ?? "", ...DESTINATARIOS_OBRIGATORIOS]
+    const base = [cardData?.email ?? "", ...obrigatorios]
       .map((e) => e.trim().toLowerCase())
-      .filter((e) => EMAIL_RE.test(e) && !TECNICOS.some((re) => re.test(e)));
+      .filter(
+        (e) =>
+          EMAIL_RE.test(e) &&
+          !TECNICOS.some((re) => re.test(e)) &&
+          !dominioBloqueado(e, contratante),
+      );
     return Array.from(new Set(base));
-  }, [cardData?.email]);
+  }, [cardData?.email, obrigatorios, contratante]);
 
   // ------------------------------------------------------------------- ações
   const uploadHtml = async (file: File) => {
@@ -271,12 +310,21 @@ export default function CrossOnboardingSteps({ cardId, canRun, card, onCardMoved
       toast.error(`O endereço ${tecnico} é técnico e não pode entrar na lista.`);
       return;
     }
+    const foraDoContratante = informados.find((e) => dominioBloqueado(e, contratante));
+    if (foraDoContratante) {
+      toast.error(
+        `O endereço ${foraDoContratante} pertence a outro contratante e não pode entrar neste card${
+          contratante ? ` (${contratante})` : ""
+        }.`,
+      );
+      return;
+    }
     const lista = Array.from(new Set([...sugeridos, ...informados]));
     if (!lista.length) {
       toast.error("Inclua ao menos um destinatário antes de confirmar.");
       return;
     }
-    const faltando = DESTINATARIOS_OBRIGATORIOS.filter((e) => !lista.includes(e));
+    const faltando = obrigatorios.filter((e) => !lista.includes(e));
     if (faltando.length) {
       toast.error(`Ainda faltam os destinatários obrigatórios: ${faltando.join(", ")}.`);
       return;
@@ -454,7 +502,8 @@ export default function CrossOnboardingSteps({ cardId, canRun, card, onCardMoved
             canRun && !okDestinatarios ? (
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">
-                  Serão incluídos: {sugeridos.join(", ") || "nenhum endereço identificado"}.
+                  Contratante: {contratante || "não informado"}. Serão incluídos:{" "}
+                  {sugeridos.join(", ") || "nenhum endereço identificado"}.
                 </p>
                 <div className="space-y-1">
                   <Label htmlFor={`dest-${cardId}`} className="text-xs">Outros e-mails comprovados (opcional)</Label>
