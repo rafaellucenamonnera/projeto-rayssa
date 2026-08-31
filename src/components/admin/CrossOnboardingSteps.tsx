@@ -502,7 +502,8 @@ export default function CrossOnboardingSteps({ cardId, canRun, card, onCardMoved
             canRun && !okDestinatarios ? (
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">
-                  Serão incluídos: {sugeridos.join(", ") || "nenhum endereço identificado"}.
+                  Contratante: {contratante || "não informado"}. Serão incluídos:{" "}
+                  {sugeridos.join(", ") || "nenhum endereço identificado"}.
                 </p>
                 <div className="space-y-1">
                   <Label htmlFor={`dest-${cardId}`} className="text-xs">Outros e-mails comprovados (opcional)</Label>
