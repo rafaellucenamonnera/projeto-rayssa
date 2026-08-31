@@ -84,6 +84,8 @@ interface CardInfo {
   full_name?: string | null;
   email?: string | null;
   codigo_monnera?: string | null;
+  contratante_monnera?: string | null;
+
   canva_public_url?: string | null;
   stage_id?: string | null;
 }
