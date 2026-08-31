@@ -23,17 +23,45 @@ import { CARD_ATTACHMENTS_BUCKET, formatBytes, getCardAttachmentUrl } from "@/li
 const STEP_DESTINATARIOS = "destinatarios_confirmados";
 const STEP_EMAIL = "email_confirmado";
 
-/** Destinatários obrigatórios confirmados pela operação. */
-export const DESTINATARIOS_OBRIGATORIOS = [
+/** Destinatários internos Monnera: valem para qualquer contratante. */
+export const DESTINATARIOS_MONNERA = [
   "rafael.lucena@monnera.com.br",
   "maycon.santos@monnera.com.br",
-  "denise@baston.com.br",
-  "deise.stadler@baston.com.br",
-  "marcos.miranda@baston.com.br",
 ];
+
+/** Destinatários por contratante: só entram nos cards do respectivo contratante. */
+export const DESTINATARIOS_POR_CONTRATANTE: Array<{
+  match: RegExp;
+  dominio: RegExp;
+  emails: string[];
+}> = [
+  {
+    match: /baston/i,
+    dominio: /@baston\.com\.br$/i,
+    emails: ["denise@baston.com.br", "deise.stadler@baston.com.br", "marcos.miranda@baston.com.br"],
+  },
+  {
+    match: /maxi\s*nutri/i,
+    dominio: /@maxinutri\.com\.br$/i,
+    emails: ["comercial@maxinutri.com.br"],
+  },
+];
+
+/** Lista obrigatória do card, conforme o contratante Monnera. */
+export const destinatariosObrigatorios = (contratante?: string | null) => {
+  const grupo = DESTINATARIOS_POR_CONTRATANTE.find((g) => g.match.test(contratante ?? ""));
+  return [...DESTINATARIOS_MONNERA, ...(grupo?.emails ?? [])];
+};
+
+/** Domínios de contratante que não podem aparecer em cards de outro contratante. */
+const dominioBloqueado = (email: string, contratante?: string | null) =>
+  DESTINATARIOS_POR_CONTRATANTE.some(
+    (g) => g.dominio.test(email) && !g.match.test(contratante ?? ""),
+  );
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TECNICOS = [/^no-?reply@/i, /^nao-?responda@/i, /^notifications?@/i, /^jira@/i, /@monnera\.atlassian\.net$/i, /^mailer-daemon@/i];
+
 
 interface StepRow {
   step: string;
