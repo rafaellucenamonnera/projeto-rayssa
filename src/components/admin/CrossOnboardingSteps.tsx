@@ -135,7 +135,7 @@ export default function CrossOnboardingSteps({ cardId, canRun, card, onCardMoved
         .eq("card_id", cardId),
       supabase
         .from("representative_cards")
-        .select("id, full_name, email, codigo_monnera, canva_public_url, stage_id")
+        .select("id, full_name, email, codigo_monnera, contratante_monnera, canva_public_url, stage_id")
         .eq("id", cardId)
         .maybeSingle(),
       (supabase as any)
