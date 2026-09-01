@@ -27,17 +27,18 @@ export default defineTool({
     const userId = requireAuth(ctx);
     const supabase = supabaseForUser(ctx);
 
-    const cnpj = onlyDigits(input.cnpj);
-    if (!cnpj || cnpj.length !== 14) return fail("CNPJ inválido: informe 14 dígitos.");
+    const cnpj = onlyDigits(input.cnpj ?? "") || null;
     if ((input.anotacoes?.length ?? 0) > 500) return fail("As anotações devem ter no máximo 500 caracteres.");
 
-    const { data: existente } = await supabase
-      .from("representative_cards")
-      .select("id, full_name")
-      .eq("panel_id", CROSS_PANEL_ID)
-      .eq("cnpj", cnpj)
-      .maybeSingle();
-    if (existente) return fail(`Já existe um cliente com este CNPJ: ${existente.full_name}.`);
+    if (cnpj) {
+      const { data: existente } = await supabase
+        .from("representative_cards")
+        .select("id, full_name")
+        .eq("panel_id", CROSS_PANEL_ID)
+        .eq("cnpj", cnpj)
+        .maybeSingle();
+      if (existente) return fail(`Já existe um cliente com este CNPJ: ${existente.full_name}.`);
+    }
 
     let stage = input.stage_id?.trim();
     if (!stage) {

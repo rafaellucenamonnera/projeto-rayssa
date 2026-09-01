@@ -432,11 +432,12 @@ var criar_cliente_cross_default = defineTool11({
   handler: async (input, ctx) => {
     const userId = requireAuth(ctx);
     const supabase = supabaseForUser(ctx);
-    const cnpj = onlyDigits(input.cnpj);
-    if (!cnpj || cnpj.length !== 14) return fail("CNPJ inv\xE1lido: informe 14 d\xEDgitos.");
+    const cnpj = onlyDigits(input.cnpj ?? "") || null;
     if ((input.anotacoes?.length ?? 0) > 500) return fail("As anota\xE7\xF5es devem ter no m\xE1ximo 500 caracteres.");
-    const { data: existente } = await supabase.from("representative_cards").select("id, full_name").eq("panel_id", CROSS_PANEL_ID).eq("cnpj", cnpj).maybeSingle();
-    if (existente) return fail(`J\xE1 existe um cliente com este CNPJ: ${existente.full_name}.`);
+    if (cnpj) {
+      const { data: existente } = await supabase.from("representative_cards").select("id, full_name").eq("panel_id", CROSS_PANEL_ID).eq("cnpj", cnpj).maybeSingle();
+      if (existente) return fail(`J\xE1 existe um cliente com este CNPJ: ${existente.full_name}.`);
+    }
     let stage = input.stage_id?.trim();
     if (!stage) {
       const { data: primeira } = await supabase.from("pipeline_stages_config").select("value").eq("panel_key", CROSS_PANEL_ID).order("sort_order").limit(1).maybeSingle();
