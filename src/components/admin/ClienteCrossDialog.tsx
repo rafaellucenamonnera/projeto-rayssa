@@ -85,9 +85,7 @@ export const ClienteCrossDialog = ({ open, onOpenChange, panelId, firstStageId, 
     const email = form.email.trim().toLowerCase();
     const cnpj = form.cnpj.replace(/\D/g, "");
     if (!fullName) return toast.error("Nome do parceiro é obrigatório.");
-    if (!phone) return toast.error("Telefone do focal é obrigatório.");
-    if (!email || !isEmail(email)) return toast.error("Informe um e-mail válido do focal.");
-    if (cnpj && cnpj.length !== 14) return toast.error("CNPJ deve conter 14 dígitos.");
+    if (email && !isEmail(email)) return toast.error("Informe um e-mail válido do focal.");
     if (form.vendor_email.trim() && !isEmail(form.vendor_email.trim().toLowerCase())) {
       return toast.error("E-mail do vendedor responsável inválido.");
     }
@@ -211,11 +209,11 @@ export const ClienteCrossDialog = ({ open, onOpenChange, panelId, firstStageId, 
               <Input value={form.focal_name} onChange={(e) => set("focal_name", e.target.value)} maxLength={200} />
             </div>
             <div className="space-y-1">
-              <Label>Telefone *</Label>
+              <Label>Telefone</Label>
               <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} maxLength={30} />
             </div>
             <div className="space-y-1">
-              <Label>E-mail *</Label>
+              <Label>E-mail</Label>
               <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} maxLength={255} />
             </div>
             <div className="space-y-1 sm:col-span-2">

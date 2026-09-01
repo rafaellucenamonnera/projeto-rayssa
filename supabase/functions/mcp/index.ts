@@ -416,7 +416,7 @@ var criar_cliente_cross_default = defineTool11({
   description: "Cria um card de cliente no painel Onb Clientes Cross com dados do parceiro, focal, contratante Monnera e vendedor. CNPJ \xE9 \xFAnico neste painel.",
   inputSchema: {
     nome_parceiro: z9.string().describe("Nome do parceiro."),
-    cnpj: z9.string().describe("CNPJ do parceiro (14 d\xEDgitos)."),
+    cnpj: z9.string().optional().describe("CNPJ do parceiro (opcional)."),
     focal_nome: z9.string().optional(),
     focal_telefone: z9.string().optional(),
     focal_email: z9.string().optional(),
@@ -432,11 +432,12 @@ var criar_cliente_cross_default = defineTool11({
   handler: async (input, ctx) => {
     const userId = requireAuth(ctx);
     const supabase = supabaseForUser(ctx);
-    const cnpj = onlyDigits(input.cnpj);
-    if (!cnpj || cnpj.length !== 14) return fail("CNPJ inv\xE1lido: informe 14 d\xEDgitos.");
+    const cnpj = onlyDigits(input.cnpj ?? "") || null;
     if ((input.anotacoes?.length ?? 0) > 500) return fail("As anota\xE7\xF5es devem ter no m\xE1ximo 500 caracteres.");
-    const { data: existente } = await supabase.from("representative_cards").select("id, full_name").eq("panel_id", CROSS_PANEL_ID).eq("cnpj", cnpj).maybeSingle();
-    if (existente) return fail(`J\xE1 existe um cliente com este CNPJ: ${existente.full_name}.`);
+    if (cnpj) {
+      const { data: existente } = await supabase.from("representative_cards").select("id, full_name").eq("panel_id", CROSS_PANEL_ID).eq("cnpj", cnpj).maybeSingle();
+      if (existente) return fail(`J\xE1 existe um cliente com este CNPJ: ${existente.full_name}.`);
+    }
     let stage = input.stage_id?.trim();
     if (!stage) {
       const { data: primeira } = await supabase.from("pipeline_stages_config").select("value").eq("panel_key", CROSS_PANEL_ID).order("sort_order").limit(1).maybeSingle();
@@ -1281,7 +1282,7 @@ var create_card_default = defineTool27({
   description: "Cria um card no painel painel_msj9fyji com os dados enviados pelo agente. N\xE3o dispara automa\xE7\xF5es, e-mails nem integra\xE7\xF5es.",
   inputSchema: {
     razao_social: z24.string().describe("Raz\xE3o social / nome do parceiro."),
-    cnpj: z24.string().describe("CNPJ com ou sem m\xE1scara (14 d\xEDgitos)."),
+    cnpj: z24.string().optional().describe("CNPJ com ou sem m\xE1scara (opcional)."),
     nome_contato_parceiro: z24.string().optional().describe("Nome do contato focal."),
     telefone_parceiro: z24.string().optional(),
     email_parceiro: z24.string().optional(),
@@ -1299,8 +1300,7 @@ var create_card_default = defineTool27({
     const supabase = client(ctx);
     const nome = input.razao_social.trim();
     if (!nome) return failure("INVALID_INPUT", "razao_social \xE9 obrigat\xF3rio.");
-    const cnpj = digitsOnly(input.cnpj);
-    if (cnpj.length !== 14) return failure("INVALID_CNPJ", "CNPJ inv\xE1lido: s\xE3o necess\xE1rios 14 d\xEDgitos.", { cnpj });
+    const cnpj = digitsOnly(input.cnpj ?? "") || null;
     if ((input.observacao?.length ?? 0) > 500)
       return failure("INVALID_INPUT", "observacao deve ter no m\xE1ximo 500 caracteres.");
     const stages = await stageLabels(supabase);
