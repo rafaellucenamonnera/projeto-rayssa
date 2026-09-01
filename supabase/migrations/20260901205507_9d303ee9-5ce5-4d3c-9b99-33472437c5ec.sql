@@ -1,0 +1,2 @@
+ALTER TABLE public.cross_onboarding_steps DROP CONSTRAINT IF EXISTS cross_onboarding_steps_step_check;
+ALTER TABLE public.cross_onboarding_steps ADD CONSTRAINT cross_onboarding_steps_step_check CHECK (step = ANY (ARRAY['codigo_validado','codigo_aplicado','card_movido_material','canva_pendente','canva_pronto','html_pronto','email_pendente','email_enviado','card_movido','destinatarios_confirmados','email_confirmado']));
