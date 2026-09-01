@@ -333,7 +333,7 @@ export default function CrossOnboardingSteps({ cardId, canRun, card, onCardMoved
     const { error } = await registrarStep(STEP_DESTINATARIOS, { destinatarios: lista, email_do_card: cardData?.email ?? null });
     setSavingDest(false);
     if (error) {
-      toast.error("Não foi possível salvar a lista de destinatários.");
+      toast.error(`Não foi possível salvar a lista de destinatários. ${error.message ?? ""}`.trim());
       return;
     }
     setExtras("");
