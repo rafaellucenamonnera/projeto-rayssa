@@ -209,11 +209,11 @@ export const ClienteCrossDialog = ({ open, onOpenChange, panelId, firstStageId, 
               <Input value={form.focal_name} onChange={(e) => set("focal_name", e.target.value)} maxLength={200} />
             </div>
             <div className="space-y-1">
-              <Label>Telefone *</Label>
+              <Label>Telefone</Label>
               <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} maxLength={30} />
             </div>
             <div className="space-y-1">
-              <Label>E-mail *</Label>
+              <Label>E-mail</Label>
               <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} maxLength={255} />
             </div>
             <div className="space-y-1 sm:col-span-2">
