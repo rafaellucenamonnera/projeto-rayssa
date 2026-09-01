@@ -1281,7 +1281,7 @@ var create_card_default = defineTool27({
   description: "Cria um card no painel painel_msj9fyji com os dados enviados pelo agente. N\xE3o dispara automa\xE7\xF5es, e-mails nem integra\xE7\xF5es.",
   inputSchema: {
     razao_social: z24.string().describe("Raz\xE3o social / nome do parceiro."),
-    cnpj: z24.string().describe("CNPJ com ou sem m\xE1scara (14 d\xEDgitos)."),
+    cnpj: z24.string().optional().describe("CNPJ com ou sem m\xE1scara (opcional)."),
     nome_contato_parceiro: z24.string().optional().describe("Nome do contato focal."),
     telefone_parceiro: z24.string().optional(),
     email_parceiro: z24.string().optional(),

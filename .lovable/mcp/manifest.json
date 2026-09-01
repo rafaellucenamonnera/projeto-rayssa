@@ -935,7 +935,7 @@
             },
             "cnpj": {
               "type": "string",
-              "description": "CNPJ com ou sem máscara (14 dígitos)."
+              "description": "CNPJ com ou sem máscara (opcional)."
             },
             "nome_contato_parceiro": {
               "type": "string",
@@ -971,8 +971,7 @@
             }
           },
           "required": [
-            "razao_social",
-            "cnpj"
+            "razao_social"
           ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"

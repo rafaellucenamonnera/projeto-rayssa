@@ -21,7 +21,7 @@ export default defineTool({
     "Cria um card no painel painel_msj9fyji com os dados enviados pelo agente. Não dispara automações, e-mails nem integrações.",
   inputSchema: {
     razao_social: z.string().describe("Razão social / nome do parceiro."),
-    cnpj: z.string().describe("CNPJ com ou sem máscara (14 dígitos)."),
+    cnpj: z.string().optional().describe("CNPJ com ou sem máscara (opcional)."),
     nome_contato_parceiro: z.string().optional().describe("Nome do contato focal."),
     telefone_parceiro: z.string().optional(),
     email_parceiro: z.string().optional(),
