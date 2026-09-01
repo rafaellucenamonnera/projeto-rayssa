@@ -41,8 +41,7 @@ export default defineTool({
 
       const nome = input.razao_social.trim();
       if (!nome) return failure("INVALID_INPUT", "razao_social é obrigatório.");
-      const cnpj = digitsOnly(input.cnpj);
-      if (cnpj.length !== 14) return failure("INVALID_CNPJ", "CNPJ inválido: são necessários 14 dígitos.", { cnpj });
+      const cnpj = digitsOnly(input.cnpj ?? "") || null;
       if ((input.observacao?.length ?? 0) > 500)
         return failure("INVALID_INPUT", "observacao deve ter no máximo 500 caracteres.");
 

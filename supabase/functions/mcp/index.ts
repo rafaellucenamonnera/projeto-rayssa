@@ -1299,8 +1299,7 @@ var create_card_default = defineTool27({
     const supabase = client(ctx);
     const nome = input.razao_social.trim();
     if (!nome) return failure("INVALID_INPUT", "razao_social \xE9 obrigat\xF3rio.");
-    const cnpj = digitsOnly(input.cnpj);
-    if (cnpj.length !== 14) return failure("INVALID_CNPJ", "CNPJ inv\xE1lido: s\xE3o necess\xE1rios 14 d\xEDgitos.", { cnpj });
+    const cnpj = digitsOnly(input.cnpj ?? "") || null;
     if ((input.observacao?.length ?? 0) > 500)
       return failure("INVALID_INPUT", "observacao deve ter no m\xE1ximo 500 caracteres.");
     const stages = await stageLabels(supabase);
