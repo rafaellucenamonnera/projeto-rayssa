@@ -396,7 +396,7 @@
             },
             "cnpj": {
               "type": "string",
-              "description": "CNPJ do parceiro (14 dígitos)."
+              "description": "CNPJ do parceiro (opcional)."
             },
             "focal_nome": {
               "type": "string"
@@ -433,8 +433,7 @@
             }
           },
           "required": [
-            "nome_parceiro",
-            "cnpj"
+            "nome_parceiro"
           ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"

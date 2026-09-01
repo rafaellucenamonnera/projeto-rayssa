@@ -10,7 +10,7 @@ export default defineTool({
     "Cria um card de cliente no painel Onb Clientes Cross com dados do parceiro, focal, contratante Monnera e vendedor. CNPJ é único neste painel.",
   inputSchema: {
     nome_parceiro: z.string().describe("Nome do parceiro."),
-    cnpj: z.string().describe("CNPJ do parceiro (14 dígitos)."),
+    cnpj: z.string().optional().describe("CNPJ do parceiro (opcional)."),
     focal_nome: z.string().optional(),
     focal_telefone: z.string().optional(),
     focal_email: z.string().optional(),
