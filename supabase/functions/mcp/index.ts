@@ -1618,7 +1618,6 @@ var complete_task_default = defineTool33({
     const { data, error } = await supabase.from("representative_card_tasks").update({
       status: "concluida",
       completed_at: (/* @__PURE__ */ new Date()).toISOString(),
-      completed_by: userId,
       completed_note: observacao?.trim() || null
     }).eq("id", task_id).eq("representative_card_id", card_id).select("id, titulo, status, completed_at, completed_note, due_at, assigned_to").maybeSingle();
     if (error) return failure("UPDATE_FAILED", error.message);

@@ -36,7 +36,7 @@ export default defineTool({
         .update({
           status: "concluida",
           completed_at: new Date().toISOString(),
-          completed_by: userId,
+          
           completed_note: observacao?.trim() || null,
         })
         .eq("id", task_id)
