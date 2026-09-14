@@ -128,6 +128,10 @@ const onlyDigits = (value: string) =>
 const escapePostgrestLike = (value: string) =>
   value.replace(/[%_*\\]/g, (match) => `\\${match}`);
 
+// PostgREST usa vírgula/parênteses/aspas como sintaxe do or(); precisam sair do termo.
+const sanitizeForPostgrestOr = (value: string) =>
+  value.replace(/["(),.:]/g, " ").replace(/\s+/g, " ").trim();
+
 const COMMERCIAL_SEARCH_FIELDS = [
   "nome_fantasia",
   "razao_social",
@@ -137,25 +141,28 @@ const COMMERCIAL_SEARCH_FIELDS = [
   "email_responsavel",
 ] as const;
 
-const buildEmpresaOrFilter = (term: string): string | null => {
+const buildEmpresaOrFilter = (rawTerm: string): string | null => {
+  const term = sanitizeForPostgrestOr(rawTerm || "");
   if (!term || term.length < 2) return null;
   const textTerms = Array.from(new Set([term, ...term.split(" ")]))
+    .map((t) => t.trim())
     .filter((t) => t.length >= 2)
     .slice(0, 5);
   const orParts: string[] = [];
   textTerms.forEach((t) => {
-    const value = `%${escapePostgrestLike(t)}%`;
+    const value = `"%${escapePostgrestLike(t)}%"`;
     COMMERCIAL_SEARCH_FIELDS.forEach((field) => {
       orParts.push(`${field}.ilike.${value}`);
     });
   });
   const numericTerm = onlyDigits(term);
   if (numericTerm.length >= 2) {
-    orParts.push(`cnpj.ilike.%${numericTerm}%`);
-    orParts.push(`telefone_responsavel.ilike.%${numericTerm}%`);
+    orParts.push(`cnpj.ilike."%${numericTerm}%"`);
+    orParts.push(`telefone_responsavel.ilike."%${numericTerm}%"`);
   }
   return orParts.length > 0 ? orParts.join(",") : null;
 };
+
 
 const emptyEditFormData = {
   nome_fantasia: "",
