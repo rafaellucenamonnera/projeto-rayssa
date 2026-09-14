@@ -310,6 +310,10 @@ const AdminLeads = () => {
   const [stageTotals, setStageTotals] = useState<Record<string, number>>({});
   const [stageLoadedPages, setStageLoadedPages] = useState<Record<string, number>>({});
   const [stageLoadingMore, setStageLoadingMore] = useState<Record<string, boolean>>({});
+  // Evita que respostas antigas sobrescrevam a busca mais recente.
+  const commercialLoadRunRef = useRef(0);
+  const [commercialLoading, setCommercialLoading] = useState(false);
+
 
 
   // Filters
