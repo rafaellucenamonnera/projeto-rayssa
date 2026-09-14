@@ -644,65 +644,80 @@ const AdminLeads = () => {
 
     // Painel Comercial: carregamento incremental por coluna.
     if (isCommercialPanel) {
-      await loadCommonRefs();
+      const runId = ++commercialLoadRunRef.current;
+      const isStale = () => runId !== commercialLoadRunRef.current;
+      setCommercialLoading(true);
+      try {
+        await loadCommonRefs();
+        if (isStale()) return;
 
-      // Reset paging + card state on (re)load para não misturar com busca anterior.
-      setStageMap({});
-      setReunioesMap({});
-      setStageLoadedPages({});
-      setStageTotals({});
-      setStageLoadingMore({});
-      setLeads([]);
+        const orFilter = buildEmpresaOrFilter(debouncedFilterEmpresa);
+        const applyEmpresaSearch = <T extends { or: (...args: any[]) => any }>(q: T): T =>
+          (orFilter ? q.or(orFilter) : q) as T;
 
-      const orFilter = buildEmpresaOrFilter(debouncedFilterEmpresa);
-      const applyEmpresaSearch = <T extends { or: (...args: any[]) => any }>(q: T): T =>
-        (orFilter ? q.or(orFilter) : q) as T;
+        const stagesToLoad = pipelineStages;
+        let queryError: any = null;
+        const results = await Promise.all(
+          stagesToLoad.map(async (stage) => {
+            const countQuery = applyEmpresaSearch(
+              supabase
+                .from("leads")
+                .select("id", { count: "exact", head: true })
+                .eq("panel_id", currentPanelId)
+                .eq("status_lead", stage.value) as any,
+            );
+            const dataQuery = applyEmpresaSearch(
+              supabase
+                .from("leads")
+                .select("*")
+                .eq("panel_id", currentPanelId)
+                .eq("status_lead", stage.value)
+                .order("data_cadastro", { ascending: false })
+                .range(0, STAGE_PAGE_SIZE - 1) as any,
+            );
+            const [countRes, dataRes] = await Promise.all([countQuery, dataQuery]);
+            if (countRes.error) queryError = countRes.error;
+            if (dataRes.error) queryError = dataRes.error;
+            return {
+              stage: stage.value,
+              total: countRes.count ?? 0,
+              rows: (dataRes.data as any[]) || [],
+            };
+          }),
+        );
 
-      const stagesToLoad = pipelineStages;
-      const results = await Promise.all(
-        stagesToLoad.map(async (stage) => {
-          const countQuery = applyEmpresaSearch(
-            supabase
-              .from("leads")
-              .select("id", { count: "exact", head: true })
-              .eq("panel_id", currentPanelId)
-              .eq("status_lead", stage.value) as any,
-          );
-          const dataQuery = applyEmpresaSearch(
-            supabase
-              .from("leads")
-              .select("*")
-              .eq("panel_id", currentPanelId)
-              .eq("status_lead", stage.value)
-              .order("data_cadastro", { ascending: false })
-              .range(0, STAGE_PAGE_SIZE - 1) as any,
-          );
-          const [countRes, dataRes] = await Promise.all([countQuery, dataQuery]);
-          return {
-            stage: stage.value,
-            total: countRes.count ?? 0,
-            rows: (dataRes.data as any[]) || [],
-          };
-        }),
-      );
+        if (isStale()) return;
 
-      const totals: Record<string, number> = {};
-      const pages: Record<string, number> = {};
-      const allRows: any[] = [];
-      results.forEach(({ stage, total, rows }) => {
-        totals[stage] = total;
-        pages[stage] = 1;
-        allRows.push(...rows);
-      });
-      setStageTotals(totals);
-      setStageLoadedPages(pages);
-      const seen = new Set<string>();
-      const deduped = allRows.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
-      setLeads(deduped);
+        if (queryError) {
+          toast.error(`Erro na busca: ${queryError.message || "tente outro termo"}`);
+          return;
+        }
 
-      await loadRelatedForIds(deduped.map((r) => r.id));
+        const totals: Record<string, number> = {};
+        const pages: Record<string, number> = {};
+        const allRows: any[] = [];
+        results.forEach(({ stage, total, rows }) => {
+          totals[stage] = total;
+          pages[stage] = 1;
+          allRows.push(...rows);
+        });
+        // Só troca o conteúdo quando o resultado novo chega (evita tela em branco).
+        setStageMap({});
+        setReunioesMap({});
+        setStageLoadingMore({});
+        setStageTotals(totals);
+        setStageLoadedPages(pages);
+        const seen = new Set<string>();
+        const deduped = allRows.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
+        setLeads(deduped);
+
+        await loadRelatedForIds(deduped.map((r) => r.id));
+      } finally {
+        if (runId === commercialLoadRunRef.current) setCommercialLoading(false);
+      }
       return;
     }
+
 
 
     const [leadsRes, parceirosRes, stageRes, reunioesRes, usersRes] = await Promise.all([
