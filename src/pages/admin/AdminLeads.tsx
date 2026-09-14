@@ -128,6 +128,10 @@ const onlyDigits = (value: string) =>
 const escapePostgrestLike = (value: string) =>
   value.replace(/[%_*\\]/g, (match) => `\\${match}`);
 
+// PostgREST usa vírgula/parênteses/aspas como sintaxe do or(); precisam sair do termo.
+const sanitizeForPostgrestOr = (value: string) =>
+  value.replace(/["(),.:]/g, " ").replace(/\s+/g, " ").trim();
+
 const COMMERCIAL_SEARCH_FIELDS = [
   "nome_fantasia",
   "razao_social",
@@ -137,25 +141,28 @@ const COMMERCIAL_SEARCH_FIELDS = [
   "email_responsavel",
 ] as const;
 
-const buildEmpresaOrFilter = (term: string): string | null => {
+const buildEmpresaOrFilter = (rawTerm: string): string | null => {
+  const term = sanitizeForPostgrestOr(rawTerm || "");
   if (!term || term.length < 2) return null;
   const textTerms = Array.from(new Set([term, ...term.split(" ")]))
+    .map((t) => t.trim())
     .filter((t) => t.length >= 2)
     .slice(0, 5);
   const orParts: string[] = [];
   textTerms.forEach((t) => {
-    const value = `%${escapePostgrestLike(t)}%`;
+    const value = `"%${escapePostgrestLike(t)}%"`;
     COMMERCIAL_SEARCH_FIELDS.forEach((field) => {
       orParts.push(`${field}.ilike.${value}`);
     });
   });
   const numericTerm = onlyDigits(term);
   if (numericTerm.length >= 2) {
-    orParts.push(`cnpj.ilike.%${numericTerm}%`);
-    orParts.push(`telefone_responsavel.ilike.%${numericTerm}%`);
+    orParts.push(`cnpj.ilike."%${numericTerm}%"`);
+    orParts.push(`telefone_responsavel.ilike."%${numericTerm}%"`);
   }
   return orParts.length > 0 ? orParts.join(",") : null;
 };
+
 
 const emptyEditFormData = {
   nome_fantasia: "",
@@ -303,6 +310,10 @@ const AdminLeads = () => {
   const [stageTotals, setStageTotals] = useState<Record<string, number>>({});
   const [stageLoadedPages, setStageLoadedPages] = useState<Record<string, number>>({});
   const [stageLoadingMore, setStageLoadingMore] = useState<Record<string, boolean>>({});
+  // Evita que respostas antigas sobrescrevam a busca mais recente.
+  const commercialLoadRunRef = useRef(0);
+  const [commercialLoading, setCommercialLoading] = useState(false);
+
 
 
   // Filters
@@ -637,65 +648,80 @@ const AdminLeads = () => {
 
     // Painel Comercial: carregamento incremental por coluna.
     if (isCommercialPanel) {
-      await loadCommonRefs();
+      const runId = ++commercialLoadRunRef.current;
+      const isStale = () => runId !== commercialLoadRunRef.current;
+      setCommercialLoading(true);
+      try {
+        await loadCommonRefs();
+        if (isStale()) return;
 
-      // Reset paging + card state on (re)load para não misturar com busca anterior.
-      setStageMap({});
-      setReunioesMap({});
-      setStageLoadedPages({});
-      setStageTotals({});
-      setStageLoadingMore({});
-      setLeads([]);
+        const orFilter = buildEmpresaOrFilter(debouncedFilterEmpresa);
+        const applyEmpresaSearch = <T extends { or: (...args: any[]) => any }>(q: T): T =>
+          (orFilter ? q.or(orFilter) : q) as T;
 
-      const orFilter = buildEmpresaOrFilter(debouncedFilterEmpresa);
-      const applyEmpresaSearch = <T extends { or: (...args: any[]) => any }>(q: T): T =>
-        (orFilter ? q.or(orFilter) : q) as T;
+        const stagesToLoad = pipelineStages;
+        let queryError: any = null;
+        const results = await Promise.all(
+          stagesToLoad.map(async (stage) => {
+            const countQuery = applyEmpresaSearch(
+              supabase
+                .from("leads")
+                .select("id", { count: "exact", head: true })
+                .eq("panel_id", currentPanelId)
+                .eq("status_lead", stage.value) as any,
+            );
+            const dataQuery = applyEmpresaSearch(
+              supabase
+                .from("leads")
+                .select("*")
+                .eq("panel_id", currentPanelId)
+                .eq("status_lead", stage.value)
+                .order("data_cadastro", { ascending: false })
+                .range(0, STAGE_PAGE_SIZE - 1) as any,
+            );
+            const [countRes, dataRes] = await Promise.all([countQuery, dataQuery]);
+            if (countRes.error) queryError = countRes.error;
+            if (dataRes.error) queryError = dataRes.error;
+            return {
+              stage: stage.value,
+              total: countRes.count ?? 0,
+              rows: (dataRes.data as any[]) || [],
+            };
+          }),
+        );
 
-      const stagesToLoad = pipelineStages;
-      const results = await Promise.all(
-        stagesToLoad.map(async (stage) => {
-          const countQuery = applyEmpresaSearch(
-            supabase
-              .from("leads")
-              .select("id", { count: "exact", head: true })
-              .eq("panel_id", currentPanelId)
-              .eq("status_lead", stage.value) as any,
-          );
-          const dataQuery = applyEmpresaSearch(
-            supabase
-              .from("leads")
-              .select("*")
-              .eq("panel_id", currentPanelId)
-              .eq("status_lead", stage.value)
-              .order("data_cadastro", { ascending: false })
-              .range(0, STAGE_PAGE_SIZE - 1) as any,
-          );
-          const [countRes, dataRes] = await Promise.all([countQuery, dataQuery]);
-          return {
-            stage: stage.value,
-            total: countRes.count ?? 0,
-            rows: (dataRes.data as any[]) || [],
-          };
-        }),
-      );
+        if (isStale()) return;
 
-      const totals: Record<string, number> = {};
-      const pages: Record<string, number> = {};
-      const allRows: any[] = [];
-      results.forEach(({ stage, total, rows }) => {
-        totals[stage] = total;
-        pages[stage] = 1;
-        allRows.push(...rows);
-      });
-      setStageTotals(totals);
-      setStageLoadedPages(pages);
-      const seen = new Set<string>();
-      const deduped = allRows.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
-      setLeads(deduped);
+        if (queryError) {
+          toast.error(`Erro na busca: ${queryError.message || "tente outro termo"}`);
+          return;
+        }
 
-      await loadRelatedForIds(deduped.map((r) => r.id));
+        const totals: Record<string, number> = {};
+        const pages: Record<string, number> = {};
+        const allRows: any[] = [];
+        results.forEach(({ stage, total, rows }) => {
+          totals[stage] = total;
+          pages[stage] = 1;
+          allRows.push(...rows);
+        });
+        // Só troca o conteúdo quando o resultado novo chega (evita tela em branco).
+        setStageMap({});
+        setReunioesMap({});
+        setStageLoadingMore({});
+        setStageTotals(totals);
+        setStageLoadedPages(pages);
+        const seen = new Set<string>();
+        const deduped = allRows.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
+        setLeads(deduped);
+
+        await loadRelatedForIds(deduped.map((r) => r.id));
+      } finally {
+        if (runId === commercialLoadRunRef.current) setCommercialLoading(false);
+      }
       return;
     }
+
 
 
     const [leadsRes, parceirosRes, stageRes, reunioesRes, usersRes] = await Promise.all([
@@ -2229,7 +2255,7 @@ const AdminLeads = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2 sm:gap-3">
         <div className="relative">
           <Input placeholder={isCustomCrmPanel ? "Filtrar por nome..." : "Filtrar por empresa..."} value={filterEmpresa} onChange={(e) => setFilterEmpresa(e.target.value)} />
-          {isCommercialPanel && searchingEmpresa && filterEmpresa.trim().length >= 2 && (
+          {isCommercialPanel && (searchingEmpresa || commercialLoading) && filterEmpresa.trim().length >= 2 && (
             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">Buscando…</span>
           )}
         </div>
