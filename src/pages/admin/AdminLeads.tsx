@@ -917,8 +917,10 @@ const AdminLeads = () => {
   }, [detailLead?.id]);
 
   useEffect(() => {
+    if (!stagesReady) return;
     loadData();
-  }, [isCustomCrmPanel, currentPanelId, isCommercialPanel, pipelineStages]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCustomCrmPanel, currentPanelId, isCommercialPanel, stagesReady, pipelineStagesKey]);
 
   // Recarga server-side do painel comercial quando o termo debounced muda.
   const commercialSearchInitRef = useRef(true);
