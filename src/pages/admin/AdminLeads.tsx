@@ -850,6 +850,8 @@ const AdminLeads = () => {
 
 
   useEffect(() => {
+    let ativo = true;
+    setStagesReady(false);
     const loadPipelineStages = async () => {
       const { data, error } = await (supabase as any)
         .from("pipeline_stages_config")
@@ -857,8 +859,11 @@ const AdminLeads = () => {
         .eq("panel_key", currentPanelId)
         .order("sort_order", { ascending: true });
 
+      if (!ativo) return;
+
       if (error) {
         toast.error("Erro ao carregar colunas do painel");
+        setStagesReady(true);
         return;
       }
 
@@ -867,9 +872,11 @@ const AdminLeads = () => {
       } else {
         setPipelineStages(PIPELINE_STAGES.map((stage, index) => ({ ...stage, sort_order: index + 1 })));
       }
+      setStagesReady(true);
     };
 
     loadPipelineStages();
+
 
     const channel = supabase
       .channel(`pipeline-stages-${currentPanelId}`)
