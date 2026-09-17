@@ -414,6 +414,12 @@ const AdminLeads = () => {
   const [availableTargetStages, setAvailableTargetStages] = useState<{ value: string; label: string }[]>([]);
   const [targetStageId, setTargetStageId] = useState("");
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>(PIPELINE_STAGES.map((s, i) => ({ ...s, sort_order: i + 1 })));
+  // Só carrega os cards depois que as colunas reais do painel chegarem (evita carga dupla).
+  const [stagesReady, setStagesReady] = useState(false);
+  const pipelineStagesKey = useMemo(
+    () => pipelineStages.map((s) => s.value).join("|"),
+    [pipelineStages],
+  );
   const [syncingDrive, setSyncingDrive] = useState(false);
 
   const panelIdByPath: Record<string, string> = {
@@ -844,6 +850,8 @@ const AdminLeads = () => {
 
 
   useEffect(() => {
+    let ativo = true;
+    setStagesReady(false);
     const loadPipelineStages = async () => {
       const { data, error } = await (supabase as any)
         .from("pipeline_stages_config")
@@ -851,8 +859,11 @@ const AdminLeads = () => {
         .eq("panel_key", currentPanelId)
         .order("sort_order", { ascending: true });
 
+      if (!ativo) return;
+
       if (error) {
         toast.error("Erro ao carregar colunas do painel");
+        setStagesReady(true);
         return;
       }
 
@@ -861,9 +872,11 @@ const AdminLeads = () => {
       } else {
         setPipelineStages(PIPELINE_STAGES.map((stage, index) => ({ ...stage, sort_order: index + 1 })));
       }
+      setStagesReady(true);
     };
 
     loadPipelineStages();
+
 
     const channel = supabase
       .channel(`pipeline-stages-${currentPanelId}`)
@@ -875,6 +888,7 @@ const AdminLeads = () => {
       .subscribe();
 
     return () => {
+      ativo = false;
       supabase.removeChannel(channel);
     };
   }, [currentPanelId]);
@@ -903,8 +917,10 @@ const AdminLeads = () => {
   }, [detailLead?.id]);
 
   useEffect(() => {
+    if (!stagesReady) return;
     loadData();
-  }, [isCustomCrmPanel, currentPanelId, isCommercialPanel, pipelineStages]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCustomCrmPanel, currentPanelId, isCommercialPanel, stagesReady, pipelineStagesKey]);
 
   // Recarga server-side do painel comercial quando o termo debounced muda.
   const commercialSearchInitRef = useRef(true);
