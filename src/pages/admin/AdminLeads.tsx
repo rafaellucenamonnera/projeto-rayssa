@@ -888,6 +888,7 @@ const AdminLeads = () => {
       .subscribe();
 
     return () => {
+      ativo = false;
       supabase.removeChannel(channel);
     };
   }, [currentPanelId]);
