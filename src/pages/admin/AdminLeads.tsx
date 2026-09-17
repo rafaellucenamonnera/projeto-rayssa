@@ -414,6 +414,12 @@ const AdminLeads = () => {
   const [availableTargetStages, setAvailableTargetStages] = useState<{ value: string; label: string }[]>([]);
   const [targetStageId, setTargetStageId] = useState("");
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>(PIPELINE_STAGES.map((s, i) => ({ ...s, sort_order: i + 1 })));
+  // Só carrega os cards depois que as colunas reais do painel chegarem (evita carga dupla).
+  const [stagesReady, setStagesReady] = useState(false);
+  const pipelineStagesKey = useMemo(
+    () => pipelineStages.map((s) => s.value).join("|"),
+    [pipelineStages],
+  );
   const [syncingDrive, setSyncingDrive] = useState(false);
 
   const panelIdByPath: Record<string, string> = {
