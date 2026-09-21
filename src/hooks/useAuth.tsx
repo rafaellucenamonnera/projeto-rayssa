@@ -39,11 +39,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          // Defer to avoid potential deadlocks with Supabase internals
-          fetchRoles(session.user.id).then((r) => {
-            setRoles(r);
-            setLoading(false);
-          });
+          const userId = session.user.id;
+          // Adiado: chamar o banco dentro do callback trava o lock de auth
+          // e deixa TODOS os requests da aba pendurados após um refresh de token.
+          setTimeout(() => {
+            fetchRoles(userId).then((r) => {
+              setRoles(r);
+              setLoading(false);
+            });
+          }, 0);
         } else {
           setRoles([]);
           setLoading(false);

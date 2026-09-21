@@ -37,6 +37,26 @@ interface ClienteCrossDialogProps {
 
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
+const SAVE_TIMEOUT_MS = 20000;
+
+/** Evita botão girando para sempre quando a requisição não responde. */
+const withTimeout = async <T,>(promise: PromiseLike<T>, label: string): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      Promise.resolve(promise),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`${label} demorou demais para responder. Verifique a conexão e tente novamente.`)),
+          SAVE_TIMEOUT_MS,
+        );
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+};
+
 export const ClienteCrossDialog = ({ open, onOpenChange, panelId, firstStageId, card, onSaved }: ClienteCrossDialogProps) => {
   const isEdit = !!card?.id;
   const [form, setForm] = useState<ClienteForm>({ ...emptyForm });
