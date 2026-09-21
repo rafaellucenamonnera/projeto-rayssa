@@ -37,6 +37,26 @@ interface ClienteCrossDialogProps {
 
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
+const SAVE_TIMEOUT_MS = 20000;
+
+/** Evita botão girando para sempre quando a requisição não responde. */
+const withTimeout = async <T,>(promise: PromiseLike<T>, label: string): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      Promise.resolve(promise),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`${label} demorou demais para responder. Verifique a conexão e tente novamente.`)),
+          SAVE_TIMEOUT_MS,
+        );
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+};
+
 export const ClienteCrossDialog = ({ open, onOpenChange, panelId, firstStageId, card, onSaved }: ClienteCrossDialogProps) => {
   const isEdit = !!card?.id;
   const [form, setForm] = useState<ClienteForm>({ ...emptyForm });
@@ -101,7 +121,7 @@ export const ClienteCrossDialog = ({ open, onOpenChange, panelId, firstStageId, 
           .eq("cnpj", cnpj)
           .limit(1);
         if (isEdit) dupQuery = dupQuery.neq("id", card.id);
-        const { data: dup } = await dupQuery;
+        const { data: dup } = await withTimeout<any>(dupQuery, "A verificação de CNPJ");
         if (dup && dup.length > 0) {
           toast.error("Já existe um cliente com este CNPJ.");
           setSaving(false);
@@ -126,31 +146,37 @@ export const ClienteCrossDialog = ({ open, onOpenChange, panelId, firstStageId, 
 
       let saved: any = null;
       if (isEdit) {
-        const { data, error } = await (supabase as any)
-          .from("representative_cards")
-          .update(payload)
-          .eq("id", card.id)
-          .select("*")
-          .single();
+        const { data, error } = await withTimeout<any>(
+          (supabase as any)
+            .from("representative_cards")
+            .update(payload)
+            .eq("id", card.id)
+            .select("*")
+            .single(),
+          "O salvamento",
+        );
         if (error) throw error;
         saved = data;
       } else {
         if (!firstStageId) throw new Error("Não há colunas configuradas para este painel.");
-        const auth = await supabase.auth.getUser();
+        const auth = await withTimeout(supabase.auth.getUser(), "A verificação da sessão");
         const userId = auth.data.user?.id;
         if (!userId) throw new Error("Usuário autenticado não identificado.");
-        const { data, error } = await (supabase as any)
-          .from("representative_cards")
-          .insert({
-            ...payload,
-            panel_id: panelId,
-            stage_id: firstStageId,
-            source: "Cadastro manual",
-            responsible_user_id: userId,
-            created_by_user_id: userId,
-          })
-          .select("*")
-          .single();
+        const { data, error } = await withTimeout<any>(
+          (supabase as any)
+            .from("representative_cards")
+            .insert({
+              ...payload,
+              panel_id: panelId,
+              stage_id: firstStageId,
+              source: "Cadastro manual",
+              responsible_user_id: userId,
+              created_by_user_id: userId,
+            })
+            .select("*")
+            .single(),
+          "O cadastro",
+        );
         if (error) throw error;
         saved = data;
 
