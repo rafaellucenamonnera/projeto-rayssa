@@ -189,9 +189,11 @@ export const ClienteCrossDialog = ({ open, onOpenChange, panelId, firstStageId, 
         }
       }
 
-      toast.success(isEdit ? "Cliente atualizado." : "Cliente cadastrado.");
-      onSaved(saved);
+      // Fecha a janela superior antes de atualizar o card que está na janela
+      // de detalhes. Isso evita que duas janelas disputem o bloqueio de cliques.
       onOpenChange(false);
+      toast.success(isEdit ? "Cliente atualizado." : "Cliente cadastrado.");
+      setTimeout(() => onSaved(saved), 0);
 
       // O histórico é complementar: nunca deve manter a janela de edição travada
       // depois que o card já foi persistido com sucesso.
