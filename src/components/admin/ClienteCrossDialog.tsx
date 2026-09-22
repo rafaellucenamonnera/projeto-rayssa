@@ -189,18 +189,26 @@ export const ClienteCrossDialog = ({ open, onOpenChange, panelId, firstStageId, 
         }
       }
 
-      if (saved?.id) {
-        await logCardEvent(
-          saved.id,
-          isEdit ? "card_updated" : "card_created",
-          { nome: saved.full_name, cnpj: saved.cnpj || null },
-          null,
-          isEdit ? null : saved.stage_id,
-        );
-      }
       toast.success(isEdit ? "Cliente atualizado." : "Cliente cadastrado.");
       onSaved(saved);
       onOpenChange(false);
+
+      // O histórico é complementar: nunca deve manter a janela de edição travada
+      // depois que o card já foi persistido com sucesso.
+      if (saved?.id) {
+        void withTimeout(
+          logCardEvent(
+            saved.id,
+            isEdit ? "card_updated" : "card_created",
+            { nome: saved.full_name, cnpj: saved.cnpj || null },
+            null,
+            isEdit ? null : saved.stage_id,
+          ),
+          "O registro do histórico",
+        ).catch((historyError) => {
+          console.error("Erro ao registrar histórico do card:", historyError);
+        });
+      }
     } catch (e: any) {
       const msg = String(e?.message || "");
       if (msg.includes("representative_cards_panel_cnpj_uniq")) {
