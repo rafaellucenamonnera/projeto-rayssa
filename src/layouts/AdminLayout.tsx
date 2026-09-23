@@ -1,14 +1,58 @@
-import { Outlet, Navigate, useNavigate } from "react-router-dom";
+import { Outlet, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Loader2, LogOut } from "lucide-react";
+import { useEffect } from "react";
 import { NotificationCenter } from "@/components/admin/NotificationCenter";
 
 const AdminLayout = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, isInternalUser, loading, signOut } = useAuth();
+
+  useEffect(() => {
+    let cleanupId = 0;
+    const releaseStalePageLock = () => {
+      window.clearTimeout(cleanupId);
+      cleanupId = window.setTimeout(() => {
+        const openModal = document.querySelector('[role="dialog"][data-state="open"]');
+        if (openModal) return;
+
+        document.body.style.removeProperty("pointer-events");
+        document.body.style.removeProperty("overflow");
+        document.body.removeAttribute("data-scroll-locked");
+      }, 50);
+    };
+
+    releaseStalePageLock();
+    const observer = new MutationObserver(releaseStalePageLock);
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["style", "data-scroll-locked"],
+      childList: true,
+      subtree: true,
+    });
+
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(cleanupId);
+    };
+  }, []);
+
+  useEffect(() => {
+    const cleanupId = window.setTimeout(() => {
+      const openModal = document.querySelector('[role="dialog"][data-state="open"]');
+      if (openModal) return;
+
+      document.body.style.removeProperty("pointer-events");
+      document.body.style.removeProperty("overflow");
+      document.body.removeAttribute("data-scroll-locked");
+    }, 50);
+
+    return () => window.clearTimeout(cleanupId);
+  }, [location.pathname]);
 
   if (loading) {
     return (

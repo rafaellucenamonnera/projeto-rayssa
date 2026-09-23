@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 
@@ -17,58 +17,85 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
+const ROLE_FETCH_TIMEOUT_MS = 12000;
+
+const withTimeout = <T,>(promise: PromiseLike<T>, timeoutMs: number): Promise<T> =>
+  new Promise<T>((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => reject(new Error("Tempo limite ao carregar permissões")), timeoutMs);
+    Promise.resolve(promise).then(
+      (value) => {
+        window.clearTimeout(timeoutId);
+        resolve(value);
+      },
+      (error) => {
+        window.clearTimeout(timeoutId);
+        reject(error);
+      },
+    );
+  });
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [loading, setLoading] = useState(true);
+  const authRequestRef = useRef(0);
 
   const fetchRoles = async (userId: string): Promise<UserRole[]> => {
-    const { data } = await supabase
+    const { data, error } = await withTimeout(supabase
       .from("user_roles")
       .select("role")
-      .eq("user_id", userId);
+      .eq("user_id", userId), ROLE_FETCH_TIMEOUT_MS);
+    if (error) throw error;
     return (data || []).map((r: any) => r.role as UserRole);
   };
 
   useEffect(() => {
-    // Set up listener BEFORE getSession (per Supabase best practices)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+    let active = true;
 
-        if (session?.user) {
-          const userId = session.user.id;
-          // Adiado: chamar o banco dentro do callback trava o lock de auth
-          // e deixa TODOS os requests da aba pendurados após um refresh de token.
-          setTimeout(() => {
-            fetchRoles(userId).then((r) => {
-              setRoles(r);
-              setLoading(false);
-            });
-          }, 0);
-        } else {
-          setRoles([]);
-          setLoading(false);
-        }
+    const resolveRoles = async (userId: string, requestId: number) => {
+      try {
+        const nextRoles = await fetchRoles(userId);
+        if (active && requestId === authRequestRef.current) setRoles(nextRoles);
+      } catch (error) {
+        console.error("[AuthProvider] Não foi possível carregar as permissões", error);
+      } finally {
+        if (active && requestId === authRequestRef.current) setLoading(false);
       }
-    );
+    };
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchRoles(session.user.id).then((r) => {
-          setRoles(r);
-          setLoading(false);
-        });
+    const applySession = (nextSession: Session | null) => {
+      const requestId = ++authRequestRef.current;
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+
+      if (nextSession?.user) {
+        window.setTimeout(() => void resolveRoles(nextSession.user.id, requestId), 0);
       } else {
+        setRoles([]);
         setLoading(false);
       }
-    });
+    };
 
-    return () => subscription.unsubscribe();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, nextSession) => {
+        // A consulta de permissões precisa começar fora do callback de autenticação.
+        window.setTimeout(() => applySession(nextSession), 0);
+      },
+    );
+
+    const initialSessionTimeout = window.setTimeout(() => {
+      if (!active || !loading) return;
+      console.error("[AuthProvider] Tempo limite ao restaurar a sessão");
+      setLoading(false);
+    }, ROLE_FETCH_TIMEOUT_MS);
+
+    return () => {
+      active = false;
+      window.clearTimeout(initialSessionTimeout);
+      authRequestRef.current += 1;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
