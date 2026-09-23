@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { lazy, Suspense, type ComponentType } from "react";
+import { Loader2 } from "lucide-react";
+import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 
 const lazyWithRetry = <T extends { default: ComponentType<any> }>(
   importer: () => Promise<T>,
@@ -28,38 +30,38 @@ const lazyWithRetry = <T extends { default: ComponentType<any> }>(
   });
 
 // Lazy load pages with prefetch hints
-const Index = lazy(() => import("./pages/IndexFigma"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-const CadastroParceiro = lazy(() => import("./pages/CadastroParceiro"));
-const ConfirmacaoCadastro = lazy(() => import("./pages/ConfirmacaoCadastro"));
-const LoginParceiro = lazy(() => import("./pages/LoginParceiro"));
-const PainelParceiro = lazy(() => import("./pages/PainelParceiro"));
-const CadastroLead = lazy(() => import("./pages/CadastroLead"));
-const FormularioConversao = lazy(() => import("./pages/FormularioConversao"));
-const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
-const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
-const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
-const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
-const AdminFinanceiro = lazy(() => import("./pages/admin/AdminFinanceiro"));
+const Index = lazyWithRetry(() => import("./pages/IndexFigma"));
+const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
+const CadastroParceiro = lazyWithRetry(() => import("./pages/CadastroParceiro"));
+const ConfirmacaoCadastro = lazyWithRetry(() => import("./pages/ConfirmacaoCadastro"));
+const LoginParceiro = lazyWithRetry(() => import("./pages/LoginParceiro"));
+const PainelParceiro = lazyWithRetry(() => import("./pages/PainelParceiro"));
+const CadastroLead = lazyWithRetry(() => import("./pages/CadastroLead"));
+const FormularioConversao = lazyWithRetry(() => import("./pages/FormularioConversao"));
+const AdminLayout = lazyWithRetry(() => import("./layouts/AdminLayout"));
+const AdminLogin = lazyWithRetry(() => import("./pages/admin/AdminLogin"));
+const OAuthConsent = lazyWithRetry(() => import("./pages/OAuthConsent"));
+const AdminDashboard = lazyWithRetry(() => import("./pages/admin/AdminDashboard"));
+const AdminFinanceiro = lazyWithRetry(() => import("./pages/admin/AdminFinanceiro"));
 const AdminParceiros = lazyWithRetry(() => import("./pages/admin/AdminParceiros"));
 const AdminLeads = lazyWithRetry(() => import("./pages/admin/AdminLeads"));
 const AdminSuccessPanel = lazyWithRetry(() => import("./pages/admin/AdminSuccessPanel"));
 const AdminUsuarios = lazyWithRetry(() => import("./pages/admin/AdminUsuarios"));
-const AdminKitVendas = lazy(() => import("./pages/admin/AdminKitVendas"));
-const AdminPermissoes = lazy(() => import("./pages/admin/AdminPermissoes"));
-const AdminIntegracoes = lazy(() => import("./pages/admin/AdminIntegracoes"));
-const AdminContatos = lazy(() => import("./pages/admin/AdminContatos"));
-const AdminPipelineEdit = lazy(() => import("./pages/admin/AdminPipelineEdit"));
-const AdminGeradorProposta = lazy(() => import("./pages/admin/AdminGeradorProposta"));
-const AdminDocumentacao = lazy(() => import("./pages/admin/AdminDocumentacao"));
-const AdminTriagemGmail = lazy(() => import("./pages/admin/AdminTriagemGmail"));
-const AdminImportWhatsapp = lazy(() => import("./pages/admin/AdminImportWhatsapp"));
-const AdminEmailOnboarding = lazy(() => import("./pages/admin/AdminEmailOnboarding"));
-const PrimeiroAcesso = lazy(() => import("./pages/PrimeiroAcesso"));
-const ResetarSenha = lazy(() => import("./pages/ResetarSenha"));
-const EsqueciSenha = lazy(() => import("./pages/EsqueciSenha"));
-const PropostaPublica = lazy(() => import("./pages/PropostaPublica"));
-const TesteMonnera = lazy(() => import("./pages/TesteMonnera"));
+const AdminKitVendas = lazyWithRetry(() => import("./pages/admin/AdminKitVendas"));
+const AdminPermissoes = lazyWithRetry(() => import("./pages/admin/AdminPermissoes"));
+const AdminIntegracoes = lazyWithRetry(() => import("./pages/admin/AdminIntegracoes"));
+const AdminContatos = lazyWithRetry(() => import("./pages/admin/AdminContatos"));
+const AdminPipelineEdit = lazyWithRetry(() => import("./pages/admin/AdminPipelineEdit"));
+const AdminGeradorProposta = lazyWithRetry(() => import("./pages/admin/AdminGeradorProposta"));
+const AdminDocumentacao = lazyWithRetry(() => import("./pages/admin/AdminDocumentacao"));
+const AdminTriagemGmail = lazyWithRetry(() => import("./pages/admin/AdminTriagemGmail"));
+const AdminImportWhatsapp = lazyWithRetry(() => import("./pages/admin/AdminImportWhatsapp"));
+const AdminEmailOnboarding = lazyWithRetry(() => import("./pages/admin/AdminEmailOnboarding"));
+const PrimeiroAcesso = lazyWithRetry(() => import("./pages/PrimeiroAcesso"));
+const ResetarSenha = lazyWithRetry(() => import("./pages/ResetarSenha"));
+const EsqueciSenha = lazyWithRetry(() => import("./pages/EsqueciSenha"));
+const PropostaPublica = lazyWithRetry(() => import("./pages/PropostaPublica"));
+const TesteMonnera = lazyWithRetry(() => import("./pages/TesteMonnera"));
 
 // Configure QueryClient with optimized defaults
 const queryClient = new QueryClient({
@@ -79,7 +81,8 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Carregando...</div>}>
+          <AppErrorBoundary>
+          <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-background" aria-label="Carregando tela"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>}>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/cadastro" element={<CadastroParceiro />} />
@@ -124,6 +127,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
+          </AppErrorBoundary>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>

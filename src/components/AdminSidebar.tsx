@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/sidebar";
 
 export function AdminSidebar() {
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const { isAdmin, user } = useAuth();
   const { canAccessPanel } = usePanelPermissions();
   const collapsed = state === "collapsed";
@@ -89,6 +89,9 @@ export function AdminSidebar() {
     : [];
 
   const configItems = [...adminConfigItems, ...documentationItems];
+  const closeMobileNavigation = () => {
+    if (isMobile) setOpenMobile(false);
+  };
 
   return (
     <Sidebar collapsible="icon">
@@ -108,6 +111,7 @@ export function AdminSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={item.url}
+                      onClick={closeMobileNavigation}
                       end={item.url === "/admin"}
                       className="hover:bg-sidebar-accent/50"
                       activeClassName="bg-sidebar-accent text-primary font-medium"
@@ -136,6 +140,7 @@ export function AdminSidebar() {
                     <SidebarMenuButton asChild>
                       <NavLink
                         to={item.url}
+                        onClick={closeMobileNavigation}
                         className="hover:bg-sidebar-accent/50"
                         activeClassName="bg-sidebar-accent text-primary font-medium"
                       >

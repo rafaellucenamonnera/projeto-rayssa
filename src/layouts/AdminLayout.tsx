@@ -1,14 +1,29 @@
-import { Outlet, Navigate, useNavigate } from "react-router-dom";
+import { Outlet, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Loader2, LogOut } from "lucide-react";
+import { useEffect } from "react";
 import { NotificationCenter } from "@/components/admin/NotificationCenter";
 
 const AdminLayout = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, isInternalUser, loading, signOut } = useAuth();
+
+  useEffect(() => {
+    const cleanupId = window.setTimeout(() => {
+      const openModal = document.querySelector('[role="dialog"][data-state="open"]');
+      if (openModal) return;
+
+      document.body.style.pointerEvents = "";
+      document.body.style.overflow = "";
+      document.body.removeAttribute("data-scroll-locked");
+    }, 0);
+
+    return () => window.clearTimeout(cleanupId);
+  }, [location.pathname]);
 
   if (loading) {
     return (
