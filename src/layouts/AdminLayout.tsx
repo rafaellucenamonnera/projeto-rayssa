@@ -13,14 +13,38 @@ const AdminLayout = () => {
   const { user, isInternalUser, loading, signOut } = useAuth();
 
   useEffect(() => {
+    let cleanupId = 0;
+    const releaseStalePageLock = () => {
+      window.clearTimeout(cleanupId);
+      cleanupId = window.setTimeout(() => {
+        const openModal = document.querySelector('[role="dialog"][data-state="open"]');
+        if (openModal) return;
+
+        document.body.style.removeProperty("pointer-events");
+        document.body.style.removeProperty("overflow");
+        document.body.removeAttribute("data-scroll-locked");
+      }, 50);
+    };
+
+    releaseStalePageLock();
+    const observer = new MutationObserver(releaseStalePageLock);
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(cleanupId);
+    };
+  }, []);
+
+  useEffect(() => {
     const cleanupId = window.setTimeout(() => {
       const openModal = document.querySelector('[role="dialog"][data-state="open"]');
       if (openModal) return;
 
-      document.body.style.pointerEvents = "";
-      document.body.style.overflow = "";
+      document.body.style.removeProperty("pointer-events");
+      document.body.style.removeProperty("overflow");
       document.body.removeAttribute("data-scroll-locked");
-    }, 0);
+    }, 50);
 
     return () => window.clearTimeout(cleanupId);
   }, [location.pathname]);

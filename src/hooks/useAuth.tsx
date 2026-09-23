@@ -20,12 +20,19 @@ const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 const ROLE_FETCH_TIMEOUT_MS = 12000;
 
 const withTimeout = <T,>(promise: PromiseLike<T>, timeoutMs: number): Promise<T> =>
-  Promise.race([
-    Promise.resolve(promise),
-    new Promise<T>((_, reject) => {
-      window.setTimeout(() => reject(new Error("Tempo limite ao carregar permissões")), timeoutMs);
-    }),
-  ]);
+  new Promise<T>((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => reject(new Error("Tempo limite ao carregar permissões")), timeoutMs);
+    Promise.resolve(promise).then(
+      (value) => {
+        window.clearTimeout(timeoutId);
+        resolve(value);
+      },
+      (error) => {
+        window.clearTimeout(timeoutId);
+        reject(error);
+      },
+    );
+  });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -71,22 +78,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => applySession(nextSession),
+      (_event, nextSession) => {
+        // A consulta de permissões precisa começar fora do callback de autenticação.
+        window.setTimeout(() => applySession(nextSession), 0);
+      },
     );
 
-    supabase.auth.getSession()
-      .then(({ data: { session: initialSession } }) => applySession(initialSession))
-      .catch((error) => {
-        console.error("[AuthProvider] Não foi possível restaurar a sessão", error);
-        if (!active) return;
-        setSession(null);
-        setUser(null);
-        setRoles([]);
-        setLoading(false);
-      });
+    const initialSessionTimeout = window.setTimeout(() => {
+      if (!active || !loading) return;
+      console.error("[AuthProvider] Tempo limite ao restaurar a sessão");
+      setLoading(false);
+    }, ROLE_FETCH_TIMEOUT_MS);
 
     return () => {
       active = false;
+      window.clearTimeout(initialSessionTimeout);
       authRequestRef.current += 1;
       subscription.unsubscribe();
     };
