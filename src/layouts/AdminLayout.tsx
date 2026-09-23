@@ -28,7 +28,12 @@ const AdminLayout = () => {
 
     releaseStalePageLock();
     const observer = new MutationObserver(releaseStalePageLock);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["style", "data-scroll-locked"],
+      childList: true,
+      subtree: true,
+    });
 
     return () => {
       observer.disconnect();
