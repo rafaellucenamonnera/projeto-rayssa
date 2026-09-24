@@ -40,6 +40,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [loading, setLoading] = useState(true);
   const authRequestRef = useRef(0);
+  const initialSessionResolvedRef = useRef(false);
+  const resolvedUserIdRef = useRef<string | null>(null);
 
   const fetchRoles = async (userId: string): Promise<UserRole[]> => {
     const { data, error } = await withTimeout(supabase
@@ -56,7 +58,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const resolveRoles = async (userId: string, requestId: number) => {
       try {
         const nextRoles = await fetchRoles(userId);
-        if (active && requestId === authRequestRef.current) setRoles(nextRoles);
+        if (active && requestId === authRequestRef.current) {
+          resolvedUserIdRef.current = userId;
+          setRoles(nextRoles);
+        }
       } catch (error) {
         console.error("[AuthProvider] Não foi possível carregar as permissões", error);
       } finally {
@@ -65,13 +70,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const applySession = (nextSession: Session | null) => {
+      initialSessionResolvedRef.current = true;
       const requestId = ++authRequestRef.current;
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
 
       if (nextSession?.user) {
-        window.setTimeout(() => void resolveRoles(nextSession.user.id, requestId), 0);
+        if (resolvedUserIdRef.current === nextSession.user.id) {
+          setLoading(false);
+          return;
+        }
+        setLoading(true);
+        void resolveRoles(nextSession.user.id, requestId);
       } else {
+        resolvedUserIdRef.current = null;
         setRoles([]);
         setLoading(false);
       }
@@ -85,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     const initialSessionTimeout = window.setTimeout(() => {
-      if (!active || !loading) return;
+      if (!active || initialSessionResolvedRef.current) return;
       console.error("[AuthProvider] Tempo limite ao restaurar a sessão");
       setLoading(false);
     }, ROLE_FETCH_TIMEOUT_MS);

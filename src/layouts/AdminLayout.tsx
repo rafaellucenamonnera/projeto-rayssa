@@ -4,7 +4,7 @@ import { AdminSidebar } from "@/components/AdminSidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Loader2, LogOut } from "lucide-react";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { NotificationCenter } from "@/components/admin/NotificationCenter";
 
 const AdminLayout = () => {
@@ -31,8 +31,6 @@ const AdminLayout = () => {
     observer.observe(document.body, {
       attributes: true,
       attributeFilter: ["style", "data-scroll-locked"],
-      childList: true,
-      subtree: true,
     });
 
     return () => {
@@ -89,7 +87,15 @@ const AdminLayout = () => {
             </div>
           </header>
           <main className="flex-1 p-3 sm:p-4 md:p-8 overflow-x-hidden">
-            <Outlet />
+            <Suspense
+              fallback={(
+                <div className="flex min-h-[50vh] items-center justify-center" aria-label="Carregando tela">
+                  <Loader2 className="h-7 w-7 animate-spin text-primary" />
+                </div>
+              )}
+            >
+              <Outlet />
+            </Suspense>
           </main>
         </div>
       </div>

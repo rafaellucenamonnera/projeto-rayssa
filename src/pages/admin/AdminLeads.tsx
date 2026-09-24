@@ -268,7 +268,7 @@ const AdminLeads = () => {
   const { panelId: dynamicPanelId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const leadsPermissions = useLeadsPermissions(isAdmin);
   const canCreateLead = isAdmin || leadsPermissions.has("criar");
   const canEditLead = isAdmin || leadsPermissions.has("editar");
@@ -312,6 +312,7 @@ const AdminLeads = () => {
   const [stageLoadingMore, setStageLoadingMore] = useState<Record<string, boolean>>({});
   // Evita que respostas antigas sobrescrevam a busca mais recente.
   const commercialLoadRunRef = useRef(0);
+  const detailLoadRunRef = useRef(0);
   const [commercialLoading, setCommercialLoading] = useState(false);
 
 
@@ -737,10 +738,14 @@ const AdminLeads = () => {
           : supabase.from("leads").select("*").order("data_cadastro", { ascending: false })
       ),
       supabase.from("parceiros_comerciais").select("id, nome, slug_consultor, codigo_parceiro"),
-      fetchAllRows<any>(() =>
-        supabase.from("lead_stage_history").select("lead_id, data_entrada").is("data_saida", null)
-      ),
-      supabase.from("reunioes").select("*").eq("realizada", false).order("data_reuniao", { ascending: true }),
+      isCustomCrmPanel
+        ? Promise.resolve([])
+        : fetchAllRows<any>(() =>
+            supabase.from("lead_stage_history").select("lead_id, data_entrada").is("data_saida", null)
+          ),
+      isCustomCrmPanel
+        ? Promise.resolve({ data: [] as any[] })
+        : supabase.from("reunioes").select("*").eq("realizada", false).order("data_reuniao", { ascending: true }),
       supabase.from("profiles").select("user_id,nome,ativo,can_be_responsible").eq("ativo", true).order("nome", { ascending: true }),
     ]);
     const rawLeads = leadsRes || [];
@@ -916,23 +921,13 @@ const AdminLeads = () => {
     if (detailLead?.id) setActiveSection("detalhes");
   }, [detailLead?.id]);
 
+  const panelLoadSearchKey = isCommercialPanel ? debouncedFilterEmpresa : "";
+
   useEffect(() => {
     if (!stagesReady) return;
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isCustomCrmPanel, currentPanelId, isCommercialPanel, stagesReady, pipelineStagesKey]);
-
-  // Recarga server-side do painel comercial quando o termo debounced muda.
-  const commercialSearchInitRef = useRef(true);
-  useEffect(() => {
-    if (!isCommercialPanel) return;
-    if (commercialSearchInitRef.current) {
-      commercialSearchInitRef.current = false;
-      return;
-    }
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedFilterEmpresa, isCommercialPanel]);
+  }, [isCustomCrmPanel, currentPanelId, isCommercialPanel, stagesReady, pipelineStagesKey, panelLoadSearchKey]);
 
 
 
@@ -1667,6 +1662,7 @@ const AdminLeads = () => {
   };
 
   const openLeadDetail = useCallback((lead: any) => {
+    const requestId = ++detailLoadRunRef.current;
     setDetailLead(lead);
     setEditingNumProposta(lead.numero_proposta || "");
     setIsEditingCard(false);
@@ -1681,7 +1677,7 @@ const AdminLeads = () => {
         .eq("id", lead.id)
         .single()
         .then(({ data, error }) => {
-          if (error || !data) return;
+          if (requestId !== detailLoadRunRef.current || error || !data) return;
           setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, ...data } : l)));
           setDetailLead((prev: any) => (prev && prev.id === lead.id ? { ...prev, ...data } : prev));
         });
@@ -1849,8 +1845,7 @@ const AdminLeads = () => {
     if (!firstStage) return toast.error("Não há colunas configuradas para este painel.");
 
     setSavingNewCard(true);
-    const auth = await supabase.auth.getUser();
-    const currentUserId = auth.data.user?.id;
+    const currentUserId = user?.id;
 
     if (!currentUserId) {
       setSavingNewCard(false);
@@ -2732,7 +2727,11 @@ const AdminLeads = () => {
               {isCrossClientPanel ? (
                 canEditLead && (
                   <div className="flex items-center justify-end gap-2">
-                    <Button size="sm" onClick={() => { setClienteDialogCard(detailLead); setClienteDialogOpen(true); }}>
+                    <Button size="sm" onClick={() => {
+                      setClienteDialogCard(detailLead);
+                      setDetailOpen(false);
+                      window.setTimeout(() => setClienteDialogOpen(true), 220);
+                    }}>
                       Editar cliente
                     </Button>
                   </div>
