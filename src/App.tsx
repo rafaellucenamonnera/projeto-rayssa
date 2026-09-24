@@ -80,7 +80,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <AppErrorBoundary>
           <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-background" aria-label="Carregando tela"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>}>
             <Routes>
