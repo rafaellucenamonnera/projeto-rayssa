@@ -40,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [loading, setLoading] = useState(true);
   const authRequestRef = useRef(0);
+  const initialSessionResolvedRef = useRef(false);
 
   const fetchRoles = async (userId: string): Promise<UserRole[]> => {
     const { data, error } = await withTimeout(supabase
@@ -65,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const applySession = (nextSession: Session | null) => {
+      initialSessionResolvedRef.current = true;
       const requestId = ++authRequestRef.current;
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
@@ -85,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     const initialSessionTimeout = window.setTimeout(() => {
-      if (!active || !loading) return;
+      if (!active || initialSessionResolvedRef.current) return;
       console.error("[AuthProvider] Tempo limite ao restaurar a sessão");
       setLoading(false);
     }, ROLE_FETCH_TIMEOUT_MS);

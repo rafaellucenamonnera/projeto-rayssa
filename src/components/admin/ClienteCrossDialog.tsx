@@ -10,6 +10,7 @@ import { FileText, Loader2, Paperclip, Trash2 } from "lucide-react";
 import CardAttachments from "@/components/admin/CardAttachments";
 import { formatBytes, uploadCardAttachment, validateAttachment } from "@/lib/cardAttachments";
 import { logCardEvent } from "@/lib/crossCardEvents";
+import { useAuth } from "@/hooks/useAuth";
 
 const emptyForm = {
   full_name: "",
@@ -58,6 +59,7 @@ const withTimeout = async <T,>(promise: PromiseLike<T>, label: string): Promise<
 };
 
 export const ClienteCrossDialog = ({ open, onOpenChange, panelId, firstStageId, card, onSaved }: ClienteCrossDialogProps) => {
+  const { user } = useAuth();
   const isEdit = !!card?.id;
   const [form, setForm] = useState<ClienteForm>({ ...emptyForm });
   const [saving, setSaving] = useState(false);
@@ -159,8 +161,7 @@ export const ClienteCrossDialog = ({ open, onOpenChange, panelId, firstStageId, 
         saved = data;
       } else {
         if (!firstStageId) throw new Error("Não há colunas configuradas para este painel.");
-        const auth = await withTimeout(supabase.auth.getUser(), "A verificação da sessão");
-        const userId = auth.data.user?.id;
+        const userId = user?.id;
         if (!userId) throw new Error("Usuário autenticado não identificado.");
         const { data, error } = await withTimeout<any>(
           (supabase as any)
@@ -193,7 +194,7 @@ export const ClienteCrossDialog = ({ open, onOpenChange, panelId, firstStageId, 
       // de detalhes. Isso evita que duas janelas disputem o bloqueio de cliques.
       onOpenChange(false);
       toast.success(isEdit ? "Cliente atualizado." : "Cliente cadastrado.");
-      setTimeout(() => onSaved(saved), 0);
+      onSaved(saved);
 
       // O histórico é complementar: nunca deve manter a janela de edição travada
       // depois que o card já foi persistido com sucesso.
