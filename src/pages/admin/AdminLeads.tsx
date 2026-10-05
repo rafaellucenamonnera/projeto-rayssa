@@ -2053,18 +2053,25 @@ const AdminLeads = () => {
   const fmt = formatCurrencyBRL;
 
   const StatusSelect = ({ lead }: { lead: any }) => {
-    const currentStatus = lead.status_lead || lead.status || "novo_lead";
+    const rawStatus = isCustomCrmPanel
+      ? (lead.stage_id ?? "")
+      : (lead.status_lead || lead.status || "novo_lead");
+    const currentStatus = isCustomCrmPanel && !pipelineStages.some((s) => s.value === rawStatus) ? "" : rawStatus;
     const hasProposta = !!lead.proposta_url;
 
     return (
       <div className="flex items-center gap-1">
         <Select
           value={currentStatus}
-          onValueChange={(val) => handleStatusChange(lead.id, lead.nome_fantasia, val)}
+          onValueChange={(val) => {
+            if (val === currentStatus) return;
+            if (isCustomCrmPanel) handleKanbanMoveLead(lead.id, val);
+            else handleStatusChange(lead.id, lead.nome_fantasia, val);
+          }}
           disabled={!canMovePipeline}
         >
           <SelectTrigger className="h-8 w-[180px] text-xs">
-            <SelectValue />
+            <SelectValue placeholder="Sem etapa" />
           </SelectTrigger>
           <SelectContent>
             {pipelineStages.map((s) => (
