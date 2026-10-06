@@ -4189,40 +4189,23 @@ export type Database = {
         }
         Returns: Json
       }
-      create_notification:
-        | {
-            Args: {
-              p_action_url?: string
-              p_actor_user_id?: string
-              p_comment_id?: string
-              p_delivery_key?: string
-              p_lead_id?: string
-              p_message: string
-              p_metadata?: Json
-              p_recipient_user_id: string
-              p_task_id?: string
-              p_title: string
-              p_type: string
-            }
-            Returns: string
-          }
-        | {
-            Args: {
-              p_action_url?: string
-              p_actor_user_id?: string
-              p_comment_id?: string
-              p_delivery_key?: string
-              p_lead_id?: string
-              p_message: string
-              p_metadata?: Json
-              p_recipient_user_id: string
-              p_representative_card_id?: string
-              p_task_id?: string
-              p_title: string
-              p_type: string
-            }
-            Returns: string
-          }
+      create_notification: {
+        Args: {
+          p_action_url?: string
+          p_actor_user_id?: string
+          p_comment_id?: string
+          p_delivery_key?: string
+          p_lead_id?: string
+          p_message: string
+          p_metadata?: Json
+          p_recipient_user_id: string
+          p_representative_card_id?: string
+          p_task_id?: string
+          p_title: string
+          p_type: string
+        }
+        Returns: string
+      }
       cross_card_missing_fields: { Args: { p_card_id: string }; Returns: Json }
       cross_onboarding_card_status: {
         Args: { p_card_id: string }

@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.create_notification(uuid,text,text,text,uuid,uuid,uuid,text,jsonb,uuid,text);
