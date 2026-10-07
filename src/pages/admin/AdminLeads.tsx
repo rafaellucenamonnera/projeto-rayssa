@@ -678,14 +678,14 @@ const AdminLeads = () => {
                 .from("leads")
                 .select("id", { count: "exact", head: true })
                 .eq("panel_id", currentPanelId)
-                .in("status_lead", lostAwareStageValues(stage.value, stage.label)) as any,
+                .in("status_lead", lostAwareStageValues(stage.value, stage.label) as any) as any,
             );
             const dataQuery = applyEmpresaSearch(
               supabase
                 .from("leads")
                 .select("*")
                 .eq("panel_id", currentPanelId)
-                .in("status_lead", lostAwareStageValues(stage.value, stage.label))
+                .in("status_lead", lostAwareStageValues(stage.value, stage.label) as any)
                 .order("data_cadastro", { ascending: false })
                 .range(0, STAGE_PAGE_SIZE - 1) as any,
             );
@@ -830,7 +830,7 @@ const AdminLeads = () => {
         .from("leads")
         .select("*")
         .eq("panel_id", currentPanelId)
-        .in("status_lead", lostAwareStageValues(stageValue, pipelineStages.find((s) => s.value === stageValue)?.label))
+        .in("status_lead", lostAwareStageValues(stageValue, pipelineStages.find((s) => s.value === stageValue)?.label) as any)
         .order("data_cadastro", { ascending: false })
         .range(offset, offset + STAGE_PAGE_SIZE - 1);
       if (orFilter) query = query.or(orFilter);
