@@ -312,6 +312,7 @@ const AdminLeads = () => {
   const [stageLoadingMore, setStageLoadingMore] = useState<Record<string, boolean>>({});
   // Evita que respostas antigas sobrescrevam a busca mais recente.
   const commercialLoadRunRef = useRef(0);
+  const genericLoadRunRef = useRef(0);
   const detailLoadRunRef = useRef(0);
   const [commercialLoading, setCommercialLoading] = useState(false);
 
@@ -639,6 +640,8 @@ const AdminLeads = () => {
   };
 
   const loadData = async () => {
+    // Evita que uma carga antiga (ex.: antes do título do painel definir o tipo) sobrescreva a atual.
+    const loadRunId = ++genericLoadRunRef.current;
     const fetchAllRows = async <T,>(buildQuery: () => any, pageSize = 1000): Promise<T[]> => {
       const rows: T[] = [];
       let from = 0;
@@ -748,6 +751,7 @@ const AdminLeads = () => {
         : supabase.from("reunioes").select("*").eq("realizada", false).order("data_reuniao", { ascending: true }),
       supabase.from("profiles").select("user_id,nome,ativo,can_be_responsible").eq("ativo", true).order("nome", { ascending: true }),
     ]);
+    if (loadRunId !== genericLoadRunRef.current) return;
     const rawLeads = leadsRes || [];
     const mappedLeads = isCustomCrmPanel
       ? rawLeads.map((r: any) => ({
