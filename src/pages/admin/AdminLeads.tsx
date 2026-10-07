@@ -764,7 +764,7 @@ const AdminLeads = () => {
           data_cadastro: r.created_at,
         }))
       : rawLeads;
-    console.log("DBG setLeads", currentPanelId, isCustomCrmPanel, mappedLeads.length, loadRunId);
+    console.log("DBG setLeads", mappedLeads.length, JSON.stringify(pipelineStages.map((s) => s.value)), mappedLeads[0]?.stage_id);
     setLeads(mappedLeads);
     // Origem de leitura do Código Monnera: card > registro de triagem já liberado (Jira).
     if (isCustomCrmPanel && currentPanelId === CROSS_CLIENT_PANEL_ID) {
