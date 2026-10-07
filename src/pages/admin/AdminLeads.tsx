@@ -678,14 +678,14 @@ const AdminLeads = () => {
                 .from("leads")
                 .select("id", { count: "exact", head: true })
                 .eq("panel_id", currentPanelId)
-                .eq("status_lead", stage.value) as any,
+                .in("status_lead", lostAwareStageValues(stage.value, stage.label) as any) as any,
             );
             const dataQuery = applyEmpresaSearch(
               supabase
                 .from("leads")
                 .select("*")
                 .eq("panel_id", currentPanelId)
-                .eq("status_lead", stage.value)
+                .in("status_lead", lostAwareStageValues(stage.value, stage.label) as any)
                 .order("data_cadastro", { ascending: false })
                 .range(0, STAGE_PAGE_SIZE - 1) as any,
             );
@@ -830,7 +830,7 @@ const AdminLeads = () => {
         .from("leads")
         .select("*")
         .eq("panel_id", currentPanelId)
-        .eq("status_lead", stageValue)
+        .in("status_lead", lostAwareStageValues(stageValue, pipelineStages.find((s) => s.value === stageValue)?.label) as any)
         .order("data_cadastro", { ascending: false })
         .range(offset, offset + STAGE_PAGE_SIZE - 1);
       if (orFilter) query = query.or(orFilter);
@@ -1984,7 +1984,11 @@ const AdminLeads = () => {
     const counts: Record<string, number> = {};
     pipelineStages.forEach((s) => { counts[s.value] = 0; });
     filteredExceptStatus.forEach((l) => {
-      const s = l.stage_id || l.status_lead || l.status || "novo_lead";
+      let s = l.stage_id || l.status_lead || l.status || "novo_lead";
+      if (s === "lead_perdido" && counts[s] === undefined) {
+        const lost = pipelineStages.find((st) => isLostStageLabel(st.label));
+        if (lost) s = lost.value;
+      }
       if (counts[s] !== undefined) counts[s]++;
     });
     return counts;
@@ -3584,5 +3588,12 @@ const AdminLeads = () => {
     </div>
   );
 };
+
+const isLostStageLabel = (label?: string | null) =>
+  !!label && label.trim().toLowerCase() === "lead perdido";
+
+// Leads perdidos gravados com o identificador legado "lead_perdido" devem aparecer na coluna "Lead Perdido".
+const lostAwareStageValues = (value: string, label?: string | null): string[] =>
+  value !== "lead_perdido" && isLostStageLabel(label) ? [value, "lead_perdido"] : [value];
 
 export default AdminLeads;
