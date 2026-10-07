@@ -258,8 +258,11 @@ export const PipelineKanban = memo(({
   const grouped = useMemo(() => {
     const g: Record<string, KanbanLeadCardData[]> = {};
     stages.forEach((s) => { g[s.value] = []; });
+    // Leads perdidos gravados com o identificador legado "lead_perdido" aparecem na coluna "Lead Perdido".
+    const lostStage = stages.find((st) => st.label?.trim().toLowerCase() === "lead perdido");
     leads.forEach((l) => {
-      const s = l.stage_id || l.status_lead || l.status || "novo_lead";
+      let s = l.stage_id || l.status_lead || l.status || "novo_lead";
+      if (s === "lead_perdido" && !g[s] && lostStage) s = lostStage.value;
       if (g[s]) g[s].push(l);
     });
     Object.keys(g).forEach((stageKey) => {
