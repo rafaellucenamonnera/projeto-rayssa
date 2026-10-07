@@ -312,6 +312,7 @@ const AdminLeads = () => {
   const [stageLoadingMore, setStageLoadingMore] = useState<Record<string, boolean>>({});
   // Evita que respostas antigas sobrescrevam a busca mais recente.
   const commercialLoadRunRef = useRef(0);
+  const genericLoadRunRef = useRef(0);
   const detailLoadRunRef = useRef(0);
   const [commercialLoading, setCommercialLoading] = useState(false);
 
