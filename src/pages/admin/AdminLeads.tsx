@@ -764,7 +764,6 @@ const AdminLeads = () => {
           data_cadastro: r.created_at,
         }))
       : rawLeads;
-    console.log("DBG setLeads", mappedLeads.length, JSON.stringify(pipelineStages.map((s) => s.value)), mappedLeads[0]?.stage_id);
     setLeads(mappedLeads);
     // Origem de leitura do Código Monnera: card > registro de triagem já liberado (Jira).
     if (isCustomCrmPanel && currentPanelId === CROSS_CLIENT_PANEL_ID) {
@@ -1988,7 +1987,6 @@ const AdminLeads = () => {
       const s = l.stage_id || l.status_lead || l.status || "novo_lead";
       if (counts[s] !== undefined) counts[s]++;
     });
-    console.log('DBG counts', leads.length, filteredExceptStatus.length, JSON.stringify(counts));
     return counts;
   }, [filteredExceptStatus, pipelineStages]);
 
