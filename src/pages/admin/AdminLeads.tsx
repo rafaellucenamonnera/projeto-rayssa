@@ -3733,7 +3733,7 @@ const AdminLeads = () => {
 };
 
 const isLostStageLabel = (label?: string | null) =>
-  !!label && label.trim().toLowerCase() === "lead perdido";
+  !!label && ["lead perdido", "perdidos"].includes(label.trim().toLowerCase());
 
 // Leads perdidos gravados com o identificador legado "lead_perdido" devem aparecer na coluna "Lead Perdido".
 const lostAwareStageValues = (value: string, label?: string | null): string[] =>
