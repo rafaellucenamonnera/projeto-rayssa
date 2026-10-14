@@ -2353,6 +2353,21 @@ const AdminLeads = () => {
 
       {/* Filters */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2 sm:gap-3">
+        {isCommercialPanel && (
+          <>
+            <div className="flex gap-1 lg:col-span-2">
+              <Input type="date" aria-label="Período de" value={periodFrom} onChange={(e) => setPeriodFrom(e.target.value)} />
+              <Input type="date" aria-label="Período até" value={periodTo} onChange={(e) => setPeriodTo(e.target.value)} />
+            </div>
+            <Select value={periodMode} onValueChange={(v) => setPeriodMode(v as "entrada" | "saida")}>
+              <SelectTrigger aria-label="Entrada ou saída"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="entrada">Entrada na coluna</SelectItem>
+                <SelectItem value="saida">Saída da coluna</SelectItem>
+              </SelectContent>
+            </Select>
+          </>
+        )}
         <div className="relative">
           <Input placeholder={isCustomCrmPanel ? "Filtrar por nome..." : "Filtrar por empresa..."} value={filterEmpresa} onChange={(e) => setFilterEmpresa(e.target.value)} />
           {isCommercialPanel && (searchingEmpresa || commercialLoading) && filterEmpresa.trim().length >= 2 && (
@@ -2415,17 +2430,6 @@ const AdminLeads = () => {
                 {IMPACTO_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
               </SelectContent>
             </Select>
-            <div className="flex gap-1 lg:col-span-2">
-              <Input type="date" aria-label="Período de" value={periodFrom} onChange={(e) => setPeriodFrom(e.target.value)} />
-              <Input type="date" aria-label="Período até" value={periodTo} onChange={(e) => setPeriodTo(e.target.value)} />
-            </div>
-            <Select value={periodMode} onValueChange={(v) => setPeriodMode(v as "entrada" | "saida")}>
-              <SelectTrigger aria-label="Entrada ou saída"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="entrada">Entrada na coluna</SelectItem>
-                <SelectItem value="saida">Saída da coluna</SelectItem>
-              </SelectContent>
-            </Select>
           </>
         )}
         {currentPanelId === "sucesso" && (
@@ -2477,8 +2481,6 @@ const AdminLeads = () => {
             </SelectContent>
           </Select>
         )}
-        <Input type="date" value={filterDataInicio} onChange={(e) => setFilterDataInicio(e.target.value)} placeholder="Data início" />
-        <Input type="date" value={filterDataFim} onChange={(e) => setFilterDataFim(e.target.value)} placeholder="Data fim" />
       </div>
 
       {/* Mobile card view */}
