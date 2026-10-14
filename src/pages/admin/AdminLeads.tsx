@@ -57,7 +57,7 @@ import { logCardEvent } from "@/lib/crossCardEvents";
 import { AmbassadorLinksSection } from "@/components/admin/AmbassadorLinksSection";
 import { DaysInStage } from "@/components/admin/DaysInStage";
 import { PipelineKanban } from "@/components/admin/PipelineKanban";
-import { IMPACTO_OPTIONS, MERCADO_OPTIONS, TIPO_NEGOCIO_OPTIONS, impactoLabel, mercadoLabel, missingQualification, tipoNegocioLabel } from "@/lib/commercialPanel";
+import { IMPACTO_OPTIONS, MERCADO_OPTIONS, TEMPERATURA_OPTIONS, TIPO_NEGOCIO_OPTIONS, impactoLabel, mercadoLabel, missingQualification, tipoNegocioLabel } from "@/lib/commercialPanel";
 import { TesteMonneraSection } from "@/components/admin/TesteMonneraSection";
 import { PIPELINE_STAGES, PIPELINE_LABELS } from "@/lib/pipelineConstants";
 import { cardActionUrl, createNotification } from "@/lib/notifications";
@@ -356,6 +356,7 @@ const AdminLeads = () => {
   const [filterMercado, setFilterMercado] = useState<string>("all");
   const [filterTipoNegocio, setFilterTipoNegocio] = useState<string>("all");
   const [filterImpacto, setFilterImpacto] = useState<string>("all");
+  const [filterTemperatura, setFilterTemperatura] = useState<string>("all");
   const [periodFrom, setPeriodFrom] = useState("");
   const [periodTo, setPeriodTo] = useState("");
   const [periodMode, setPeriodMode] = useState<"entrada" | "saida">("entrada");
@@ -687,6 +688,7 @@ const AdminLeads = () => {
     if (filterMercado !== "all") q = q.eq("mercado", filterMercado);
     if (filterTipoNegocio !== "all") q = q.eq("tipo_negocio", filterTipoNegocio);
     if (filterImpacto !== "all") q = q.eq("impacto", filterImpacto);
+    if (filterTemperatura !== "all") q = q.eq("temperatura", filterTemperatura);
     if (periodIds) q = q.in("id", periodIds.length ? periodIds : ["00000000-0000-0000-0000-000000000000"]);
     return q;
   };
@@ -997,7 +999,7 @@ const AdminLeads = () => {
   }, [detailLead?.id]);
 
   const panelLoadSearchKey = isCommercialPanel
-    ? [debouncedFilterEmpresa, filterMercado, filterTipoNegocio, filterImpacto, periodFrom, periodTo, periodMode].join("|")
+    ? [debouncedFilterEmpresa, filterMercado, filterTipoNegocio, filterImpacto, filterTemperatura, periodFrom, periodTo, periodMode].join("|")
     : "";
 
   useEffect(() => {
@@ -2522,6 +2524,15 @@ const AdminLeads = () => {
               </SelectContent>
             </Select>
             </FilterField>
+            <FilterField label="Temperatura">
+            <Select value={filterTemperatura} onValueChange={setFilterTemperatura}>
+              <SelectTrigger aria-label="Temperatura"><SelectValue placeholder="Temperatura" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas temperaturas</SelectItem>
+                {TEMPERATURA_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            </FilterField>
           </>
         )}
         {currentPanelId === "sucesso" && (
@@ -2957,6 +2968,7 @@ const AdminLeads = () => {
               canEdit={canEditLead}
               canComment={canInsertMessage}
               canInsertFile={canInsertFile}
+              onEmitProposal={() => { setDetailOpen(false); handleReplaceProposta(detailLead.id, detailLead.nome_fantasia); }}
               onSaved={(patch) => {
                 setDetailLead((prev: any) => (prev ? { ...prev, ...patch } : prev));
                 void loadData();
