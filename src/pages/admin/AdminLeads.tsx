@@ -44,6 +44,7 @@ import { logCardEvent } from "@/lib/crossCardEvents";
 import { AmbassadorLinksSection } from "@/components/admin/AmbassadorLinksSection";
 import { DaysInStage } from "@/components/admin/DaysInStage";
 import { PipelineKanban } from "@/components/admin/PipelineKanban";
+import { IMPACTO_OPTIONS, MERCADO_OPTIONS, TIPO_NEGOCIO_OPTIONS, impactoLabel, mercadoLabel, missingQualification, tipoNegocioLabel } from "@/lib/commercialPanel";
 import { TesteMonneraSection } from "@/components/admin/TesteMonneraSection";
 import { PIPELINE_STAGES, PIPELINE_LABELS } from "@/lib/pipelineConstants";
 import { cardActionUrl, createNotification } from "@/lib/notifications";
@@ -182,6 +183,10 @@ const emptyEditFormData = {
   responsible_user_id: "",
   responsible_slack_user_id: "",
   valor_campanhas: "",
+  mercado: "",
+  tipo_negocio: "",
+  impacto: "",
+  mrr: "",
 };
 
 const leadToEditFormData = (lead: any) => ({
@@ -202,6 +207,10 @@ const leadToEditFormData = (lead: any) => ({
   responsible_user_id: lead?.responsible_user_id || "",
   responsible_slack_user_id: lead?.responsible_slack_user_id || "",
   valor_campanhas: lead?.valor_campanhas != null ? String(lead.valor_campanhas) : "",
+  mercado: lead?.mercado || "",
+  tipo_negocio: lead?.tipo_negocio || "",
+  impacto: lead?.impacto || "",
+  mrr: lead?.mrr != null ? String(lead.mrr) : "",
 });
 
 const isFinanceiroZerado = (lead: any) => {
@@ -330,6 +339,13 @@ const AdminLeads = () => {
   const [filterCampaignStatus, setFilterCampaignStatus] = useState<string>("all");
   const [filterImpactLevel, setFilterImpactLevel] = useState<string>("all");
   const [filterHealthStatus, setFilterHealthStatus] = useState<string>("all");
+  const [filterMercado, setFilterMercado] = useState<string>("all");
+  const [filterTipoNegocio, setFilterTipoNegocio] = useState<string>("all");
+  const [filterImpacto, setFilterImpacto] = useState<string>("all");
+  const [periodFrom, setPeriodFrom] = useState("");
+  const [periodTo, setPeriodTo] = useState("");
+  const [periodMode, setPeriodMode] = useState<"entrada" | "saida">("entrada");
+  const [stageMrrTotals, setStageMrrTotals] = useState<Record<string, number>>({});
   const [filterDataInicio, setFilterDataInicio] = useState("");
   const [filterDataFim, setFilterDataFim] = useState("");
 
@@ -639,6 +655,27 @@ const AdminLeads = () => {
     setUsersAll(allUsers.filter((u: any) => u.can_be_responsible).map((u: any) => ({ user_id: u.user_id, nome: u.nome })));
   };
 
+  /** IDs de leads que entraram/saíram das colunas no período (null = sem filtro de período). */
+  const loadPeriodLeadIds = async (stageValues: string[]): Promise<string[] | null> => {
+    if (!isCommercialPanel || (!periodFrom && !periodTo)) return null;
+    const col = periodMode === "saida" ? "data_saida" : "data_entrada";
+    let q: any = supabase.from("lead_stage_history").select("lead_id").in("etapa", stageValues).not(col, "is", null);
+    if (periodFrom) q = q.gte(col, `${periodFrom}T00:00:00-03:00`);
+    if (periodTo) q = q.lte(col, `${periodTo}T23:59:59-03:00`);
+    const { data, error } = await q.range(0, 9999);
+    if (error) throw error;
+    return Array.from(new Set(((data as any[]) || []).map((r) => r.lead_id)));
+  };
+
+  const applyCommercialFilters = (q: any, periodIds: string[] | null) => {
+    if (!isCommercialPanel) return q;
+    if (filterMercado !== "all") q = q.eq("mercado", filterMercado);
+    if (filterTipoNegocio !== "all") q = q.eq("tipo_negocio", filterTipoNegocio);
+    if (filterImpacto !== "all") q = q.eq("impacto", filterImpacto);
+    if (periodIds) q = q.in("id", periodIds.length ? periodIds : ["00000000-0000-0000-0000-000000000000"]);
+    return q;
+  };
+
   const loadData = async () => {
     // Evita que uma carga antiga (ex.: antes do título do painel definir o tipo) sobrescreva a atual.
     const loadRunId = ++genericLoadRunRef.current;
@@ -673,28 +710,41 @@ const AdminLeads = () => {
         let queryError: any = null;
         const results = await Promise.all(
           stagesToLoad.map(async (stage) => {
-            const countQuery = applyEmpresaSearch(
+            const stageValues = lostAwareStageValues(stage.value, stage.label);
+            const periodIds = await loadPeriodLeadIds(stageValues);
+            const countQuery = applyCommercialFilters(applyEmpresaSearch(
               supabase
                 .from("leads")
                 .select("id", { count: "exact", head: true })
                 .eq("panel_id", currentPanelId)
-                .in("status_lead", lostAwareStageValues(stage.value, stage.label) as any) as any,
-            );
-            const dataQuery = applyEmpresaSearch(
+                .in("status_lead", stageValues as any) as any,
+            ), periodIds);
+            const dataQuery = applyCommercialFilters(applyEmpresaSearch(
               supabase
                 .from("leads")
                 .select("*")
                 .eq("panel_id", currentPanelId)
-                .in("status_lead", lostAwareStageValues(stage.value, stage.label) as any)
+                .in("status_lead", stageValues as any)
                 .order("data_cadastro", { ascending: false })
                 .range(0, STAGE_PAGE_SIZE - 1) as any,
-            );
-            const [countRes, dataRes] = await Promise.all([countQuery, dataQuery]);
+            ), periodIds);
+            const mrrQuery = applyCommercialFilters(applyEmpresaSearch(
+              supabase
+                .from("leads")
+                .select("mrr")
+                .eq("panel_id", currentPanelId)
+                .in("status_lead", stageValues as any)
+                .not("mrr", "is", null)
+                .range(0, 9999) as any,
+            ), periodIds);
+            const [countRes, dataRes, mrrRes] = await Promise.all([countQuery, dataQuery, mrrQuery]);
             if (countRes.error) queryError = countRes.error;
             if (dataRes.error) queryError = dataRes.error;
+            if (mrrRes.error) queryError = mrrRes.error;
             return {
               stage: stage.value,
               total: countRes.count ?? 0,
+              mrr: ((mrrRes.data as any[]) || []).reduce((sum, r) => sum + Number(r.mrr || 0), 0),
               rows: (dataRes.data as any[]) || [],
             };
           }),
@@ -708,10 +758,12 @@ const AdminLeads = () => {
         }
 
         const totals: Record<string, number> = {};
+        const mrrTotals: Record<string, number> = {};
         const pages: Record<string, number> = {};
         const allRows: any[] = [];
-        results.forEach(({ stage, total, rows }) => {
+        results.forEach(({ stage, total, mrr, rows }) => {
           totals[stage] = total;
+          mrrTotals[stage] = mrr;
           pages[stage] = 1;
           allRows.push(...rows);
         });
@@ -720,6 +772,7 @@ const AdminLeads = () => {
         setReunioesMap({});
         setStageLoadingMore({});
         setStageTotals(totals);
+        setStageMrrTotals(mrrTotals);
         setStageLoadedPages(pages);
         const seen = new Set<string>();
         const deduped = allRows.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
@@ -826,14 +879,17 @@ const AdminLeads = () => {
     setStageLoadingMore((prev) => ({ ...prev, [stageValue]: true }));
     try {
       const orFilter = buildEmpresaOrFilter(debouncedFilterEmpresa);
+      const stageValues = lostAwareStageValues(stageValue, pipelineStages.find((s) => s.value === stageValue)?.label);
+      const periodIds = await loadPeriodLeadIds(stageValues);
       let query: any = supabase
         .from("leads")
         .select("*")
         .eq("panel_id", currentPanelId)
-        .in("status_lead", lostAwareStageValues(stageValue, pipelineStages.find((s) => s.value === stageValue)?.label) as any)
+        .in("status_lead", stageValues as any)
         .order("data_cadastro", { ascending: false })
         .range(offset, offset + STAGE_PAGE_SIZE - 1);
       if (orFilter) query = query.or(orFilter);
+      query = applyCommercialFilters(query, periodIds);
       const { data, error } = await query;
       if (error) {
         toast.error("Erro ao carregar mais cards");
@@ -925,7 +981,9 @@ const AdminLeads = () => {
     if (detailLead?.id) setActiveSection("detalhes");
   }, [detailLead?.id]);
 
-  const panelLoadSearchKey = isCommercialPanel ? debouncedFilterEmpresa : "";
+  const panelLoadSearchKey = isCommercialPanel
+    ? [debouncedFilterEmpresa, filterMercado, filterTipoNegocio, filterImpacto, periodFrom, periodTo, periodMode].join("|")
+    : "";
 
   useEffect(() => {
     if (!stagesReady) return;
@@ -1003,6 +1061,14 @@ const AdminLeads = () => {
       return;
     }
     const lead = leads.find((l) => l.id === leadId);
+
+    if (isCommercialPanel && lead) {
+      const missing = missingQualification(lead, newStatus);
+      if (missing.length > 0) {
+        toast.warning(`Preencha ${missing.join(", ")} no card antes de mover para esta coluna.`);
+        return;
+      }
+    }
 
     // Bloquear avanço manual para Lead Qualificado sem Teste Monnera preenchido
     if (
@@ -1766,6 +1832,14 @@ const AdminLeads = () => {
           telefone_responsavel: editFormData.telefone_responsavel.trim() || null,
           email_responsavel: editFormData.email_responsavel.trim().toLowerCase() || null,
           ...(isAmbassadorPanel ? {} : { valor_campanhas: valorCampanhas }),
+          ...(isCommercialPanel
+            ? {
+                mercado: editFormData.mercado || null,
+                tipo_negocio: editFormData.tipo_negocio || null,
+                impacto: editFormData.impacto || null,
+                mrr: editFormData.mrr.trim() === "" ? null : Math.max(0, Number(editFormData.mrr) || 0),
+              }
+            : {}),
         };
     if (responsibleChanged) {
       payload.responsible_user_id = nextResponsibleUserId;
@@ -2261,8 +2335,8 @@ const AdminLeads = () => {
         </div>
       </div>
 
-      {/* Status cards */}
-      <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 lg:grid-cols-7 sm:overflow-visible">
+      {/* Status cards (retirados no Painel Comercial) */}
+      <div className={`${isCommercialPanel ? "!hidden" : ""} flex gap-2 sm:gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 lg:grid-cols-7 sm:overflow-visible`}>
         {pipelineStages.map((s) => (
           <div
             key={s.value}
@@ -2317,6 +2391,42 @@ const AdminLeads = () => {
               ))}
             </SelectContent>
           </Select>
+        )}
+        {isCommercialPanel && (
+          <>
+            <Select value={filterMercado} onValueChange={setFilterMercado}>
+              <SelectTrigger aria-label="Mercado"><SelectValue placeholder="Mercado" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos mercados</SelectItem>
+                {MERCADO_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filterTipoNegocio} onValueChange={setFilterTipoNegocio}>
+              <SelectTrigger aria-label="Tipo"><SelectValue placeholder="Tipo" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos tipos</SelectItem>
+                {TIPO_NEGOCIO_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filterImpacto} onValueChange={setFilterImpacto}>
+              <SelectTrigger aria-label="Impacto"><SelectValue placeholder="Impacto" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos impactos</SelectItem>
+                {IMPACTO_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <div className="flex gap-1 lg:col-span-2">
+              <Input type="date" aria-label="Período de" value={periodFrom} onChange={(e) => setPeriodFrom(e.target.value)} />
+              <Input type="date" aria-label="Período até" value={periodTo} onChange={(e) => setPeriodTo(e.target.value)} />
+            </div>
+            <Select value={periodMode} onValueChange={(v) => setPeriodMode(v as "entrada" | "saida")}>
+              <SelectTrigger aria-label="Entrada ou saída"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="entrada">Entrada na coluna</SelectItem>
+                <SelectItem value="saida">Saída da coluna</SelectItem>
+              </SelectContent>
+            </Select>
+          </>
         )}
         {currentPanelId === "sucesso" && (
           <Select value={filterCampaignStatus} onValueChange={setFilterCampaignStatus}>
@@ -2497,6 +2607,7 @@ const AdminLeads = () => {
             canEditStageMessages={canEditLead || isAdmin}
             onUpdateStageFollowupMessage={updateStageFollowupMessage}
             stageTotals={isCommercialPanel ? stageTotals : undefined}
+            stageMrrTotals={isCommercialPanel ? stageMrrTotals : undefined}
             stageLoadingMore={isCommercialPanel ? stageLoadingMore : undefined}
             onLoadMoreStage={isCommercialPanel ? loadMoreCommercialStage : undefined}
 
@@ -2977,6 +3088,38 @@ const AdminLeads = () => {
                       <p>{getTipoEmpresaLabel(detailLead.tipo_empresa)}</p>
                     )}
                   </div>
+                )}
+                {isCommercialPanel && (
+                  <>
+                    {([
+                      ["mercado", "Mercado", MERCADO_OPTIONS, mercadoLabel],
+                      ["tipo_negocio", "Tipo", TIPO_NEGOCIO_OPTIONS, tipoNegocioLabel],
+                      ["impacto", "Impacto", IMPACTO_OPTIONS, impactoLabel],
+                    ] as const).map(([field, label, options, toLabel]) => (
+                      <div key={field}>
+                        <p className="text-muted-foreground text-xs mb-1">{label}</p>
+                        {isEditingCard ? (
+                          <Select value={(editFormData as any)[field] || "nao_informado"} onValueChange={(value) => setEditFormData((prev) => ({ ...prev, [field]: value === "nao_informado" ? "" : value }))}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="nao_informado">Não informado</SelectItem>
+                              {options.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <p>{toLabel((detailLead as any)[field]) || "—"}</p>
+                        )}
+                      </div>
+                    ))}
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">MRR (R$)</p>
+                      {isEditingCard ? (
+                        <Input type="number" min="0" step="0.01" value={editFormData.mrr} onChange={(e) => setEditFormData((prev) => ({ ...prev, mrr: e.target.value }))} />
+                      ) : (
+                        <p>{(detailLead as any).mrr != null ? formatCurrencyBRL(Number((detailLead as any).mrr)) : "—"}</p>
+                      )}
+                    </div>
+                  </>
                 )}
                 {!isAmbassadorPanel && (
                   <div>
@@ -3590,7 +3733,7 @@ const AdminLeads = () => {
 };
 
 const isLostStageLabel = (label?: string | null) =>
-  !!label && label.trim().toLowerCase() === "lead perdido";
+  !!label && ["lead perdido", "perdidos"].includes(label.trim().toLowerCase());
 
 // Leads perdidos gravados com o identificador legado "lead_perdido" devem aparecer na coluna "Lead Perdido".
 const lostAwareStageValues = (value: string, label?: string | null): string[] =>

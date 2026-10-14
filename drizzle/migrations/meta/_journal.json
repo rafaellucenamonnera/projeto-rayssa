@@ -15,6 +15,13 @@
       "when": 1791296137112,
       "tag": "0001_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792003742209,
+      "tag": "0002_painel_comercial_v2",
+      "breakpoints": true
     }
   ]
 }

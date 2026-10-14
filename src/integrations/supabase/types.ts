@@ -1840,8 +1840,10 @@ export type Database = {
           impact_level: string | null
           impacto: string | null
           juros_recebidos: number | null
+          mercado: string | null
           modelo_campanha: string | null
           motivo_perda: string | null
+          mrr: number | null
           multas_recebidas: number | null
           nome_fantasia: string
           nome_responsavel: string
@@ -1887,6 +1889,7 @@ export type Database = {
           teste_monnera_solicitou_reuniao: boolean
           teste_monnera_submitted_at: string | null
           tipo_empresa: string | null
+          tipo_negocio: string | null
           valor_campanhas: number | null
           valor_campanhas_anterior: number | null
           valor_mensalidade: number | null
@@ -1938,8 +1941,10 @@ export type Database = {
           impact_level?: string | null
           impacto?: string | null
           juros_recebidos?: number | null
+          mercado?: string | null
           modelo_campanha?: string | null
           motivo_perda?: string | null
+          mrr?: number | null
           multas_recebidas?: number | null
           nome_fantasia: string
           nome_responsavel: string
@@ -1985,6 +1990,7 @@ export type Database = {
           teste_monnera_solicitou_reuniao?: boolean
           teste_monnera_submitted_at?: string | null
           tipo_empresa?: string | null
+          tipo_negocio?: string | null
           valor_campanhas?: number | null
           valor_campanhas_anterior?: number | null
           valor_mensalidade?: number | null
@@ -2036,8 +2042,10 @@ export type Database = {
           impact_level?: string | null
           impacto?: string | null
           juros_recebidos?: number | null
+          mercado?: string | null
           modelo_campanha?: string | null
           motivo_perda?: string | null
+          mrr?: number | null
           multas_recebidas?: number | null
           nome_fantasia?: string
           nome_responsavel?: string
@@ -2083,6 +2091,7 @@ export type Database = {
           teste_monnera_solicitou_reuniao?: boolean
           teste_monnera_submitted_at?: string | null
           tipo_empresa?: string | null
+          tipo_negocio?: string | null
           valor_campanhas?: number | null
           valor_campanhas_anterior?: number | null
           valor_mensalidade?: number | null

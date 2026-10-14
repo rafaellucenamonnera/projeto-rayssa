@@ -1,0 +1,57 @@
+// Regras do Painel Comercial (versão com Mercado, Tipo, Impacto e MRR).
+
+export const COMMERCIAL_STAGE_PROSPECTS = "etapa_comercial_prospects";
+export const COMMERCIAL_STAGE_MQL = "etapa_comercial_mql";
+export const COMMERCIAL_STAGE_PERDIDOS = "etapa_comercial_1781718801678";
+
+export const MERCADO_OPTIONS = [
+  { value: "farma", label: "Farma" },
+  { value: "pet", label: "Pet" },
+  { value: "material_construcao", label: "Material de Construção" },
+  { value: "autopecas", label: "Autopeças" },
+  { value: "alimentar", label: "Alimentar" },
+  { value: "outros", label: "Outros" },
+] as const;
+
+export const TIPO_NEGOCIO_OPTIONS = [
+  { value: "varejo", label: "Varejo" },
+  { value: "distribuicao", label: "Distribuição" },
+  { value: "operador_logistico", label: "Operador Logístico" },
+  { value: "industria", label: "Indústria" },
+] as const;
+
+export const IMPACTO_OPTIONS = [
+  { value: "alto", label: "Alto" },
+  { value: "medio", label: "Médio" },
+  { value: "baixo", label: "Baixo" },
+] as const;
+
+const labelOf = (list: readonly { value: string; label: string }[], v?: string | null) =>
+  list.find((o) => o.value === v)?.label ?? null;
+
+export const mercadoLabel = (v?: string | null) => labelOf(MERCADO_OPTIONS, v);
+export const tipoNegocioLabel = (v?: string | null) => labelOf(TIPO_NEGOCIO_OPTIONS, v);
+export const impactoLabel = (v?: string | null) => labelOf(IMPACTO_OPTIONS, v);
+
+export const impactoTagClass = (v?: string | null) => {
+  if (v === "alto") return "bg-red-600 text-white border-red-700";
+  if (v === "medio") return "bg-orange-500 text-white border-orange-600";
+  if (v === "baixo") return "bg-yellow-300 text-yellow-950 border-yellow-500";
+  return "";
+};
+
+/** Colunas que aceitam card sem Mercado, Tipo e Impacto. */
+const STAGES_WITHOUT_QUALIFICATION = [COMMERCIAL_STAGE_PROSPECTS, COMMERCIAL_STAGE_PERDIDOS, "lead_perdido"];
+
+/** Retorna os nomes dos campos que faltam para mover o card para a coluna. */
+export const missingQualification = (
+  lead: { mercado?: string | null; tipo_negocio?: string | null; impacto?: string | null },
+  targetStage: string,
+): string[] => {
+  if (STAGES_WITHOUT_QUALIFICATION.includes(targetStage)) return [];
+  const missing: string[] = [];
+  if (!lead.mercado) missing.push("Mercado");
+  if (!lead.tipo_negocio) missing.push("Tipo");
+  if (!lead.impacto) missing.push("Impacto");
+  return missing;
+};

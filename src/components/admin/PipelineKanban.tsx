@@ -1,3 +1,4 @@
+import { impactoLabel, impactoTagClass, mercadoLabel, tipoNegocioLabel } from "@/lib/commercialPanel";
 import { memo, useMemo, useState } from "react";
 import { ArrowDown, ArrowRight, ArrowUp, ChevronDown, ChevronUp, Copy, FileText, GripVertical, Pencil, Trash2, UserRound, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,10 @@ interface KanbanLeadCardData {
   partner_code?: string | null;
   codigo_monnera?: string | null;
   panel_id?: string | null;
+  mercado?: string | null;
+  tipo_negocio?: string | null;
+  impacto?: string | null;
+  mrr?: number | null;
 
   proposta_url?: string | null;
   teste_monnera_last_diagnostic_id?: string | null;
@@ -97,6 +102,8 @@ interface PipelineKanbanProps {
   onUpdateStageFollowupMessage?: (stageValue: string, message: string) => Promise<void>;
   /** Totais reais por etapa vindos do servidor (usado no painel comercial com paginação por coluna). */
   stageTotals?: Record<string, number>;
+  /** Soma do MRR por coluna (painel comercial), respeitando os filtros. */
+  stageMrrTotals?: Record<string, number>;
   stageLoadingMore?: Record<string, boolean>;
   onLoadMoreStage?: (stageValue: string) => void;
 }
@@ -208,6 +215,7 @@ export const PipelineKanban = memo(({
   canEditStageMessages = false,
   onUpdateStageFollowupMessage,
   stageTotals,
+  stageMrrTotals,
   stageLoadingMore,
   onLoadMoreStage,
 }: PipelineKanbanProps) => {
@@ -259,7 +267,7 @@ export const PipelineKanban = memo(({
     const g: Record<string, KanbanLeadCardData[]> = {};
     stages.forEach((s) => { g[s.value] = []; });
     // Leads perdidos gravados com o identificador legado "lead_perdido" aparecem na coluna "Lead Perdido".
-    const lostStage = stages.find((st) => st.label?.trim().toLowerCase() === "lead perdido");
+    const lostStage = stages.find((st) => ["lead perdido", "perdidos"].includes(st.label?.trim().toLowerCase() ?? ""));
     leads.forEach((l) => {
       let s = l.stage_id || l.status_lead || l.status || "novo_lead";
       if (s === "lead_perdido" && !g[s] && lostStage) s = lostStage.value;
@@ -314,9 +322,13 @@ export const PipelineKanban = memo(({
             <div className="shrink-0 z-50 border-b border-border/70 bg-card px-3 py-2 shadow-sm">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-semibold uppercase tracking-wide truncate">{s.label}</p>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{formatCount(stageTotals?.[s.value] ?? items.length)}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground" title="Número de cards">{formatCount(stageTotals?.[s.value] ?? items.length)}</span>
               </div>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Total: <span className="font-medium text-foreground">{fmt(totals[s.value])}</span></p>
+              {stageMrrTotals ? (
+                <p className="text-[11px] text-muted-foreground mt-0.5">MRR: <span className="font-medium text-foreground">{fmt(stageMrrTotals[s.value] ?? 0)}</span></p>
+              ) : (
+                <p className="text-[11px] text-muted-foreground mt-0.5">Total: <span className="font-medium text-foreground">{fmt(totals[s.value])}</span></p>
+              )}
               {(() => {
                 const isEditingThis = editingStageMessage?.stageValue === s.value;
                 const canEdit = canEditStageMessages && !!onUpdateStageFollowupMessage;
@@ -510,6 +522,19 @@ export const PipelineKanban = memo(({
                       <div className="min-w-0 flex-1">
                         {!showCsInsteadOfPartner && (
                           <p className="text-xs font-medium truncate">{l.nome_fantasia}</p>
+                        )}
+                        {stageMrrTotals && (
+                          <div className="mt-1 space-y-0.5">
+                            {l.impacto && (
+                              <span className={`inline-block text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded border ${impactoTagClass(l.impacto)}`}>
+                                Impacto {impactoLabel(l.impacto)}
+                              </span>
+                            )}
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              {mercadoLabel(l.mercado) || "Sem mercado"} · {tipoNegocioLabel(l.tipo_negocio) || "Sem tipo"}
+                            </p>
+                            <p className="text-[10px] text-foreground">MRR: {l.mrr != null ? fmt(Number(l.mrr)) : "—"}</p>
+                          </div>
                         )}
                         {l.panel_id === CROSS_CLIENT_PANEL_ID && <MonneraCodeLine code={l.codigo_monnera} />}
                         {l.panel_id === CROSS_CLIENT_PANEL_ID &&
