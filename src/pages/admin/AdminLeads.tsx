@@ -45,6 +45,8 @@ import {
   normalizeHealthStatus, normalizeImpact,
 } from "@/lib/healthStatusColors";
 import { LeadContatos } from "@/components/admin/LeadContatos";
+import { CommercialCardDetail } from "@/components/admin/CommercialCardDetail";
+import { CommercialNewCardDialog } from "@/components/admin/CommercialNewCardDialog";
 import { LeadTasks } from "@/components/admin/LeadTasks";
 import { AmbassadorCardTasks } from "@/components/admin/AmbassadorCardTasks";
 import { RepresentativeCardTasks } from "@/components/admin/RepresentativeCardTasks";
@@ -318,6 +320,7 @@ const AdminLeads = () => {
   const [usersAll, setUsersAll] = useState<{ user_id: string; nome: string }[]>([]);
   const [allActiveUsers, setAllActiveUsers] = useState<{ user_id: string; nome: string }[]>([]);
   const [newCardOpen, setNewCardOpen] = useState(false);
+  const [commercialNewOpen, setCommercialNewOpen] = useState(false);
   const [clienteDialogOpen, setClienteDialogOpen] = useState(false);
   const [clienteDialogCard, setClienteDialogCard] = useState<any | null>(null);
 
@@ -2333,6 +2336,12 @@ const AdminLeads = () => {
             </>
           )}
 
+          {isCommercialPanel && canCreateLead && (
+            <Button onClick={() => setCommercialNewOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
+              + Card
+            </Button>
+          )}
+
           {isCustomCrmPanel && canCreateLead && (
             <Button
               onClick={() => {
@@ -2939,7 +2948,22 @@ const AdminLeads = () => {
           <DialogHeader>
             <DialogTitle className="font-display">{detailLead?.nome_fantasia}</DialogTitle>
           </DialogHeader>
-          {detailLead && (
+          {detailLead && isCommercialPanel && (
+            <CommercialCardDetail
+              lead={detailLead}
+              stages={pipelineStages}
+              parceiroNome={parceiros[detailLead.parceiro_id] || null}
+              userName={currentUserName}
+              canEdit={canEditLead}
+              canComment={canInsertMessage}
+              canInsertFile={canInsertFile}
+              onSaved={(patch) => {
+                setDetailLead((prev: any) => (prev ? { ...prev, ...patch } : prev));
+                void loadData();
+              }}
+            />
+          )}
+          {detailLead && !isCommercialPanel && (
             <div className="space-y-6">
               {isCrossClientPanel ? (
                 canEditLead && (
@@ -3725,6 +3749,13 @@ const AdminLeads = () => {
         firstStageId={pipelineStages[0]?.value}
         card={clienteDialogCard}
         onSaved={handleClienteSaved}
+      />
+
+      <CommercialNewCardDialog
+        open={commercialNewOpen}
+        onOpenChange={setCommercialNewOpen}
+        parceiros={parceirosAll}
+        onCreated={() => void loadData()}
       />
 
       <Dialog open={newCardOpen} onOpenChange={setNewCardOpen}>

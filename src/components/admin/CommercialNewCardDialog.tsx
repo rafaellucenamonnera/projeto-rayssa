@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,13 @@ export const CommercialNewCardDialog = ({ open, onOpenChange, parceiros, default
   const [form, setForm] = useState(initial);
   const [contatos, setContatos] = useState<Contato[]>([{ ...emptyContato }]);
   const [saving, setSaving] = useState(false);
+  const { user } = useAuth();
+  const [ownParceiroId, setOwnParceiroId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!open || !user) return;
+    supabase.from("parceiros_comerciais").select("id").eq("user_id", user.id).limit(1).maybeSingle()
+      .then(({ data }) => setOwnParceiroId((data as any)?.id ?? null));
+  }, [open, user]);
 
   const reset = () => { setForm(initial()); setContatos([{ ...emptyContato }]); };
   const set = (k: keyof ReturnType<typeof initial>, v: string) => setForm((p) => ({ ...p, [k]: v }));
@@ -43,7 +51,7 @@ export const CommercialNewCardDialog = ({ open, onOpenChange, parceiros, default
     if (missing.length) return toast.error(`Para entrar em MQL, preencha: ${missing.join(", ")}.`);
     const cnpj = form.cnpj.replace(/\D/g, "");
     if (cnpj && cnpj.length !== 14) return toast.error("O CNPJ precisa ter 14 números.");
-    const parceiroId = form.canal === "parceiros" ? form.parceiro_id : (form.parceiro_id || defaultParceiroId);
+    const parceiroId = form.canal === "parceiros" ? form.parceiro_id : (form.parceiro_id || defaultParceiroId || ownParceiroId);
     if (!parceiroId) return toast.error("Escolha o Embaixador Monnera responsável.");
 
     const filled = contatos.filter((c) => c.nome.trim());
