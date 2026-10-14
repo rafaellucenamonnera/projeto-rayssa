@@ -5,12 +5,14 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowRightLeft, Loader2, MessageSquare, Pencil, Send } from "lucide-react";
+import { ArrowRightLeft, FileText, Eye, Loader2, MessageSquare, Pencil, Send } from "lucide-react";
 import { AttachmentPicker, CommentAttachmentList, StagedAttachment, uploadStagedAttachments } from "./CommentAttachments";
 import { LeadContatos } from "./LeadContatos";
 import {
   CANAL_OPTIONS, IMPACTO_OPTIONS, MERCADO_OPTIONS, TIPO_NEGOCIO_OPTIONS,
   canalLabel, impactoLabel, impactoTagClass, mercadoLabel, tipoNegocioLabel,
+  TEMPERATURA_OPTIONS, temperaturaLabel, temperaturaTagClass, daysWithoutUpdate, staleLevel, propostaStatusLabel,
+  missingQualification,
 } from "@/lib/commercialPanel";
 
 type Stage = { value: string; label: string };
@@ -24,22 +26,24 @@ interface Props {
   canComment: boolean;
   canInsertFile: boolean;
   onSaved: (patch: Record<string, any>) => void;
+  onEmitProposal?: () => void;
 }
 
 type TimelineItem =
   | { kind: "comment"; id: string; at: string; who: string; text: string }
-  | { kind: "move"; id: string; at: string; who: string; stage: string };
+  | { kind: "move"; id: string; at: string; who: string; stage: string }
+  | { kind: "proposal"; id: string; at: string; who: string; event: "emitida" | "aberta"; name: string };
 
 const fmtDateTime = (v: string) =>
   `${new Date(v).toLocaleDateString("pt-BR")} ${new Date(v).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
 
 const selectClass = "flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground";
 
-export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, canEdit, canComment, canInsertFile, onSaved }: Props) => {
+export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, canEdit, canComment, canInsertFile, onSaved, onEmitProposal }: Props) => {
   const { user } = useAuth();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ razao_social: "", cnpj: "", mercado: "", tipo_negocio: "", impacto: "", canal: "" });
+  const [form, setForm] = useState({ razao_social: "", cnpj: "", mercado: "", tipo_negocio: "", impacto: "", canal: "", temperatura: "" });
   const [items, setItems] = useState<TimelineItem[]>([]);
   const [loadingTimeline, setLoadingTimeline] = useState(false);
   const [text, setText] = useState("");
@@ -59,6 +63,7 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
       tipo_negocio: lead.tipo_negocio || "",
       impacto: lead.impacto || "",
       canal: lead.canal || "",
+      temperatura: lead.temperatura || "",
     });
     setEditing(true);
   };
@@ -66,6 +71,9 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
   const save = async () => {
     if (!form.razao_social.trim()) return toast.error("Preencha Empresa (Razão Social).");
     if (!form.canal) return toast.error("Preencha o Canal.");
+    const stage = lead.status_lead || "";
+    if (missingQualification({ ...form, mercado: "x", tipo_negocio: "x", impacto: "x" }, stage).includes("Temperatura"))
+      return toast.error("Preencha a Temperatura: ela é obrigatória a partir de Lead (em contato).");
     const cnpj = form.cnpj.replace(/\D/g, "");
     if (cnpj && cnpj.length !== 14) return toast.error("O CNPJ precisa ter 14 números.");
     setSaving(true);
@@ -76,6 +84,7 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
       tipo_negocio: form.tipo_negocio || null,
       impacto: form.impacto || null,
       canal: form.canal,
+      temperatura: form.temperatura || null,
     };
     const { error } = await supabase.from("leads").update(patch as any).eq("id", lead.id);
     setSaving(false);
@@ -87,12 +96,14 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
 
   const loadTimeline = async () => {
     setLoadingTimeline(true);
-    const [commentsRes, movesRes] = await Promise.all([
+    const [commentsRes, movesRes, propRes] = await Promise.all([
       supabase.from("lead_comments").select("id,usuario,comentario,data_comentario").eq("lead_id", lead.id),
       supabase.from("lead_stage_history").select("id,etapa,data_entrada,moved_by").eq("lead_id", lead.id),
+      supabase.from("commercial_proposals").select("id,proposal_name,created_at,opened_at,created_by_user_id").eq("lead_id", lead.id),
     ]);
+    const props = (propRes.data as any[]) || [];
     const moves = (movesRes.data as any[]) || [];
-    const ids = [...new Set(moves.map((m) => m.moved_by).filter(Boolean))];
+    const ids = [...new Set([...moves.map((m) => m.moved_by), ...props.map((p) => p.created_by_user_id)].filter(Boolean))];
     const names = new Map<string, string>();
     if (ids.length) {
       const { data } = await supabase.from("profiles").select("user_id,nome").in("user_id", ids);
@@ -101,6 +112,8 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
     const list: TimelineItem[] = [
       ...((commentsRes.data as any[]) || []).map((c) => ({ kind: "comment" as const, id: c.id, at: c.data_comentario, who: c.usuario, text: c.comentario })),
       ...moves.map((m) => ({ kind: "move" as const, id: m.id, at: m.data_entrada, who: names.get(m.moved_by) || "Sistema", stage: m.etapa })),
+      ...props.map((p) => ({ kind: "proposal" as const, id: `${p.id}-e`, at: p.created_at, who: names.get(p.created_by_user_id) || "Sistema", event: "emitida" as const, name: p.proposal_name || "" })),
+      ...props.filter((p) => p.opened_at).map((p) => ({ kind: "proposal" as const, id: `${p.id}-a`, at: p.opened_at, who: "Cliente", event: "aberta" as const, name: p.proposal_name || "" })),
     ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
     setItems(list);
     setLoadingTimeline(false);
@@ -158,6 +171,17 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
 
   return (
     <div className="space-y-6">
+      {(() => {
+        const days = daysWithoutUpdate(lead.ultima_atualizacao_at, lead.status_lead || "");
+        const level = staleLevel(days);
+        if (!level) return null;
+        return (
+          <div className={`flex items-center justify-between rounded-md px-3 py-1.5 text-xs font-semibold ${level === "red" ? "bg-red-600 text-white" : "bg-yellow-400 text-yellow-950"}`}>
+            <span>Sem atualização</span>
+            <span>{days} {days === 1 ? "dia" : "dias"}</span>
+          </div>
+        );
+      })()}
       <section className="rounded-lg border border-border p-4">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-sm font-semibold">Cabeçalho</h3>
@@ -186,6 +210,7 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
             {selectField("Mercado", "mercado", MERCADO_OPTIONS)}
             {selectField("Tipo", "tipo_negocio", TIPO_NEGOCIO_OPTIONS)}
             {selectField("Impacto", "impacto", IMPACTO_OPTIONS)}
+            {selectField("Temperatura", "temperatura", TEMPERATURA_OPTIONS)}
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -205,6 +230,19 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
               <span className={`inline-block rounded border px-2 py-0.5 text-xs font-semibold ${impactoTagClass(lead.impacto)}`}>
                 Impacto {impactoLabel(lead.impacto)}
               </span>
+            ))}
+            {field("Temperatura", lead.temperatura && (
+              <span className={`inline-block rounded border px-2 py-0.5 text-xs font-semibold ${temperaturaTagClass(lead.temperatura)}`}>
+                {temperaturaLabel(lead.temperatura)}
+              </span>
+            ))}
+            {field("Proposta", (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm">{propostaStatusLabel(lead.proposta_status) || "Nenhuma proposta emitida"}</span>
+                {onEmitProposal && (
+                  <Button size="sm" variant="outline" onClick={onEmitProposal}><FileText className="mr-1 h-3 w-3" />Emitir proposta</Button>
+                )}
+              </div>
             ))}
           </div>
         )}
@@ -237,9 +275,14 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
           <ol className="relative ml-2 space-y-4 border-l border-border pl-4">
             {items.map((it) => (
               <li key={`${it.kind}-${it.id}`} className="relative">
-                <span className={`absolute -left-[22px] top-1 flex h-3 w-3 rounded-full border-2 border-background ${it.kind === "move" ? "bg-primary" : "bg-muted-foreground"}`} />
+                <span className={`absolute -left-[22px] top-1 flex h-3 w-3 rounded-full border-2 border-background ${it.kind === "move" ? "bg-primary" : it.kind === "proposal" ? "bg-accent" : "bg-muted-foreground"}`} />
                 <p className="text-xs text-muted-foreground">{fmtDateTime(it.at)} · {it.who}</p>
-                {it.kind === "move" ? (
+                {it.kind === "proposal" ? (
+                  <p className="flex items-center gap-1 text-sm font-medium">
+                    {it.event === "aberta" ? <Eye className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
+                    {it.event === "aberta" ? "Proposta aberta pelo cliente" : "Proposta emitida"}{it.name ? ` · ${it.name}` : ""}
+                  </p>
+                ) : it.kind === "move" ? (
                   <p className="flex items-center gap-1 text-sm font-medium"><ArrowRightLeft className="h-3 w-3" />Card movido para {stageLabel(it.stage)}</p>
                 ) : (
                   <>
