@@ -673,28 +673,41 @@ const AdminLeads = () => {
         let queryError: any = null;
         const results = await Promise.all(
           stagesToLoad.map(async (stage) => {
-            const countQuery = applyEmpresaSearch(
+            const stageValues = lostAwareStageValues(stage.value, stage.label);
+            const periodIds = await loadPeriodLeadIds(stageValues);
+            const countQuery = applyCommercialFilters(applyEmpresaSearch(
               supabase
                 .from("leads")
                 .select("id", { count: "exact", head: true })
                 .eq("panel_id", currentPanelId)
-                .in("status_lead", lostAwareStageValues(stage.value, stage.label) as any) as any,
-            );
-            const dataQuery = applyEmpresaSearch(
+                .in("status_lead", stageValues as any) as any,
+            ), periodIds);
+            const dataQuery = applyCommercialFilters(applyEmpresaSearch(
               supabase
                 .from("leads")
                 .select("*")
                 .eq("panel_id", currentPanelId)
-                .in("status_lead", lostAwareStageValues(stage.value, stage.label) as any)
+                .in("status_lead", stageValues as any)
                 .order("data_cadastro", { ascending: false })
                 .range(0, STAGE_PAGE_SIZE - 1) as any,
-            );
-            const [countRes, dataRes] = await Promise.all([countQuery, dataQuery]);
+            ), periodIds);
+            const mrrQuery = applyCommercialFilters(applyEmpresaSearch(
+              supabase
+                .from("leads")
+                .select("mrr")
+                .eq("panel_id", currentPanelId)
+                .in("status_lead", stageValues as any)
+                .not("mrr", "is", null)
+                .range(0, 9999) as any,
+            ), periodIds);
+            const [countRes, dataRes, mrrRes] = await Promise.all([countQuery, dataQuery, mrrQuery]);
             if (countRes.error) queryError = countRes.error;
             if (dataRes.error) queryError = dataRes.error;
+            if (mrrRes.error) queryError = mrrRes.error;
             return {
               stage: stage.value,
               total: countRes.count ?? 0,
+              mrr: ((mrrRes.data as any[]) || []).reduce((sum, r) => sum + Number(r.mrr || 0), 0),
               rows: (dataRes.data as any[]) || [],
             };
           }),
@@ -708,10 +721,12 @@ const AdminLeads = () => {
         }
 
         const totals: Record<string, number> = {};
+        const mrrTotals: Record<string, number> = {};
         const pages: Record<string, number> = {};
         const allRows: any[] = [];
-        results.forEach(({ stage, total, rows }) => {
+        results.forEach(({ stage, total, mrr, rows }) => {
           totals[stage] = total;
+          mrrTotals[stage] = mrr;
           pages[stage] = 1;
           allRows.push(...rows);
         });
@@ -720,6 +735,7 @@ const AdminLeads = () => {
         setReunioesMap({});
         setStageLoadingMore({});
         setStageTotals(totals);
+        setStageMrrTotals(mrrTotals);
         setStageLoadedPages(pages);
         const seen = new Set<string>();
         const deduped = allRows.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
