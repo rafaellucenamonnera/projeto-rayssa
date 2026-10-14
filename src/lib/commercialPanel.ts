@@ -96,12 +96,14 @@ export const temperaturaTagClass = (v?: string | null) => {
   return "";
 };
 
-/** Da coluna Contrato Assinado em diante não se conta dias sem atualização. */
-export const STAGES_WITHOUT_UPDATE_COUNT = ["contrato_assinado", "etapa_comercial_kickoff", COMMERCIAL_STAGE_PERDIDOS, "lead_perdido"];
+/** Dias sem atualização valem de MQL até Contrato Enviado. */
+export const STAGES_WITH_UPDATE_COUNT = [
+  COMMERCIAL_STAGE_MQL, "novo_lead", "reuniao_agendada", "reuniao_realizada", "proposta_enviada", "lead_convertido", "contrato_enviado",
+];
 
 /** Dias completos desde a última atualização (null quando não se aplica). */
 export const daysWithoutUpdate = (lastUpdate: string | null | undefined, stage: string, now = Date.now()): number | null => {
-  if (!lastUpdate || STAGES_WITHOUT_UPDATE_COUNT.includes(stage)) return null;
+  if (!lastUpdate || !STAGES_WITH_UPDATE_COUNT.includes(stage)) return null;
   const t = new Date(lastUpdate).getTime();
   if (Number.isNaN(t)) return null;
   return Math.max(0, Math.floor((now - t) / 86400000));

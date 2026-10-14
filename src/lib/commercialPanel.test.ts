@@ -43,4 +43,9 @@ describe("dias sem atualização", () => {
     expect(daysWithoutUpdate(ago(9), "contrato_assinado", now)).toBe(null);
     expect(daysWithoutUpdate(ago(9), "etapa_comercial_kickoff", now)).toBe(null);
   });
+  it("vale de MQL até Contrato Enviado, não em Lista Prospects", () => {
+    expect(daysWithoutUpdate(ago(3), "etapa_comercial_mql", now)).toBe(3);
+    expect(daysWithoutUpdate(ago(3), "contrato_enviado", now)).toBe(3);
+    expect(daysWithoutUpdate(ago(3), "etapa_comercial_prospects", now)).toBe(null);
+  });
 });

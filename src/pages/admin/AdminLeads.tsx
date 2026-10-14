@@ -689,6 +689,7 @@ const AdminLeads = () => {
     if (filterTipoNegocio !== "all") q = q.eq("tipo_negocio", filterTipoNegocio);
     if (filterImpacto !== "all") q = q.eq("impacto", filterImpacto);
     if (filterTemperatura !== "all") q = q.eq("temperatura", filterTemperatura);
+    if (filterResponsibleUser !== "all") q = q.eq("responsible_user_id", filterResponsibleUser);
     if (periodIds) q = q.in("id", periodIds.length ? periodIds : ["00000000-0000-0000-0000-000000000000"]);
     return q;
   };
@@ -999,7 +1000,7 @@ const AdminLeads = () => {
   }, [detailLead?.id]);
 
   const panelLoadSearchKey = isCommercialPanel
-    ? [debouncedFilterEmpresa, filterMercado, filterTipoNegocio, filterImpacto, filterTemperatura, periodFrom, periodTo, periodMode].join("|")
+    ? [debouncedFilterEmpresa, filterMercado, filterTipoNegocio, filterImpacto, filterTemperatura, filterResponsibleUser, periodFrom, periodTo, periodMode].join("|")
     : "";
 
   useEffect(() => {
@@ -2497,6 +2498,15 @@ const AdminLeads = () => {
         )}
         {isCommercialPanel && (
           <>
+            <FilterField label="Vendedor Responsável">
+            <Select value={filterResponsibleUser} onValueChange={setFilterResponsibleUser}>
+              <SelectTrigger aria-label="Vendedor Responsável"><SelectValue placeholder="Vendedor Responsável" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos vendedores</SelectItem>
+                {usersAll.map((u) => <SelectItem key={u.user_id} value={u.user_id}>{u.nome}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            </FilterField>
             <FilterField label="Mercado">
             <Select value={filterMercado} onValueChange={setFilterMercado}>
               <SelectTrigger aria-label="Mercado"><SelectValue placeholder="Mercado" /></SelectTrigger>
@@ -2968,6 +2978,7 @@ const AdminLeads = () => {
               canEdit={canEditLead}
               canComment={canInsertMessage}
               canInsertFile={canInsertFile}
+              vendedores={usersAll}
               onEmitProposal={() => { setDetailOpen(false); handleReplaceProposta(detailLead.id, detailLead.nome_fantasia); }}
               onSaved={(patch) => {
                 setDetailLead((prev: any) => (prev ? { ...prev, ...patch } : prev));
