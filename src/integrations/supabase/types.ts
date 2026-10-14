@@ -1859,6 +1859,8 @@ export type Database = {
           parcelas_pagas: number | null
           participantes_reuniao: string | null
           percentual_consultor: number | null
+          proposta_status: string | null
+          proposta_status_at: string | null
           proposta_url: string | null
           qtd_parcelas: number | null
           quantidade_funcionarios: number | null
@@ -1885,6 +1887,7 @@ export type Database = {
           status: string
           status_lead: string
           telefone_responsavel: string
+          temperatura: string | null
           teste_monnera_last_diagnostic_id: string | null
           teste_monnera_priority: string | null
           teste_monnera_recommendation: string | null
@@ -1894,6 +1897,7 @@ export type Database = {
           teste_monnera_submitted_at: string | null
           tipo_empresa: string | null
           tipo_negocio: string | null
+          ultima_atualizacao_at: string | null
           valor_campanhas: number | null
           valor_campanhas_anterior: number | null
           valor_mensalidade: number | null
@@ -1961,6 +1965,8 @@ export type Database = {
           parcelas_pagas?: number | null
           participantes_reuniao?: string | null
           percentual_consultor?: number | null
+          proposta_status?: string | null
+          proposta_status_at?: string | null
           proposta_url?: string | null
           qtd_parcelas?: number | null
           quantidade_funcionarios?: number | null
@@ -1987,6 +1993,7 @@ export type Database = {
           status?: string
           status_lead?: string
           telefone_responsavel: string
+          temperatura?: string | null
           teste_monnera_last_diagnostic_id?: string | null
           teste_monnera_priority?: string | null
           teste_monnera_recommendation?: string | null
@@ -1996,6 +2003,7 @@ export type Database = {
           teste_monnera_submitted_at?: string | null
           tipo_empresa?: string | null
           tipo_negocio?: string | null
+          ultima_atualizacao_at?: string | null
           valor_campanhas?: number | null
           valor_campanhas_anterior?: number | null
           valor_mensalidade?: number | null
@@ -2063,6 +2071,8 @@ export type Database = {
           parcelas_pagas?: number | null
           participantes_reuniao?: string | null
           percentual_consultor?: number | null
+          proposta_status?: string | null
+          proposta_status_at?: string | null
           proposta_url?: string | null
           qtd_parcelas?: number | null
           quantidade_funcionarios?: number | null
@@ -2089,6 +2099,7 @@ export type Database = {
           status?: string
           status_lead?: string
           telefone_responsavel?: string
+          temperatura?: string | null
           teste_monnera_last_diagnostic_id?: string | null
           teste_monnera_priority?: string | null
           teste_monnera_recommendation?: string | null
@@ -2098,6 +2109,7 @@ export type Database = {
           teste_monnera_submitted_at?: string | null
           tipo_empresa?: string | null
           tipo_negocio?: string | null
+          ultima_atualizacao_at?: string | null
           valor_campanhas?: number | null
           valor_campanhas_anterior?: number | null
           valor_mensalidade?: number | null
@@ -4490,6 +4502,10 @@ export type Database = {
       }
       submit_teste_monnera: { Args: { p_payload: Json }; Returns: Json }
       sync_commercial_proposal_followups: { Args: never; Returns: number }
+      touch_lead_activity: {
+        Args: { _at: string; _lead_id: string }
+        Returns: undefined
+      }
       triage_row_values: {
         Args: { p_row_id: string; p_source: string }
         Returns: Json
