@@ -53,7 +53,7 @@ const STAGES_WITHOUT_QUALIFICATION = [COMMERCIAL_STAGE_PROSPECTS, COMMERCIAL_STA
 
 /** Retorna os nomes dos campos que faltam para mover o card para a coluna. */
 export const missingQualification = (
-  lead: { mercado?: string | null; tipo_negocio?: string | null; impacto?: string | null; canal?: string | null },
+  lead: { mercado?: string | null; tipo_negocio?: string | null; impacto?: string | null; canal?: string | null; temperatura?: string | null },
   targetStage: string,
 ): string[] => {
   const isLost = targetStage === COMMERCIAL_STAGE_PERDIDOS || targetStage === "lead_perdido";
@@ -64,6 +64,7 @@ export const missingQualification = (
   if (!lead.mercado) missing.push("Mercado");
   if (!lead.tipo_negocio) missing.push("Tipo");
   if (!lead.impacto) missing.push("Impacto");
+  if (targetStage !== COMMERCIAL_STAGE_MQL && !lead.temperatura) missing.push("Temperatura");
   return missing;
 };
 
@@ -81,3 +82,36 @@ export const validateNewCommercialCard = (card: {
   if (!card.contatos.some((c) => c.nome.trim())) errs.push("Nome de pelo menos um contato");
   return errs;
 };
+
+export const TEMPERATURA_OPTIONS = [
+  { value: "fria", label: "Fria" },
+  { value: "morna", label: "Morno" },
+  { value: "quente", label: "Quente" },
+] as const;
+export const temperaturaLabel = (v?: string | null) => labelOf(TEMPERATURA_OPTIONS, v);
+export const temperaturaTagClass = (v?: string | null) => {
+  if (v === "fria") return "bg-blue-600 text-white border-blue-700";
+  if (v === "morna") return "bg-yellow-400 text-yellow-950 border-yellow-500";
+  if (v === "quente") return "bg-red-600 text-white border-red-700";
+  return "";
+};
+
+/** Da coluna Contrato Assinado em diante não se conta dias sem atualização. */
+export const STAGES_WITHOUT_UPDATE_COUNT = ["contrato_assinado", "etapa_comercial_kickoff", COMMERCIAL_STAGE_PERDIDOS, "lead_perdido"];
+
+/** Dias completos desde a última atualização (null quando não se aplica). */
+export const daysWithoutUpdate = (lastUpdate: string | null | undefined, stage: string, now = Date.now()): number | null => {
+  if (!lastUpdate || STAGES_WITHOUT_UPDATE_COUNT.includes(stage)) return null;
+  const t = new Date(lastUpdate).getTime();
+  if (Number.isNaN(t)) return null;
+  return Math.max(0, Math.floor((now - t) / 86400000));
+};
+
+/** Até 2 dias sem atualização: amarelo. Mais de 2 dias: vermelho. Atualizado hoje: sem linha. */
+export const staleLevel = (days: number | null): "yellow" | "red" | null => {
+  if (days == null || days < 1) return null;
+  return days > 2 ? "red" : "yellow";
+};
+
+export const propostaStatusLabel = (v?: string | null) =>
+  v === "aberta" ? "Proposta aberta" : v === "emitida" ? "Proposta emitida" : null;
