@@ -1,0 +1,1 @@
+ALTER TABLE public.lead_stage_history ADD COLUMN IF NOT EXISTS moved_by uuid DEFAULT auth.uid();

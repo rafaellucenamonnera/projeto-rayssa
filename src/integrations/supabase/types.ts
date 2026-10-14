@@ -1625,6 +1625,7 @@ export type Database = {
           etapa: string
           id: string
           lead_id: string
+          moved_by: string | null
         }
         Insert: {
           data_entrada?: string
@@ -1633,6 +1634,7 @@ export type Database = {
           etapa: string
           id?: string
           lead_id: string
+          moved_by?: string | null
         }
         Update: {
           data_entrada?: string
@@ -1641,6 +1643,7 @@ export type Database = {
           etapa?: string
           id?: string
           lead_id?: string
+          moved_by?: string | null
         }
         Relationships: [
           {
@@ -1805,6 +1808,7 @@ export type Database = {
           campaign_status_current_month: string | null
           campaign_status_previous: string | null
           campaign_status_previous_month: string | null
+          canal: string | null
           canal_tracao: string | null
           cargo_participante: string | null
           categoria: string | null
@@ -1906,6 +1910,7 @@ export type Database = {
           campaign_status_current_month?: string | null
           campaign_status_previous?: string | null
           campaign_status_previous_month?: string | null
+          canal?: string | null
           canal_tracao?: string | null
           cargo_participante?: string | null
           categoria?: string | null
@@ -2007,6 +2012,7 @@ export type Database = {
           campaign_status_current_month?: string | null
           campaign_status_previous?: string | null
           campaign_status_previous_month?: string | null
+          canal?: string | null
           canal_tracao?: string | null
           cargo_participante?: string | null
           categoria?: string | null
