@@ -10,6 +10,17 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+
+function FilterField({ label, className, children }: { label: string; className?: string; children: React.ReactNode }) {
+  return (
+    <div className={`flex min-w-0 flex-col gap-1 ${className ?? ""}`}>
+      <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
+      {children}
+    </div>
+  );
+}
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import {
@@ -345,6 +356,7 @@ const AdminLeads = () => {
   const [periodFrom, setPeriodFrom] = useState("");
   const [periodTo, setPeriodTo] = useState("");
   const [periodMode, setPeriodMode] = useState<"entrada" | "saida">("entrada");
+  const [filterStages, setFilterStages] = useState<string[]>([]);
   const [stageMrrTotals, setStageMrrTotals] = useState<Record<string, number>>({});
   const [filterDataInicio, setFilterDataInicio] = useState("");
   const [filterDataFim, setFilterDataFim] = useState("");
@@ -2049,10 +2061,25 @@ const AdminLeads = () => {
     filterEndDate,
   ]);
 
+  const visibleStages = useMemo(
+    () => (filterStages.length === 0 ? pipelineStages : pipelineStages.filter((s) => filterStages.includes(s.value))),
+    [pipelineStages, filterStages],
+  );
+
   const filtered = useMemo(() => {
-    if (filterStatus === "all") return filteredExceptStatus;
-    return filteredExceptStatus.filter((l) => (l.status_lead || l.status) === filterStatus);
-  }, [filteredExceptStatus, filterStatus]);
+    let list = filteredExceptStatus;
+    if (filterStatus !== "all") list = list.filter((l) => (l.status_lead || l.status) === filterStatus);
+    if (filterStages.length > 0) {
+      const allowed = new Set(filterStages);
+      const lost = pipelineStages.find((st) => isLostStageLabel(st.label));
+      list = list.filter((l) => {
+        let s = l.stage_id || l.status_lead || l.status || "novo_lead";
+        if (s === "lead_perdido" && lost) s = lost.value;
+        return allowed.has(s);
+      });
+    }
+    return list;
+  }, [filteredExceptStatus, filterStatus, filterStages, pipelineStages]);
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -2352,29 +2379,74 @@ const AdminLeads = () => {
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2 sm:gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2 sm:gap-3 items-end">
         {isCommercialPanel && (
           <>
-            <div className="flex gap-1 lg:col-span-2">
-              <Input type="date" aria-label="Período de" value={periodFrom} onChange={(e) => setPeriodFrom(e.target.value)} />
-              <Input type="date" aria-label="Período até" value={periodTo} onChange={(e) => setPeriodTo(e.target.value)} />
-            </div>
-            <Select value={periodMode} onValueChange={(v) => setPeriodMode(v as "entrada" | "saida")}>
-              <SelectTrigger aria-label="Entrada ou saída"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="entrada">Entrada na coluna</SelectItem>
-                <SelectItem value="saida">Saída da coluna</SelectItem>
-              </SelectContent>
-            </Select>
+            <FilterField label="Período" className="lg:col-span-2">
+              <div className="flex gap-1">
+                <Input type="date" aria-label="Período de" value={periodFrom} onChange={(e) => setPeriodFrom(e.target.value)} />
+                <Input type="date" aria-label="Período até" value={periodTo} onChange={(e) => setPeriodTo(e.target.value)} />
+              </div>
+            </FilterField>
+            <FilterField label="Data considerada">
+              <Select value={periodMode} onValueChange={(v) => setPeriodMode(v as "entrada" | "saida")}>
+                <SelectTrigger aria-label="Entrada ou saída"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="entrada">Entrada na coluna</SelectItem>
+                  <SelectItem value="saida">Saída da coluna</SelectItem>
+                </SelectContent>
+              </Select>
+            </FilterField>
           </>
         )}
-        <div className="relative">
-          <Input placeholder={isCustomCrmPanel ? "Filtrar por nome..." : "Filtrar por empresa..."} value={filterEmpresa} onChange={(e) => setFilterEmpresa(e.target.value)} />
-          {isCommercialPanel && (searchingEmpresa || commercialLoading) && filterEmpresa.trim().length >= 2 && (
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">Buscando…</span>
-          )}
-        </div>
+        <FilterField label={isCustomCrmPanel ? "Nome" : "Empresa"}>
+          <div className="relative">
+            <Input placeholder={isCustomCrmPanel ? "Filtrar por nome..." : "Filtrar por empresa..."} value={filterEmpresa} onChange={(e) => setFilterEmpresa(e.target.value)} />
+            {isCommercialPanel && (searchingEmpresa || commercialLoading) && filterEmpresa.trim().length >= 2 && (
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">Buscando…</span>
+            )}
+          </div>
+        </FilterField>
+        <FilterField label="Colunas">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-full justify-between font-normal" aria-label="Filtrar colunas">
+                <span className="truncate">
+                  {filterStages.length === 0
+                    ? "Todas as colunas"
+                    : filterStages.length === 1
+                      ? pipelineStages.find((s) => s.value === filterStages[0])?.label ?? "1 coluna"
+                      : `${filterStages.length} colunas`}
+                </span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-2" align="start">
+              <div className="max-h-72 space-y-1 overflow-y-auto">
+                {pipelineStages.map((s) => {
+                  const checked = filterStages.includes(s.value);
+                  return (
+                    <label key={s.value} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(v) =>
+                          setFilterStages((prev) => (v ? [...prev, s.value] : prev.filter((x) => x !== s.value)))
+                        }
+                      />
+                      {s.label}
+                    </label>
+                  );
+                })}
+              </div>
+              {filterStages.length > 0 && (
+                <Button variant="ghost" size="sm" className="mt-2 w-full" onClick={() => setFilterStages([])}>
+                  Mostrar todas as colunas
+                </Button>
+              )}
+            </PopoverContent>
+          </Popover>
+        </FilterField>
         {currentPanelId === "sucesso" ? (
+          <FilterField label="CS">
           <Select value={filterCs} onValueChange={setFilterCs}>
             <SelectTrigger><SelectValue placeholder="CS" /></SelectTrigger>
             <SelectContent>
@@ -2386,7 +2458,9 @@ const AdminLeads = () => {
                 ))}
             </SelectContent>
           </Select>
+          </FilterField>
         ) : isCustomCrmPanel ? (
+          <FilterField label="Responsável">
           <Select value={filterResponsibleUser} onValueChange={setFilterResponsibleUser}>
             <SelectTrigger><SelectValue placeholder="Responsável" /></SelectTrigger>
             <SelectContent>
@@ -2396,7 +2470,9 @@ const AdminLeads = () => {
               ))}
             </SelectContent>
           </Select>
+          </FilterField>
         ) : (
+          <FilterField label="Embaixador Monnera">
           <Select value={filterConsultor} onValueChange={setFilterConsultor}>
             <SelectTrigger><SelectValue placeholder="Embaixador Monnera" /></SelectTrigger>
             <SelectContent>
@@ -2406,9 +2482,11 @@ const AdminLeads = () => {
               ))}
             </SelectContent>
           </Select>
+          </FilterField>
         )}
         {isCommercialPanel && (
           <>
+            <FilterField label="Mercado">
             <Select value={filterMercado} onValueChange={setFilterMercado}>
               <SelectTrigger aria-label="Mercado"><SelectValue placeholder="Mercado" /></SelectTrigger>
               <SelectContent>
@@ -2416,6 +2494,8 @@ const AdminLeads = () => {
                 {MERCADO_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
               </SelectContent>
             </Select>
+            </FilterField>
+            <FilterField label="Tipo">
             <Select value={filterTipoNegocio} onValueChange={setFilterTipoNegocio}>
               <SelectTrigger aria-label="Tipo"><SelectValue placeholder="Tipo" /></SelectTrigger>
               <SelectContent>
@@ -2423,6 +2503,8 @@ const AdminLeads = () => {
                 {TIPO_NEGOCIO_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
               </SelectContent>
             </Select>
+            </FilterField>
+            <FilterField label="Impacto">
             <Select value={filterImpacto} onValueChange={setFilterImpacto}>
               <SelectTrigger aria-label="Impacto"><SelectValue placeholder="Impacto" /></SelectTrigger>
               <SelectContent>
@@ -2430,9 +2512,11 @@ const AdminLeads = () => {
                 {IMPACTO_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
               </SelectContent>
             </Select>
+            </FilterField>
           </>
         )}
         {currentPanelId === "sucesso" && (
+          <FilterField label="Status da campanha">
           <Select value={filterCampaignStatus} onValueChange={setFilterCampaignStatus}>
             <SelectTrigger><SelectValue placeholder="Status Campanha" /></SelectTrigger>
             <SelectContent>
@@ -2442,8 +2526,10 @@ const AdminLeads = () => {
               ))}
             </SelectContent>
           </Select>
+          </FilterField>
         )}
         {(currentPanelId === "sucesso" || currentPanelId === "campanhas") && (
+          <FilterField label="Impacto">
           <Select value={filterImpactLevel} onValueChange={setFilterImpactLevel}>
             <SelectTrigger><SelectValue placeholder="Impacto" /></SelectTrigger>
             <SelectContent>
@@ -2461,8 +2547,10 @@ const AdminLeads = () => {
               })}
             </SelectContent>
           </Select>
+          </FilterField>
         )}
         {(currentPanelId === "sucesso" || currentPanelId === "campanhas") && (
+          <FilterField label="Status do cliente">
           <Select value={filterHealthStatus} onValueChange={setFilterHealthStatus}>
             <SelectTrigger><SelectValue placeholder="Status Cliente" /></SelectTrigger>
             <SelectContent>
@@ -2480,6 +2568,7 @@ const AdminLeads = () => {
               })}
             </SelectContent>
           </Select>
+          </FilterField>
         )}
       </div>
 
@@ -2590,7 +2679,7 @@ const AdminLeads = () => {
         <div className="hidden min-h-0 lg:block">
           <PipelineKanban
             leads={filtered}
-            stages={pipelineStages}
+            stages={visibleStages}
             parceirosMap={parceiros}
             showCampaignStatus={currentPanelId === "sucesso"}
             showCsInsteadOfPartner={currentPanelId === "sucesso"}
