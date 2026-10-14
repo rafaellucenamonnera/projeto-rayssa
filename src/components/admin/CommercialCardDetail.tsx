@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowRightLeft, FileText, Eye, Loader2, MessageSquare, Pencil, Send } from "lucide-react";
+import { ArrowRightLeft, CheckCircle2, FileText, Eye, Loader2, MessageSquare, Pencil, Send } from "lucide-react";
 import { AttachmentPicker, CommentAttachmentList, StagedAttachment, uploadStagedAttachments } from "./CommentAttachments";
 import { LeadContatos } from "./LeadContatos";
 import {
@@ -33,7 +33,7 @@ interface Props {
 type TimelineItem =
   | { kind: "comment"; id: string; at: string; who: string; text: string }
   | { kind: "move"; id: string; at: string; who: string; stage: string }
-  | { kind: "proposal"; id: string; at: string; who: string; event: "emitida" | "aberta"; name: string };
+  | { kind: "proposal"; id: string; at: string; who: string; event: "emitida" | "aberta" | "aceita"; name: string };
 
 const fmtDateTime = (v: string) =>
   `${new Date(v).toLocaleDateString("pt-BR")} ${new Date(v).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
@@ -102,7 +102,7 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
     const [commentsRes, movesRes, propRes] = await Promise.all([
       supabase.from("lead_comments").select("id,usuario,comentario,data_comentario").eq("lead_id", lead.id),
       supabase.from("lead_stage_history").select("id,etapa,data_entrada,moved_by").eq("lead_id", lead.id),
-      supabase.from("commercial_proposals").select("id,proposal_name,created_at,opened_at,created_by_user_id").eq("lead_id", lead.id),
+      supabase.from("commercial_proposals").select("id,proposal_name,created_at,opened_at,accepted_at,accepted_by_name,created_by_user_id").eq("lead_id", lead.id),
     ]);
     const props = (propRes.data as any[]) || [];
     const moves = (movesRes.data as any[]) || [];
@@ -117,6 +117,7 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
       ...moves.map((m) => ({ kind: "move" as const, id: m.id, at: m.data_entrada, who: names.get(m.moved_by) || "Sistema", stage: m.etapa })),
       ...props.map((p) => ({ kind: "proposal" as const, id: `${p.id}-e`, at: p.created_at, who: names.get(p.created_by_user_id) || "Sistema", event: "emitida" as const, name: p.proposal_name || "" })),
       ...props.filter((p) => p.opened_at).map((p) => ({ kind: "proposal" as const, id: `${p.id}-a`, at: p.opened_at, who: "Cliente", event: "aberta" as const, name: p.proposal_name || "" })),
+      ...props.filter((p) => p.accepted_at).map((p) => ({ kind: "proposal" as const, id: `${p.id}-c`, at: p.accepted_at, who: p.accepted_by_name || "Cliente", event: "aceita" as const, name: p.proposal_name || "" })),
     ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
     setItems(list);
     setLoadingTimeline(false);
@@ -153,6 +154,24 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
     } finally {
       setSending(false);
     }
+  };
+
+  const [accepting, setAccepting] = useState(false);
+  const markAccepted = async () => {
+    if (!user) return toast.error("Sessão expirada. Entre novamente.");
+    if (!window.confirm("Confirmar que o cliente aceitou a proposta?")) return;
+    setAccepting(true);
+    const at = new Date().toISOString();
+    const { error } = await supabase.from("leads").update({ proposta_status: "aceita", proposta_status_at: at } as any).eq("id", lead.id);
+    if (error) { setAccepting(false); return toast.error(`Não foi possível alterar: ${error.message}`); }
+    await supabase.from("lead_comments").insert({
+      lead_id: lead.id, etapa: lead.status_lead || "", usuario: userName, user_id: user.id,
+      comentario: "Status da proposta alterado para Proposta Aceita pelo vendedor.",
+    } as any);
+    setAccepting(false);
+    toast.success("Proposta marcada como aceita.");
+    onSaved({ proposta_status: "aceita", proposta_status_at: at });
+    void loadTimeline();
   };
 
   const field = (label: string, value: React.ReactNode) => (
@@ -243,7 +262,12 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
             ))}
             {field("Proposta", (
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm">{propostaStatusLabel(lead.proposta_status) || "Nenhuma proposta emitida"}</span>
+                <span className="text-sm">{propostaStatusLabel(lead.proposta_status) || "Nenhuma proposta enviada"}</span>
+                {lead.proposta_status && lead.proposta_status !== "aceita" && (canEdit || user?.id === lead.responsible_user_id) && (
+                  <Button size="sm" variant="outline" onClick={markAccepted} disabled={accepting}>
+                    {accepting ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <CheckCircle2 className="mr-1 h-3 w-3" />}Marcar como aceita
+                  </Button>
+                )}
                 {onEmitProposal && (
                   <Button size="sm" variant="outline" onClick={onEmitProposal}><FileText className="mr-1 h-3 w-3" />Emitir proposta</Button>
                 )}
@@ -284,8 +308,8 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
                 <p className="text-xs text-muted-foreground">{fmtDateTime(it.at)} · {it.who}</p>
                 {it.kind === "proposal" ? (
                   <p className="flex items-center gap-1 text-sm font-medium">
-                    {it.event === "aberta" ? <Eye className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
-                    {it.event === "aberta" ? "Proposta aberta pelo cliente" : "Proposta emitida"}{it.name ? ` · ${it.name}` : ""}
+                    {it.event === "aceita" ? <CheckCircle2 className="h-3 w-3" /> : it.event === "aberta" ? <Eye className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
+                    {it.event === "aceita" ? "Proposta aceita pelo cliente" : it.event === "aberta" ? "Proposta aberta pelo cliente" : "Proposta enviada"}{it.name ? ` · ${it.name}` : ""}
                   </p>
                 ) : it.kind === "move" ? (
                   <p className="flex items-center gap-1 text-sm font-medium"><ArrowRightLeft className="h-3 w-3" />Card movido para {stageLabel(it.stage)}</p>

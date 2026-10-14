@@ -532,7 +532,7 @@ export const PipelineKanban = memo(({
                                 </span>
                               )}
                               {propostaStatusLabel(l.proposta_status) && (
-                                <span className={`inline-block text-[9px] font-semibold px-1.5 py-0.5 rounded border ${l.proposta_status === "aberta" ? "border-primary text-primary" : "border-border text-muted-foreground"}`}>
+                                <span className={`inline-block text-[9px] font-semibold px-1.5 py-0.5 rounded border ${l.proposta_status === "aceita" ? "bg-emerald-600 text-white border-emerald-700" : l.proposta_status === "aberta" ? "border-primary text-primary" : "border-border text-muted-foreground"}`}>
                                   {propostaStatusLabel(l.proposta_status)}
                                 </span>
                               )}

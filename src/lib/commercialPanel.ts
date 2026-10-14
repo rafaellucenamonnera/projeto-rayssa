@@ -116,4 +116,4 @@ export const staleLevel = (days: number | null): "yellow" | "red" | null => {
 };
 
 export const propostaStatusLabel = (v?: string | null) =>
-  v === "aberta" ? "Proposta aberta" : v === "emitida" ? "Proposta emitida" : null;
+  v === "aceita" ? "Proposta Aceita" : v === "aberta" ? "Proposta Aberta" : v === "emitida" ? "Proposta Enviada" : null;

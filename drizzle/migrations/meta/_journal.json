@@ -43,6 +43,13 @@
       "when": 1792008091188,
       "tag": "0005_commercial_temperature_updates_proposals",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792008636864,
+      "tag": "0006_proposal_status_accepted",
+      "breakpoints": true
     }
   ]
 }
