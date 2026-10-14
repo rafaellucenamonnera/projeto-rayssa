@@ -26,11 +26,19 @@ export const IMPACTO_OPTIONS = [
   { value: "baixo", label: "Baixo" },
 ] as const;
 
+export const CANAL_OPTIONS = [
+  { value: "parceiros", label: "Parceiros" },
+  { value: "prospeccao", label: "Prospecção" },
+  { value: "trafego_pago", label: "Tráfego Pago" },
+  { value: "eventos", label: "Eventos" },
+] as const;
+
 const labelOf = (list: readonly { value: string; label: string }[], v?: string | null) =>
   list.find((o) => o.value === v)?.label ?? null;
 
 export const mercadoLabel = (v?: string | null) => labelOf(MERCADO_OPTIONS, v);
 export const tipoNegocioLabel = (v?: string | null) => labelOf(TIPO_NEGOCIO_OPTIONS, v);
+export const canalLabel = (v?: string | null) => labelOf(CANAL_OPTIONS, v);
 export const impactoLabel = (v?: string | null) => labelOf(IMPACTO_OPTIONS, v);
 
 export const impactoTagClass = (v?: string | null) => {
@@ -45,13 +53,31 @@ const STAGES_WITHOUT_QUALIFICATION = [COMMERCIAL_STAGE_PROSPECTS, COMMERCIAL_STA
 
 /** Retorna os nomes dos campos que faltam para mover o card para a coluna. */
 export const missingQualification = (
-  lead: { mercado?: string | null; tipo_negocio?: string | null; impacto?: string | null },
+  lead: { mercado?: string | null; tipo_negocio?: string | null; impacto?: string | null; canal?: string | null },
   targetStage: string,
 ): string[] => {
-  if (STAGES_WITHOUT_QUALIFICATION.includes(targetStage)) return [];
+  const isLost = targetStage === COMMERCIAL_STAGE_PERDIDOS || targetStage === "lead_perdido";
+  if (isLost) return [];
   const missing: string[] = [];
+  if (!lead.canal) missing.push("Canal");
+  if (STAGES_WITHOUT_QUALIFICATION.includes(targetStage)) return missing;
   if (!lead.mercado) missing.push("Mercado");
   if (!lead.tipo_negocio) missing.push("Tipo");
   if (!lead.impacto) missing.push("Impacto");
   return missing;
+};
+
+/** Validação do cadastro de um card novo. */
+export const validateNewCommercialCard = (card: {
+  razao_social: string;
+  canal: string;
+  parceiro_id?: string | null;
+  contatos: { nome: string; telefone: string }[];
+}): string[] => {
+  const errs: string[] = [];
+  if (!card.razao_social.trim()) errs.push("Empresa (Razão Social)");
+  if (!card.canal) errs.push("Canal");
+  if (card.canal === "parceiros" && !card.parceiro_id) errs.push("Embaixador Monnera que indicou");
+  if (!card.contatos.some((c) => c.nome.trim())) errs.push("Nome de pelo menos um contato");
+  return errs;
 };
