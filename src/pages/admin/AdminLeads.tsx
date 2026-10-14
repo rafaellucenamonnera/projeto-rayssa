@@ -826,14 +826,17 @@ const AdminLeads = () => {
     setStageLoadingMore((prev) => ({ ...prev, [stageValue]: true }));
     try {
       const orFilter = buildEmpresaOrFilter(debouncedFilterEmpresa);
+      const stageValues = lostAwareStageValues(stageValue, pipelineStages.find((s) => s.value === stageValue)?.label);
+      const periodIds = await loadPeriodLeadIds(stageValues);
       let query: any = supabase
         .from("leads")
         .select("*")
         .eq("panel_id", currentPanelId)
-        .in("status_lead", lostAwareStageValues(stageValue, pipelineStages.find((s) => s.value === stageValue)?.label) as any)
+        .in("status_lead", stageValues as any)
         .order("data_cadastro", { ascending: false })
         .range(offset, offset + STAGE_PAGE_SIZE - 1);
       if (orFilter) query = query.or(orFilter);
+      query = applyCommercialFilters(query, periodIds);
       const { data, error } = await query;
       if (error) {
         toast.error("Erro ao carregar mais cards");
@@ -925,7 +928,9 @@ const AdminLeads = () => {
     if (detailLead?.id) setActiveSection("detalhes");
   }, [detailLead?.id]);
 
-  const panelLoadSearchKey = isCommercialPanel ? debouncedFilterEmpresa : "";
+  const panelLoadSearchKey = isCommercialPanel
+    ? [debouncedFilterEmpresa, filterMercado, filterTipoNegocio, filterImpacto, periodFrom, periodTo, periodMode].join("|")
+    : "";
 
   useEffect(() => {
     if (!stagesReady) return;
@@ -1003,6 +1008,14 @@ const AdminLeads = () => {
       return;
     }
     const lead = leads.find((l) => l.id === leadId);
+
+    if (isCommercialPanel && lead) {
+      const missing = missingQualification(lead, newStatus);
+      if (missing.length > 0) {
+        toast.warning(`Preencha ${missing.join(", ")} no card antes de mover para esta coluna.`);
+        return;
+      }
+    }
 
     // Bloquear avanço manual para Lead Qualificado sem Teste Monnera preenchido
     if (
@@ -1766,6 +1779,14 @@ const AdminLeads = () => {
           telefone_responsavel: editFormData.telefone_responsavel.trim() || null,
           email_responsavel: editFormData.email_responsavel.trim().toLowerCase() || null,
           ...(isAmbassadorPanel ? {} : { valor_campanhas: valorCampanhas }),
+          ...(isCommercialPanel
+            ? {
+                mercado: editFormData.mercado || null,
+                tipo_negocio: editFormData.tipo_negocio || null,
+                impacto: editFormData.impacto || null,
+                mrr: editFormData.mrr.trim() === "" ? null : Math.max(0, Number(editFormData.mrr) || 0),
+              }
+            : {}),
         };
     if (responsibleChanged) {
       payload.responsible_user_id = nextResponsibleUserId;
@@ -2262,7 +2283,7 @@ const AdminLeads = () => {
       </div>
 
       {/* Status cards (retirados no Painel Comercial) */}
-      <div className={`${isCommercialPanel ? "hidden" : "flex"} gap-2 sm:gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 lg:grid-cols-7 sm:overflow-visible`}>
+      <div className={`${isCommercialPanel ? "!hidden" : ""} flex gap-2 sm:gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 lg:grid-cols-7 sm:overflow-visible`}>
         {pipelineStages.map((s) => (
           <div
             key={s.value}
