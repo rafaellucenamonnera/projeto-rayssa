@@ -1625,6 +1625,7 @@ export type Database = {
           etapa: string
           id: string
           lead_id: string
+          moved_by: string | null
         }
         Insert: {
           data_entrada?: string
@@ -1633,6 +1634,7 @@ export type Database = {
           etapa: string
           id?: string
           lead_id: string
+          moved_by?: string | null
         }
         Update: {
           data_entrada?: string
@@ -1641,6 +1643,7 @@ export type Database = {
           etapa?: string
           id?: string
           lead_id?: string
+          moved_by?: string | null
         }
         Relationships: [
           {

@@ -29,6 +29,13 @@
       "when": 1792006260506,
       "tag": "0003_leads_canal",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792006300667,
+      "tag": "0004_stage_history_moved_by",
+      "breakpoints": true
     }
   ]
 }
