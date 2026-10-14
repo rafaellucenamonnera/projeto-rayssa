@@ -1,3 +1,4 @@
+import { impactoLabel, impactoTagClass, mercadoLabel, tipoNegocioLabel } from "@/lib/commercialPanel";
 import { memo, useMemo, useState } from "react";
 import { ArrowDown, ArrowRight, ArrowUp, ChevronDown, ChevronUp, Copy, FileText, GripVertical, Pencil, Trash2, UserRound, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
