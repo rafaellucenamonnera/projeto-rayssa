@@ -1805,6 +1805,7 @@ export type Database = {
           campaign_status_current_month: string | null
           campaign_status_previous: string | null
           campaign_status_previous_month: string | null
+          canal: string | null
           canal_tracao: string | null
           cargo_participante: string | null
           categoria: string | null
@@ -1906,6 +1907,7 @@ export type Database = {
           campaign_status_current_month?: string | null
           campaign_status_previous?: string | null
           campaign_status_previous_month?: string | null
+          canal?: string | null
           canal_tracao?: string | null
           cargo_participante?: string | null
           categoria?: string | null
@@ -2007,6 +2009,7 @@ export type Database = {
           campaign_status_current_month?: string | null
           campaign_status_previous?: string | null
           campaign_status_previous_month?: string | null
+          canal?: string | null
           canal_tracao?: string | null
           cargo_participante?: string | null
           categoria?: string | null
