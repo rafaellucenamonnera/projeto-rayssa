@@ -27,6 +27,7 @@ interface Props {
   canInsertFile: boolean;
   onSaved: (patch: Record<string, any>) => void;
   onEmitProposal?: () => void;
+  vendedores?: { user_id: string; nome: string }[];
 }
 
 type TimelineItem =
@@ -39,11 +40,11 @@ const fmtDateTime = (v: string) =>
 
 const selectClass = "flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground";
 
-export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, canEdit, canComment, canInsertFile, onSaved, onEmitProposal }: Props) => {
+export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, canEdit, canComment, canInsertFile, onSaved, onEmitProposal, vendedores = [] }: Props) => {
   const { user } = useAuth();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ razao_social: "", cnpj: "", mercado: "", tipo_negocio: "", impacto: "", canal: "", temperatura: "" });
+  const [form, setForm] = useState({ razao_social: "", cnpj: "", mercado: "", tipo_negocio: "", impacto: "", canal: "", temperatura: "", responsible_user_id: "" });
   const [items, setItems] = useState<TimelineItem[]>([]);
   const [loadingTimeline, setLoadingTimeline] = useState(false);
   const [text, setText] = useState("");
@@ -64,6 +65,7 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
       impacto: lead.impacto || "",
       canal: lead.canal || "",
       temperatura: lead.temperatura || "",
+      responsible_user_id: lead.responsible_user_id || "",
     });
     setEditing(true);
   };
@@ -85,6 +87,7 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
       impacto: form.impacto || null,
       canal: form.canal,
       temperatura: form.temperatura || null,
+      responsible_user_id: form.responsible_user_id || null,
     };
     const { error } = await supabase.from("leads").update(patch as any).eq("id", lead.id);
     setSaving(false);
@@ -211,6 +214,7 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
             {selectField("Tipo", "tipo_negocio", TIPO_NEGOCIO_OPTIONS)}
             {selectField("Impacto", "impacto", IMPACTO_OPTIONS)}
             {selectField("Temperatura", "temperatura", TEMPERATURA_OPTIONS)}
+            {selectField("Vendedor Responsável", "responsible_user_id", vendedores.map((v) => ({ value: v.user_id, label: v.nome })))}
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -231,6 +235,7 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
                 Impacto {impactoLabel(lead.impacto)}
               </span>
             ))}
+            {field("Vendedor Responsável", vendedores.find((v) => v.user_id === lead.responsible_user_id)?.nome)}
             {field("Temperatura", lead.temperatura && (
               <span className={`inline-block rounded border px-2 py-0.5 text-xs font-semibold ${temperaturaTagClass(lead.temperatura)}`}>
                 {temperaturaLabel(lead.temperatura)}

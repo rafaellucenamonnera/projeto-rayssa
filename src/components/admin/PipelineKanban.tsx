@@ -673,7 +673,7 @@ export const PipelineKanban = memo(({
                         )}
                       </div>
                     </div>
-                    {(commercialMode || leadStatus === "proposta_enviada" || leadStatus === "proposta_comercial") && onEditProposal && (
+                    {!commercialMode && (leadStatus === "proposta_enviada" || leadStatus === "proposta_comercial") && onEditProposal && (
                       <div className="mt-2">
                         <Button
                           size="sm"
@@ -685,7 +685,7 @@ export const PipelineKanban = memo(({
                           }}
                         >
                           <FileText className="mr-1.5 h-3.5 w-3.5" />
-                          {commercialMode ? "Emitir proposta" : l.proposta_url ? "Editar proposta comercial" : "Gerar proposta comercial"}
+                          {l.proposta_url ? "Editar proposta comercial" : "Gerar proposta comercial"}
                         </Button>
                       </div>
                     )}
