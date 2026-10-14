@@ -44,6 +44,7 @@ import { logCardEvent } from "@/lib/crossCardEvents";
 import { AmbassadorLinksSection } from "@/components/admin/AmbassadorLinksSection";
 import { DaysInStage } from "@/components/admin/DaysInStage";
 import { PipelineKanban } from "@/components/admin/PipelineKanban";
+import { IMPACTO_OPTIONS, MERCADO_OPTIONS, TIPO_NEGOCIO_OPTIONS, impactoLabel, mercadoLabel, missingQualification, tipoNegocioLabel } from "@/lib/commercialPanel";
 import { TesteMonneraSection } from "@/components/admin/TesteMonneraSection";
 import { PIPELINE_STAGES, PIPELINE_LABELS } from "@/lib/pipelineConstants";
 import { cardActionUrl, createNotification } from "@/lib/notifications";
@@ -182,6 +183,10 @@ const emptyEditFormData = {
   responsible_user_id: "",
   responsible_slack_user_id: "",
   valor_campanhas: "",
+  mercado: "",
+  tipo_negocio: "",
+  impacto: "",
+  mrr: "",
 };
 
 const leadToEditFormData = (lead: any) => ({
@@ -202,6 +207,10 @@ const leadToEditFormData = (lead: any) => ({
   responsible_user_id: lead?.responsible_user_id || "",
   responsible_slack_user_id: lead?.responsible_slack_user_id || "",
   valor_campanhas: lead?.valor_campanhas != null ? String(lead.valor_campanhas) : "",
+  mercado: lead?.mercado || "",
+  tipo_negocio: lead?.tipo_negocio || "",
+  impacto: lead?.impacto || "",
+  mrr: lead?.mrr != null ? String(lead.mrr) : "",
 });
 
 const isFinanceiroZerado = (lead: any) => {
@@ -330,6 +339,13 @@ const AdminLeads = () => {
   const [filterCampaignStatus, setFilterCampaignStatus] = useState<string>("all");
   const [filterImpactLevel, setFilterImpactLevel] = useState<string>("all");
   const [filterHealthStatus, setFilterHealthStatus] = useState<string>("all");
+  const [filterMercado, setFilterMercado] = useState<string>("all");
+  const [filterTipoNegocio, setFilterTipoNegocio] = useState<string>("all");
+  const [filterImpacto, setFilterImpacto] = useState<string>("all");
+  const [periodFrom, setPeriodFrom] = useState("");
+  const [periodTo, setPeriodTo] = useState("");
+  const [periodMode, setPeriodMode] = useState<"entrada" | "saida">("entrada");
+  const [stageMrrTotals, setStageMrrTotals] = useState<Record<string, number>>({});
   const [filterDataInicio, setFilterDataInicio] = useState("");
   const [filterDataFim, setFilterDataFim] = useState("");
 
@@ -637,6 +653,27 @@ const AdminLeads = () => {
     const allUsers = ((usersRes.data as any) || []).map((u: any) => ({ user_id: u.user_id, nome: u.nome, can_be_responsible: !!u.can_be_responsible }));
     setAllActiveUsers(allUsers.map((u: any) => ({ user_id: u.user_id, nome: u.nome })));
     setUsersAll(allUsers.filter((u: any) => u.can_be_responsible).map((u: any) => ({ user_id: u.user_id, nome: u.nome })));
+  };
+
+  /** IDs de leads que entraram/saíram das colunas no período (null = sem filtro de período). */
+  const loadPeriodLeadIds = async (stageValues: string[]): Promise<string[] | null> => {
+    if (!isCommercialPanel || (!periodFrom && !periodTo)) return null;
+    const col = periodMode === "saida" ? "data_saida" : "data_entrada";
+    let q: any = supabase.from("lead_stage_history").select("lead_id").in("etapa", stageValues).not(col, "is", null);
+    if (periodFrom) q = q.gte(col, `${periodFrom}T00:00:00-03:00`);
+    if (periodTo) q = q.lte(col, `${periodTo}T23:59:59-03:00`);
+    const { data, error } = await q.range(0, 9999);
+    if (error) throw error;
+    return Array.from(new Set(((data as any[]) || []).map((r) => r.lead_id)));
+  };
+
+  const applyCommercialFilters = (q: any, periodIds: string[] | null) => {
+    if (!isCommercialPanel) return q;
+    if (filterMercado !== "all") q = q.eq("mercado", filterMercado);
+    if (filterTipoNegocio !== "all") q = q.eq("tipo_negocio", filterTipoNegocio);
+    if (filterImpacto !== "all") q = q.eq("impacto", filterImpacto);
+    if (periodIds) q = q.in("id", periodIds.length ? periodIds : ["00000000-0000-0000-0000-000000000000"]);
+    return q;
   };
 
   const loadData = async () => {
