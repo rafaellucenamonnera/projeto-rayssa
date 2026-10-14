@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { LeadExportButton } from "@/components/admin/LeadExportButton";
 import { LeadImportDialog } from "@/components/admin/LeadImportDialog";
+import { ProspectsImportDialog } from "@/components/admin/ProspectsImportDialog";
 
 import { LeadPerdidoDialog } from "@/components/admin/LeadPerdidoDialog";
 import { AgendarReuniaoDialog } from "@/components/admin/AgendarReuniaoDialog";
@@ -2316,7 +2317,10 @@ const AdminLeads = () => {
                 customCrmMode={isCustomCrmPanel}
                 users={Object.fromEntries(allActiveUsers.map((u) => [u.user_id, u.nome]))}
               />
-              {!isAmbassadorPanel && canCreateLead && (
+              {isCommercialPanel && canCreateLead && (
+                <ProspectsImportDialog parceiros={parceirosAll} vendedores={usersAll} onImported={() => void loadData()} />
+              )}
+              {!isAmbassadorPanel && !isCommercialPanel && canCreateLead && (
                 <LeadImportDialog
                   parceiros={parceirosAll}
                   onImported={loadData}
