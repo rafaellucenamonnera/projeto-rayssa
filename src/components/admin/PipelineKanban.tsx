@@ -65,6 +65,9 @@ interface KanbanLeadCardData {
   tipo_negocio?: string | null;
   impacto?: string | null;
   mrr?: number | null;
+  temperatura?: string | null;
+  ultima_atualizacao_at?: string | null;
+  proposta_status?: string | null;
 
   proposta_url?: string | null;
   teste_monnera_last_diagnostic_id?: string | null;
@@ -276,7 +279,7 @@ export const PipelineKanban = memo(({
     Object.keys(g).forEach((stageKey) => {
       if (commercialMode) {
         g[stageKey] = g[stageKey].sort(
-          (a, b) => (stageDaysByLead[b.id] ?? -1) - (stageDaysByLead[a.id] ?? -1),
+          (a, b) => (daysWithoutUpdate(b.ultima_atualizacao_at, stageKey) ?? -1) - (daysWithoutUpdate(a.ultima_atualizacao_at, stageKey) ?? -1),
         );
       } else {
         g[stageKey] = g[stageKey].sort((a, b) => leadPriorityScore(b) - leadPriorityScore(a));
@@ -410,16 +413,8 @@ export const PipelineKanban = memo(({
                 const revTrend = revVar == null ? null : revVar > EPSILON ? "up" : revVar < -EPSILON ? "down" : "neutral";
                 const RevIcon = revTrend === "up" ? ArrowUp : revTrend === "down" ? ArrowDown : ArrowRight;
                 const revColor = revTrend === "up" ? "text-[#00624b]" : revTrend === "down" ? "text-red-600" : "text-muted-foreground";
-                const days = commercialMode ? (stageDaysByLead[l.id] ?? null) : null;
-                const stripeClass =
-                  days == null ? "" :
-                  days >= 10 ? "bg-red-500" :
-                  days >= 5 ? "bg-yellow-400" : "";
-                const badgeClass =
-                  days == null ? "bg-secondary text-foreground border-border" :
-                  days >= 10 ? "bg-red-500 text-white border-red-600" :
-                  days >= 5 ? "bg-yellow-400 text-black border-yellow-500" :
-                  "bg-secondary text-foreground border-border";
+                const days = commercialMode ? daysWithoutUpdate(l.ultima_atualizacao_at, leadStatus) : null;
+                const level = staleLevel(days);
                 return (
                   <div
                     key={l.id}
@@ -444,17 +439,13 @@ export const PipelineKanban = memo(({
                       setExpandedCardId((prev) => (prev === l.id ? null : l.id));
                     }}
                     className={`group relative rounded-md border border-border bg-background overflow-hidden cursor-pointer hover:border-primary/60 transition-colors ${showCsInsteadOfPartner ? "p-0" : "p-2.5"} ${dragId === l.id ? "opacity-50" : ""} ${selectedCardId === l.id ? "ring-1 ring-primary/60" : ""}`}
-                    title={commercialMode && days != null ? `${days} dia${days === 1 ? "" : "s"} nesta coluna` : (showCsInsteadOfPartner ? (isExpanded ? "Duplo clique para recolher" : "Duplo clique para expandir") : (selectedCardId === l.id ? "Clique para abrir" : "Clique para selecionar"))}
+                    title={commercialMode && days != null ? `${days} dia${days === 1 ? "" : "s"} sem atualização` : (showCsInsteadOfPartner ? (isExpanded ? "Duplo clique para recolher" : "Duplo clique para expandir") : (selectedCardId === l.id ? "Clique para abrir" : "Clique para selecionar"))}
                   >
-                    {commercialMode && stripeClass && (
-                      <div className={`absolute top-0 left-0 right-0 h-1 ${stripeClass}`} />
-                    )}
-                    {commercialMode && days != null && (
-                      <span
-                        className={`absolute top-1 right-1 z-10 text-[10px] font-semibold px-1.5 py-0.5 rounded border ${badgeClass}`}
-                      >
-                        {days}d
-                      </span>
+                    {commercialMode && level && (
+                      <div className={`-mx-2.5 -mt-2.5 mb-2 flex items-center justify-between px-2 py-0.5 text-[10px] font-semibold ${level === "red" ? "bg-red-600 text-white" : "bg-yellow-400 text-yellow-950"}`}>
+                        <span>Sem atualização</span>
+                        <span>{days} {days === 1 ? "dia" : "dias"}</span>
+                      </div>
                     )}
                     {showCsInsteadOfPartner && statusTokens && (
                       <div className={`px-2.5 py-1 ${statusTokens.bgClass} ${statusTokens.textOnClass} flex items-center justify-between gap-2`}>
@@ -534,6 +525,18 @@ export const PipelineKanban = memo(({
                               {mercadoLabel(l.mercado) || "Sem mercado"} · {tipoNegocioLabel(l.tipo_negocio) || "Sem tipo"}
                             </p>
                             <p className="text-[10px] text-foreground">MRR: {l.mrr != null ? fmt(Number(l.mrr)) : "—"}</p>
+                            <div className="flex flex-wrap gap-1">
+                              {l.temperatura && (
+                                <span className={`inline-block text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded border ${temperaturaTagClass(l.temperatura)}`}>
+                                  {temperaturaLabel(l.temperatura)}
+                                </span>
+                              )}
+                              {propostaStatusLabel(l.proposta_status) && (
+                                <span className={`inline-block text-[9px] font-semibold px-1.5 py-0.5 rounded border ${l.proposta_status === "aberta" ? "border-primary text-primary" : "border-border text-muted-foreground"}`}>
+                                  {propostaStatusLabel(l.proposta_status)}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         )}
                         {l.panel_id === CROSS_CLIENT_PANEL_ID && <MonneraCodeLine code={l.codigo_monnera} />}
@@ -610,7 +613,7 @@ export const PipelineKanban = memo(({
                                 )}
                               </span>
                             </div>
-                          ) : (
+                          ) : commercialMode ? null : (
                             <div className="flex flex-wrap gap-1">
                               {[
                                 { key: "Mensalidade", current: l.valor_mensalidade, previous: l.valor_mensalidade_anterior },
@@ -670,7 +673,7 @@ export const PipelineKanban = memo(({
                         )}
                       </div>
                     </div>
-                    {(leadStatus === "proposta_enviada" || leadStatus === "proposta_comercial") && onEditProposal && (
+                    {(commercialMode || leadStatus === "proposta_enviada" || leadStatus === "proposta_comercial") && onEditProposal && (
                       <div className="mt-2">
                         <Button
                           size="sm"
@@ -682,7 +685,7 @@ export const PipelineKanban = memo(({
                           }}
                         >
                           <FileText className="mr-1.5 h-3.5 w-3.5" />
-                          {l.proposta_url ? "Editar proposta comercial" : "Gerar proposta comercial"}
+                          {commercialMode ? "Emitir proposta" : l.proposta_url ? "Editar proposta comercial" : "Gerar proposta comercial"}
                         </Button>
                       </div>
                     )}
