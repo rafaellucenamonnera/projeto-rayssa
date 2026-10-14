@@ -2261,8 +2261,8 @@ const AdminLeads = () => {
         </div>
       </div>
 
-      {/* Status cards */}
-      <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 lg:grid-cols-7 sm:overflow-visible">
+      {/* Status cards (retirados no Painel Comercial) */}
+      <div className={`${isCommercialPanel ? "hidden" : "flex"} gap-2 sm:gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 lg:grid-cols-7 sm:overflow-visible`}>
         {pipelineStages.map((s) => (
           <div
             key={s.value}
@@ -2317,6 +2317,42 @@ const AdminLeads = () => {
               ))}
             </SelectContent>
           </Select>
+        )}
+        {isCommercialPanel && (
+          <>
+            <Select value={filterMercado} onValueChange={setFilterMercado}>
+              <SelectTrigger aria-label="Mercado"><SelectValue placeholder="Mercado" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos mercados</SelectItem>
+                {MERCADO_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filterTipoNegocio} onValueChange={setFilterTipoNegocio}>
+              <SelectTrigger aria-label="Tipo"><SelectValue placeholder="Tipo" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos tipos</SelectItem>
+                {TIPO_NEGOCIO_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filterImpacto} onValueChange={setFilterImpacto}>
+              <SelectTrigger aria-label="Impacto"><SelectValue placeholder="Impacto" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos impactos</SelectItem>
+                {IMPACTO_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <div className="flex gap-1 lg:col-span-2">
+              <Input type="date" aria-label="Período de" value={periodFrom} onChange={(e) => setPeriodFrom(e.target.value)} />
+              <Input type="date" aria-label="Período até" value={periodTo} onChange={(e) => setPeriodTo(e.target.value)} />
+            </div>
+            <Select value={periodMode} onValueChange={(v) => setPeriodMode(v as "entrada" | "saida")}>
+              <SelectTrigger aria-label="Entrada ou saída"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="entrada">Entrada na coluna</SelectItem>
+                <SelectItem value="saida">Saída da coluna</SelectItem>
+              </SelectContent>
+            </Select>
+          </>
         )}
         {currentPanelId === "sucesso" && (
           <Select value={filterCampaignStatus} onValueChange={setFilterCampaignStatus}>
@@ -2497,6 +2533,7 @@ const AdminLeads = () => {
             canEditStageMessages={canEditLead || isAdmin}
             onUpdateStageFollowupMessage={updateStageFollowupMessage}
             stageTotals={isCommercialPanel ? stageTotals : undefined}
+            stageMrrTotals={isCommercialPanel ? stageMrrTotals : undefined}
             stageLoadingMore={isCommercialPanel ? stageLoadingMore : undefined}
             onLoadMoreStage={isCommercialPanel ? loadMoreCommercialStage : undefined}
 
@@ -2977,6 +3014,38 @@ const AdminLeads = () => {
                       <p>{getTipoEmpresaLabel(detailLead.tipo_empresa)}</p>
                     )}
                   </div>
+                )}
+                {isCommercialPanel && (
+                  <>
+                    {([
+                      ["mercado", "Mercado", MERCADO_OPTIONS, mercadoLabel],
+                      ["tipo_negocio", "Tipo", TIPO_NEGOCIO_OPTIONS, tipoNegocioLabel],
+                      ["impacto", "Impacto", IMPACTO_OPTIONS, impactoLabel],
+                    ] as const).map(([field, label, options, toLabel]) => (
+                      <div key={field}>
+                        <p className="text-muted-foreground text-xs mb-1">{label}</p>
+                        {isEditingCard ? (
+                          <Select value={(editFormData as any)[field] || "nao_informado"} onValueChange={(value) => setEditFormData((prev) => ({ ...prev, [field]: value === "nao_informado" ? "" : value }))}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="nao_informado">Não informado</SelectItem>
+                              {options.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <p>{toLabel((detailLead as any)[field]) || "—"}</p>
+                        )}
+                      </div>
+                    ))}
+                    <div>
+                      <p className="text-muted-foreground text-xs mb-1">MRR (R$)</p>
+                      {isEditingCard ? (
+                        <Input type="number" min="0" step="0.01" value={editFormData.mrr} onChange={(e) => setEditFormData((prev) => ({ ...prev, mrr: e.target.value }))} />
+                      ) : (
+                        <p>{(detailLead as any).mrr != null ? formatCurrencyBRL(Number((detailLead as any).mrr)) : "—"}</p>
+                      )}
+                    </div>
+                  </>
                 )}
                 {!isAmbassadorPanel && (
                   <div>
