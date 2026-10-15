@@ -57,6 +57,13 @@
       "when": 1792090535227,
       "tag": "0007_lead_contatos_from_indication",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792095568560,
+      "tag": "0008_block_canceled_public_proposal",
+      "breakpoints": true
     }
   ]
 }
