@@ -98,6 +98,15 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
   };
 
   const [proposals, setProposals] = useState<any[]>([]);
+  const cancelProposal = async (p: any) => {
+    const reason = window.prompt("Motivo do cancelamento (mínimo 5 caracteres). Depois de cancelada, o cliente não conseguirá mais abrir esta proposta.");
+    if (reason == null) return;
+    if (reason.trim().length < 5) { toast.error("Informe um motivo com pelo menos 5 caracteres."); return; }
+    const { error } = await supabase.rpc("cancel_commercial_proposal" as any, { p_proposal_id: p.id, p_reason: reason.trim() } as any);
+    if (error) { toast.error("Não foi possível cancelar a proposta."); return; }
+    toast.success("Proposta cancelada. O link não abre mais para o cliente.");
+    void loadTimeline();
+  };
   const loadTimeline = async () => {
     setLoadingTimeline(true);
     const [commentsRes, movesRes, propRes] = await Promise.all([
@@ -295,6 +304,9 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
                       emitida em {new Date(p.created_at).toLocaleString("pt-BR")}
                       {p.proposal_canceled_at ? " · cancelada" : p.accepted_at ? " · aceita" : p.opened_at ? " · aberta" : ""}
                     </span>
+                    {canEdit && !p.proposal_canceled_at && !p.accepted_at && (
+                      <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => cancelProposal(p)}>Cancelar proposta</Button>
+                    )}
                   </li>
                 ))}
               </ul>
