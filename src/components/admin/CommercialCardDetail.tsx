@@ -97,14 +97,16 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
     onSaved(patch);
   };
 
+  const [proposals, setProposals] = useState<any[]>([]);
   const loadTimeline = async () => {
     setLoadingTimeline(true);
     const [commentsRes, movesRes, propRes] = await Promise.all([
       supabase.from("lead_comments").select("id,usuario,comentario,data_comentario").eq("lead_id", lead.id),
       supabase.from("lead_stage_history").select("id,etapa,data_entrada,moved_by").eq("lead_id", lead.id),
-      supabase.from("commercial_proposals").select("id,proposal_name,created_at,opened_at,accepted_at,accepted_by_name,created_by_user_id").eq("lead_id", lead.id),
+      supabase.from("commercial_proposals").select("id,proposal_name,created_at,opened_at,accepted_at,accepted_by_name,created_by_user_id,token,version,proposal_canceled_at").eq("lead_id", lead.id),
     ]);
     const props = (propRes.data as any[]) || [];
+    setProposals([...props].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
     const moves = (movesRes.data as any[]) || [];
     const ids = [...new Set([...moves.map((m) => m.moved_by), ...props.map((p) => p.created_by_user_id)].filter(Boolean))];
     const names = new Map<string, string>();
@@ -278,6 +280,26 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
 
         <div className="mt-4 border-t border-border pt-4">
           <LeadContatos leadId={lead.id} />
+          <div className="mt-4 space-y-2">
+            <h4 className="flex items-center gap-2 text-sm font-semibold"><FileText className="h-4 w-4" />Propostas emitidas</h4>
+            {proposals.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Nenhuma proposta emitida para este card.</p>
+            ) : (
+              <ul className="space-y-1">
+                {proposals.map((p) => (
+                  <li key={p.id} className="flex flex-wrap items-center gap-2 text-sm">
+                    <a href={`/proposta/${p.token}`} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2">
+                      {p.proposal_name || `Proposta v${p.version ?? 1}`}
+                    </a>
+                    <span className="text-xs text-muted-foreground">
+                      emitida em {new Date(p.created_at).toLocaleString("pt-BR")}
+                      {p.proposal_canceled_at ? " · cancelada" : p.accepted_at ? " · aceita" : p.opened_at ? " · aberta" : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       </section>
 
