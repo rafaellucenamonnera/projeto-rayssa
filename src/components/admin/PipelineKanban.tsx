@@ -107,6 +107,8 @@ interface PipelineKanbanProps {
   stageTotals?: Record<string, number>;
   /** Soma do MRR por coluna (painel comercial), respeitando os filtros. */
   stageMrrTotals?: Record<string, number>;
+  /** Soma do valor pago em premiação por coluna (painel comercial), respeitando os filtros. */
+  stagePremiacaoTotals?: Record<string, number>;
   stageLoadingMore?: Record<string, boolean>;
   onLoadMoreStage?: (stageValue: string) => void;
 }
@@ -219,6 +221,7 @@ export const PipelineKanban = memo(({
   onUpdateStageFollowupMessage,
   stageTotals,
   stageMrrTotals,
+  stagePremiacaoTotals,
   stageLoadingMore,
   onLoadMoreStage,
 }: PipelineKanbanProps) => {
@@ -328,7 +331,12 @@ export const PipelineKanban = memo(({
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground" title="Número de cards">{formatCount(stageTotals?.[s.value] ?? items.length)}</span>
               </div>
               {stageMrrTotals ? (
-                <p className="text-[11px] text-muted-foreground mt-0.5">MRR: <span className="font-medium text-foreground">{fmt(stageMrrTotals[s.value] ?? 0)}</span></p>
+                <>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">MRR: <span className="font-medium text-foreground">{fmt(stageMrrTotals[s.value] ?? 0)}</span></p>
+                  {stagePremiacaoTotals && (
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Premiação: <span className="font-medium text-foreground">{fmt(stagePremiacaoTotals[s.value] ?? 0)}</span></p>
+                  )}
+                </>
               ) : (
                 <p className="text-[11px] text-muted-foreground mt-0.5">Total: <span className="font-medium text-foreground">{fmt(totals[s.value])}</span></p>
               )}

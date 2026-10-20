@@ -364,6 +364,7 @@ const AdminLeads = () => {
   const [periodMode, setPeriodMode] = useState<"entrada" | "saida">("entrada");
   const [filterStages, setFilterStages] = useState<string[]>([]);
   const [stageMrrTotals, setStageMrrTotals] = useState<Record<string, number>>({});
+  const [stagePremiacaoTotals, setStagePremiacaoTotals] = useState<Record<string, number>>({});
   const [filterDataInicio, setFilterDataInicio] = useState("");
   const [filterDataFim, setFilterDataFim] = useState("");
 
@@ -769,14 +770,25 @@ const AdminLeads = () => {
                 .not("mrr", "is", null)
                 .range(0, 9999) as any,
             ), periodIds);
-            const [countRes, dataRes, mrrRes] = await Promise.all([countQuery, dataQuery, mrrQuery]);
+            const premiacaoQuery = applyCommercialFilters(applyEmpresaSearch(
+              supabase
+                .from("leads")
+                .select("volume_premiacao_comissao")
+                .eq("panel_id", currentPanelId)
+                .in("status_lead", stageValues as any)
+                .not("volume_premiacao_comissao", "is", null)
+                .range(0, 9999) as any,
+            ), periodIds);
+            const [countRes, dataRes, mrrRes, premiacaoRes] = await Promise.all([countQuery, dataQuery, mrrQuery, premiacaoQuery]);
             if (countRes.error) queryError = countRes.error;
             if (dataRes.error) queryError = dataRes.error;
             if (mrrRes.error) queryError = mrrRes.error;
+            if (premiacaoRes.error) queryError = premiacaoRes.error;
             return {
               stage: stage.value,
               total: countRes.count ?? 0,
               mrr: ((mrrRes.data as any[]) || []).reduce((sum, r) => sum + Number(r.mrr || 0), 0),
+              premiacao: ((premiacaoRes.data as any[]) || []).reduce((sum, r) => sum + Number(r.volume_premiacao_comissao || 0), 0),
               rows: (dataRes.data as any[]) || [],
             };
           }),
@@ -791,11 +803,13 @@ const AdminLeads = () => {
 
         const totals: Record<string, number> = {};
         const mrrTotals: Record<string, number> = {};
+        const premiacaoTotals: Record<string, number> = {};
         const pages: Record<string, number> = {};
         const allRows: any[] = [];
-        results.forEach(({ stage, total, mrr, rows }) => {
+        results.forEach(({ stage, total, mrr, premiacao, rows }) => {
           totals[stage] = total;
           mrrTotals[stage] = mrr;
+          premiacaoTotals[stage] = premiacao;
           pages[stage] = 1;
           allRows.push(...rows);
         });
@@ -805,6 +819,7 @@ const AdminLeads = () => {
         setStageLoadingMore({});
         setStageTotals(totals);
         setStageMrrTotals(mrrTotals);
+        setStagePremiacaoTotals(premiacaoTotals);
         setStageLoadedPages(pages);
         const seen = new Set<string>();
         const deduped = allRows.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
@@ -2749,6 +2764,7 @@ const AdminLeads = () => {
             onUpdateStageFollowupMessage={updateStageFollowupMessage}
             stageTotals={isCommercialPanel ? stageTotals : undefined}
             stageMrrTotals={isCommercialPanel ? stageMrrTotals : undefined}
+            stagePremiacaoTotals={isCommercialPanel ? stagePremiacaoTotals : undefined}
             stageLoadingMore={isCommercialPanel ? stageLoadingMore : undefined}
             onLoadMoreStage={isCommercialPanel ? loadMoreCommercialStage : undefined}
 
