@@ -85,6 +85,13 @@
       "when": 1792529763188,
       "tag": "0011_commercial_card_registration",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792531521325,
+      "tag": "0012_teste_monnera_to_mql",
+      "breakpoints": true
     }
   ]
 }
