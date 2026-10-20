@@ -1564,7 +1564,7 @@ const AdminLeads = () => {
     if (numeroProposta) updateData.numero_proposta = numeroProposta;
 
     if (newStatus === "lead_convertido") {
-      updateData.completion_token = crypto.randomUUID();
+      updateData.completion_token = leads.find((l) => l.id === leadId)?.completion_token || crypto.randomUUID();
     }
     if (newStatus === "contrato_assinado") {
       updateData.data_contrato_assinado = new Date().toISOString();

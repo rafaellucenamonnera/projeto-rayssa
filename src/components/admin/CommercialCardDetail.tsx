@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowRightLeft, CheckCircle2, FileText, Eye, Loader2, MessageSquare, Pencil, Send } from "lucide-react";
 import { AttachmentPicker, CommentAttachmentList, StagedAttachment, uploadStagedAttachments } from "./CommentAttachments";
 import { LeadContatos } from "./LeadContatos";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CommercialRegistrationLink, CommercialRegistrationTab } from "./CommercialRegistrationTab";
 import {
   CANAL_OPTIONS, IMPACTO_OPTIONS, MERCADO_OPTIONS, TIPO_NEGOCIO_OPTIONS,
   canalLabel, impactoLabel, impactoTagClass, mercadoLabel, tipoNegocioLabel,
@@ -232,6 +234,14 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
 
   return (
     <div className="space-y-6">
+      <CommercialRegistrationLink lead={lead} onSaved={onSaved} />
+      <Tabs key={lead.id} defaultValue="principal">
+        <TabsList className="h-auto w-full flex-wrap justify-start">
+          <TabsTrigger value="principal">Informações principais</TabsTrigger>
+          <TabsTrigger value="cadastro">Cadastro e contrato</TabsTrigger>
+        </TabsList>
+        <TabsContent value="cadastro" className="mt-4"><CommercialRegistrationTab lead={lead} /></TabsContent>
+        <TabsContent value="principal" className="mt-4 space-y-6">
       {(() => {
         const days = daysWithoutUpdate(lead.ultima_atualizacao_at, lead.status_lead || "");
         const level = staleLevel(days);
@@ -416,6 +426,8 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
           </ol>
         )}
       </section>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
