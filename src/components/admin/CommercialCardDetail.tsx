@@ -105,6 +105,7 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
     const { error } = await supabase.rpc("cancel_commercial_proposal" as any, { p_proposal_id: p.id, p_reason: reason.trim() } as any);
     if (error) { toast.error("Não foi possível cancelar a proposta."); return; }
     toast.success("Proposta cancelada. O link não abre mais para o cliente.");
+    onSaved({});
     void loadTimeline();
   };
   const loadTimeline = async () => {
@@ -136,9 +137,12 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
 
   useEffect(() => {
     setEditing(false);
+  }, [lead.id]);
+
+  useEffect(() => {
     void loadTimeline();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lead.id, lead.status_lead]);
+  }, [lead.id, lead.status_lead, lead.ultima_atualizacao_at, lead.proposta_status, lead.proposta_status_at]);
 
   const send = async () => {
     if (!user) return toast.error("Sessão expirada. Entre novamente.");
@@ -153,6 +157,8 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
         comentario: text.trim().slice(0, 500),
       } as any).select("id").single();
       if (error) throw error;
+      // The comment trigger changes the lead's activity timestamp, not this row.
+      onSaved({});
       if (staged.length && comment?.id) {
         await uploadStagedAttachments(staged, { commentId: comment.id, leadId: lead.id, userId: user.id });
       }
