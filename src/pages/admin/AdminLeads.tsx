@@ -819,6 +819,7 @@ const AdminLeads = () => {
         setStageLoadingMore({});
         setStageTotals(totals);
         setStageMrrTotals(mrrTotals);
+        setStagePremiacaoTotals(premiacaoTotals);
         setStageLoadedPages(pages);
         const seen = new Set<string>();
         const deduped = allRows.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
@@ -2763,6 +2764,7 @@ const AdminLeads = () => {
             onUpdateStageFollowupMessage={updateStageFollowupMessage}
             stageTotals={isCommercialPanel ? stageTotals : undefined}
             stageMrrTotals={isCommercialPanel ? stageMrrTotals : undefined}
+            stagePremiacaoTotals={isCommercialPanel ? stagePremiacaoTotals : undefined}
             stageLoadingMore={isCommercialPanel ? stageLoadingMore : undefined}
             onLoadMoreStage={isCommercialPanel ? loadMoreCommercialStage : undefined}
 
