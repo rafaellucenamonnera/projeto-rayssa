@@ -4,46 +4,58 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { validateLostReason } from "@/lib/commercialPanel";
 
 interface LeadPerdidoDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   leadName: string;
-  onConfirm: (motivo: string) => void;
+  onConfirm: (motivo: string) => void | boolean | Promise<void | boolean>;
   onCancel: () => void;
 }
 
 export const LeadPerdidoDialog = ({ open, onOpenChange, leadName, onConfirm, onCancel }: LeadPerdidoDialogProps) => {
   const [motivo, setMotivo] = useState("");
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
   const motivosSugeridos = ["Número inválido", "Nunca respondeu", "Parou de responder", "Não é prioridade no momento"];
 
-  const handleConfirm = () => {
-    if (!motivo.trim()) {
-      setError("É obrigatório informar o motivo da perda do lead.");
+  const handleConfirm = async () => {
+    const validationError = validateLostReason(motivo);
+    if (validationError) {
+      setError(validationError);
       return;
     }
-    onConfirm(motivo.trim());
-    setMotivo("");
-    setError("");
+    setSaving(true);
+    try {
+      const saved = await onConfirm(motivo.trim());
+      if (saved === false) return;
+      setMotivo("");
+      setError("");
+    } catch {
+      setError("Não foi possível registrar a perda. Tente novamente.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCancel = () => {
+    if (saving) return;
     setMotivo("");
     setError("");
     onCancel();
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) handleCancel(); onOpenChange(v); }}>
+    <Dialog open={open} onOpenChange={(v) => { if (saving) return; if (!v) handleCancel(); onOpenChange(v); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="font-display">Informe o motivo da perda do lead</DialogTitle>
+          <DialogTitle className="font-display">Informe o motivo da perda do card</DialogTitle>
         </DialogHeader>
-        <p className="text-sm text-muted-foreground">Lead: <strong>{leadName}</strong></p>
+        <p className="text-sm text-muted-foreground">Card: <strong>{leadName}</strong></p>
         <div className="space-y-1.5">
-          <Label>Motivo da perda *</Label>
-          <Select value={motivo} onValueChange={(value) => { setMotivo(value); setError(""); }}>
+          <Label htmlFor="motivo-perda">Motivo da perda *</Label>
+          <Select disabled={saving} value={motivo} onValueChange={(value) => { setMotivo(value); setError(""); }}>
             <SelectTrigger>
               <SelectValue placeholder="Selecione um motivo sugerido" />
             </SelectTrigger>
@@ -54,6 +66,8 @@ export const LeadPerdidoDialog = ({ open, onOpenChange, leadName, onConfirm, onC
             </SelectContent>
           </Select>
           <Textarea
+            id="motivo-perda"
+            disabled={saving}
             value={motivo}
             onChange={(e) => { setMotivo(e.target.value.slice(0, 200)); setError(""); }}
             maxLength={200}
@@ -64,8 +78,8 @@ export const LeadPerdidoDialog = ({ open, onOpenChange, leadName, onConfirm, onC
           {error && <p className="text-destructive text-xs">{error}</p>}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={handleCancel}>Cancelar</Button>
-          <Button onClick={handleConfirm}>Confirmar</Button>
+          <Button variant="outline" onClick={handleCancel} disabled={saving}>Cancelar</Button>
+          <Button onClick={handleConfirm} disabled={saving}>{saving ? "Salvando..." : "Confirmar"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

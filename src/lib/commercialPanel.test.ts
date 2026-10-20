@@ -1,5 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { daysWithoutUpdate, staleLevel, missingQualification, validateNewCommercialCard, COMMERCIAL_STAGE_MQL, COMMERCIAL_STAGE_PROSPECTS, COMMERCIAL_STAGE_PERDIDOS } from "./commercialPanel";
+import { daysWithoutUpdate, staleLevel, missingQualification, validateNewCommercialCard, isCommercialLostStage, validateLostReason, COMMERCIAL_STAGE_MQL, COMMERCIAL_STAGE_PROSPECTS, COMMERCIAL_STAGE_PERDIDOS } from "./commercialPanel";
+
+describe("motivo da perda", () => {
+  it("reconhece Perdidos configurado e legado", () => {
+    expect(isCommercialLostStage(COMMERCIAL_STAGE_PERDIDOS)).toBe(true);
+    expect(isCommercialLostStage("lead_perdido")).toBe(true);
+    expect(isCommercialLostStage("outra-coluna", "PERDIDOS")).toBe(true);
+    expect(isCommercialLostStage(COMMERCIAL_STAGE_MQL, "MQL")).toBe(false);
+  });
+  it("exige texto não vazio", () => {
+    expect(validateLostReason("")).not.toBeNull();
+    expect(validateLostReason("   \n ")).not.toBeNull();
+    expect(validateLostReason("Cliente decidiu não prosseguir.")).toBeNull();
+  });
+  it("mantém o limite existente de 200 caracteres", () => {
+    expect(validateLostReason("a".repeat(200))).toBeNull();
+    expect(validateLostReason("a".repeat(201))).not.toBeNull();
+  });
+});
 
 describe("missingQualification", () => {
   it("Lista Prospects aceita card sem qualificação", () => {

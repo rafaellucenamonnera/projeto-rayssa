@@ -4,6 +4,16 @@ export const COMMERCIAL_STAGE_PROSPECTS = "etapa_comercial_prospects";
 export const COMMERCIAL_STAGE_MQL = "etapa_comercial_mql";
 export const COMMERCIAL_STAGE_PERDIDOS = "etapa_comercial_1781718801678";
 
+export const isCommercialLostStage = (value: string, label?: string | null) =>
+  value === COMMERCIAL_STAGE_PERDIDOS || value === "lead_perdido" ||
+  ["perdidos", "lead perdido"].includes(label?.trim().toLowerCase() ?? "");
+
+export const validateLostReason = (reason: string): string | null => {
+  if (!reason.trim()) return "É obrigatório informar o motivo da perda do card.";
+  if (reason.trim().length > 200) return "O motivo da perda deve ter no máximo 200 caracteres.";
+  return null;
+};
+
 export const MERCADO_OPTIONS = [
   { value: "farma", label: "Farma" },
   { value: "pet", label: "Pet" },

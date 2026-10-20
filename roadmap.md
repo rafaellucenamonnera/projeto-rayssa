@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Exigir e exibir motivo da perda ao mover cards comerciais para Perdidos; validar o fluxo.
+
 - [x] Disponibilizar link de cadastro em todos os cards comerciais e etapas.
 - [x] Salvar lojas e cadastro no card original sem criar ou mover cards.
 - [x] Mostrar cadastro em aba separada e verificar o envio completo (duas lojas, sem F5, token usado bloqueado; 27 testes passaram).
