@@ -1,8 +1,8 @@
 # Roadmap
 
-- [ ] Disponibilizar link de cadastro em todos os cards comerciais e etapas.
-- [ ] Salvar lojas e cadastro no card original sem criar ou mover cards.
-- [ ] Mostrar cadastro em aba separada e verificar o envio completo.
+- [x] Disponibilizar link de cadastro em todos os cards comerciais e etapas.
+- [x] Salvar lojas e cadastro no card original sem criar ou mover cards.
+- [x] Mostrar cadastro em aba separada e verificar o envio completo (duas lojas, sem F5, token usado bloqueado; 27 testes passaram).
 
 - [x] Atualizar status e aviso de inatividade do Painel Comercial sem F5; comentário verificado no painel autenticado e movimentação/propostas cobertas por testes.
 
