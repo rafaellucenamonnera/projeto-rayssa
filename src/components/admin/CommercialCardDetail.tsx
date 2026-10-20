@@ -28,6 +28,7 @@ interface Props {
   onSaved: (patch: Record<string, any>) => void;
   onEmitProposal?: () => void;
   vendedores?: { user_id: string; nome: string }[];
+  onMove?: (newStatus: string) => void;
 }
 
 type TimelineItem =
@@ -40,7 +41,7 @@ const fmtDateTime = (v: string) =>
 
 const selectClass = "flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground";
 
-export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, canEdit, canComment, canInsertFile, onSaved, onEmitProposal, vendedores = [] }: Props) => {
+export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, canEdit, canComment, canInsertFile, onSaved, onEmitProposal, vendedores = [], onMove }: Props) => {
   const { user } = useAuth();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -223,6 +224,20 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
         );
       })()}
       <section className="rounded-lg border border-border p-4">
+        {onMove && (
+          <div className="mb-3 flex items-center gap-2">
+            <label htmlFor="mover-para" className="text-xs font-medium text-muted-foreground whitespace-nowrap">Mover para</label>
+            <select
+              id="mover-para"
+              className={selectClass}
+              value={lead.status_lead || ""}
+              onChange={(e) => { if (e.target.value && e.target.value !== lead.status_lead) onMove(e.target.value); }}
+            >
+              {!stages.some((s) => s.value === lead.status_lead) && <option value={lead.status_lead || ""}>Sem etapa</option>}
+              {stages.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </div>
+        )}
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-sm font-semibold">Cabeçalho</h3>
           {canEdit && !editing && (
