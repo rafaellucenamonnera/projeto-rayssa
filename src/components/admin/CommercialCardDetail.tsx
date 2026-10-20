@@ -287,6 +287,19 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
             {selectField("Impacto", "impacto", IMPACTO_OPTIONS)}
             {selectField("Temperatura", "temperatura", TEMPERATURA_OPTIONS)}
             {selectField("Vendedor Responsável", "responsible_user_id", vendedores.map((v) => ({ value: v.user_id, label: v.nome })))}
+            <div>
+              <p className="mb-1 text-xs text-muted-foreground">Número de lojas</p>
+              <Input inputMode="numeric" value={form.quantidade_lojas} onChange={(e) => setForm((p) => ({ ...p, quantidade_lojas: e.target.value.replace(/\D/g, "") }))} />
+            </div>
+            <div>
+              <p className="mb-1 text-xs text-muted-foreground">Número de vendedores</p>
+              <Input inputMode="numeric" value={form.numero_vendedores} onChange={(e) => setForm((p) => ({ ...p, numero_vendedores: e.target.value.replace(/\D/g, "") }))} />
+            </div>
+            <div className="sm:col-span-2">
+              <p className="mb-1 text-xs text-muted-foreground">Valor pago em premiação (R$)</p>
+              <Input inputMode="decimal" placeholder="Ex.: 1.500,00" value={form.volume_premiacao_comissao} onChange={(e) => setForm((p) => ({ ...p, volume_premiacao_comissao: e.target.value }))} />
+            </div>
+            <p className="sm:col-span-2 text-xs text-muted-foreground">Lojas, vendedores e premiação são obrigatórios para o card sair de Reunião Realizada.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -308,6 +321,9 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
               </span>
             ))}
             {field("Vendedor Responsável", vendedores.find((v) => v.user_id === lead.responsible_user_id)?.nome)}
+            {field("Número de lojas", lead.quantidade_lojas != null ? String(lead.quantidade_lojas) : null)}
+            {field("Número de vendedores", lead.numero_vendedores != null ? String(lead.numero_vendedores) : null)}
+            {field("Valor pago em premiação", lead.volume_premiacao_comissao != null ? Number(lead.volume_premiacao_comissao).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : null)}
             {field("Temperatura", lead.temperatura && (
               <span className={`inline-block rounded border px-2 py-0.5 text-xs font-semibold ${temperaturaTagClass(lead.temperatura)}`}>
                 {temperaturaLabel(lead.temperatura)}
