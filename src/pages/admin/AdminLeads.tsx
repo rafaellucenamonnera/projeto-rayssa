@@ -2999,6 +2999,7 @@ const AdminLeads = () => {
               canComment={canInsertMessage}
               canInsertFile={canInsertFile}
               vendedores={usersAll}
+              onMove={canMovePipeline ? (newStatus) => handleStatusChange(detailLead.id, detailLead.nome_fantasia, newStatus) : undefined}
               onEmitProposal={() => { setDetailOpen(false); handleReplaceProposta(detailLead.id, detailLead.nome_fantasia); }}
               onSaved={(patch) => {
                 mergeCommercialCards([{ id: detailLead.id, ...patch }]);
