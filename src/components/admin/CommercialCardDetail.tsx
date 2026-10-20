@@ -74,8 +74,9 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
     if (!form.razao_social.trim()) return toast.error("Preencha Empresa (Razão Social).");
     if (!form.canal) return toast.error("Preencha o Canal.");
     const stage = lead.status_lead || "";
-    if (missingQualification({ ...form, mercado: "x", tipo_negocio: "x", impacto: "x" }, stage).includes("Temperatura"))
-      return toast.error("Preencha a Temperatura: ela é obrigatória a partir de Lead (em contato).");
+    const missingNow = missingQualification({ ...form, mercado: "x", tipo_negocio: "x" }, stage).filter((f) => f === "Temperatura" || f === "Impacto");
+    if (missingNow.length)
+      return toast.error(`Preencha ${missingNow.join(" e ")}: obrigatórios depois de Reunião Realizada.`);
     const cnpj = form.cnpj.replace(/\D/g, "");
     if (cnpj && cnpj.length !== 14) return toast.error("O CNPJ precisa ter 14 números.");
     setSaving(true);

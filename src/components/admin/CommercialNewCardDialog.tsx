@@ -130,7 +130,7 @@ export const CommercialNewCardDialog = ({ open, onOpenChange, parceiros, default
           </div>
           {([["Mercado", "mercado", MERCADO_OPTIONS], ["Tipo", "tipo_negocio", TIPO_NEGOCIO_OPTIONS], ["Impacto", "impacto", IMPACTO_OPTIONS]] as const).map(([label, key, opts]) => (
             <div key={key}>
-              <p className="mb-1 text-xs text-muted-foreground">{label}{form.stage === COMMERCIAL_STAGE_MQL ? " *" : ""}</p>
+              <p className="mb-1 text-xs text-muted-foreground">{label}{form.stage === COMMERCIAL_STAGE_MQL && key !== "impacto" ? " *" : ""}</p>
               <select className={selectClass} value={form[key]} onChange={(e) => set(key, e.target.value)}>
                 <option value="">Selecione</option>
                 {opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}

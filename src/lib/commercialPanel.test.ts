@@ -5,17 +5,20 @@ describe("missingQualification", () => {
   it("Lista Prospects aceita card sem qualificação", () => {
     expect(missingQualification({ canal: "eventos" }, COMMERCIAL_STAGE_PROSPECTS)).toEqual([]);
   });
-  it("MQL exige Mercado, Tipo e Impacto", () => {
-    expect(missingQualification({ canal: "eventos" }, COMMERCIAL_STAGE_MQL)).toEqual(["Mercado", "Tipo", "Impacto"]);
+  it("MQL exige só Mercado e Tipo", () => {
+    expect(missingQualification({ canal: "eventos" }, COMMERCIAL_STAGE_MQL)).toEqual(["Mercado", "Tipo"]);
   });
-  it("colunas seguintes também exigem", () => {
-    expect(missingQualification({ mercado: "pet", tipo_negocio: "varejo", canal: "eventos" }, "reuniao_agendada")).toEqual(["Impacto", "Temperatura"]);
+  it("até Reunião Realizada Impacto e Temperatura são opcionais", () => {
+    const q = { mercado: "pet", tipo_negocio: "varejo", canal: "eventos" };
+    expect(missingQualification(q, "novo_lead")).toEqual([]);
+    expect(missingQualification(q, "reuniao_agendada")).toEqual([]);
+    expect(missingQualification(q, "reuniao_realizada")).toEqual([]);
   });
-  it("card qualificado pode avançar", () => {
-    expect(missingQualification({ mercado: "pet", tipo_negocio: "varejo", impacto: "alto", canal: "eventos" }, COMMERCIAL_STAGE_MQL)).toEqual([]);
+  it("sair de Reunião Realizada exige Impacto e Temperatura", () => {
+    expect(missingQualification({ mercado: "pet", tipo_negocio: "varejo", canal: "eventos" }, "proposta_enviada")).toEqual(["Impacto", "Temperatura"]);
   });
-  it("Temperatura obrigatória a partir de Lead (em contato)", () => {
-    expect(missingQualification({ mercado: "pet", tipo_negocio: "varejo", impacto: "alto", canal: "eventos" }, "novo_lead")).toEqual(["Temperatura"]);
+  it("card completo pode avançar", () => {
+    expect(missingQualification({ mercado: "pet", tipo_negocio: "varejo", impacto: "alto", temperatura: "quente", canal: "eventos" }, "proposta_enviada")).toEqual([]);
   });
   it("Perdidos não exige", () => {
     expect(missingQualification({}, COMMERCIAL_STAGE_PERDIDOS)).toEqual([]);
