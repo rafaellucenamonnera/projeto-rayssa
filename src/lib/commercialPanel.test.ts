@@ -14,11 +14,14 @@ describe("missingQualification", () => {
     expect(missingQualification(q, "reuniao_agendada")).toEqual([]);
     expect(missingQualification(q, "reuniao_realizada")).toEqual([]);
   });
-  it("sair de Reunião Realizada exige Impacto e Temperatura", () => {
-    expect(missingQualification({ mercado: "pet", tipo_negocio: "varejo", canal: "eventos" }, "proposta_enviada")).toEqual(["Impacto", "Temperatura"]);
+  it("sair de Reunião Realizada exige Impacto, Temperatura, lojas, vendedores e premiação", () => {
+    expect(missingQualification({ mercado: "pet", tipo_negocio: "varejo", canal: "eventos" }, "proposta_enviada")).toEqual(["Impacto", "Temperatura", "Número de lojas", "Número de vendedores", "Valor pago em premiação"]);
+  });
+  it("lojas, vendedores e premiação são opcionais até Reunião Realizada", () => {
+    expect(missingQualification({ mercado: "pet", tipo_negocio: "varejo", canal: "eventos" }, "reuniao_realizada")).toEqual([]);
   });
   it("card completo pode avançar", () => {
-    expect(missingQualification({ mercado: "pet", tipo_negocio: "varejo", impacto: "alto", temperatura: "quente", canal: "eventos" }, "proposta_enviada")).toEqual([]);
+    expect(missingQualification({ mercado: "pet", tipo_negocio: "varejo", impacto: "alto", temperatura: "quente", canal: "eventos", quantidade_lojas: 3, numero_vendedores: 10, volume_premiacao_comissao: 0 }, "proposta_enviada")).toEqual([]);
   });
   it("Perdidos não exige", () => {
     expect(missingQualification({}, COMMERCIAL_STAGE_PERDIDOS)).toEqual([]);
