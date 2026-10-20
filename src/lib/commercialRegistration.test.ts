@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const migration = readFileSync(new URL("../../drizzle/migrations/0011_commercial_card_registration.sql", import.meta.url), "utf8");
+const migration = readFileSync(`${process.cwd()}/drizzle/migrations/0011_commercial_card_registration.sql`, "utf8");
 const completion = migration.split("CREATE OR REPLACE FUNCTION public.complete_lead_by_token")[1];
 const issuance = migration.split("CREATE OR REPLACE FUNCTION public.ensure_lead_completion_token")[1].split("CREATE OR REPLACE FUNCTION public.complete_lead_by_token")[0];
 
