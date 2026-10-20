@@ -45,7 +45,7 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
   const { user } = useAuth();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ razao_social: "", cnpj: "", mercado: "", tipo_negocio: "", impacto: "", canal: "", temperatura: "", responsible_user_id: "" });
+  const [form, setForm] = useState({ razao_social: "", cnpj: "", mercado: "", tipo_negocio: "", impacto: "", canal: "", temperatura: "", responsible_user_id: "", quantidade_lojas: "", numero_vendedores: "", volume_premiacao_comissao: "" });
   const [items, setItems] = useState<TimelineItem[]>([]);
   const [loadingTimeline, setLoadingTimeline] = useState(false);
   const [text, setText] = useState("");
@@ -67,17 +67,34 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
       canal: lead.canal || "",
       temperatura: lead.temperatura || "",
       responsible_user_id: lead.responsible_user_id || "",
+      quantidade_lojas: lead.quantidade_lojas != null ? String(lead.quantidade_lojas) : "",
+      numero_vendedores: lead.numero_vendedores != null ? String(lead.numero_vendedores) : "",
+      volume_premiacao_comissao: lead.volume_premiacao_comissao != null ? String(lead.volume_premiacao_comissao).replace(".", ",") : "",
     });
     setEditing(true);
+  };
+
+  const toInt = (v: string) => (v.trim() === "" ? null : Number.parseInt(v.replace(/\D/g, ""), 10));
+  const toMoney = (v: string) => {
+    if (v.trim() === "") return null;
+    const n = Number(v.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", "."));
+    return Number.isFinite(n) && n >= 0 ? n : NaN;
   };
 
   const save = async () => {
     if (!form.razao_social.trim()) return toast.error("Preencha Empresa (Razão Social).");
     if (!form.canal) return toast.error("Preencha o Canal.");
     const stage = lead.status_lead || "";
-    const missingNow = missingQualification({ ...form, mercado: "x", tipo_negocio: "x" }, stage).filter((f) => f === "Temperatura" || f === "Impacto");
+    const lojas = toInt(form.quantidade_lojas);
+    const vendedoresN = toInt(form.numero_vendedores);
+    const premiacao = toMoney(form.volume_premiacao_comissao);
+    if (Number.isNaN(premiacao as number)) return toast.error("Valor pago em premiação inválido.");
+    const missingNow = missingQualification(
+      { ...form, mercado: "x", tipo_negocio: "x", quantidade_lojas: lojas, numero_vendedores: vendedoresN, volume_premiacao_comissao: premiacao },
+      stage,
+    ).filter((f) => !["Canal", "Mercado", "Tipo"].includes(f));
     if (missingNow.length)
-      return toast.error(`Preencha ${missingNow.join(" e ")}: obrigatórios depois de Reunião Realizada.`);
+      return toast.error(`Preencha ${missingNow.join(", ")}: obrigatórios depois de Reunião Realizada.`);
     const cnpj = form.cnpj.replace(/\D/g, "");
     if (cnpj && cnpj.length !== 14) return toast.error("O CNPJ precisa ter 14 números.");
     setSaving(true);
@@ -90,6 +107,9 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
       canal: form.canal,
       temperatura: form.temperatura || null,
       responsible_user_id: form.responsible_user_id || null,
+      quantidade_lojas: lojas,
+      numero_vendedores: vendedoresN,
+      volume_premiacao_comissao: premiacao,
     };
     const { error } = await supabase.from("leads").update(patch as any).eq("id", lead.id);
     setSaving(false);
@@ -267,6 +287,19 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
             {selectField("Impacto", "impacto", IMPACTO_OPTIONS)}
             {selectField("Temperatura", "temperatura", TEMPERATURA_OPTIONS)}
             {selectField("Vendedor Responsável", "responsible_user_id", vendedores.map((v) => ({ value: v.user_id, label: v.nome })))}
+            <div>
+              <p className="mb-1 text-xs text-muted-foreground">Número de lojas</p>
+              <Input inputMode="numeric" value={form.quantidade_lojas} onChange={(e) => setForm((p) => ({ ...p, quantidade_lojas: e.target.value.replace(/\D/g, "") }))} />
+            </div>
+            <div>
+              <p className="mb-1 text-xs text-muted-foreground">Número de vendedores</p>
+              <Input inputMode="numeric" value={form.numero_vendedores} onChange={(e) => setForm((p) => ({ ...p, numero_vendedores: e.target.value.replace(/\D/g, "") }))} />
+            </div>
+            <div className="sm:col-span-2">
+              <p className="mb-1 text-xs text-muted-foreground">Valor pago em premiação (R$)</p>
+              <Input inputMode="decimal" placeholder="Ex.: 1.500,00" value={form.volume_premiacao_comissao} onChange={(e) => setForm((p) => ({ ...p, volume_premiacao_comissao: e.target.value }))} />
+            </div>
+            <p className="sm:col-span-2 text-xs text-muted-foreground">Lojas, vendedores e premiação são obrigatórios para o card sair de Reunião Realizada.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -288,6 +321,9 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
               </span>
             ))}
             {field("Vendedor Responsável", vendedores.find((v) => v.user_id === lead.responsible_user_id)?.nome)}
+            {field("Número de lojas", lead.quantidade_lojas != null ? String(lead.quantidade_lojas) : null)}
+            {field("Número de vendedores", lead.numero_vendedores != null ? String(lead.numero_vendedores) : null)}
+            {field("Valor pago em premiação", lead.volume_premiacao_comissao != null ? Number(lead.volume_premiacao_comissao).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : null)}
             {field("Temperatura", lead.temperatura && (
               <span className={`inline-block rounded border px-2 py-0.5 text-xs font-semibold ${temperaturaTagClass(lead.temperatura)}`}>
                 {temperaturaLabel(lead.temperatura)}

@@ -58,7 +58,10 @@ export const STAGES_IMPACT_TEMPERATURE_OPTIONAL = [
 
 /** Retorna os nomes dos campos que faltam para mover o card para a coluna. */
 export const missingQualification = (
-  lead: { mercado?: string | null; tipo_negocio?: string | null; impacto?: string | null; canal?: string | null; temperatura?: string | null },
+  lead: {
+    mercado?: string | null; tipo_negocio?: string | null; impacto?: string | null; canal?: string | null; temperatura?: string | null;
+    quantidade_lojas?: number | null; numero_vendedores?: number | null; volume_premiacao_comissao?: number | null;
+  },
   targetStage: string,
 ): string[] => {
   const isLost = targetStage === COMMERCIAL_STAGE_PERDIDOS || targetStage === "lead_perdido";
@@ -71,6 +74,9 @@ export const missingQualification = (
   if (STAGES_IMPACT_TEMPERATURE_OPTIONAL.includes(targetStage)) return missing;
   if (!lead.impacto) missing.push("Impacto");
   if (!lead.temperatura) missing.push("Temperatura");
+  if (lead.quantidade_lojas == null) missing.push("Número de lojas");
+  if (lead.numero_vendedores == null) missing.push("Número de vendedores");
+  if (lead.volume_premiacao_comissao == null) missing.push("Valor pago em premiação");
   return missing;
 };
 
