@@ -45,7 +45,7 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
   const { user } = useAuth();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ razao_social: "", cnpj: "", mercado: "", tipo_negocio: "", impacto: "", canal: "", temperatura: "", responsible_user_id: "" });
+  const [form, setForm] = useState({ razao_social: "", cnpj: "", mercado: "", tipo_negocio: "", impacto: "", canal: "", temperatura: "", responsible_user_id: "", quantidade_lojas: "", numero_vendedores: "", volume_premiacao_comissao: "" });
   const [items, setItems] = useState<TimelineItem[]>([]);
   const [loadingTimeline, setLoadingTimeline] = useState(false);
   const [text, setText] = useState("");
@@ -67,17 +67,34 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
       canal: lead.canal || "",
       temperatura: lead.temperatura || "",
       responsible_user_id: lead.responsible_user_id || "",
+      quantidade_lojas: lead.quantidade_lojas != null ? String(lead.quantidade_lojas) : "",
+      numero_vendedores: lead.numero_vendedores != null ? String(lead.numero_vendedores) : "",
+      volume_premiacao_comissao: lead.volume_premiacao_comissao != null ? String(lead.volume_premiacao_comissao).replace(".", ",") : "",
     });
     setEditing(true);
+  };
+
+  const toInt = (v: string) => (v.trim() === "" ? null : Number.parseInt(v.replace(/\D/g, ""), 10));
+  const toMoney = (v: string) => {
+    if (v.trim() === "") return null;
+    const n = Number(v.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", "."));
+    return Number.isFinite(n) && n >= 0 ? n : NaN;
   };
 
   const save = async () => {
     if (!form.razao_social.trim()) return toast.error("Preencha Empresa (Razão Social).");
     if (!form.canal) return toast.error("Preencha o Canal.");
     const stage = lead.status_lead || "";
-    const missingNow = missingQualification({ ...form, mercado: "x", tipo_negocio: "x" }, stage).filter((f) => f === "Temperatura" || f === "Impacto");
+    const lojas = toInt(form.quantidade_lojas);
+    const vendedoresN = toInt(form.numero_vendedores);
+    const premiacao = toMoney(form.volume_premiacao_comissao);
+    if (Number.isNaN(premiacao as number)) return toast.error("Valor pago em premiação inválido.");
+    const missingNow = missingQualification(
+      { ...form, mercado: "x", tipo_negocio: "x", quantidade_lojas: lojas, numero_vendedores: vendedoresN, volume_premiacao_comissao: premiacao },
+      stage,
+    ).filter((f) => !["Canal", "Mercado", "Tipo"].includes(f));
     if (missingNow.length)
-      return toast.error(`Preencha ${missingNow.join(" e ")}: obrigatórios depois de Reunião Realizada.`);
+      return toast.error(`Preencha ${missingNow.join(", ")}: obrigatórios depois de Reunião Realizada.`);
     const cnpj = form.cnpj.replace(/\D/g, "");
     if (cnpj && cnpj.length !== 14) return toast.error("O CNPJ precisa ter 14 números.");
     setSaving(true);
@@ -90,6 +107,9 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
       canal: form.canal,
       temperatura: form.temperatura || null,
       responsible_user_id: form.responsible_user_id || null,
+      quantidade_lojas: lojas,
+      numero_vendedores: vendedoresN,
+      volume_premiacao_comissao: premiacao,
     };
     const { error } = await supabase.from("leads").update(patch as any).eq("id", lead.id);
     setSaving(false);
