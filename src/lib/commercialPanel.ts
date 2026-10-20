@@ -48,8 +48,13 @@ export const impactoTagClass = (v?: string | null) => {
   return "";
 };
 
-/** Colunas que aceitam card sem Mercado, Tipo e Impacto. */
+/** Colunas que aceitam card sem Mercado e Tipo. */
 const STAGES_WITHOUT_QUALIFICATION = [COMMERCIAL_STAGE_PROSPECTS, COMMERCIAL_STAGE_PERDIDOS, "lead_perdido"];
+
+/** Até Reunião Realizada, Impacto e Temperatura são opcionais. */
+export const STAGES_IMPACT_TEMPERATURE_OPTIONAL = [
+  COMMERCIAL_STAGE_PROSPECTS, COMMERCIAL_STAGE_MQL, "novo_lead", "reuniao_agendada", "reuniao_realizada",
+];
 
 /** Retorna os nomes dos campos que faltam para mover o card para a coluna. */
 export const missingQualification = (
@@ -63,8 +68,9 @@ export const missingQualification = (
   if (STAGES_WITHOUT_QUALIFICATION.includes(targetStage)) return missing;
   if (!lead.mercado) missing.push("Mercado");
   if (!lead.tipo_negocio) missing.push("Tipo");
+  if (STAGES_IMPACT_TEMPERATURE_OPTIONAL.includes(targetStage)) return missing;
   if (!lead.impacto) missing.push("Impacto");
-  if (targetStage !== COMMERCIAL_STAGE_MQL && !lead.temperatura) missing.push("Temperatura");
+  if (!lead.temperatura) missing.push("Temperatura");
   return missing;
 };
 
