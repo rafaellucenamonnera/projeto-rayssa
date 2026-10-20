@@ -22,6 +22,7 @@ function FilterField({ label, className, children }: { label: string; className?
   );
 }
 import { useAuth } from "@/hooks/useAuth";
+import { useCommercialCardSync } from "@/hooks/useCommercialCardSync";
 import { toast } from "sonner";
 import {
   Trash2, FileText, RefreshCw, Download, Loader2, Eye, Copy,
@@ -609,6 +610,18 @@ const AdminLeads = () => {
   };
 
   const isCommercialPanel = !isCustomCrmPanel && ["comercial", "comerc"].includes(currentPanelId);
+
+  const mergeCommercialCards = useCallback((cards: { id: string; [key: string]: unknown }[]) => {
+    const byId = new Map(cards.map((card) => [card.id, card]));
+    setLeads((prev) => prev.map((card) => byId.has(card.id) ? { ...card, ...byId.get(card.id) } : card));
+    setDetailLead((prev: any) => prev && byId.has(prev.id) ? { ...prev, ...byId.get(prev.id) } : prev);
+  }, []);
+  const refreshCommercialCard = useCommercialCardSync(
+    isCommercialPanel && stagesReady,
+    currentPanelId,
+    [...leads.map((card) => card.id), ...(detailOpen && detailLead?.id ? [detailLead.id] : [])],
+    mergeCommercialCards,
+  );
 
   const chunkedIn = async <T,>(
     ids: string[],
@@ -1553,6 +1566,7 @@ const AdminLeads = () => {
     setLeads((prev) =>
       prev.map((l) => (l.id === leadId ? { ...l, ...updateData } : l))
     );
+    if (isCommercialPanel) void refreshCommercialCard(leadId);
     toast.success("Status atualizado");
 
     if (newStatus === "lead_convertido") {
@@ -2985,8 +2999,8 @@ const AdminLeads = () => {
               vendedores={usersAll}
               onEmitProposal={() => { setDetailOpen(false); handleReplaceProposta(detailLead.id, detailLead.nome_fantasia); }}
               onSaved={(patch) => {
-                setDetailLead((prev: any) => (prev ? { ...prev, ...patch } : prev));
-                void loadData();
+                mergeCommercialCards([{ id: detailLead.id, ...patch }]);
+                void refreshCommercialCard(detailLead.id);
               }}
             />
           )}

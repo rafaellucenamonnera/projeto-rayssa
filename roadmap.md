@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Atualizar status e aviso de inatividade do Painel Comercial sem F5; verificar comentário, movimentação e proposta.
+
 - [x] Corrigir restauração da sessão sem falso tempo limite.
 - [x] Evitar duas janelas abertas durante a edição do cliente.
 - [x] Remover recargas duplicadas ao trocar painel ou pesquisar.
