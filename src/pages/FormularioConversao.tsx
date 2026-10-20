@@ -265,7 +265,7 @@ const FormularioConversao = () => {
               <CheckCircle className="w-8 h-8 text-primary" />
             </div>
             <h2 className="text-xl font-display font-bold">Dados enviados com sucesso!</h2>
-            <p className="text-muted-foreground">Obrigado! Agora nossa equipe vai preparar seu contrato.</p>
+            <p className="text-muted-foreground">Obrigado! Nossa equipe recebeu os dados para o cadastro e a preparação do contrato.</p>
           </CardContent>
         </Card>
       </div>

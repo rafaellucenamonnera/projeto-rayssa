@@ -1804,6 +1804,8 @@ export type Database = {
         Row: {
           auto_lost_at: string | null
           auto_lost_reason: string | null
+          cadastro_cliente_data: Json | null
+          cadastro_cliente_recebido_at: string | null
           campaign_status_current: string | null
           campaign_status_current_month: string | null
           campaign_status_previous: string | null
@@ -1911,6 +1913,8 @@ export type Database = {
         Insert: {
           auto_lost_at?: string | null
           auto_lost_reason?: string | null
+          cadastro_cliente_data?: Json | null
+          cadastro_cliente_recebido_at?: string | null
           campaign_status_current?: string | null
           campaign_status_current_month?: string | null
           campaign_status_previous?: string | null
@@ -2018,6 +2022,8 @@ export type Database = {
         Update: {
           auto_lost_at?: string | null
           auto_lost_reason?: string | null
+          cadastro_cliente_data?: Json | null
+          cadastro_cliente_recebido_at?: string | null
           campaign_status_current?: string | null
           campaign_status_current_month?: string | null
           campaign_status_previous?: string | null
@@ -4294,6 +4300,10 @@ export type Database = {
       }
       duplicate_card: {
         Args: { card_id: string; target_stage_id: string }
+        Returns: string
+      }
+      ensure_lead_completion_token: {
+        Args: { p_lead_id: string }
         Returns: string
       }
       ensure_onboarding_card_from_contract_signed: {
