@@ -59,7 +59,7 @@ import { logCardEvent } from "@/lib/crossCardEvents";
 import { AmbassadorLinksSection } from "@/components/admin/AmbassadorLinksSection";
 import { DaysInStage } from "@/components/admin/DaysInStage";
 import { PipelineKanban } from "@/components/admin/PipelineKanban";
-import { IMPACTO_OPTIONS, MERCADO_OPTIONS, TEMPERATURA_OPTIONS, TIPO_NEGOCIO_OPTIONS, impactoLabel, mercadoLabel, missingQualification, tipoNegocioLabel } from "@/lib/commercialPanel";
+import { IMPACTO_OPTIONS, MERCADO_OPTIONS, TEMPERATURA_OPTIONS, TIPO_NEGOCIO_OPTIONS, impactoLabel, mercadoLabel, missingQualification, tipoNegocioLabel, isCommercialLostStage, validateLostReason } from "@/lib/commercialPanel";
 import { TesteMonneraSection } from "@/components/admin/TesteMonneraSection";
 import { PIPELINE_STAGES, PIPELINE_LABELS } from "@/lib/pipelineConstants";
 import { cardActionUrl, createNotification } from "@/lib/notifications";
@@ -390,7 +390,7 @@ const AdminLeads = () => {
 
   // Lead perdido dialog
   const [perdidoDialogOpen, setPerdidoDialogOpen] = useState(false);
-  const [pendingPerdido, setPendingPerdido] = useState<{ leadId: string; leadName: string } | null>(null);
+  const [pendingPerdido, setPendingPerdido] = useState<{ leadId: string; leadName: string; nextStatus: string } | null>(null);
 
   // Contract number edit
   const [editingNumProposta, setEditingNumProposta] = useState<string>("");
@@ -1109,6 +1109,12 @@ const AdminLeads = () => {
     }
     const lead = leads.find((l) => l.id === leadId);
 
+    if (isCommercialPanel && isCommercialLostStage(newStatus, pipelineStages.find((s) => s.value === newStatus)?.label)) {
+      setPendingPerdido({ leadId, leadName, nextStatus: newStatus });
+      setPerdidoDialogOpen(true);
+      return;
+    }
+
     if (isCommercialPanel && lead) {
       const missing = missingQualification(lead, newStatus);
       if (missing.length > 0) {
@@ -1202,7 +1208,7 @@ const AdminLeads = () => {
     }
 
     if (newStatus === "lead_perdido") {
-      setPendingPerdido({ leadId, leadName });
+      setPendingPerdido({ leadId, leadName, nextStatus: newStatus });
       setPerdidoDialogOpen(true);
       return;
     }
@@ -1468,22 +1474,28 @@ const AdminLeads = () => {
   };
 
   const handlePerdidoConfirm = async (motivo: string) => {
-    if (!pendingPerdido) return;
+    if (!pendingPerdido) return false;
+    const validationError = validateLostReason(motivo);
+    if (validationError) { toast.error(validationError); return false; }
+    const { leadId, nextStatus } = pendingPerdido;
+    const patch = { status_lead: nextStatus, motivo_perda: motivo.trim() };
     const { error } = await supabase
       .from("leads")
-      .update({ status_lead: "lead_perdido", motivo_perda: motivo } as any)
-      .eq("id", pendingPerdido.leadId);
+      .update(patch as any)
+      .eq("id", leadId);
     if (error) {
       toast.error("Erro ao atualizar status");
-      return;
+      return false;
     }
     setLeads((prev) =>
-      prev.map((l) => (l.id === pendingPerdido.leadId ? { ...l, status_lead: "lead_perdido", motivo_perda: motivo } : l))
+      prev.map((l) => (l.id === leadId ? { ...l, ...patch } : l))
     );
-    toast.success("Lead marcado como perdido");
-    if (isCommercialPanel) void refreshCommercialCard(pendingPerdido.leadId);
+    setDetailLead((prev: any) => prev?.id === leadId ? { ...prev, ...patch } : prev);
+    toast.success("Card movido para Perdidos. Motivo registrado.");
+    if (isCommercialPanel) void refreshCommercialCard(leadId);
     setPerdidoDialogOpen(false);
     setPendingPerdido(null);
+    return true;
   };
 
   const handleFinanceiroSaved = (data: {

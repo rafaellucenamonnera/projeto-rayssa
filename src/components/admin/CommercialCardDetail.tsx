@@ -383,6 +383,13 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
         </div>
       </section>
 
+      {lead.motivo_perda && (
+        <section className="space-y-2 border-t border-border pt-4" aria-label="Motivo da perda registrado">
+          <h3 className="text-sm font-semibold">Motivo da perda</h3>
+          <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground">{lead.motivo_perda}</p>
+        </section>
+      )}
+
       <section className="space-y-3">
         <h3 className="flex items-center gap-2 text-sm font-semibold"><MessageSquare className="h-4 w-4" />Atualizações</h3>
         {canComment && (
