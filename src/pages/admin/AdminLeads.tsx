@@ -1446,6 +1446,7 @@ const AdminLeads = () => {
     if (detailLead?.id === pendingReuniaoRealizada.leadId) {
       setDetailLead({ ...detailLead, ...payload });
     }
+    if (isCommercialPanel) void refreshCommercialCard(pendingReuniaoRealizada.leadId);
     setReuniaoRealizadaOpen(false);
     setPendingReuniaoRealizada(null);
     toast.success("Reunião realizada registrada");
@@ -1465,6 +1466,7 @@ const AdminLeads = () => {
       prev.map((l) => (l.id === pendingPerdido.leadId ? { ...l, status_lead: "lead_perdido", motivo_perda: motivo } : l))
     );
     toast.success("Lead marcado como perdido");
+    if (isCommercialPanel) void refreshCommercialCard(pendingPerdido.leadId);
     setPerdidoDialogOpen(false);
     setPendingPerdido(null);
   };

@@ -43,6 +43,16 @@ describe("commercial card synchronization", () => {
     expect(onCards).not.toHaveBeenCalled();
   });
 
+  it("reads the new column and activity timestamp after a move", async () => {
+    const moved = { id: "card-1", status_lead: "contrato_enviado", ultima_atualizacao_at: new Date().toISOString() };
+    read.mockResolvedValue({ data: [moved], error: null });
+    const onCards = vi.fn();
+    const { result } = renderHook(() => useCommercialCardSync(true, "comercial", ["card-1"], onCards));
+    await act(async () => { await result.current("card-1"); });
+    expect(onCards).toHaveBeenCalledWith([moved]);
+    expect(daysWithoutUpdate(moved.ultima_atualizacao_at, moved.status_lead)).toBe(0);
+  });
+
   it("does not let an older response overwrite a newer saved card", async () => {
     let resolveOld: (value: unknown) => void = () => undefined;
     read.mockImplementationOnce(() => new Promise((resolve) => { resolveOld = resolve; }))

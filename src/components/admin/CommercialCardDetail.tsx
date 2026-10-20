@@ -137,6 +137,9 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
 
   useEffect(() => {
     setEditing(false);
+  }, [lead.id]);
+
+  useEffect(() => {
     void loadTimeline();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lead.id, lead.status_lead, lead.ultima_atualizacao_at, lead.proposta_status, lead.proposta_status_at]);
