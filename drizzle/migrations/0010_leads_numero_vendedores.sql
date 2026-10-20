@@ -1,0 +1,1 @@
+ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS numero_vendedores integer CHECK (numero_vendedores IS NULL OR numero_vendedores >= 0);

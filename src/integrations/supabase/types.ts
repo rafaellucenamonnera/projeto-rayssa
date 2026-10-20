@@ -1853,6 +1853,7 @@ export type Database = {
           nome_responsavel: string
           numero_funcionarios: number | null
           numero_proposta: string | null
+          numero_vendedores: number | null
           origem: string
           panel_id: string
           parceiro_id: string
@@ -1959,6 +1960,7 @@ export type Database = {
           nome_responsavel: string
           numero_funcionarios?: number | null
           numero_proposta?: string | null
+          numero_vendedores?: number | null
           origem?: string
           panel_id?: string
           parceiro_id: string
@@ -2065,6 +2067,7 @@ export type Database = {
           nome_responsavel?: string
           numero_funcionarios?: number | null
           numero_proposta?: string | null
+          numero_vendedores?: number | null
           origem?: string
           panel_id?: string
           parceiro_id?: string
