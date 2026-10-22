@@ -47,7 +47,7 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
   const { user } = useAuth();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ razao_social: "", cnpj: "", mercado: "", tipo_negocio: "", impacto: "", canal: "", temperatura: "", responsible_user_id: "", quantidade_lojas: "", numero_vendedores: "", volume_premiacao_comissao: "" });
+  const [form, setForm] = useState({ razao_social: "", cnpj: "", mercado: "", tipo_negocio: "", impacto: "", canal: "", temperatura: "", responsible_user_id: "", quantidade_lojas: "", numero_vendedores: "", volume_premiacao_comissao: "", mrr: "" });
   const [items, setItems] = useState<TimelineItem[]>([]);
   const [loadingTimeline, setLoadingTimeline] = useState(false);
   const [text, setText] = useState("");
@@ -72,6 +72,7 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
       quantidade_lojas: lead.quantidade_lojas != null ? String(lead.quantidade_lojas) : "",
       numero_vendedores: lead.numero_vendedores != null ? String(lead.numero_vendedores) : "",
       volume_premiacao_comissao: lead.volume_premiacao_comissao != null ? String(lead.volume_premiacao_comissao).replace(".", ",") : "",
+      mrr: lead.mrr != null ? String(lead.mrr).replace(".", ",") : "",
     });
     setEditing(true);
   };
@@ -91,6 +92,8 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
     const vendedoresN = toInt(form.numero_vendedores);
     const premiacao = toMoney(form.volume_premiacao_comissao);
     if (Number.isNaN(premiacao as number)) return toast.error("Valor pago em premiação inválido.");
+    const mrr = toMoney(form.mrr);
+    if (Number.isNaN(mrr as number)) return toast.error("MRR inválido.");
     const missingNow = missingQualification(
       { ...form, mercado: "x", tipo_negocio: "x", quantidade_lojas: lojas, numero_vendedores: vendedoresN, volume_premiacao_comissao: premiacao },
       stage,
@@ -112,6 +115,7 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
       quantidade_lojas: lojas,
       numero_vendedores: vendedoresN,
       volume_premiacao_comissao: premiacao,
+      mrr,
     };
     const { error } = await supabase.from("leads").update(patch as any).eq("id", lead.id);
     setSaving(false);
@@ -309,6 +313,10 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
               <p className="mb-1 text-xs text-muted-foreground">Valor pago em premiação (R$)</p>
               <Input inputMode="decimal" placeholder="Ex.: 1.500,00" value={form.volume_premiacao_comissao} onChange={(e) => setForm((p) => ({ ...p, volume_premiacao_comissao: e.target.value }))} />
             </div>
+            <div className="sm:col-span-2">
+              <p className="mb-1 text-xs text-muted-foreground">MRR (R$)</p>
+              <Input inputMode="decimal" placeholder="Ex.: 2.000,00" value={form.mrr} onChange={(e) => setForm((p) => ({ ...p, mrr: e.target.value }))} />
+            </div>
             <p className="sm:col-span-2 text-xs text-muted-foreground">Lojas, vendedores e premiação são obrigatórios para o card sair de Reunião Realizada.</p>
           </div>
         ) : (
@@ -334,6 +342,7 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
             {field("Número de lojas", lead.quantidade_lojas != null ? String(lead.quantidade_lojas) : null)}
             {field("Número de vendedores", lead.numero_vendedores != null ? String(lead.numero_vendedores) : null)}
             {field("Valor pago em premiação", lead.volume_premiacao_comissao != null ? Number(lead.volume_premiacao_comissao).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : null)}
+            {field("MRR", lead.mrr != null ? Number(lead.mrr).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : null)}
             {field("Temperatura", lead.temperatura && (
               <span className={`inline-block rounded border px-2 py-0.5 text-xs font-semibold ${temperaturaTagClass(lead.temperatura)}`}>
                 {temperaturaLabel(lead.temperatura)}
