@@ -612,8 +612,35 @@ const AdminLeads = () => {
 
   const isCommercialPanel = !isCustomCrmPanel && ["comercial", "comerc"].includes(currentPanelId);
 
+  const leadsRef = useRef<any[]>([]);
+  leadsRef.current = leads;
   const mergeCommercialCards = useCallback((cards: { id: string; [key: string]: unknown }[]) => {
     const byId = new Map(cards.map((card) => [card.id, card]));
+    // Mantém os totais de MRR e premiação das colunas coerentes com o card editado.
+    const mrrDelta: Record<string, number> = {};
+    const premDelta: Record<string, number> = {};
+    const add = (m: Record<string, number>, k: unknown, v: unknown) => {
+      if (typeof k !== "string" || !k) return;
+      const n = Number(v || 0);
+      if (n) m[k] = (m[k] ?? 0) + n;
+    };
+    leadsRef.current.forEach((old) => {
+      const upd = byId.get(old.id);
+      if (!upd) return;
+      const next = { ...old, ...upd };
+      add(mrrDelta, old.status_lead, -Number(old.mrr || 0));
+      add(mrrDelta, next.status_lead, next.mrr);
+      add(premDelta, old.status_lead, -Number(old.volume_premiacao_comissao || 0));
+      add(premDelta, next.status_lead, next.volume_premiacao_comissao);
+    });
+    const apply = (prev: Record<string, number>, d: Record<string, number>) => {
+      if (!Object.keys(d).length) return prev;
+      const out = { ...prev };
+      Object.entries(d).forEach(([k, v]) => { out[k] = Math.max(0, (out[k] ?? 0) + v); });
+      return out;
+    };
+    setStageMrrTotals((prev) => apply(prev, mrrDelta));
+    setStagePremiacaoTotals((prev) => apply(prev, premDelta));
     setLeads((prev) => prev.map((card) => byId.has(card.id) ? { ...card, ...byId.get(card.id) } : card));
     setDetailLead((prev: any) => prev && byId.has(prev.id) ? { ...prev, ...byId.get(prev.id) } : prev);
   }, []);
