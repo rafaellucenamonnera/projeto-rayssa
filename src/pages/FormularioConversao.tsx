@@ -89,40 +89,14 @@ const FormularioConversao = () => {
         responsavel_rh_email: data.responsavel_rh_email || "",
       });
 
-      // Initialize lojas array if multi-store
-      if (false) {
-        setLojas(
-          Array.from({ length: data.quantidade_lojas }, () => ({
-            cnpj: "", razao_social: "", nome_interno: "",
-          }))
-        );
-      }
-
       setLoading(false);
     };
     loadLead();
   }, [token]);
 
+  // Only the store count is collected; no individual store records are created.
   const handleQtdLojasChange = (val: number) => {
-    const qty = Math.max(1, val);
-    setForm({ ...form, quantidade_lojas: qty });
-    if (false) {
-      setLojas(
-        Array.from({ length: qty }, (_, i) => lojas[i] || { cnpj: "", razao_social: "", nome_interno: "" })
-      );
-    } else {
-      setLojas([]);
-    }
-  };
-
-  const updateLoja = (index: number, field: keyof LojaForm, value: string) => {
-    const updated = [...lojas];
-    if (field === "cnpj") {
-      updated[index] = { ...updated[index], cnpj: formatCNPJ(value) };
-    } else {
-      updated[index] = { ...updated[index], [field]: value };
-    }
-    setLojas(updated);
+    setForm({ ...form, quantidade_lojas: Math.min(10000, Math.max(1, val)) });
   };
 
   const validate = () => {
