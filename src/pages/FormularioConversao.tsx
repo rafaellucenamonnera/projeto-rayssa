@@ -5,9 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { validateCNPJ, formatCNPJ } from "@/lib/validators";
 import { toast } from "sonner";
-import { Loader2, CheckCircle, Store, AlertCircle } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import logoMonnera from "@/assets/logo-monnera.jpg";
 
 interface LojaForm {
@@ -49,7 +48,6 @@ const FormularioConversao = () => {
     responsavel_rh_email: "",
   });
 
-  const [lojas, setLojas] = useState<LojaForm[]>([]);
 
   useEffect(() => {
     const loadLead = async () => {
