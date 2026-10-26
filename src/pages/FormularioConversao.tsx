@@ -90,7 +90,7 @@ const FormularioConversao = () => {
       });
 
       // Initialize lojas array if multi-store
-      if (data.quantidade_lojas > 1) {
+      if (false) {
         setLojas(
           Array.from({ length: data.quantidade_lojas }, () => ({
             cnpj: "", razao_social: "", nome_interno: "",
@@ -106,7 +106,7 @@ const FormularioConversao = () => {
   const handleQtdLojasChange = (val: number) => {
     const qty = Math.max(1, val);
     setForm({ ...form, quantidade_lojas: qty });
-    if (qty > 1) {
+    if (false) {
       setLojas(
         Array.from({ length: qty }, (_, i) => lojas[i] || { cnpj: "", razao_social: "", nome_interno: "" })
       );
@@ -154,22 +154,6 @@ const FormularioConversao = () => {
     if (!form.responsavel_rh_email.trim()) errs.responsavel_rh_email = "Obrigatório";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.responsavel_rh_email)) errs.responsavel_rh_email = "Email inválido";
 
-    // Validate lojas if multi-store
-    if (form.quantidade_lojas > 1) {
-      const cnpjs: string[] = [];
-      lojas.forEach((loja, i) => {
-        if (!validateCNPJ(loja.cnpj)) errs[`loja_${i}_cnpj`] = "CNPJ inválido";
-        if (!loja.razao_social.trim()) errs[`loja_${i}_razao`] = "Obrigatório";
-        if (!loja.nome_interno.trim()) errs[`loja_${i}_nome`] = "Obrigatório";
-
-        const cleanCnpj = loja.cnpj.replace(/\D/g, "");
-        if (cleanCnpj && cnpjs.includes(cleanCnpj)) {
-          errs[`loja_${i}_cnpj`] = "CNPJ repetido";
-        }
-        if (cleanCnpj) cnpjs.push(cleanCnpj);
-      });
-    }
-
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -203,19 +187,10 @@ const FormularioConversao = () => {
         responsavel_rh_email: form.responsavel_rh_email.trim().toLowerCase(),
       };
 
-      const lojasPayload =
-        form.quantidade_lojas > 1 && lojas.length > 0
-          ? lojas.map((l) => ({
-              cnpj: l.cnpj.replace(/\D/g, ""),
-              razao_social: l.razao_social.trim(),
-              nome_interno: l.nome_interno.trim(),
-            }))
-          : [];
-
       const { error: rpcError } = await supabase.rpc("complete_lead_by_token", {
         p_token: token,
         p_data: payload,
-        p_lojas: lojasPayload,
+        p_lojas: [],
       } as any);
 
       if (rpcError) throw rpcError;
@@ -334,7 +309,7 @@ const FormularioConversao = () => {
                 </div>
                 <div className={fieldClass}>
                   <Label>Quantidade de lojas *</Label>
-                  <Input type="number" min="1" value={form.quantidade_lojas} onChange={(e) => handleQtdLojasChange(parseInt(e.target.value) || 1)} />
+                  <Input type="number" min="1" max="10000" value={form.quantidade_lojas} onChange={(e) => handleQtdLojasChange(parseInt(e.target.value) || 1)} />
                 </div>
               </div>
             </div>
@@ -426,59 +401,6 @@ const FormularioConversao = () => {
               </div>
             </div>
 
-            {/* Lojas (multi-store) */}
-            {form.quantidade_lojas > 1 && (
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                  Dados das Lojas ({form.quantidade_lojas} lojas)
-                </h3>
-                {lojas.map((loja, i) => (
-                  <Card key={i} className="border-border">
-                    <CardContent className="p-4 space-y-3">
-                      <div className="flex items-center gap-2 text-sm font-medium">
-                        <Store className="h-4 w-4 text-primary" />
-                        Loja {i + 1}
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div className={fieldClass}>
-                          <Label className="text-xs">CNPJ *</Label>
-                          <Input
-                            value={loja.cnpj}
-                            onChange={(e) => updateLoja(i, "cnpj", e.target.value)}
-                            placeholder="00.000.000/0000-00"
-                            maxLength={18}
-                          />
-                          {errors[`loja_${i}_cnpj`] && (
-                            <p className="text-destructive text-xs">{errors[`loja_${i}_cnpj`]}</p>
-                          )}
-                        </div>
-                        <div className={fieldClass}>
-                          <Label className="text-xs">Razão Social *</Label>
-                          <Input
-                            value={loja.razao_social}
-                            onChange={(e) => updateLoja(i, "razao_social", e.target.value)}
-                          />
-                          {errors[`loja_${i}_razao`] && (
-                            <p className="text-destructive text-xs">{errors[`loja_${i}_razao`]}</p>
-                          )}
-                        </div>
-                        <div className={fieldClass}>
-                          <Label className="text-xs">Nome interno *</Label>
-                          <Input
-                            value={loja.nome_interno}
-                            onChange={(e) => updateLoja(i, "nome_interno", e.target.value)}
-                            placeholder="Ex: Loja Centro"
-                          />
-                          {errors[`loja_${i}_nome`] && (
-                            <p className="text-destructive text-xs">{errors[`loja_${i}_nome`]}</p>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
 
             <Button type="submit" className="w-full text-base py-6" disabled={submitting}>
               {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando...</> : "Enviar dados"}
