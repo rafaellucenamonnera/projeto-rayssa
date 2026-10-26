@@ -136,6 +136,14 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
     onSaved({});
     void loadTimeline();
   };
+  const reactivateProposal = async (p: any) => {
+    if (!window.confirm("Reativar esta proposta? O cliente voltará a conseguir abrir o link.")) return;
+    const { error } = await supabase.rpc("reactivate_commercial_proposal" as any, { p_proposal_id: p.id } as any);
+    if (error) { toast.error("Não foi possível reativar a proposta."); return; }
+    toast.success("Proposta reativada. O link voltou a abrir para o cliente.");
+    onSaved({});
+    void loadTimeline();
+  };
   const loadTimeline = async () => {
     setLoadingTimeline(true);
     const [commentsRes, movesRes, propRes] = await Promise.all([
@@ -383,6 +391,9 @@ export const CommercialCardDetail = ({ lead, stages, parceiroNome, userName, can
                     </span>
                     {canEdit && !p.proposal_canceled_at && !p.accepted_at && (
                       <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => cancelProposal(p)}>Cancelar proposta</Button>
+                    )}
+                    {canEdit && p.proposal_canceled_at && (
+                      <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => reactivateProposal(p)}>Reativar proposta</Button>
                     )}
                   </li>
                 ))}

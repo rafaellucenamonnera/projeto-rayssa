@@ -99,6 +99,13 @@
       "when": 1793043451790,
       "tag": "0013_registration_without_store_records",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793046621191,
+      "tag": "0014_reactivate_commercial_proposal",
+      "breakpoints": true
     }
   ]
 }

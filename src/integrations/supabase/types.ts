@@ -4440,6 +4440,10 @@ export type Database = {
         Args: { p_row_id: string; p_source: string }
         Returns: Json
       }
+      reactivate_commercial_proposal: {
+        Args: { p_proposal_id: string }
+        Returns: Json
+      }
       record_automation_run: {
         Args: {
           p_card_id?: string
