@@ -1391,6 +1391,13 @@
               <span>Campanhas patrocinadas em parceiros comerciais com gestão compartilhada.</span>
             </span>
           </label>
+          <label class="check-card" for="productLight">
+            <input id="productLight" type="checkbox" data-product="light">
+            <span>
+              <strong>Monnera Light</strong>
+              <span>Versão essencial do Monnera para começar campanhas de incentivo de forma simples.</span>
+            </span>
+          </label>
         </div>
       </section>
 
@@ -1664,7 +1671,8 @@
       products: {
         campaigns: true,
         paymentOrder: false,
-        cross: false
+        cross: false,
+        light: false
       },
       showAppVideo: "sim",
       showManagerVideo: "sim",
@@ -1692,6 +1700,15 @@
         cross: {
           monthlyFee: 1499,
           setupFee: 4497,
+          setupManual: false,
+          setupExempt: false,
+          processingFee: "3%",
+          transferFee: 3.40,
+          boletoFee: 3.40
+        },
+        light: {
+          monthlyFee: 0,
+          setupFee: 0,
           setupManual: false,
           setupExempt: false,
           processingFee: "3%",
@@ -1769,6 +1786,10 @@
         cross: {
           title: "Monnera Cross",
           description: "Produto para patrocinar campanhas em parceiros comerciais com controle de performance, gestão compartilhada e segurança operacional, tributária, fiscal e trabalhista."
+        },
+        light: {
+          title: "Monnera Light",
+          description: "Versão essencial do Monnera para estruturar campanhas de incentivo de forma simples, com acompanhamento de resultados."
         }
       };
     }
@@ -2726,7 +2747,8 @@
         products: {
           campaigns: true,
           paymentOrder: false,
-          cross: false
+          cross: false,
+          light: false
         },
         showAppVideo: "sim",
         showManagerVideo: "sim",
@@ -2754,6 +2776,15 @@
           cross: {
             monthlyFee: 1499,
             setupFee: 4497,
+            setupManual: false,
+            setupExempt: false,
+            processingFee: "3%",
+            transferFee: 3.40,
+            boletoFee: 3.40
+          },
+          light: {
+            monthlyFee: 0,
+            setupFee: 0,
             setupManual: false,
             setupExempt: false,
             processingFee: "3%",
