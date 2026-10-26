@@ -92,6 +92,13 @@
       "when": 1792531521325,
       "tag": "0012_teste_monnera_to_mql",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793043451790,
+      "tag": "0013_registration_without_store_records",
+      "breakpoints": true
     }
   ]
 }
