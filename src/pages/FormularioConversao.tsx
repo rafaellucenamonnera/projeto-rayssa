@@ -9,11 +9,6 @@ import { toast } from "sonner";
 import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import logoMonnera from "@/assets/logo-monnera.jpg";
 
-interface LojaForm {
-  cnpj: string;
-  razao_social: string;
-  nome_interno: string;
-}
 
 const FormularioConversao = () => {
   const { token } = useParams();
