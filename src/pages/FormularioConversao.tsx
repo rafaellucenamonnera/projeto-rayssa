@@ -28,6 +28,7 @@ const FormularioConversao = () => {
     endereco_estado: "",
     endereco_cep: "",
     quantidade_lojas: 1,
+    taxa_processamento: "" as "" | "repasse" | "normal",
     nome_responsavel: "",
     telefone_responsavel: "",
     email_responsavel: "",
@@ -68,6 +69,7 @@ const FormularioConversao = () => {
         endereco_estado: data.endereco_estado || "",
         endereco_cep: data.endereco_cep || "",
         quantidade_lojas: data.quantidade_lojas || 1,
+        taxa_processamento: "",
         nome_responsavel: data.nome_responsavel || "",
         telefone_responsavel: data.telefone_responsavel || "",
         email_responsavel: data.email_responsavel || "",
@@ -101,6 +103,7 @@ const FormularioConversao = () => {
     if (!form.cidade.trim()) errs.cidade = "Obrigatório";
     if (!form.endereco_estado.trim()) errs.endereco_estado = "Obrigatório";
     if (!form.endereco_cep.trim()) errs.endereco_cep = "Obrigatório";
+    if (!form.taxa_processamento) errs.taxa_processamento = "Escolha uma opção";
     if (!form.nome_responsavel.trim()) errs.nome_responsavel = "Obrigatório";
     if (!form.telefone_responsavel.trim()) errs.telefone_responsavel = "Obrigatório";
     if (!form.email_responsavel.trim()) errs.email_responsavel = "Obrigatório";
@@ -140,6 +143,7 @@ const FormularioConversao = () => {
         endereco_estado: form.endereco_estado.trim().toUpperCase(),
         endereco_cep: form.endereco_cep.trim(),
         quantidade_lojas: form.quantidade_lojas,
+        taxa_processamento: form.taxa_processamento,
         nome_responsavel: form.nome_responsavel.trim(),
         telefone_responsavel: form.telefone_responsavel.trim(),
         email_responsavel: form.email_responsavel.trim().toLowerCase(),
@@ -279,6 +283,23 @@ const FormularioConversao = () => {
                   <Input type="number" min="1" max="10000" value={form.quantidade_lojas} onChange={(e) => handleQtdLojasChange(parseInt(e.target.value) || 1)} />
                 </div>
               </div>
+            </div>
+
+            {/* Taxa de Processamento */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Taxa de Processamento *</h3>
+              <div role="radiogroup" className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {([
+                  ["repasse", "Repasse", "Cobrada do beneficiário"],
+                  ["normal", "Normal", "Cobrada do contratante"],
+                ] as const).map(([value, title, desc]) => (
+                  <label key={value} className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 ${form.taxa_processamento === value ? "border-primary bg-primary/10" : "border-border"}`}>
+                    <input type="radio" name="taxa_processamento" value={value} checked={form.taxa_processamento === value} onChange={() => setForm({ ...form, taxa_processamento: value })} className="mt-1 accent-primary" />
+                    <span><span className="block text-sm font-medium">{title}</span><span className="block text-xs text-muted-foreground">{desc}</span></span>
+                  </label>
+                ))}
+              </div>
+              {errors.taxa_processamento && <p className="text-destructive text-xs">{errors.taxa_processamento}</p>}
             </div>
 
             {/* Responsável pela assinatura */}

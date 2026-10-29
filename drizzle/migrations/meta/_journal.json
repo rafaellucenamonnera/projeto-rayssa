@@ -106,6 +106,13 @@
       "when": 1793046621191,
       "tag": "0014_reactivate_commercial_proposal",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1793282045703,
+      "tag": "0015_registration_processing_fee",
+      "breakpoints": true
     }
   ]
 }

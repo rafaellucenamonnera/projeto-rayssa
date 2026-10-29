@@ -73,6 +73,11 @@ export function CommercialRegistrationTab({ lead }: { lead: any }) {
           {field("Cidade", data.cidade)}{field("Estado", data.endereco_estado)}{field("CEP", data.endereco_cep)}{field("Quantidade de lojas", data.quantidade_lojas)}
         </div>
       </section>
+      <section className="space-y-3"><h3 className="text-sm font-semibold">Taxa de Processamento</h3>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {field("Opção escolhida", data.taxa_processamento === "repasse" ? "Repasse (cobrada do beneficiário)" : data.taxa_processamento === "normal" ? "Normal (cobrada do contratante)" : null)}
+        </div>
+      </section>
       {[
         ["Responsável pela assinatura", "nome_responsavel", "telefone_responsavel", "email_responsavel"],
         ["Responsável técnico pela instalação", "responsavel_tecnico_nome", "responsavel_tecnico_telefone", "responsavel_tecnico_email"],
