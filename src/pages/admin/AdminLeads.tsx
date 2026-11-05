@@ -56,6 +56,7 @@ import { RepresentativeCardHistory } from "@/components/admin/RepresentativeCard
 import { RepresentativeCardNotes } from "@/components/admin/RepresentativeCardNotes";
 import { RepresentativeCardBlock } from "@/components/admin/RepresentativeCardBlock";
 import { logCardEvent } from "@/lib/crossCardEvents";
+import { matchesCrmSearch, formatCnpj } from "@/lib/crmSearch";
 import { AmbassadorLinksSection } from "@/components/admin/AmbassadorLinksSection";
 import { DaysInStage } from "@/components/admin/DaysInStage";
 import { PipelineKanban } from "@/components/admin/PipelineKanban";
@@ -2108,7 +2109,8 @@ const AdminLeads = () => {
   const filteredExceptStatus = useMemo(() => leads.filter((l) => {
     if (currentPanelId !== "sucesso" && filterConsultor !== "all" && l.parceiro_id !== filterConsultor) return false;
     if (currentPanelId === "sucesso" && filterCs !== "all" && (l.consultor || "") !== filterCs) return false;
-    if (!isCommercialPanel && filterEmpresaLower && !((l.full_name || l.nome_fantasia) || "").toLowerCase().includes(filterEmpresaLower)) return false;
+    if (isCustomCrmPanel && filterEmpresaLower && !matchesCrmSearch(l, filterEmpresaLower)) return false;
+    if (!isCommercialPanel && !isCustomCrmPanel && filterEmpresaLower && !((l.full_name || l.nome_fantasia) || "").toLowerCase().includes(filterEmpresaLower)) return false;
     if (isCustomCrmPanel && filterResponsibleUser !== "all" && l.responsible_user_id !== filterResponsibleUser) return false;
     if (currentPanelId === "sucesso" && filterCampaignStatus !== "all" && (l.campaign_status_current || "SEM_STATUS") !== filterCampaignStatus) return false;
     if ((currentPanelId === "sucesso" || currentPanelId === "campanhas") && filterImpactLevel !== "all" && normalizeImpact(l.impact_level) !== filterImpactLevel) return false;
@@ -2487,7 +2489,7 @@ const AdminLeads = () => {
         )}
         <FilterField label={isCustomCrmPanel ? "Nome" : "Empresa"}>
           <div className="relative">
-            <Input placeholder={isCustomCrmPanel ? "Filtrar por nome..." : "Filtrar por empresa..."} value={filterEmpresa} onChange={(e) => setFilterEmpresa(e.target.value)} />
+            <Input placeholder={isCustomCrmPanel ? "Buscar por nome, CNPJ, contratante, responsável ou telefone..." : "Filtrar por empresa..."} value={filterEmpresa} onChange={(e) => setFilterEmpresa(e.target.value)} />
             {isCommercialPanel && (searchingEmpresa || commercialLoading) && filterEmpresa.trim().length >= 2 && (
               <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">Buscando…</span>
             )}
@@ -2822,6 +2824,8 @@ const AdminLeads = () => {
                     <th className="text-left py-3 px-4 text-muted-foreground font-medium">Data</th>
                     {!isCustomCrmPanel && <th className="text-left py-3 px-4 text-muted-foreground font-medium">Embaixador Monnera</th>}
                     <th className="text-left py-3 px-4 text-muted-foreground font-medium">{isCustomCrmPanel ? "Nome" : "Empresa"}</th>
+                    {isCustomCrmPanel && <th className="text-left py-3 px-4 text-muted-foreground font-medium">CNPJ</th>}
+                    {isCustomCrmPanel && <th className="text-left py-3 px-4 text-muted-foreground font-medium">Código Monnera</th>}
                     <th className="text-left py-3 px-4 text-muted-foreground font-medium">Cidade</th>
                     <th className="text-left py-3 px-4 text-muted-foreground font-medium">Responsável</th>
                     <th className="text-left py-3 px-4 text-muted-foreground font-medium">Telefone</th>
@@ -2844,6 +2848,13 @@ const AdminLeads = () => {
                           {l.nome_fantasia}
                         </button>
                       </td>
+                      {isCustomCrmPanel && [formatCnpj(l.cnpj), l.codigo_monnera || ""].map((val, i) => (
+                        <td key={i} className="py-3 px-4 whitespace-nowrap font-mono text-xs">
+                          {val ? (
+                            <button title="Copiar" className="hover:text-primary" onClick={() => { navigator.clipboard.writeText(val); toast.success("Copiado"); }}>{val}</button>
+                          ) : "—"}
+                        </td>
+                      ))}
                       <td className="py-3 px-4">{l.cidade}</td>
                       <td className="py-3 px-4">{l.nome_responsavel}</td>
                       <td className="py-3 px-4">{l.telefone_responsavel}</td>
